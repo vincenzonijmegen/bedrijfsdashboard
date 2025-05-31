@@ -14,28 +14,18 @@ export default function DashboardPage() {
   const [instructies, setInstructies] = useState<Instructie[]>([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch("/api/instructies");
-        const data = await res.json();
+  fetch("/api/instructies")
+    .then((res) => res.json())
+    .then((data) => {
+      const gelezenSet = new Set(JSON.parse(localStorage.getItem("gelezen") || "[]"));
+      const metStatus = data.map((i: any) => ({
+        ...i,
+        gelezen: gelezenSet.has(i.id),
+      }));
+      setInstructies(metStatus);
+    });
+}, []);
 
-        const gelezenSet = new Set<string>(
-          JSON.parse(localStorage.getItem("gelezen") || "[]")
-        );
-
-        const metStatus = data.map((item: any) => ({
-          ...item,
-          gelezen: gelezenSet.has(item.id),
-        }));
-
-        setInstructies(metStatus);
-      } catch (e) {
-        console.error("Fout bij ophalen instructies:", e);
-      }
-    };
-
-    fetchData();
-  }, []);
 
   const markeerAlsGelezen = (id: string) => {
     const nieuw = instructies.map((i) =>

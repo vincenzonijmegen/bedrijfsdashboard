@@ -19,17 +19,21 @@ export default function AdminPage() {
     if (!isAdmin) router.push("/dashboard");
   }, [user]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const nieuw: Instructie = {
-      id: crypto.randomUUID(),
-      titel,
-      inhoud,
-    };
-    setInstructies((prev) => [...prev, nieuw]);
-    setTitel("");
-    setInhoud("");
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  const res = await fetch("/api/instructies", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ titel, inhoud }),
+  });
+
+  const data = await res.json();
+  setInstructies((prev) => [...prev, data.instructie]);
+  setTitel("");
+  setInhoud("");
+};
+
 
   if (!isAdmin) return null;
 
