@@ -21,17 +21,22 @@ export default function AdminPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
+  try {
+    const res = await fetch("/api/instructies", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titel, inhoud }),
+    });
+    const data = await res.json();
+    if (!data.instructie) throw new Error("Geen instructie teruggekregen");
 
-  const res = await fetch("/api/instructies", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ titel, inhoud }),
-  });
-
-  const data = await res.json();
-  setInstructies((prev) => [...prev, data.instructie]);
-  setTitel("");
-  setInhoud("");
+    setInstructies((prev) => [...prev, data.instructie]);
+    setTitel("");
+    setInhoud("");
+  } catch (err) {
+    alert("Opslaan mislukt");
+    console.error("🛑 Fout bij toevoegen:", err);
+  }
 };
 
 
