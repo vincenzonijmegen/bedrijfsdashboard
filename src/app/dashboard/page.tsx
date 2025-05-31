@@ -18,6 +18,7 @@ export default function DashboardPage() {
     .then((res) => res.json())
     .then((data) => {
       const gelezenSet = new Set(JSON.parse(localStorage.getItem("gelezen") || "[]"));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const metStatus = data.map((i: any) => ({
         ...i,
         gelezen: gelezenSet.has(i.id),
