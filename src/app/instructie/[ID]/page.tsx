@@ -4,7 +4,9 @@ import Linkify from "linkify-react";
 
 type PageProps = {
   params: { id: string };
+  searchParams?: { [key: string]: string | string[] | undefined };
 };
+
 
 export default async function InstructieDetail({ params }: PageProps) {
   const result = await query("SELECT * FROM instructies WHERE id = $1", [params.id]);
