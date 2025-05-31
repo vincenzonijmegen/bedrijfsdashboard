@@ -1,13 +1,14 @@
 "use client";
-import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+
+type Instructie = { id: string; titel: string; inhoud: string };
 
 export default function AdminPage() {
   const { user } = useUser();
   const router = useRouter();
-
-  const [instructies, setInstructies] = useState<{ titel: string; inhoud: string }[]>([]);
+  const [instructies, setInstructies] = useState<Instructie[]>([]);
   const [titel, setTitel] = useState("");
   const [inhoud, setInhoud] = useState("");
 
@@ -20,7 +21,12 @@ export default function AdminPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setInstructies((prev) => [...prev, { titel, inhoud }]);
+    const nieuw: Instructie = {
+      id: crypto.randomUUID(),
+      titel,
+      inhoud,
+    };
+    setInstructies((prev) => [...prev, nieuw]);
     setTitel("");
     setInhoud("");
   };
@@ -28,40 +34,36 @@ export default function AdminPage() {
   if (!isAdmin) return null;
 
   return (
-    <main className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Admin: nieuwe instructie</h1>
+    <div className="max-w-xl mx-auto">
+      <h1 className="text-2xl font-bold mb-4">Beheer: nieuwe instructie</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 mb-8">
         <input
-          className="border w-full p-2 rounded"
           type="text"
           placeholder="Titel"
           value={titel}
           onChange={(e) => setTitel(e.target.value)}
+          className="w-full border p-2 rounded"
           required
         />
         <textarea
-          className="border w-full p-2 rounded"
-          rows={4}
-          placeholder="Inhoud van de instructie"
+          placeholder="Inhoud"
           value={inhoud}
           onChange={(e) => setInhoud(e.target.value)}
-        ></textarea>
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
-          Instructie toevoegen
-        </button>
+          className="w-full border p-2 rounded"
+          rows={4}
+        />
+        <button className="bg-blue-600 text-white px-4 py-2 rounded">Toevoegen</button>
       </form>
 
-      <hr className="my-6" />
-
-      <ul className="space-y-2">
-        {instructies.map((i, idx) => (
-          <li key={idx} className="border p-3 rounded bg-white shadow">
+      <ul className="space-y-3">
+        {instructies.map((i) => (
+          <li key={i.id} className="border bg-white p-4 rounded shadow">
             <h2 className="font-semibold">{i.titel}</h2>
-            <p className="text-sm">{i.inhoud}</p>
+            <p className="text-sm mt-1">{i.inhoud}</p>
           </li>
         ))}
       </ul>
-    </main>
+    </div>
   );
 }
