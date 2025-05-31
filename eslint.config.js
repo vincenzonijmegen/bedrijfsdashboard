@@ -1,10 +1,9 @@
-import { next } from "@vercel/eslint-config-next";
-
+/** @type {import('eslint').Linter.FlatConfig} */
 export default [
-  ...next(),
   {
+    files: ['**/*.ts', '**/*.tsx'],
     rules: {
-      "@typescript-eslint/no-explicit-any": "off",
+      '@typescript-eslint/no-explicit-any': 'off',
     },
   },
 ];

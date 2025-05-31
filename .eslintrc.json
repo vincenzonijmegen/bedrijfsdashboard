@@ -1,3 +1,0 @@
-git add .eslintrc.json
-git commit -m "disable no-explicit-any rule"
-git push
