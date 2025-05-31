@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function GET() {
   try {
     const result = await query(
@@ -13,6 +14,8 @@ export async function GET() {
   }
 }
 
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function POST(req: NextRequest) {
   try {
     const { titel, inhoud } = await req.json();

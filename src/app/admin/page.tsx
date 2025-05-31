@@ -14,10 +14,10 @@ export default function AdminPage() {
 
   const isAdmin = user?.primaryEmailAddress?.emailAddress === "herman@ijssalonvincenzo.nl";
 
-  useEffect(() => {
-    if (!user) return;
-    if (!isAdmin) router.push("/dashboard");
-  }, [user]);
+useEffect(() => {
+  if (!user) return;
+  if (!isAdmin) router.push("/dashboard");
+}, [user, isAdmin, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
