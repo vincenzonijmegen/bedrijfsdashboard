@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-
-let instructies = [
-  { id: "1", titel: "Schoonmaak ijsmachine", inhoud: "Spoelen, reinigen, drogen." },
-  { id: "2", titel: "Kassa afsluiten", inhoud: "Geld tellen en afsluiten." },
-];
+import { query } from "@/lib/db";
 
 export async function GET() {
-  return NextResponse.json(instructies);
+  const result = await query(
+    "SELECT id, titel, inhoud FROM instructies ORDER BY gepubliceerd_op DESC"
+  );
+  return NextResponse.json(result.rows);
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const nieuwe = {
-    id: crypto.randomUUID(),
-    titel: body.titel,
-    inhoud: body.inhoud,
-  };
-  instructies.push(nieuwe);
-  return NextResponse.json({ status: "ok", instructie: nieuwe });
+  const { titel, inhoud } = await req.json();
+  const result = await query(
+    "INSERT INTO instructies (titel, inhoud) VALUES ($1, $2) RETURNING *",
+    [titel, inhoud]
+  );
+  return NextResponse.json({ status: "ok", instructie: result.rows[0] });
 }
