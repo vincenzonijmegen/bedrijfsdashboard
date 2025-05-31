@@ -2,9 +2,11 @@ import { notFound } from "next/navigation";
 import { query } from "@/lib/db";
 import Linkify from "linkify-react";
 
-type Params = { params: { id: string } };
+type PageProps = {
+  params: { id: string };
+};
 
-export default async function InstructieDetail({ params }: Params) {
+export default async function InstructieDetail({ params }: PageProps) {
   const result = await query("SELECT * FROM instructies WHERE id = $1", [params.id]);
   const instructie = result.rows[0];
 
