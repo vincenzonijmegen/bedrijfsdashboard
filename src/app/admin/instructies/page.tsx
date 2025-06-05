@@ -1,3 +1,5 @@
+"use client";
+
 import { uploadAfbeelding } from "@/utils/r2ClientUpload";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
