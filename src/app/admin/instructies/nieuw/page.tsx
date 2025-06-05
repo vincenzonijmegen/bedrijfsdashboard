@@ -9,6 +9,7 @@ import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Button } from "@/components/ui/button";
 
+
 export default function NieuweInstructie() {
   const [titel, setTitel] = useState("");
   const router = useRouter();
