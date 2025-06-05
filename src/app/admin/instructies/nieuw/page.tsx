@@ -1,7 +1,7 @@
 "use client";
 
 import { uploadAfbeelding } from "@/utils/r2ClientUpload";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { EditorContent, useEditor, Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -14,15 +14,19 @@ export default function NieuweInstructie() {
   const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
   const router = useRouter();
 
-  useEditor({
-    extensions: [
-      StarterKit,
-      Image,
-      Placeholder.configure({ placeholder: "Typ hier de instructie..." }),
-    ],
-    content: "",
-    onCreate: ({ editor }) => setEditorInstance(editor),
-  });
+  useEffect(() => {
+    const instance = useEditor({
+      extensions: [
+        StarterKit,
+        Image,
+        Placeholder.configure({ placeholder: "Typ hier de instructie..." }),
+      ],
+      content: "",
+      onCreate: ({ editor }) => setEditorInstance(editor),
+    });
+    // cleanup (optioneel)
+    return () => instance?.destroy();
+  }, []);
 
   const handleOpslaan = async () => {
     if (!titel.trim() || !editorInstance) return;
@@ -89,6 +93,4 @@ export default function NieuweInstructie() {
       </div>
 
       <Button onClick={handleOpslaan}>Opslaan</Button>
-    </main>
-  );
-}
+    <
