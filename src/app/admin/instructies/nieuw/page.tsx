@@ -1,9 +1,9 @@
 "use client";
 
 import { uploadAfbeelding } from "@/utils/r2ClientUpload";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 
 export default function NieuweInstructie() {
   const [titel, setTitel] = useState("");
+  const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
   const router = useRouter();
 
   const editor = useEditor({
@@ -20,11 +21,12 @@ export default function NieuweInstructie() {
       Placeholder.configure({ placeholder: "Typ hier de instructie..." }),
     ],
     content: "",
+    onCreate: ({ editor }) => setEditorInstance(editor),
   });
 
   const handleOpslaan = async () => {
-    if (!titel.trim() || !editor) return;
-    const inhoud = editor.getHTML();
+    if (!titel.trim() || !editorInstance) return;
+    const inhoud = editorInstance.getHTML();
 
     try {
       const res = await fetch("/api/instructies", {
@@ -59,7 +61,7 @@ export default function NieuweInstructie() {
       />
 
       <div className="prose max-w-none mb-4 min-h-[200px] border rounded p-2">
-        {!editor ? (
+        {!editorInstance ? (
           <p className="text-sm text-gray-500">Editor wordt geladen...</p>
         ) : (
           <>
@@ -71,9 +73,9 @@ export default function NieuweInstructie() {
                 input.accept = "image/*";
                 input.onchange = async () => {
                   const file = input.files?.[0];
-                  if (file && editor) {
+                  if (file && editorInstance) {
                     const url = await uploadAfbeelding(file);
-                    editor.chain().focus().setImage({ src: url }).run();
+                    editorInstance.chain().focus().setImage({ src: url }).run();
                   }
                 };
                 input.click();
@@ -81,7 +83,7 @@ export default function NieuweInstructie() {
             >
               Afbeelding uploaden
             </Button>
-            <EditorContent editor={editor} />
+            <EditorContent editor={editorInstance} />
           </>
         )}
       </div>
