@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 export default function NieuweInstructie() {
   const [titel, setTitel] = useState("");
   const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
+  const [editorKey] = useState(() => Math.random().toString(36).substring(2));
   const router = useRouter();
 
   useEditor({
@@ -83,7 +84,7 @@ export default function NieuweInstructie() {
             >
               Afbeelding uploaden
             </Button>
-            <EditorContent editor={editorInstance} />
+            <EditorContent key={editorKey} editor={editorInstance} />
           </>
         )}
       </div>
