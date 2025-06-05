@@ -1,7 +1,7 @@
 "use client";
 
 import { uploadAfbeelding } from "@/utils/r2ClientUpload";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EditorContent, useEditor, Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -14,7 +14,7 @@ export default function NieuweInstructie() {
   const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
   const router = useRouter();
 
-  const editor = useEditor({
+  useEditor({
     extensions: [
       StarterKit,
       Image,
