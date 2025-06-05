@@ -28,7 +28,19 @@ export default function DashboardPage() {
 }, []);
 
 
-  const markeerAlsGelezen = (id: string) => {
+const markeerAlsGelezen = async (id: string) => {
+  const email = user?.emailAddresses[0].emailAddress;
+  if (!email) return;
+
+  try {
+    await fetch("/api/gelezen", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ instructieId: id, email }),
+    });
+
     const nieuw = instructies.map((i) =>
       i.id === id ? { ...i, gelezen: true } : i
     );
@@ -36,7 +48,11 @@ export default function DashboardPage() {
 
     const gelezenIds = nieuw.filter((i) => i.gelezen).map((i) => i.id);
     localStorage.setItem("gelezen", JSON.stringify(gelezenIds));
-  };
+  } catch (err) {
+    console.error("Fout bij opslaan leesstatus", err);
+  }
+};
+
 
   return (
     <main className="p-6">
