@@ -48,7 +48,9 @@ export default function NieuweInstructie() {
       />
 
       <div className="prose max-w-none mb-4 min-h-[200px] border rounded p-2">
-        {editor && (
+        {!editor ? (
+          <p className="text-sm text-gray-500">Editor wordt geladen...</p>
+        ) : (
           <>
             <Button
               className="mb-2"
