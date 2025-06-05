@@ -40,7 +40,7 @@ export default function NieuweInstructie() {
         throw new Error("Geen instructie teruggekregen");
       }
 
-      router.push("/dashboard");
+router.push("/admin/instructies");
     } catch (err) {
       console.error("🛑 Fout bij toevoegen:", err);
       alert("Fout bij opslaan. Probeer het later opnieuw.");
