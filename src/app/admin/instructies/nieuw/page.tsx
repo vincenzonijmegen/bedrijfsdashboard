@@ -3,7 +3,7 @@
 import { uploadAfbeelding } from "@/utils/r2ClientUpload";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { EditorContent, useEditor, Editor } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
