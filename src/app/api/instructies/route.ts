@@ -8,8 +8,13 @@ export async function GET() {
       "SELECT id, titel, inhoud FROM instructies ORDER BY gepubliceerd_op DESC"
     );
     return NextResponse.json(result.rows);
-  } catch (err: any) {
+  } catch (err: unknown) {
+  if (err instanceof Error) {
     console.error("❌ FOUT in GET instructies:", err.message);
+  } else {
+    console.error("❌ Onbekende fout:", err);
+  }
+
     return NextResponse.json({ error: "Fout bij ophalen instructies" }, { status: 500 });
   }
 }
@@ -27,8 +32,14 @@ export async function POST(req: NextRequest) {
     );
 
     return NextResponse.json({ status: "ok", instructie: result.rows[0] });
-  } catch (err: any) {
+
+} catch (err: unknown) {
+  if (err instanceof Error) {
     console.error("❌ FOUT in POST instructies:", err.message);
+  } else {
+    console.error("❌ Onbekende fout:", err);
+  }
+
     return NextResponse.json({ error: "Fout bij opslaan instructie" }, { status: 500 });
   }
 }
