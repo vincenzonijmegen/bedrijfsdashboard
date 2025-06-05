@@ -47,7 +47,7 @@ export default function NieuweInstructie() {
         className="w-full mb-4 border rounded px-3 py-2"
       />
 
-      <div className="prose max-w-none mb-4">
+      <div className="prose max-w-none mb-4 min-h-[200px] border rounded p-2">
         {editor && (
           <>
             <Button
