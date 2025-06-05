@@ -1,7 +1,7 @@
 import { query } from "@/lib/db";
 import Linkify from "linkify-react";
 import { notFound } from "next/navigation";
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export default async function Page(props: any) {
   const id = props?.params?.id;
 
