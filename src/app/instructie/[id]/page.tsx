@@ -2,12 +2,10 @@ import { query } from "@/lib/db";
 import Linkify from "linkify-react";
 import { notFound } from "next/navigation";
 
-type PageProps = {
-  params: Record<string, string>;
-};
+export default async function Page(props: any) {
+  const id = props?.params?.id;
 
-export default async function Page({ params }: PageProps) {
-  const result = await query("SELECT * FROM instructies WHERE id = $1", [params.id]);
+  const result = await query("SELECT * FROM instructies WHERE id = $1", [id]);
   const instructie = result.rows[0];
 
   if (!instructie) return notFound();
