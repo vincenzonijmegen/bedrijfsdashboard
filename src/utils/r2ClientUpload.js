@@ -1,5 +1,5 @@
 // src/utils/r2ClientUpload.js
-export async function uploadAfbeelding(file): Promise<string> {
+export async function uploadAfbeelding(file) {
   const formData = new FormData();
   formData.append("file", file);
 
