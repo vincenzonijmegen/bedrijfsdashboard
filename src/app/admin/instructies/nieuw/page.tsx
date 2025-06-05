@@ -26,13 +26,24 @@ export default function NieuweInstructie() {
     if (!titel.trim() || !editor) return;
     const inhoud = editor.getHTML();
 
-    await fetch("/api/instructies", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titel, inhoud }),
-    });
+    try {
+      const res = await fetch("/api/instructies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titel, inhoud }),
+      });
 
-    router.push("/dashboard");
+      const data = await res.json();
+
+      if (!res.ok || !data.instructie) {
+        throw new Error("Geen instructie teruggekregen");
+      }
+
+      router.push("/dashboard");
+    } catch (err) {
+      console.error("🛑 Fout bij toevoegen:", err);
+      alert("Fout bij opslaan. Probeer het later opnieuw.");
+    }
   };
 
   return (
