@@ -14,7 +14,7 @@ export default function NieuweInstructie() {
   const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
   const router = useRouter();
 
-  useEditor({
+  const editor = useEditor({
     extensions: [
       StarterKit,
       Image,
