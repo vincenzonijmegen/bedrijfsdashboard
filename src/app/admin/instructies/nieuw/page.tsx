@@ -11,23 +11,21 @@ import { Button } from "@/components/ui/button";
 
 export default function NieuweInstructie() {
   const [titel, setTitel] = useState("");
-  const [editorInstance, setEditorInstance] = useState<Editor | null>(null);
   const [editorKey] = useState(() => Math.random().toString(36).substring(2));
   const router = useRouter();
 
-  useEditor({
+  const editor = useEditor({
     extensions: [
       StarterKit,
       Image,
       Placeholder.configure({ placeholder: "Typ hier de instructie..." }),
     ],
     content: "",
-    onCreate: ({ editor }) => setEditorInstance(editor),
   });
 
   const handleOpslaan = async () => {
-    if (!titel.trim() || !editorInstance) return;
-    const inhoud = editorInstance.getHTML();
+    if (!titel.trim() || !editor) return;
+    const inhoud = editor.getHTML();
 
     try {
       const res = await fetch("/api/instructies", {
@@ -62,7 +60,7 @@ export default function NieuweInstructie() {
       />
 
       <div className="prose max-w-none mb-4 min-h-[200px] border rounded p-2">
-        {!editorInstance ? (
+        {!editor ? (
           <p className="text-sm text-gray-500">Editor wordt geladen...</p>
         ) : (
           <>
@@ -74,9 +72,9 @@ export default function NieuweInstructie() {
                 input.accept = "image/*";
                 input.onchange = async () => {
                   const file = input.files?.[0];
-                  if (file && editorInstance) {
+                  if (file && editor) {
                     const url = await uploadAfbeelding(file);
-                    editorInstance.chain().focus().setImage({ src: url }).run();
+                    editor.chain().focus().setImage({ src: url }).run();
                   }
                 };
                 input.click();
@@ -84,7 +82,7 @@ export default function NieuweInstructie() {
             >
               Afbeelding uploaden
             </Button>
-            <EditorContent key={editorKey} editor={editorInstance} />
+            <EditorContent key={editorKey} editor={editor} />
           </>
         )}
       </div>
