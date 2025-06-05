@@ -9,7 +9,6 @@ import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Button } from "@/components/ui/button";
 
-
 export default function NieuweInstructie() {
   const [titel, setTitel] = useState("");
   const router = useRouter();
@@ -36,31 +35,6 @@ export default function NieuweInstructie() {
     router.push("/dashboard");
   };
 
-{editor && (
-  <>
-    <Button
-      className="mb-2"
-      onClick={async () => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = "image/*";
-        input.onchange = async () => {
-          const file = input.files?.[0];
-          if (file && editor) {
-            const url = await uploadAfbeelding(file);
-            editor.chain().focus().setImage({ src: url }).run();
-          }
-        };
-        input.click();
-      }}
-    >
-      Afbeelding uploaden
-    </Button>
-
-    <EditorContent editor={editor} />
-  </>
-)}
-
   return (
     <main className="max-w-2xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Nieuwe instructie</h1>
@@ -74,7 +48,29 @@ export default function NieuweInstructie() {
       />
 
       <div className="prose max-w-none mb-4">
-        {editor && <EditorContent editor={editor} />}
+        {editor && (
+          <>
+            <Button
+              className="mb-2"
+              onClick={async () => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "image/*";
+                input.onchange = async () => {
+                  const file = input.files?.[0];
+                  if (file && editor) {
+                    const url = await uploadAfbeelding(file);
+                    editor.chain().focus().setImage({ src: url }).run();
+                  }
+                };
+                input.click();
+              }}
+            >
+              Afbeelding uploaden
+            </Button>
+            <EditorContent editor={editor} />
+          </>
+        )}
       </div>
 
       <Button onClick={handleOpslaan}>Opslaan</Button>
