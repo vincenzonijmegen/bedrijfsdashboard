@@ -1,0 +1,80 @@
+import { uploadAfbeelding } from "@/utils/r2ClientUpload";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Image from "@tiptap/extension-image";
+import Placeholder from "@tiptap/extension-placeholder";
+import { Button } from "@/components/ui/button";
+
+export default function NieuweInstructie() {
+  const [titel, setTitel] = useState("");
+  const router = useRouter();
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Image,
+      Placeholder.configure({ placeholder: "Typ hier de instructie..." }),
+    ],
+    content: "",
+  });
+
+  const handleOpslaan = async () => {
+    if (!titel.trim() || !editor) return;
+    const inhoud = editor.getHTML();
+
+    await fetch("/api/instructies", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titel, inhoud }),
+    });
+
+    router.push("/dashboard");
+  };
+
+{editor && (
+  <>
+    <Button
+      className="mb-2"
+      onClick={async () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.onchange = async () => {
+          const file = input.files?.[0];
+          if (file && editor) {
+            const url = await uploadAfbeelding(file);
+            editor.chain().focus().setImage({ src: url }).run();
+          }
+        };
+        input.click();
+      }}
+    >
+      Afbeelding uploaden
+    </Button>
+
+    <EditorContent editor={editor} />
+  </>
+)}
+
+  return (
+    <main className="max-w-2xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Nieuwe instructie</h1>
+
+      <input
+        type="text"
+        placeholder="Titel"
+        value={titel}
+        onChange={(e) => setTitel(e.target.value)}
+        className="w-full mb-4 border rounded px-3 py-2"
+      />
+
+      <div className="prose max-w-none mb-4">
+        {editor && <EditorContent editor={editor} />}
+      </div>
+
+      <Button onClick={handleOpslaan}>Opslaan</Button>
+    </main>
+  );
+}
