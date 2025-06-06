@@ -49,9 +49,9 @@ export default function NieuweInstructie() {
         throw new Error("Backend gaf geen leesbare JSON terug");
       }
 
-      if (!res.ok || !data?.slug) {
-        throw new Error("Geen instructie teruggekregen");
-      }
+if (!res.ok || !data.slug) {
+  throw new Error("Geen instructie teruggekregen");
+}
 
       router.push("/admin/instructies");
     } catch (err) {
