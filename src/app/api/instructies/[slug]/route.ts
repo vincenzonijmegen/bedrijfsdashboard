@@ -19,7 +19,7 @@ export async function PATCH(_req: Request, context: any) {
   const slug = context.params.slug;
 
   try {
-    const { titel, inhoud } = await req.json();
+    const { titel, inhoud } = await _req.json();
     await db.query(
       `UPDATE instructies SET titel = $1, inhoud = $2 WHERE slug = $3`,
       [titel, inhoud, slug]
