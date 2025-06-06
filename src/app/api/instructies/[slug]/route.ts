@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function GET(_req: Request, { params }: { params: { slug: string } }) {
-  const { slug } = params;
+export async function GET(_req: Request, context: any) {
+  const slug = context.params.slug;
 
   try {
     const result = await db.query("SELECT * FROM instructies WHERE slug = $1", [slug]);
@@ -15,8 +15,8 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { slug: string } }) {
-  const { slug } = params;
+export async function PATCH(_req: Request, context: any) {
+  const slug = context.params.slug;
 
   try {
     const { titel, inhoud } = await req.json();
@@ -31,8 +31,8 @@ export async function PATCH(req: Request, { params }: { params: { slug: string }
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { slug: string } }) {
-  const { slug } = params;
+export async function DELETE(_req: Request, context: any) {
+  const slug = context.params.slug;
 
   try {
     await db.query(`DELETE FROM instructies WHERE slug = $1`, [slug]);
