@@ -1,7 +1,5 @@
-// src/app/admin/instructies/[slug]/page.tsx
-
-// @ts-ignore – Next.js/Vercel typing conflict workaround
-export default async function InstructieBewerkPagina({ params }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default async function InstructieBewerkPagina({ params }: any) {
   const { slug } = params;
 
   return (
