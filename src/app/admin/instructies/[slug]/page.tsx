@@ -3,9 +3,9 @@
 export default async function InstructieBewerkPagina({
   params,
 }: {
-  params: { slug: string };
+  params: Record<string, string>;
 }) {
-  const { slug } = params;
+  const slug = params.slug;
 
   return (
     <div className="p-6">
