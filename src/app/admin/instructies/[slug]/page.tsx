@@ -25,7 +25,6 @@ import { uploadAfbeelding } from "@/utils/r2ClientUpload";
       .then((data) => {
         setTitel(data.titel);
         editor?.commands.setContent(data.inhoud);
-        setLaadt(false);
       });
   }, [params.slug, editor]);
 
