@@ -1,12 +1,10 @@
-// src/lib/db.ts
+// lib/db.ts
 import { Pool } from "pg";
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  connectionString: process.env.POSTGRES_URL,
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const query = (text: string, params?: any[]) => {
-  return pool.query(text, params);
+export const db = {
+  query: (text: string, params?: any[]) => pool.query(text, params),
 };
