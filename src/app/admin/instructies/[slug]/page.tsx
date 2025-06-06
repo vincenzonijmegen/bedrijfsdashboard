@@ -1,10 +1,10 @@
 // src/app/admin/instructies/[slug]/page.tsx
 
-type Props = {
+export default async function InstructieBewerkPagina({
+  params,
+}: {
   params: { slug: string };
-};
-
-export default async function InstructieBewerkPagina({ params }: Props) {
+}) {
   const { slug } = params;
 
   return (
