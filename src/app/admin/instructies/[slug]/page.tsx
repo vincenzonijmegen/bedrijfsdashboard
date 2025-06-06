@@ -29,25 +29,46 @@ import { uploadAfbeelding } from "@/utils/r2ClientUpload";
   }, [params.slug, editor]);
 
   const handleOpslaan = async () => {
-    if (!editor) return;
-    const inhoud = editor.getHTML();
+  if (!editor) return;
+  const inhoud = editor.getHTML();
 
-    const res = await fetch(`/api/instructies/${params.slug}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titel, inhoud }),
-    });
+  const res = await fetch(`/api/instructies/${params.slug}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ titel, inhoud }),
+  });
 
-    if (res.ok) router.push("/admin/instructies");
-    else alert("Fout bij opslaan");
-  };
+  let data;
+  try {
+    data = await res.json();
+  } catch (err) {
+    console.error("❌ JSON-parsing fout:", err);
+  }
 
-  const handleVerwijderen = async () => {
-    if (!confirm("Weet je zeker dat je deze instructie wilt verwijderen?")) return;
-    const res = await fetch(`/api/instructies/${params.slug}`, { method: "DELETE" });
-    if (res.ok) router.push("/admin/instructies");
-    else alert("Verwijderen mislukt");
-  };
+  console.log("🟡 Antwoord backend:", res.status, data);
+
+  if (!res.ok || !data?.slug) {
+    throw new Error("Geen instructie teruggekregen");
+  }
+
+  router.push("/admin/instructies");
+};
+const handleVerwijderen = async () => {
+  if (!confirm("Weet je zeker dat je deze instructie wilt verwijderen?")) return;
+
+  const res = await fetch(`/api/instructies/${params.slug}`, {
+    method: "DELETE",
+  });
+
+  console.log("🟡 DELETE status:", res.status);
+
+  if (!res.ok) {
+    alert("Verwijderen mislukt");
+  } else {
+    router.push("/admin/instructies");
+  }
+};
+
 
   return (
     <main className="max-w-2xl mx-auto p-4 space-y-4">
