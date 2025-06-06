@@ -9,7 +9,8 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { Button } from "@/components/ui/button";
 import { uploadAfbeelding } from "@/utils/r2ClientUpload";
 
-export default function InstructieBewerkPagina({ params }: { params: { slug: string } }) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    export default function InstructieBewerkPagina({ params }: any) {
   const [titel, setTitel] = useState("");
   const router = useRouter();
 
