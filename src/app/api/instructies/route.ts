@@ -24,3 +24,14 @@ return new NextResponse(JSON.stringify({ slug }), {
     return NextResponse.json({ error: "Fout bij opslaan" }, { status: 500 });
   }
 }
+export async function GET() {
+  try {
+    const result = await db.query(
+      "SELECT id, titel, slug FROM instructies ORDER BY created_at DESC"
+    );
+    return NextResponse.json(result.rows, { status: 200 });
+  } catch (err) {
+    console.error("🛑 Fout bij ophalen instructies:", err);
+    return NextResponse.json({ error: "Fout bij ophalen" }, { status: 500 });
+  }
+}
