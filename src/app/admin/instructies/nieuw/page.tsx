@@ -34,13 +34,26 @@ export default function NieuweInstructie() {
         body: JSON.stringify({ titel, inhoud }),
       });
 
-      const data = await res.json();
+      console.log("📦 Status:", res.status);
+      console.log("📦 Content-Type:", res.headers.get("content-type"));
 
-      if (!res.ok || !data.instructie) {
+      const rawText = await res.text();
+      console.log("📦 Body als tekst:", rawText);
+
+      let data;
+      try {
+        data = JSON.parse(rawText);
+        console.log("✅ Parsed JSON:", data);
+      } catch (err) {
+        console.error("❌ JSON parse fout:", err);
+        throw new Error("Backend gaf geen leesbare JSON terug");
+      }
+
+      if (!res.ok || !data?.slug) {
         throw new Error("Geen instructie teruggekregen");
       }
 
-router.push("/admin/instructies");
+      router.push("/admin/instructies");
     } catch (err) {
       console.error("🛑 Fout bij toevoegen:", err);
       alert("Fout bij opslaan. Probeer het later opnieuw.");
