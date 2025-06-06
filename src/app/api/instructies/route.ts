@@ -14,7 +14,11 @@ export async function POST(req: Request) {
       [titel, inhoud, slug, created_at]
     );
 
-    return NextResponse.json({ slug }, { status: 200 });
+return new NextResponse(JSON.stringify({ slug }), {
+  status: 200,
+  headers: { "Content-Type": "application/json" },
+});
+
   } catch (err) {
     console.error("🛑 Fout bij POST:", err);
     return NextResponse.json({ error: "Fout bij opslaan" }, { status: 500 });
