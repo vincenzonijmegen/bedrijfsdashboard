@@ -23,16 +23,28 @@ useEffect(() => {
   e.preventDefault();
   try {
     const res = await fetch("/api/instructies", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titel, inhoud }),
-    });
-    const data = await res.json();
-    if (!data.instructie) throw new Error("Geen instructie teruggekregen");
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ titel, inhoud }),
+});
 
-    setInstructies((prev) => [...prev, data.instructie]);
-    setTitel("");
-    setInhoud("");
+let data;
+try {
+  data = await res.json();
+  console.log("✅ Ontvangen JSON:", data);
+} catch (err) {
+  console.error("❌ JSON parsing error:", err);
+  throw new Error("JSON onleesbaar");
+}
+
+if (!res.ok || !data?.slug) {
+  throw new Error("Geen instructie teruggekregen");
+}
+
+setInstructies((prev) => [...prev, { id: data.id || "placeholder", titel, inhoud }]);
+setTitel("");
+setInhoud("");
+
   } catch (err) {
     alert("Opslaan mislukt");
     console.error("🛑 Fout bij toevoegen:", err);
