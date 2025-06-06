@@ -14,7 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <body className="font-sans bg-gray-100 text-gray-900">
           <header className="bg-white shadow p-4 flex justify-between items-center">
             <div className="space-x-4">
-              <Link href="/dashboard" className="text-blue-600 hover:underline">
+              <Link href="/admin/instructies" className="text-blue-600 hover:underline">
                 Instructies
               </Link>
               <Link href="/admin" className="text-blue-600 hover:underline">
