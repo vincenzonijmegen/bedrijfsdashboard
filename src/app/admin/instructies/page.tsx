@@ -13,6 +13,14 @@ export default function InstructieOverzicht() {
       .then((res) => res.json())
       .then((data) => setInstructies(data));
   }, []);
+useEffect(() => {
+  fetch("/api/instructies")
+    .then((res) => res.json())
+    .then((data) => {
+      console.log("📦 Instructies ontvangen:", data);
+      setInstructies(data);
+    });
+}, []);
 
   return (
     <main className="max-w-3xl mx-auto p-4 space-y-6">
