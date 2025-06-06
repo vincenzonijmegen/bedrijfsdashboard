@@ -20,16 +20,19 @@ export async function PATCH(_req: Request, context: any) {
 
   try {
     const { titel, inhoud } = await _req.json();
+
     await db.query(
       `UPDATE instructies SET titel = $1, inhoud = $2 WHERE slug = $3`,
       [titel, inhoud, slug]
     );
+
     return NextResponse.json({ slug }, { status: 200 });
   } catch (err) {
     console.error("🛑 Fout bij PATCH:", err);
     return NextResponse.json({ error: "Update mislukt" }, { status: 500 });
   }
 }
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function DELETE(_req: Request, context: any) {
   const slug = context.params.slug;
