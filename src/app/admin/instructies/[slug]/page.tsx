@@ -1,11 +1,9 @@
 // src/app/admin/instructies/[slug]/page.tsx
 
-export default async function InstructieBewerkPagina({
-  params,
-}: {
-  params: Record<string, string>;
-}) {
-  const slug = params.slug;
+import type { PageProps } from "next";
+
+export default async function InstructieBewerkPagina({ params }: PageProps) {
+  const { slug } = params;
 
   return (
     <div className="p-6">
