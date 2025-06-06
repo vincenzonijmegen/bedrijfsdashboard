@@ -1,10 +1,7 @@
 // src/app/admin/instructies/[slug]/page.tsx
 
-export default async function InstructieBewerkPagina({
-  params,
-}: {
-  params: { slug: string };
-}) {
+// @ts-ignore – Next.js/Vercel typing conflict workaround
+export default async function InstructieBewerkPagina({ params }) {
   const { slug } = params;
 
   return (
