@@ -4,7 +4,7 @@ interface Props {
   params: { slug: string };
 }
 
-export default function InstructieBewerkPagina({ params }: Props) {
+export default async function InstructieBewerkPagina({ params }: Props) {
   const { slug } = params;
 
   return (
