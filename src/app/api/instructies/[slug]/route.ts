@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function GET(_req: Request, context: any) {
   const slug = context.params.slug;
 
@@ -14,7 +14,7 @@ export async function GET(_req: Request, context: any) {
     return NextResponse.json({ error: "Databasefout" }, { status: 500 });
   }
 }
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function PATCH(_req: Request, context: any) {
   const slug = context.params.slug;
 
@@ -30,7 +30,7 @@ export async function PATCH(_req: Request, context: any) {
     return NextResponse.json({ error: "Update mislukt" }, { status: 500 });
   }
 }
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function DELETE(_req: Request, context: any) {
   const slug = context.params.slug;
 
