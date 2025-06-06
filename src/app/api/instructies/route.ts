@@ -1,7 +1,6 @@
-// src/app/api/instructies/route.ts
 import { NextResponse } from "next/server";
-import slugify from "slugify";
 import { db } from "@/lib/db";
+import slugify from "slugify";
 
 export async function POST(req: Request) {
   try {
@@ -17,7 +16,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ slug }, { status: 200 });
   } catch (err) {
-    console.error("🛑 DB-fout:", err);
-    return NextResponse.json({ error: "Databasefout" }, { status: 500 });
+    console.error("🛑 Fout bij POST:", err);
+    return NextResponse.json({ error: "Fout bij opslaan" }, { status: 500 });
   }
 }
