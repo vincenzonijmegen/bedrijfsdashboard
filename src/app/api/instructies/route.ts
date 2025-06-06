@@ -5,26 +5,23 @@ import slugify from "slugify"; // let op: installeer met `npm install slugify`
 export async function POST(req: Request) {
   try {
     const { titel, inhoud } = await req.json();
-    if (!titel || !inhoud) {
-      return NextResponse.json({ error: "Titel of inhoud ontbreekt" }, { status: 400 });
-    }
+    console.log("▶️ POST ontvangen:", { titel, inhoud });
 
     const slug = slugify(titel, { lower: true, strict: true });
+    console.log("🔑 Genereerde slug:", slug);
+
     const created_at = new Date().toISOString();
 
-console.log("Instructie ontvangen:", { titel, inhoud });
-console.log("Slug wordt:", slug);
+    await sql`
+      INSERT INTO instructies (titel, inhoud, slug, status, created_at)
+      VALUES (${titel}, ${inhoud}, ${slug}, 'concept', ${created_at})
+    `;
 
-await sql`
-  INSERT INTO instructies (titel, inhoud, slug, status, created_at)
-  VALUES (${titel}, ${inhoud}, ${slug}, 'concept', ${created_at})
-`;
-
-console.log("Instructie opgeslagen");
+    console.log("✅ Instructie opgeslagen in database");
 
     return NextResponse.json({ slug }, { status: 200 });
   } catch (err) {
-    console.error("Fout bij opslaan instructie:", err);
+    console.error("🛑 Fout bij opslaan instructie:", err);
     return NextResponse.json({ error: "Interne fout" }, { status: 500 });
   }
 }
