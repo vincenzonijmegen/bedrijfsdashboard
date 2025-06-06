@@ -11,7 +11,6 @@ import { uploadAfbeelding } from "@/utils/r2ClientUpload";
 
 export default function InstructieBewerkPagina({ params }: { params: { slug: string } }) {
   const [titel, setTitel] = useState("");
-  const [laadt, setLaadt] = useState(true);
   const router = useRouter();
 
   const editor = useEditor({
