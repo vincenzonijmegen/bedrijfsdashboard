@@ -1,5 +1,4 @@
-// app/admin/instructies/[slug]/page.tsx
-import { notFound } from "next/navigation";
+// src/app/admin/instructies/[slug]/page.tsx
 
 interface Props {
   params: { slug: string };
