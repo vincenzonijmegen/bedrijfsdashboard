@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query } from "@/lib/db";
+import { db } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Ongeldige invoer" }, { status: 400 });
     }
 
-    await query(
+    await db.query(
       "INSERT INTO gelezen_instructies (gebruiker_email, instructie_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
       [email, instructieId]
     );

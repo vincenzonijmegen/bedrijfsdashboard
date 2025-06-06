@@ -1,11 +1,11 @@
-import { query } from "@/lib/db";
+import { db } from "@/lib/db";
 import Linkify from "linkify-react";
 import { notFound } from "next/navigation";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export default async function Page(props: any) {
   const id = props?.params?.id;
 
-  const result = await query("SELECT * FROM instructies WHERE id = $1", [id]);
+  const result = await db.query("SELECT * FROM instructies WHERE id = $1", [id]);
   const instructie = result.rows[0];
 
   if (!instructie) return notFound();
