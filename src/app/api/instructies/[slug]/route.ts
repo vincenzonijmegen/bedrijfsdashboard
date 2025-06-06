@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-interface Context {
-  params: { slug: string };
-}
-
-export async function GET(_req: Request, context: Context) {
-  const { slug } = context.params;
+export async function GET(_req: Request, { params }: { params: { slug: string } }) {
+  const { slug } = params;
 
   try {
     const result = await db.query("SELECT * FROM instructies WHERE slug = $1", [slug]);
-    if (result.rows.length === 0) {
+    if (result.rows.length === 0)
       return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
-    }
     return NextResponse.json(result.rows[0], { status: 200 });
   } catch (err) {
     console.error("🛑 Fout bij GET:", err);
@@ -20,8 +15,8 @@ export async function GET(_req: Request, context: Context) {
   }
 }
 
-export async function PATCH(req: Request, context: Context) {
-  const { slug } = context.params;
+export async function PATCH(req: Request, { params }: { params: { slug: string } }) {
+  const { slug } = params;
 
   try {
     const { titel, inhoud } = await req.json();
@@ -36,8 +31,8 @@ export async function PATCH(req: Request, context: Context) {
   }
 }
 
-export async function DELETE(_req: Request, context: Context) {
-  const { slug } = context.params;
+export async function DELETE(_req: Request, { params }: { params: { slug: string } }) {
+  const { slug } = params;
 
   try {
     await db.query(`DELETE FROM instructies WHERE slug = $1`, [slug]);
