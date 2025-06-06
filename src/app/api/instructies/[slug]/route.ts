@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function GET(_: Request, { params }: { params: { slug: string } }) {
+interface Context {
+  params: { slug: string };
+}
+
+export async function GET(_req: Request, context: Context) {
+  const { slug } = context.params;
+
   try {
-    const result = await db.query("SELECT * FROM instructies WHERE slug = $1", [params.slug]);
-    if (result.rows.length === 0)
+    const result = await db.query("SELECT * FROM instructies WHERE slug = $1", [slug]);
+    if (result.rows.length === 0) {
       return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
+    }
     return NextResponse.json(result.rows[0], { status: 200 });
   } catch (err) {
     console.error("🛑 Fout bij GET:", err);
@@ -13,23 +20,27 @@ export async function GET(_: Request, { params }: { params: { slug: string } }) 
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { slug: string } }) {
+export async function PATCH(req: Request, context: Context) {
+  const { slug } = context.params;
+
   try {
     const { titel, inhoud } = await req.json();
     await db.query(
       `UPDATE instructies SET titel = $1, inhoud = $2 WHERE slug = $3`,
-      [titel, inhoud, params.slug]
+      [titel, inhoud, slug]
     );
-    return NextResponse.json({ slug: params.slug }, { status: 200 });
+    return NextResponse.json({ slug }, { status: 200 });
   } catch (err) {
     console.error("🛑 Fout bij PATCH:", err);
     return NextResponse.json({ error: "Update mislukt" }, { status: 500 });
   }
 }
 
-export async function DELETE(_: Request, { params }: { params: { slug: string } }) {
+export async function DELETE(_req: Request, context: Context) {
+  const { slug } = context.params;
+
   try {
-    await db.query(`DELETE FROM instructies WHERE slug = $1`, [params.slug]);
+    await db.query(`DELETE FROM instructies WHERE slug = $1`, [slug]);
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("🛑 Fout bij DELETE:", err);
