@@ -1,8 +1,10 @@
 // src/app/admin/instructies/[slug]/page.tsx
 
-import type { PageProps } from "next";
+type Props = {
+  params: { slug: string };
+};
 
-export default async function InstructieBewerkPagina({ params }: PageProps) {
+export default async function InstructieBewerkPagina({ params }: Props) {
   const { slug } = params;
 
   return (
