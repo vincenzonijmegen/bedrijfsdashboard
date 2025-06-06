@@ -12,10 +12,15 @@ export async function POST(req: Request) {
     const slug = slugify(titel, { lower: true, strict: true });
     const created_at = new Date().toISOString();
 
-    await sql`
-      INSERT INTO instructies (titel, inhoud, slug, status, created_at)
-      VALUES (${titel}, ${inhoud}, ${slug}, 'concept', ${created_at})
-    `;
+console.log("Instructie ontvangen:", { titel, inhoud });
+console.log("Slug wordt:", slug);
+
+await sql`
+  INSERT INTO instructies (titel, inhoud, slug, status, created_at)
+  VALUES (${titel}, ${inhoud}, ${slug}, 'concept', ${created_at})
+`;
+
+console.log("Instructie opgeslagen");
 
     return NextResponse.json({ slug }, { status: 200 });
   } catch (err) {
