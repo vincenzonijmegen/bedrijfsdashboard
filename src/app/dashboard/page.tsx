@@ -1,84 +1,8 @@
-"use client";
-import { useUser } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
-
-type Instructie = {
-  id: string;
-  titel: string;
-  versie: number;
-  gelezen: boolean;
-};
-
-export default function DashboardPage() {
-  const { user } = useUser();
-  const [instructies, setInstructies] = useState<Instructie[]>([]);
-
-  useEffect(() => {
-  fetch("/api/instructies")
-    .then((res) => res.json())
-    .then((data) => {
-      const gelezenSet = new Set(JSON.parse(localStorage.getItem("gelezen") || "[]"));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const metStatus = data.map((i: any) => ({
-        ...i,
-        gelezen: gelezenSet.has(i.id),
-      }));
-      setInstructies(metStatus);
-    });
-}, []);
-
-
-const markeerAlsGelezen = async (id: string) => {
-  const email = user?.emailAddresses[0].emailAddress;
-  if (!email) return;
-
-  try {
-    await fetch("/api/gelezen", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ instructieId: id, email }),
-    });
-
-    const nieuw = instructies.map((i) =>
-      i.id === id ? { ...i, gelezen: true } : i
-    );
-    setInstructies(nieuw);
-
-    const gelezenIds = nieuw.filter((i) => i.gelezen).map((i) => i.id);
-    localStorage.setItem("gelezen", JSON.stringify(gelezenIds));
-  } catch (err) {
-    console.error("Fout bij opslaan leesstatus", err);
-  }
-};
-
-
+export default function DashboardFallback() {
   return (
-    <main className="p-6">
-      <h1 className="text-xl mb-4">
-        Instructies voor {user?.fullName || user?.emailAddresses[0].emailAddress}
-      </h1>
-      <ul className="space-y-3">
-        {instructies.map((inst) => (
-          <li
-            key={inst.id}
-            className="p-4 border rounded bg-white shadow flex justify-between items-center"
-          >
-            <span>{inst.titel}</span>
-            {inst.gelezen ? (
-              <span className="text-green-600">Gelezen</span>
-            ) : (
-              <button
-                className="text-blue-600 underline"
-                onClick={() => markeerAlsGelezen(inst.id)}
-              >
-                Markeer als gelezen
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
+    <main className="max-w-md mx-auto text-center p-8">
+      <h1 className="text-2xl font-bold mb-2">Toegang geweigerd</h1>
+      <p className="text-gray-600">Alleen voor admins. Neem contact op met Herman.</p>
     </main>
   );
 }
