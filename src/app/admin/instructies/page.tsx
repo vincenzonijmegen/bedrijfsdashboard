@@ -8,11 +8,15 @@ type Instructie = { id: string; titel: string; slug: string };
 export default function InstructieOverzicht() {
   const [instructies, setInstructies] = useState<Instructie[]>([]);
 
-  useEffect(() => {
-    fetch("/api/instructies")
-      .then((res) => res.json())
-      .then((data) => setInstructies(data));
-  }, []);
+useEffect(() => {
+  fetch("/api/instructies")
+    .then((res) => res.json())
+    .then((data) => {
+      console.log("📦 Gehaalde instructies:", data);
+      setInstructies(data);
+    });
+}, []);
+
 useEffect(() => {
   fetch("/api/instructies")
     .then((res) => res.json())
