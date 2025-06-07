@@ -102,7 +102,7 @@ const handleVerwijderen = async () => {
             Afbeelding uploaden
           </Button>
 
-          <div className="prose max-w-none border rounded p-2">
+      <div className="prose max-w-none mb-4 min-h-[200px] border rounded p-4 prose-blue prose-li:my-1 prose-li:marker:text-gray-500">
             <EditorContent editor={editor} />
           </div>
         </>
