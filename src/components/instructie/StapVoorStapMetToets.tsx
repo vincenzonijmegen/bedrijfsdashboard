@@ -20,24 +20,29 @@ export default function StapVoorStapMetToets({ html }: Props) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const stepSegments = html
-      .split("[end]")
-      .map((s) => s.trim())
-      .filter(Boolean);
+useEffect(() => {
+  const [stapDeel, ...vraagDeel] = html.split(/Vraag:\s/);
 
-    const questionPattern =
-      /Vraag:\s*(.*?)\nA\.\s*(.*?)\nB\.\s*(.*?)\nC\.\s*(.*?)\nAntwoord:\s*([ABC])/g;
+  const stepSegments = stapDeel
+    .split("[end]")
+    .map((s) => s.trim())
+    .filter(Boolean);
 
-    const vraagMatches = Array.from(html.matchAll(questionPattern)).map((m) => ({
-      vraag: m[1].trim(),
-      opties: [m[2].trim(), m[3].trim(), m[4].trim()],
-      antwoord: m[5].trim().toUpperCase(),
-    }));
+  const questionPattern =
+    /Vraag:\s*(.*?)\nA\.\s*(.*?)\nB\.\s*(.*?)\nC\.\s*(.*?)\nAntwoord:\s*([ABC])/g;
 
-    setStappen(stepSegments);
-    setVragen(vraagMatches);
-  }, [html]);
+  const vraagMatches = Array.from(
+    ("Vraag: " + vraagDeel.join("Vraag: ")).matchAll(questionPattern)
+  ).map((m) => ({
+    vraag: m[1].trim(),
+    opties: [m[2].trim(), m[3].trim(), m[4].trim()],
+    antwoord: m[5].trim().toUpperCase(),
+  }));
+
+  setStappen(stepSegments);
+  setVragen(vraagMatches);
+}, [html]);
+
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -95,7 +100,7 @@ export default function StapVoorStapMetToets({ html }: Props) {
   };
 
   return (
-    <div ref={containerRef} className="max-w-xl mx-auto p-4 space-y-4">
+    <div ref={containerRef} className="max-w-4xl mx-auto p-4 space-y-4">
       {fase === "stappen" && (
         <>
           <div
