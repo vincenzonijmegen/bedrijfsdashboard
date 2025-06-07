@@ -63,10 +63,19 @@ export default function StapVoorStapMetToets({ html }: Props) {
     }
   };
 
-  useEffect(() => {
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [fase, index, feedback]);
+useEffect(() => {
+  const handleKey = (e: KeyboardEvent) => {
+    if (e.key === "Enter") {
+      if (fase === "vragen" && feedback) volgendeStap();
+      else if (fase !== "vragen") volgendeStap();
+    }
+  };
+
+  window.addEventListener("keydown", handleKey);
+  return () => window.removeEventListener("keydown", handleKey);
+}, [fase, index, feedback]);
+
+
 
   const selectAntwoord = (letter: "A" | "B" | "C") => {
     const juist = letter === vragen[index].antwoord;
