@@ -18,34 +18,31 @@ export default function StapVoorStapMetToets({ html }: Props) {
   const [index, setIndex] = useState(0);
   const [fase, setFase] = useState<"stappen" | "vragen" | "klaar">("stappen");
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [score, setScore] = useState(0);
+  const [email, setEmail] = useState<string | null>(null);
+  const [aantalJuist, setAantalJuist] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-useEffect(() => {
-  const [stapDeel, ...vraagDeel] = html.split(/Vraag:\s/);
+  useEffect(() => {
+    const [stapDeel, ...vraagDeel] = html.split(/Vraag:\s/);
 
-  const stepSegments = stapDeel
-    .split("[end]")
-    .map((s) => s.trim())
-    .filter(Boolean);
+    const stepSegments = stapDeel
+      .split("[end]")
+      .map((s) => s.trim())
+      .filter(Boolean);
 
-  const questionPattern = /Vraag:\s*(.*?)\s*A\.\s*(.*?)\s*B\.\s*(.*?)\s*C\.\s*(.*?)\s*Antwoord:\s*([ABC])/gi;
-  const vragenHTML = ("Vraag: " + vraagDeel.join("Vraag:"))
-  .replace(/<[^>]+>/g, " ")
-  .replace(/&nbsp;/g, " ");
+    const questionPattern = /Vraag:\s*(.*?)\s*A\.\s*(.*?)\s*B\.\s*(.*?)\s*C\.\s*(.*?)\s*Antwoord:\s*([ABC])/gi;
 
+    const vragenHTML = ("Vraag: " + vraagDeel.join("Vraag:")).replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
+    const vraagMatches = Array.from(vragenHTML.matchAll(questionPattern)).map((m) => ({
+      vraag: m[1].trim(),
+      opties: [m[2].trim(), m[3].trim(), m[4].trim()],
+      antwoord: m[5].trim().toUpperCase(),
+    }));
 
-  const vraagMatches = Array.from(vragenHTML.matchAll(questionPattern)).map((m) => ({
-    vraag: m[1].trim(),
-    opties: [m[2].trim(), m[3].trim(), m[4].trim()],
-    antwoord: m[5].trim().toUpperCase(),
-  }));
-
-  setStappen(stepSegments);
-  setVragen(vraagMatches);
-}, [html]);
-
-
-
+    setStappen(stepSegments);
+    setVragen(vraagMatches);
+  }, [html]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -87,6 +84,7 @@ useEffect(() => {
 
   const selectAntwoord = (letter: "A" | "B" | "C") => {
     const juist = letter === vragen[index].antwoord;
+    if (juist) setAantalJuist((n) => n + 1);
     setFeedback(juist ? "✅ Goed!" : `❌ Fout. Juiste antwoord: ${vragen[index].antwoord}`);
   };
 
@@ -96,7 +94,25 @@ useEffect(() => {
       setFase("vragen");
       setIndex(0);
     } else if (fase === "vragen" && index >= vragen.length - 1) {
+      const percentage = vragen.length > 0 ? Math.round((aantalJuist / vragen.length) * 100) : 0;
+      setScore(percentage);
       setFase("klaar");
+
+      const emailFromStorage = localStorage.getItem("email");
+      setEmail(emailFromStorage);
+
+      fetch("/api/logscore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: emailFromStorage,
+          score: percentage,
+          aantalJuist,
+          totaal: vragen.length,
+          tijdstip: new Date().toISOString(),
+          slug: window.location.pathname.split("/").pop(),
+        }),
+      });
     } else {
       setIndex((i) => i + 1);
     }
@@ -152,7 +168,7 @@ useEffect(() => {
                   onClick={naarVolgende}
                   className="bg-blue-600 text-white px-4 py-2 rounded"
                 >
-                  {index === vragen.length - 1 ? "Klaar" : "Volgende vraag (↵)"}
+                  {index === vragen.length - 1 ? "Bekijk resultaat" : "Volgende vraag (↵)"}
                 </button>
               </div>
             </div>
@@ -161,8 +177,11 @@ useEffect(() => {
       )}
 
       {fase === "klaar" && (
-        <div className="text-center text-green-700 text-xl font-semibold">
-          ✅ Je hebt de volledige instructie afgerond!
+        <div className="text-center text-xl font-semibold">
+          <p className={score >= 80 ? "text-green-700" : "text-red-700"}>
+            {score >= 80 ? "✅ Geslaagd!" : "❌ Niet geslaagd."} Je score: {score}%<br />
+            {aantalJuist} van {vragen.length} goed beantwoord
+          </p>
         </div>
       )}
     </div>
