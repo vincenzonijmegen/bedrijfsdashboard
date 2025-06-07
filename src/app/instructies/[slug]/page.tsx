@@ -1,6 +1,6 @@
 // src/app/instructies/[slug]/page.tsx
 import { db } from "@/lib/db";
-import StapVoorStapMetToets from "@/components/Instructie/StapVoorStapMetToets";
+import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
 
 export default async function InstructieWeergave({ params }: { params: { slug: string } }) {
   const result = await db.query("SELECT * FROM instructies WHERE slug = $1", [params.slug]);
