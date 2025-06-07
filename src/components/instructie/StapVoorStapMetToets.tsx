@@ -28,11 +28,11 @@ useEffect(() => {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const questionPattern =
-    /Vraag:\s*(.*?)\nA\.\s*(.*?)\nB\.\s*(.*?)\nC\.\s*(.*?)\nAntwoord:\s*([ABC])/g;
+const questionPattern =
+  /Vraag:\s*(.*?)<br\s*\/?>\s*A\.\s*(.*?)<br\s*\/?>\s*B\.\s*(.*?)<br\s*\/?>\s*C\.\s*(.*?)<br\s*\/?>\s*Antwoord:\s*([ABC])/gi;
 
   const vraagMatches = Array.from(
-    ("Vraag: " + vraagDeel.join("Vraag: ")).matchAll(questionPattern)
+("Vraag: " + vraagDeel.join("Vraag: ")).replace(/\n/g, "<br>")
   ).map((m) => ({
     vraag: m[1].trim(),
     opties: [m[2].trim(), m[3].trim(), m[4].trim()],
