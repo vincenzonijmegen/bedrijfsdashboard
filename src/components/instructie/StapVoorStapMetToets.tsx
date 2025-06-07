@@ -39,14 +39,14 @@ export default function StapVoorStapMetToets({ html }: Props) {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Enter") {
-        if (fase === "vragen" && feedback) volgendeStap();
-        else if (fase !== "vragen") volgendeStap();
+        if (fase === "vragen" && feedback) setIndex((i) => Math.min(i + 1, vragen.length - 1));
+        else if (fase !== "vragen") setIndex((i) => Math.min(i + 1, stappen.length - 1));
       }
     };
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [fase, index, feedback]);
+  }, [fase, index, feedback, stappen.length, vragen.length]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -62,8 +62,8 @@ export default function StapVoorStapMetToets({ html }: Props) {
       const endX = e.changedTouches[0].clientX;
       const delta = endX - startX;
 
-      if (delta < -40) volgendeStap();
-      if (delta > 40) vorigeStap();
+      if (delta < -40) setIndex((i) => Math.min(i + 1, fase === "vragen" ? vragen.length - 1 : stappen.length - 1));
+      if (delta > 40) setIndex((i) => Math.max(i - 1, 0));
     };
 
     el.addEventListener("touchstart", onTouchStart);
@@ -72,35 +72,23 @@ export default function StapVoorStapMetToets({ html }: Props) {
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchend", onTouchEnd);
     };
-  }, [index, stappen]);
-
-  const volgendeStap = () => {
-    if (fase === "stappen") {
-      if (index < stappen.length - 1) {
-        setIndex((i) => i + 1);
-      } else if (vragen.length > 0) {
-        setFase("vragen");
-        setIndex(0);
-      } else {
-        setFase("klaar");
-      }
-    } else if (fase === "vragen") {
-      setFeedback(null);
-      if (index < vragen.length - 1) {
-        setIndex((i) => i + 1);
-      } else {
-        setFase("klaar");
-      }
-    }
-  };
-
-  const vorigeStap = () => {
-    if (fase === "stappen" && index > 0) setIndex((i) => i - 1);
-  };
+  }, [fase, index, stappen.length, vragen.length]);
 
   const selectAntwoord = (letter: "A" | "B" | "C") => {
     const juist = letter === vragen[index].antwoord;
     setFeedback(juist ? "✅ Goed!" : `❌ Fout. Juiste antwoord: ${vragen[index].antwoord}`);
+  };
+
+  const naarVolgende = () => {
+    setFeedback(null);
+    if (fase === "stappen" && index >= stappen.length - 1 && vragen.length > 0) {
+      setFase("vragen");
+      setIndex(0);
+    } else if (fase === "vragen" && index >= vragen.length - 1) {
+      setFase("klaar");
+    } else {
+      setIndex((i) => i + 1);
+    }
   };
 
   return (
@@ -113,14 +101,14 @@ export default function StapVoorStapMetToets({ html }: Props) {
           />
           <div className="flex justify-between">
             <button
-              onClick={vorigeStap}
+              onClick={() => setIndex((i) => Math.max(i - 1, 0))}
               disabled={index === 0}
               className="px-4 py-2 rounded bg-gray-300 disabled:opacity-40"
             >
               Vorige
             </button>
             <button
-              onClick={volgendeStap}
+              onClick={naarVolgende}
               className="bg-blue-600 text-white px-4 py-2 rounded"
             >
               {index === stappen.length - 1 ? "Start toets (↵)" : "Volgende stap (↵)"}
@@ -150,7 +138,7 @@ export default function StapVoorStapMetToets({ html }: Props) {
               {feedback}
               <div className="mt-2">
                 <button
-                  onClick={volgendeStap}
+                  onClick={naarVolgende}
                   className="bg-blue-600 text-white px-4 py-2 rounded"
                 >
                   {index === vragen.length - 1 ? "Klaar" : "Volgende vraag (↵)"}
