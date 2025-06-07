@@ -71,7 +71,7 @@ const handleVerwijderen = async () => {
 
 
   return (
-    <main className="max-w-2xl mx-auto p-4 space-y-4">
+    <main className="max-w-screen-lg mx-auto p-6">
       <h1 className="text-2xl font-bold">Instructie bewerken</h1>
 
       <input
@@ -102,7 +102,7 @@ const handleVerwijderen = async () => {
             Afbeelding uploaden
           </Button>
 
-      <div className="prose max-w-none mb-4 min-h-[200px] border rounded p-4 prose-blue prose-li:my-1 prose-li:marker:text-gray-500">
+      <div className="prose max-w-full mb-4 min-h-[200px] border rounded p-4 prose-blue prose-li:my-1 prose-li:marker:text-gray-500">
             <EditorContent editor={editor} />
           </div>
         </>
