@@ -19,7 +19,7 @@ export default function StapVoorStapMetToets({ html }: Props) {
   const [fase, setFase] = useState<"stappen" | "vragen" | "klaar">("stappen");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [score, setScore] = useState(0);
-  const [email, setEmail] = useState<string | null>(null);
+  
   const [aantalJuist, setAantalJuist] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -110,7 +110,6 @@ export default function StapVoorStapMetToets({ html }: Props) {
           aantalJuist,
           totaal: vragen.length,
           tijdstip: new Date().toISOString(),
-          slug: window.location.pathname.split("/").pop(),
         }),
       });
     } else {
