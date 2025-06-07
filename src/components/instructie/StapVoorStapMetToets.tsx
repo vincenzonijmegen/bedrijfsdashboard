@@ -99,8 +99,7 @@ export default function StapVoorStapMetToets({ html }: Props) {
       setFase("klaar");
 
       const emailFromStorage = localStorage.getItem("email");
-      setEmail(emailFromStorage);
-
+      
       fetch("/api/logscore", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
