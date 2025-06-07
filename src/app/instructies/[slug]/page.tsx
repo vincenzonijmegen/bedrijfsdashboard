@@ -1,3 +1,7 @@
+import { db } from "@/lib/db";
+import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
+
+
 interface SlugParams {
   params: {
     slug: string;
