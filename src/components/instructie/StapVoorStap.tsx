@@ -22,8 +22,8 @@ export default function StapVoorStapMetToets({ html }: Props) {
 
   // Parse stappen en vragen uit HTML
   useEffect(() => {
-    const stepPattern = /(?:^|\n)(\d{1,2}\..*?)(?=(\n\d+\.)|$)/gs;
-    const questionPattern = /Vraag:\s*(.*?)\nA\.\s*(.*?)\nB\.\s*(.*?)\nC\.\s*(.*?)\nAntwoord:\s*([ABC])/gs;
+    const stepPattern = /(?:^|\n)(\d{1,2}\..*?)(?=(\n\d+\.)|$)/g;
+    const questionPattern = /Vraag:\s*(.*?)\nA\.\s*(.*?)\nB\.\s*(.*?)\nC\.\s*(.*?)\nAntwoord:\s*([ABC])/g;
 
     const stepMatches = Array.from(html.matchAll(stepPattern)).map((m) => m[1].trim());
     const vraagMatches = Array.from(html.matchAll(questionPattern)).map((m) => ({
