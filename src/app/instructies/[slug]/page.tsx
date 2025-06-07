@@ -1,3 +1,4 @@
+// src/app/instructies/[slug]/page.tsx
 import { db } from "@/lib/db";
 import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
 
