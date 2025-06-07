@@ -36,6 +36,44 @@ export default function StapVoorStapMetToets({ html }: Props) {
     setVragen(vraagMatches);
   }, [html]);
 
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        if (fase === "vragen" && feedback) volgendeStap();
+        else if (fase !== "vragen") volgendeStap();
+      }
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [fase, index, feedback]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    let startX = 0;
+
+    const onTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      const endX = e.changedTouches[0].clientX;
+      const delta = endX - startX;
+
+      if (delta < -40) volgendeStap();
+      if (delta > 40) vorigeStap();
+    };
+
+    el.addEventListener("touchstart", onTouchStart);
+    el.addEventListener("touchend", onTouchEnd);
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchend", onTouchEnd);
+    };
+  }, [index, stappen]);
+
   const volgendeStap = () => {
     if (fase === "stappen") {
       if (index < stappen.length - 1) {
@@ -56,26 +94,9 @@ export default function StapVoorStapMetToets({ html }: Props) {
     }
   };
 
-  const handleKey = (e: KeyboardEvent) => {
-    if (e.key === "Enter") {
-      if (fase === "vragen" && feedback) volgendeStap();
-      else if (fase !== "vragen") volgendeStap();
-    }
+  const vorigeStap = () => {
+    if (fase === "stappen" && index > 0) setIndex((i) => i - 1);
   };
-
-useEffect(() => {
-  const handleKey = (e: KeyboardEvent) => {
-    if (e.key === "Enter") {
-      if (fase === "vragen" && feedback) volgendeStap();
-      else if (fase !== "vragen") volgendeStap();
-    }
-  };
-
-  window.addEventListener("keydown", handleKey);
-  return () => window.removeEventListener("keydown", handleKey);
-}, [fase, index, feedback]);
-
-
 
   const selectAntwoord = (letter: "A" | "B" | "C") => {
     const juist = letter === vragen[index].antwoord;
@@ -90,7 +111,14 @@ useEffect(() => {
             className="border rounded p-4 bg-white shadow min-h-[150px]"
             dangerouslySetInnerHTML={{ __html: stappen[index] }}
           />
-          <div className="flex justify-end">
+          <div className="flex justify-between">
+            <button
+              onClick={vorigeStap}
+              disabled={index === 0}
+              className="px-4 py-2 rounded bg-gray-300 disabled:opacity-40"
+            >
+              Vorige
+            </button>
             <button
               onClick={volgendeStap}
               className="bg-blue-600 text-white px-4 py-2 rounded"
