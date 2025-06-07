@@ -1,20 +1,17 @@
 import { db } from "@/lib/db";
 import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
 
-type Props = {
-  params: {
-    slug: string;
-  };
-};
-
-// ✅ Dit voorkomt dat Next.js zijn eigen PageProps-type genereert:
-export async function generateMetadata({ params }: Props) {
+export async function generateMetadata({ params }: { params: { slug: string } }) {
   return {
     title: `Instructie: ${params.slug}`,
   };
 }
 
-export default async function Page({ params }: Props) {
+export default async function Page({
+  params,
+}: {
+  params: { slug: string };
+}) {
   const result = await db.query(
     "SELECT * FROM instructies WHERE slug = $1",
     [params.slug]
