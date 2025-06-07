@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
 
-export default async function InstructiePagina({
+export default async function Page({
   params,
 }: {
   params: { slug: string };
