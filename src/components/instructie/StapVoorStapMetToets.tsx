@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 interface Props {
-  html: string; // De volledige instructie-HTML
+  html: string;
 }
 
 type Vraag = {
@@ -20,10 +20,10 @@ export default function StapVoorStapMetToets({ html }: Props) {
   const [feedback, setFeedback] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Parse stappen en vragen uit HTML
   useEffect(() => {
     const stepPattern = /(?:^|\n)(\d{1,2}\..*?)(?=(\n\d+\.)|$)/g;
-    const questionPattern = /Vraag:\s*(.*?)\nA\.\s*(.*?)\nB\.\s*(.*?)\nC\.\s*(.*?)\nAntwoord:\s*([ABC])/g;
+    const questionPattern =
+      /Vraag:\s*(.*?)\nA\.\s*(.*?)\nB\.\s*(.*?)\nC\.\s*(.*?)\nAntwoord:\s*([ABC])/g;
 
     const stepMatches = Array.from(html.matchAll(stepPattern)).map((m) => m[1].trim());
     const vraagMatches = Array.from(html.matchAll(questionPattern)).map((m) => ({
