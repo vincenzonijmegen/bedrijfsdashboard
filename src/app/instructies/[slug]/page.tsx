@@ -1,12 +1,12 @@
-import { db } from "@/lib/db";
-import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
+interface SlugParams {
+  params: {
+    slug: string;
+  };
+}
 
-export default async function Page({
-  params,
-}: {
-  params: { slug: string };
-}) {
-  const result = await db.query("SELECT * FROM instructies WHERE slug = $1", [params.slug]);
+export default async function Page(props: SlugParams) {
+  const slug = props.params.slug;
+  const result = await db.query("SELECT * FROM instructies WHERE slug = $1", [slug]);
   const instructie = result.rows[0];
 
   if (!instructie) {
