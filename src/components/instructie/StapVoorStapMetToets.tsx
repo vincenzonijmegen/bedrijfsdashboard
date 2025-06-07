@@ -31,13 +31,13 @@ useEffect(() => {
 const questionPattern =
   /Vraag:\s*(.*?)<br\s*\/?>\s*A\.\s*(.*?)<br\s*\/?>\s*B\.\s*(.*?)<br\s*\/?>\s*C\.\s*(.*?)<br\s*\/?>\s*Antwoord:\s*([ABC])/gi;
 
-  const vraagMatches = Array.from(
-("Vraag: " + vraagDeel.join("Vraag: ")).replace(/\n/g, "<br>")
-  ).map((m) => ({
-    vraag: m[1].trim(),
-    opties: [m[2].trim(), m[3].trim(), m[4].trim()],
-    antwoord: m[5].trim().toUpperCase(),
-  }));
+const vragenHTML = ("Vraag: " + vraagDeel.join("Vraag: ")).replace(/\n/g, "<br>");
+const vraagMatches = Array.from(vragenHTML.matchAll(questionPattern)).map((m) => ({
+  vraag: m[1].trim(),
+  opties: [m[2].trim(), m[3].trim(), m[4].trim()],
+  antwoord: m[5].trim().toUpperCase(),
+}));
+
 
   setStappen(stepSegments);
   setVragen(vraagMatches);
