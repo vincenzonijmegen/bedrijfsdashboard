@@ -1,7 +1,8 @@
 import { db } from "@/lib/db";
 import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
 
-// Let op: geen aparte 'type PageProps' export gebruiken
+export const dynamic = "force-dynamic"; // <-- deze regel voorkomt typeconflict
+
 export default async function Page({
   params,
 }: {
