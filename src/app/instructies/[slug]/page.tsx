@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
 
+// ✅ DIT MOET 'Page' HETEN
 export default async function Page({
   params,
 }: {
