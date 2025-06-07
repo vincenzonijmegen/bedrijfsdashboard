@@ -17,21 +17,19 @@ export default function Editor({
   });
 
   // Update form value on change
-  useEffect(() => {
-    if (!editor) return;
-    const update = () => {
-      const hidden = document.querySelector(`input[name='${name}']`) as HTMLInputElement;
-      if (hidden) hidden.value = editor.getHTML();
-    };
-    editor.on("update", update);
-    update();
-    return () => editor.off("update", update);
-  }, [editor]);
+useEffect(() => {
+  if (!editor) return;
 
-  return (
-    <div className="space-y-2">
-      <EditorContent editor={editor} className="border p-2 bg-white rounded shadow" />
-      <input type="hidden" name={name} defaultValue={defaultContent} />
-    </div>
-  );
-}
+  const update = () => {
+    const hidden = document.querySelector(`input[name='${name}']`) as HTMLInputElement;
+    if (hidden) hidden.value = editor.getHTML();
+  };
+
+  editor.on("update", update);
+  update();
+
+  return () => {
+    editor.off("update", update);
+  };
+}, [editor, name]); // voeg 'name' toe om ESLint happy te maken
+
