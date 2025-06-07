@@ -9,7 +9,7 @@ export default async function InstructieOverzicht() {
     <div className="p-6 space-y-4">
       <h1 className="text-2xl font-bold">📚 Alle werkinstructies</h1>
       <ul className="space-y-2">
-        {instructies.map((i: any) => (
+        {instructies.map((i: { slug: string; titel: string }) => (
           <li key={i.slug}>
             <Link
               href={`/instructies/${i.slug}`}
