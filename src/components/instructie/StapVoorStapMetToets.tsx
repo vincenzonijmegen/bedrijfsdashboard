@@ -28,10 +28,11 @@ useEffect(() => {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  const questionPattern = /Vraag:\s*(.*?)<\/p>\s*A\.\s*(.*?)<\/p>\s*B\.\s*(.*?)<\/p>\s*C\.\s*(.*?)<\/p>\s*Antwoord:\s*([ABC])/gi;
+  const questionPattern = /Vraag:\s*(.*?)\s*A\.\s*(.*?)\s*B\.\s*(.*?)\s*C\.\s*(.*?)\s*Antwoord:\s*([ABC])/gi;
+  const vragenHTML = ("Vraag: " + vraagDeel.join("Vraag:"))
+  .replace(/<[^>]+>/g, " ") // stript HTML-tags
+  .replace(/&nbsp;/g, " "); // vervangt spaties
 
-
-  const vragenHTML = ("Vraag: " + vraagDeel.join("Vraag:")).replace(/\n/g, "<br>");
   const vraagMatches = Array.from(vragenHTML.matchAll(questionPattern)).map((m) => ({
     vraag: m[1].trim(),
     opties: [m[2].trim(), m[3].trim(), m[4].trim()],
