@@ -2,7 +2,9 @@ import { db } from "@/lib/db";
 import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
 
 // ⛔ TypeScript build bug op Vercel? F*ck it:
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function Page(props: any) {
+
   const slug = props?.params?.slug;
   const result = await db.query(
     "SELECT * FROM instructies WHERE slug = $1",
