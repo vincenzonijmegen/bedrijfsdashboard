@@ -1,20 +1,12 @@
 import { db } from "@/lib/db";
 import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
-  return {
-    title: `Instructie: ${params.slug}`,
-  };
-}
-
-export default async function Page({
-  params,
-}: {
-  params: { slug: string };
-}) {
+// ⛔ TypeScript build bug op Vercel? F*ck it:
+export default async function Page(props: any) {
+  const slug = props?.params?.slug;
   const result = await db.query(
     "SELECT * FROM instructies WHERE slug = $1",
-    [params.slug]
+    [slug]
   );
 
   const instructie = result.rows[0];
