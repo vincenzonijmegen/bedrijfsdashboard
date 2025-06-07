@@ -23,9 +23,6 @@ export default function StapVoorStapMetToets({ html }: Props) {
 useEffect(() => {
   const [stapDeel, ...vraagDeel] = html.split(/Vraag:\s/);
 
-  useEffect(() => {
-  const [stapDeel, ...vraagDeel] = html.split(/Vraag:\s/);
-
   const stepSegments = stapDeel
     .split("[end]")
     .map((s) => s.trim())
