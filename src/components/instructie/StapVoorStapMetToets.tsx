@@ -30,8 +30,9 @@ useEffect(() => {
 
   const questionPattern = /Vraag:\s*(.*?)\s*A\.\s*(.*?)\s*B\.\s*(.*?)\s*C\.\s*(.*?)\s*Antwoord:\s*([ABC])/gi;
   const vragenHTML = ("Vraag: " + vraagDeel.join("Vraag:"))
-  .replace(/<[^>]+>/g, " ") // stript HTML-tags
-  .replace(/&nbsp;/g, " "); // vervangt spaties
+  .replace(/<[^>]+>/g, " ")
+  .replace(/&nbsp;/g, " ");
+
 
   const vraagMatches = Array.from(vragenHTML.matchAll(questionPattern)).map((m) => ({
     vraag: m[1].trim(),
