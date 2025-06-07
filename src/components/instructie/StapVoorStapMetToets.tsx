@@ -21,18 +21,21 @@ export default function StapVoorStapMetToets({ html }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const stepPattern = /(?:^|\n)(\d{1,2}\..*?)(?=(\n\d+\.)|$)/g;
+    const stepSegments = html
+      .split("[end]")
+      .map((s) => s.trim())
+      .filter(Boolean);
+
     const questionPattern =
       /Vraag:\s*(.*?)\nA\.\s*(.*?)\nB\.\s*(.*?)\nC\.\s*(.*?)\nAntwoord:\s*([ABC])/g;
 
-    const stepMatches = Array.from(html.matchAll(stepPattern)).map((m) => m[1].trim());
     const vraagMatches = Array.from(html.matchAll(questionPattern)).map((m) => ({
       vraag: m[1].trim(),
       opties: [m[2].trim(), m[3].trim(), m[4].trim()],
       antwoord: m[5].trim().toUpperCase(),
     }));
 
-    setStappen(stepMatches);
+    setStappen(stepSegments);
     setVragen(vraagMatches);
   }, [html]);
 
