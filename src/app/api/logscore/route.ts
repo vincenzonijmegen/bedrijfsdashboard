@@ -21,8 +21,10 @@ export async function POST(req: NextRequest) {
 
     console.log("✅ Resultaat opgeslagen:", result.rowCount);
     return NextResponse.json({ ok: true });
-  } catch (err: any) {
-    console.error("❌ Fout in /api/logscore:", err.message);
+} catch (err: unknown) {
+  const foutmelding = err instanceof Error ? err.message : "Onbekende fout";
+  console.error("❌ Fout in /api/logscore:", foutmelding);
+
     return NextResponse.json({ error: "Interne fout: " + err.message }, { status: 500 });
   }
 }
