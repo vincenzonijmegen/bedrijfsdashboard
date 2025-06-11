@@ -18,7 +18,14 @@ export default async function ResultatenOverzicht() {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r: any, i: number) => (
+          {rows.map((r: {
+  email: string;
+  score: number;
+  juist: number;
+  totaal: number;
+  slug: string;
+  tijdstip: string;
+}, i: number) => (
             <tr key={i}>
               <td className="border p-2">{r.email}</td>
               <td className="border p-2 text-center">{r.score}%</td>
