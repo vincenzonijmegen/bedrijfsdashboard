@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
+
 
 interface Props {
   html: string;
@@ -22,6 +24,8 @@ export default function StapVoorStapMetToets({ html }: Props) {
   
   const [aantalJuist, setAantalJuist] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  const slug = pathname.split("/").pop();
 
   useEffect(() => {
     const [stapDeel, ...vraagDeel] = html.split(/Vraag:\s/);
@@ -104,11 +108,12 @@ export default function StapVoorStapMetToets({ html }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: emailFromStorage,
-          score: percentage,
-          aantalJuist,
-          totaal: vragen.length,
-          tijdstip: new Date().toISOString(),
+        email: emailFromStorage,
+        score: percentage,
+        aantalJuist,
+        totaal: vragen.length,
+        tijdstip: new Date().toISOString(),
+        slug, // <- toevoegen
         }),
       });
     } else {
