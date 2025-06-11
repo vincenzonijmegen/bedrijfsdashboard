@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 } catch (err: unknown) {
   const foutmelding = err instanceof Error ? err.message : "Onbekende fout";
   console.error("❌ Fout in /api/logscore:", foutmelding);
+  return NextResponse.json({ error: "Interne fout: " + foutmelding }, { status: 500 });
+}
 
-    return NextResponse.json({ error: "Interne fout: " + err.message }, { status: 500 });
-  }
 }
