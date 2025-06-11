@@ -9,23 +9,20 @@ export default async function InstructieOverzicht() {
   const instructies = result.rows;
 
   return (
-    <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold flex items-center gap-2">
-        <span>📚</span>
-        <span>Alle werkinstructies</span>
-      </h1>
-      <ul className="space-y-2">
-        {instructies.map((i: { slug: string; titel: string }) => (
-          <li key={i.slug}>
-            <Link
-              href={`/instructies/${i.slug}`}
-              className="text-blue-600 underline hover:text-blue-800"
-            >
-              {i.titel}
-            </Link>
-          </li>
-        ))}
-      </ul>
+  <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <h1 className="text-2xl font-bold">📚 Alle werkinstructies</h1>
+    <div className="space-y-2">
+      {instructies.map((i) => (
+        <Link
+          key={i.slug}
+          href={`/instructies/${i.slug}`}
+          className="block border rounded px-4 py-3 bg-white shadow hover:bg-blue-50"
+        >
+          {i.titel}
+        </Link>
+      ))}
     </div>
-  );
+  </div>
+);
+
 }
