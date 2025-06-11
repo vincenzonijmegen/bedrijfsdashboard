@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
-
 interface Props {
   html: string;
 }
@@ -21,11 +20,11 @@ export default function StapVoorStapMetToets({ html }: Props) {
   const [fase, setFase] = useState<"stappen" | "vragen" | "klaar">("stappen");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [score, setScore] = useState(0);
-  
   const [aantalJuist, setAantalJuist] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+
   const pathname = usePathname();
-  const slug = pathname.split("/").pop();
+  const slug = pathname ? pathname.split("/").pop() : null;
 
   useEffect(() => {
     const [stapDeel, ...vraagDeel] = html.split(/Vraag:\s/);
@@ -103,35 +102,35 @@ export default function StapVoorStapMetToets({ html }: Props) {
       setFase("klaar");
 
       const emailFromStorage = localStorage.getItem("email");
-      
-console.log("📤 Logging resultaat naar API", {
-  email: emailFromStorage,
-  score: percentage,
-  aantalJuist,
-  totaal: vragen.length,
-  tijdstip: new Date().toISOString(),
-  slug,
-});
 
+      console.log("📤 Logging resultaat naar API", {
+        email: emailFromStorage,
+        score: percentage,
+        aantalJuist,
+        totaal: vragen.length,
+        tijdstip: new Date().toISOString(),
+        slug,
+      });
 
-
-fetch("/api/logscore", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    email: emailFromStorage,
-    score: percentage,
-    aantalJuist,
-    totaal: vragen.length,
-    tijdstip: new Date().toISOString(),
-    slug,
-  }),
-})
-  .then((res) => res.json())
-  .then((res) => console.log("✅ API-response:", res))
-  .catch((err) => console.error("❌ API-fout:", err));
-}; // sluit de functie hier goed af
-
+      fetch("/api/logscore", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: emailFromStorage,
+          score: percentage,
+          aantalJuist,
+          totaal: vragen.length,
+          tijdstip: new Date().toISOString(),
+          slug,
+        }),
+      })
+        .then((res) => res.json())
+        .then((res) => console.log("✅ API-response:", res))
+        .catch((err) => console.error("❌ API-fout:", err));
+    } else {
+      setIndex((i) => i + 1);
+    }
+  };
 
   return (
     <div ref={containerRef} className="max-w-4xl mx-auto p-4 space-y-4">
@@ -201,5 +200,4 @@ fetch("/api/logscore", {
       )}
     </div>
   );
-}
 }
