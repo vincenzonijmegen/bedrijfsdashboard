@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+localStorage.setItem("email", "voorbeeld@vincenzo.nl");
 
 interface Props {
   html: string;
@@ -104,7 +105,7 @@ export default function StapVoorStapMetToets({ html }: Props) {
       const emailFromStorage = localStorage.getItem("email");
 
       console.log("📤 Logging resultaat naar API", {
-        email: emailFromStorage,
+        email: emailFromStorage ?? "onbekend@vincenzo.nl",
         score: percentage,
         aantalJuist,
         totaal: vragen.length,
