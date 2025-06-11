@@ -202,3 +202,4 @@ fetch("/api/logscore", {
     </div>
   );
 }
+}
