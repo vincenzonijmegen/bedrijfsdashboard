@@ -104,22 +104,34 @@ export default function StapVoorStapMetToets({ html }: Props) {
 
       const emailFromStorage = localStorage.getItem("email");
       
-      fetch("/api/logscore", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-        email: emailFromStorage,
-        score: percentage,
-        aantalJuist,
-        totaal: vragen.length,
-        tijdstip: new Date().toISOString(),
-        slug, // <- toevoegen
-        }),
-      });
-    } else {
-      setIndex((i) => i + 1);
-    }
-  };
+console.log("📤 Logging resultaat naar API", {
+  email: emailFromStorage,
+  score: percentage,
+  aantalJuist,
+  totaal: vragen.length,
+  tijdstip: new Date().toISOString(),
+  slug,
+});
+
+
+
+fetch("/api/logscore", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    email: emailFromStorage,
+    score: percentage,
+    aantalJuist,
+    totaal: vragen.length,
+    tijdstip: new Date().toISOString(),
+    slug,
+  }),
+})
+  .then((res) => res.json())
+  .then((res) => console.log("✅ API-response:", res))
+  .catch((err) => console.error("❌ API-fout:", err));
+}; // sluit de functie hier goed af
+
 
   return (
     <div ref={containerRef} className="max-w-4xl mx-auto p-4 space-y-4">
