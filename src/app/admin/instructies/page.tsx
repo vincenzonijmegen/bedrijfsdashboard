@@ -1,48 +1,54 @@
 "use client";
 
+import useSWR from "swr";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
-type Instructie = { id: string; titel: string; slug: string | null };
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function InstructieOverzicht() {
-  const [instructies, setInstructies] = useState<Instructie[]>([]);
+  const { data, error } = useSWR("/api/instructies", fetcher);
 
-  useEffect(() => {
-    fetch("/api/instructies")
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("📦 Instructies ontvangen:", data);
-        setInstructies(data);
-      });
-  }, []);
+  if (error) return <div>Fout bij laden</div>;
+  if (!data) return <div>Laden...</div>;
+
+  const gesorteerd = [...data].sort((a, b) => a.nummer?.localeCompare(b.nummer));
 
   return (
-    <main className="max-w-3xl mx-auto p-4 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Instructiebeheer</h1>
-        <Link href="/admin/instructies/nieuw" className="bg-blue-600 text-white px-4 py-2 rounded">
-          ➕ Nieuwe instructie
+    <main className="max-w-4xl mx-auto p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Instructies</h1>
+        <Link href="/admin/instructies/nieuw">
+          <Button>+ Nieuwe instructie</Button>
         </Link>
       </div>
 
-      <ul className="space-y-3">
-        {instructies
-          .filter((i) => i.slug) // skip instructies met slug null
-          .map((i) => (
-            <li key={i.id} className="border p-4 rounded bg-white">
-              <div className="flex justify-between items-center">
-                <h2 className="font-semibold">{i.titel}</h2>
-                <Link
-                  href={`/admin/instructies/${i.slug}`}
-                  className="text-blue-600 underline text-sm"
-                >
+      <table className="w-full border border-gray-300 text-left">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="border px-4 py-2">Nummer</th>
+            <th className="border px-4 py-2">Titel</th>
+            <th className="border px-4 py-2">Functies</th>
+            <th className="border px-4 py-2">Acties</th>
+          </tr>
+        </thead>
+        <tbody>
+          {gesorteerd.map((i: any) => (
+            <tr key={i.id} className="border-t">
+              <td className="border px-4 py-2 align-top">{i.nummer || "-"}</td>
+              <td className="border px-4 py-2 align-top">{i.titel}</td>
+              <td className="border px-4 py-2 align-top text-sm text-gray-600">
+                {Array.isArray(i.functies) ? i.functies.join(", ") : "-"}
+              </td>
+              <td className="border px-4 py-2 align-top">
+                <Link href={`/admin/instructies/${i.slug}/edit`} className="text-blue-600 underline">
                   Bewerken
                 </Link>
-              </div>
-            </li>
+              </td>
+            </tr>
           ))}
-      </ul>
+        </tbody>
+      </table>
     </main>
   );
 }
