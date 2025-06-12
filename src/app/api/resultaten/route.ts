@@ -18,3 +18,23 @@ export async function GET() {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
+export async function DELETE(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const email = searchParams.get("email");
+  const slug = searchParams.get("slug");
+
+  if (!email || !slug) {
+    return NextResponse.json({ error: "email en slug zijn vereist" }, { status: 400 });
+  }
+
+  try {
+    await db.query(
+      `DELETE FROM toetsresultaten WHERE email = $1 AND slug = $2`,
+      [email, slug]
+    );
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("🛑 Fout bij verwijderen resultaat:", err);
+    return NextResponse.json({ error: "Verwijderen mislukt" }, { status: 500 });
+  }
+}
