@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function GET(_req: Request, { params }: { params: Record<string, string> }) {
-  const slug = params.slug;
+function extractSlug(param: string | string[]): string {
+  return Array.isArray(param) ? param[0] : param;
+}
+
+export async function GET(_req: Request, { params }: { params: { [key: string]: string | string[] } }) {
+  const slug = extractSlug(params.slug);
 
   try {
     const result = await db.query("SELECT * FROM instructies WHERE slug = $1", [slug]);
@@ -15,8 +19,8 @@ export async function GET(_req: Request, { params }: { params: Record<string, st
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: Record<string, string> }) {
-  const slug = params.slug;
+export async function PATCH(req: Request, { params }: { params: { [key: string]: string | string[] } }) {
+  const slug = extractSlug(params.slug);
 
   try {
     const { titel, inhoud } = await req.json();
@@ -33,8 +37,8 @@ export async function PATCH(req: Request, { params }: { params: Record<string, s
   }
 }
 
-export async function PUT(req: Request, { params }: { params: Record<string, string> }) {
-  const slug = params.slug;
+export async function PUT(req: Request, { params }: { params: { [key: string]: string | string[] } }) {
+  const slug = extractSlug(params.slug);
 
   try {
     const { titel, inhoud, nummer, functies } = await req.json();
@@ -53,8 +57,8 @@ export async function PUT(req: Request, { params }: { params: Record<string, str
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: Record<string, string> }) {
-  const slug = params.slug;
+export async function DELETE(_req: Request, { params }: { params: { [key: string]: string | string[] } }) {
+  const slug = extractSlug(params.slug);
 
   try {
     await db.query(`DELETE FROM instructies WHERE slug = $1`, [slug]);
