@@ -107,3 +107,18 @@ export async function PUT(req: Request, context: any) {
     return NextResponse.json({ error: "Update mislukt" }, { status: 500 });
   }
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function DELETE(_req: Request, context: any) {
+  const slug = Array.isArray(context.params.slug)
+    ? context.params.slug[0]
+    : context.params.slug;
+
+  try {
+    await db.query("DELETE FROM instructies WHERE slug = $1", [slug]);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("🛑 Fout bij DELETE:", err);
+    return NextResponse.json({ error: "Verwijderen mislukt" }, { status: 500 });
+  }
+}
