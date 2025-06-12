@@ -1,102 +1,57 @@
 "use client";
 
 import useSWR from "swr";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 
-interface Instructie {
-  id: string;
-  titel: string;
-  nummer?: string;
-  functies?: string[];
+interface Resultaat {
+  email: string;
+  score: number;
+  juist: number;
+  totaal: number;
   slug: string;
+  tijdstip: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const fetcher = async (url: string): Promise<Instructie[]> => {
+const fetcher = async (url: string): Promise<Resultaat[]> => {
   const res = await fetch(url);
-  const data = await res.json();
-  return data.map(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (i: any) => ({
-      ...i,
-      functies: Array.isArray(i.functies)
-        ? i.functies
-        : typeof i.functies === "string"
-        ? (() => {
-            try {
-              const parsed = JSON.parse(i.functies);
-              return Array.isArray(parsed) ? parsed : [];
-            } catch {
-              return [];
-            }
-          })()
-        : []
-    })
-  );
+  if (!res.ok) throw new Error("Fout bij ophalen resultaten");
+  return res.json();
 };
 
-export default function InstructieOverzicht() {
-  const { data, error } = useSWR("/api/instructies", fetcher);
+export default function ResultatenOverzicht() {
+  const { data, error } = useSWR("/api/resultaten", fetcher, { refreshInterval: 3000 });
 
-  if (error) return <div>Fout bij laden</div>;
+  if (error) return <div>Fout bij laden van resultaten.</div>;
   if (!data) return <div>Laden...</div>;
 
-  const gesorteerd = [...data].sort((a, b) => {
-    const na = a.nummer || "";
-    const nb = b.nummer || "";
-    return na.localeCompare(nb);
-  });
-
   return (
-    <main className="max-w-4xl mx-auto p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Instructies</h1>
-        <Link href="/admin/instructies/nieuw">
-          <Button>+ Nieuwe instructie</Button>
-        </Link>
-      </div>
-
-      <table className="w-full border border-gray-300 text-left">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="border px-4 py-2">Nummer</th>
-            <th className="border px-4 py-2">Titel</th>
-            <th className="border px-4 py-2">Functies</th>
-            <th className="border px-4 py-2">Acties</th>
+    <div className="p-6 max-w-4xl mx-auto space-y-4">
+      <h1 className="text-2xl font-bold flex items-center gap-2">📊 Toetsresultaten</h1>
+      <table className="w-full text-sm border-collapse border">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="border p-2 text-left">E-mail</th>
+            <th className="border p-2 text-center">Score</th>
+            <th className="border p-2 text-center">Goed / Totaal</th>
+            <th className="border p-2 text-center">Slug</th>
+            <th className="border p-2 text-center">Tijdstip</th>
           </tr>
         </thead>
         <tbody>
-          {gesorteerd.map((i: Instructie) => (
-            <tr key={i.id} className="border-t">
-              <td className="border px-4 py-2 align-top">{i.nummer || "-"}</td>
-              <td className="border px-4 py-2 align-top">{i.titel}</td>
-              <td className="border px-4 py-2 align-top text-sm text-gray-600">
-                {Array.isArray(i.functies) ? i.functies.join(", ") : "-"}
+          {data.map((r, i) => (
+            <tr key={i}>
+              <td className="border p-2">{r.email}</td>
+              <td className="border p-2 text-center">{r.score}%</td>
+              <td className="border p-2 text-center">
+                {r.juist} / {r.totaal}
               </td>
-              <td className="border px-4 py-2 align-top">
-                <div className="flex gap-2">
-                  <Link href={`/admin/instructies/${i.slug}/edit`}>
-                    <Button variant="secondary" size="sm">Bewerken</Button>
-                  </Link>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={async () => {
-                      if (confirm(`Verwijder instructie: ${i.titel}?`)) {
-                        await fetch(`/api/instructies/${i.slug}`, { method: "DELETE" });
-                        location.reload();
-                      }
-                    }}
-                  >
-                    Verwijderen
-                  </Button>
-                </div>
+              <td className="border p-2 text-center">{r.slug}</td>
+              <td className="border p-2 text-center">
+                {new Date(r.tijdstip).toLocaleString()}
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-    </main>
+    </div>
   );
 }
