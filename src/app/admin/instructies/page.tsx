@@ -12,10 +12,14 @@ interface Instructie {
   slug: string;
 }
 
-
-
-
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  const data = await res.json();
+  return data.map((i: any) => ({
+    ...i,
+    functies: typeof i.functies === "string" ? JSON.parse(i.functies) : i.functies,
+  }));
+};
 
 export default function InstructieOverzicht() {
   const { data, error } = useSWR("/api/instructies", fetcher);
@@ -49,16 +53,7 @@ export default function InstructieOverzicht() {
               <td className="border px-4 py-2 align-top">{i.nummer || "-"}</td>
               <td className="border px-4 py-2 align-top">{i.titel}</td>
               <td className="border px-4 py-2 align-top text-sm text-gray-600">
-                {(() => {
-  if (Array.isArray(i.functies)) return i.functies.join(", ");
-  try {
-    const parsed = JSON.parse(i.functies as unknown as string);
-    return Array.isArray(parsed) ? parsed.join(", ") : "-";
-  } catch {
-    return "-";
-  }
-})()}
-
+                {Array.isArray(i.functies) ? i.functies.join(", ") : "-"}
               </td>
               <td className="border px-4 py-2 align-top">
                 <Link href={`/admin/instructies/${i.slug}/edit`} className="text-blue-600 underline">
