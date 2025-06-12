@@ -71,10 +71,22 @@ export default function InstructieOverzicht() {
                 {Array.isArray(i.functies) ? i.functies.join(", ") : "-"}
               </td>
               <td className="border px-4 py-2 align-top">
-                <Link href={`/admin/instructies/${i.slug}/edit`} className="text-blue-600 underline">
-                  Bewerken
-                </Link>
-              </td>
+  <Link href={`/admin/instructies/${i.slug}/edit`} className="text-blue-600 underline">
+    Bewerken
+  </Link>
+  <button
+    onClick={async () => {
+      if (confirm(`Verwijder instructie: ${i.titel}?`)) {
+        await fetch(`/api/instructies/${i.slug}`, { method: "DELETE" });
+        location.reload();
+      }
+    }}
+    className="text-red-600 underline ml-4"
+  >
+    Verwijderen
+  </button>
+</td>
+
             </tr>
           ))}
         </tbody>
