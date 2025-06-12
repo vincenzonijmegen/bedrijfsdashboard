@@ -36,6 +36,7 @@ export default function ResultatenOverzicht() {
             <th className="border p-2 text-center">Goed / Totaal</th>
             <th className="border p-2 text-center">Slug</th>
             <th className="border p-2 text-center">Tijdstip</th>
+<th className="border p-2 text-center">Actie</th>
           </tr>
         </thead>
         <tbody>
@@ -47,6 +48,20 @@ export default function ResultatenOverzicht() {
               <td className="border p-2 text-center">{r.juist} / {r.totaal}</td>
               <td className="border p-2 text-center">{r.slug}</td>
               <td className="border p-2 text-center">{new Date(r.tijdstip).toLocaleString()}</td>
+<td className="border p-2 text-center">
+  <button
+    onClick={async () => {
+      if (confirm(`Verwijder resultaat van ${r.naam}?`)) {
+        await fetch(`/api/resultaten?email=${encodeURIComponent(r.email)}&slug=${encodeURIComponent(r.slug)}`, {
+          method: "DELETE",
+        });
+      }
+    }}
+    className="text-red-600 underline text-sm"
+  >
+    Verwijderen
+  </button>
+</td>
             </tr>
           ))}
         </tbody>
