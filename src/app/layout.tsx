@@ -1,7 +1,5 @@
-"use client";
-
-import { ClerkProvider, UserButton, useUser } from "@clerk/nextjs";
-import Link from "next/link";
+import { ClerkProvider } from "@clerk/nextjs";
+import { NavBar } from "../components/NavBar";
 import "./globals.css";
 
 export const metadata = {
@@ -10,32 +8,11 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const { user } = useUser();
-  const email = user?.primaryEmailAddress?.emailAddress;
-  const isAdmin = email === "herman@ijssalonvincenzo.nl";
-
   return (
     <ClerkProvider>
       <html lang="nl">
         <body className="font-sans bg-gray-100 text-gray-900">
-          <header className="bg-white shadow p-4 flex justify-between items-center">
-            <div className="space-x-4">
-              <Link href="/instructies" className="text-blue-600 hover:underline">
-                Instructies
-              </Link>
-              {isAdmin && (
-                <>
-                  <Link href="/admin/instructies" className="text-blue-600 hover:underline">
-                    Beheer
-                  </Link>
-                  <Link href="/admin/resultaten" className="text-blue-600 hover:underline">
-                    Resultaten
-                  </Link>
-                </>
-              )}
-            </div>
-            <UserButton afterSignOutUrl="/" />
-          </header>
+          <NavBar />
           <main className="p-4">{children}</main>
         </body>
       </html>
