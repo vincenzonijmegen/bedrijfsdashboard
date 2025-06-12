@@ -20,7 +20,14 @@ const fetcher = async (url: string): Promise<Instructie[]> => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (i: any) => ({
       ...i,
-      functies: typeof i.functies === "string" ? JSON.parse(i.functies) : i.functies,
+      functies: (() => {
+      try {
+        const parsed = JSON.parse(i.functies);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return i.functies;
+      }
+    })(),
     })
   );
 };
