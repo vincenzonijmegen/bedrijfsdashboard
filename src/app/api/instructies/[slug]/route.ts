@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function GET(_req: Request, context: any) {
+
+export async function GET(_req: Request, context: { params: { slug: string } }) {
   const slug = context.params.slug;
 
   try {
@@ -14,12 +14,12 @@ export async function GET(_req: Request, context: any) {
     return NextResponse.json({ error: "Databasefout" }, { status: 500 });
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function PATCH(_req: Request, context: any) {
+
+export async function PATCH(req: Request, context: { params: { slug: string } }) {
   const slug = context.params.slug;
 
   try {
-    const { titel, inhoud } = await _req.json();
+    const { titel, inhoud } = await req.json();
 
     await db.query(
       `UPDATE instructies SET titel = $1, inhoud = $2 WHERE slug = $3`,
@@ -33,8 +33,7 @@ export async function PATCH(_req: Request, context: any) {
   }
 }
 
-
-export async function PUT(req: Request, context: any) {
+export async function PUT(req: Request, context: { params: { slug: string } }) {
   const slug = context.params.slug;
 
   try {
@@ -54,10 +53,7 @@ export async function PUT(req: Request, context: any) {
   }
 }
 
-
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function DELETE(_req: Request, context: any) {
+export async function DELETE(_req: Request, context: { params: { slug: string } }) {
   const slug = context.params.slug;
 
   try {
@@ -68,5 +64,3 @@ export async function DELETE(_req: Request, context: any) {
     return NextResponse.json({ error: "Verwijderen mislukt" }, { status: 500 });
   }
 }
-
-
