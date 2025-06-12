@@ -17,10 +17,12 @@ const fetcher = async (url: string): Promise<Instructie[]> => {
   const res = await fetch(url);
   const data = await res.json();
   return data.map(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any(i: any) => ({
-    ...i,
-    functies: typeof i.functies === "string" ? JSON.parse(i.functies) : i.functies,
-  }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (i: any) => ({
+      ...i,
+      functies: typeof i.functies === "string" ? JSON.parse(i.functies) : i.functies,
+    })
+  );
 };
 
 export default function InstructieOverzicht() {
