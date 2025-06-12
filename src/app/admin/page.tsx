@@ -1,14 +1,14 @@
-// ✅ app/admin/page.tsx
+"use client";
+
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 
 export default function AdminDashboard() {
-  const { sessionClaims } = auth();
-  const email = sessionClaims?.email as string;
+  const { user } = useUser();
+  const email = user?.primaryEmailAddress?.emailAddress;
   const isAdmin = email === "herman@ijssalonvincenzo.nl";
 
-  if (!isAdmin) redirect("/instructies");
+  if (!isAdmin) return null;
 
   return (
     <div className="p-6 space-y-6 max-w-xl mx-auto">

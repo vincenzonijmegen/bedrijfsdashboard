@@ -1,8 +1,14 @@
-// ✅ app/admin/medewerkers/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
+
+type Medewerker = {
+  id: number;
+  naam: string;
+  email: string;
+  functie: string;
+};
 
 export default function MedewerkersBeheer() {
   const { user } = useUser();
@@ -12,7 +18,7 @@ export default function MedewerkersBeheer() {
   const [naam, setNaam] = useState("");
   const [functie, setFunctie] = useState("");
   const [adres, setAdres] = useState("");
-  const [lijst, setLijst] = useState<any[]>([]);
+  const [lijst, setLijst] = useState<Medewerker[]>([]);
 
   useEffect(() => {
     fetch("/api/medewerkers").then(res => res.json()).then(setLijst);
