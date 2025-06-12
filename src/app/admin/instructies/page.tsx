@@ -4,6 +4,17 @@ import useSWR from "swr";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
+interface Instructie {
+  id: string;
+  titel: string;
+  nummer?: string;
+  functies?: string[];
+  slug: string;
+}
+
+
+
+
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function InstructieOverzicht() {
@@ -33,7 +44,7 @@ export default function InstructieOverzicht() {
           </tr>
         </thead>
         <tbody>
-          {gesorteerd.map((i: any) => (
+          {gesorteerd.map((i: Instructie) => (
             <tr key={i.id} className="border-t">
               <td className="border px-4 py-2 align-top">{i.nummer || "-"}</td>
               <td className="border px-4 py-2 align-top">{i.titel}</td>
