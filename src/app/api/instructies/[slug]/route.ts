@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 
-export async function GET(_req: Request, { params }: { params: { slug: string } }) {
+export async function GET(_req: NextRequest, { params }: { params: { slug: string } }) {
   const slug = params.slug;
 
   try {
@@ -15,7 +15,7 @@ export async function GET(_req: Request, { params }: { params: { slug: string } 
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { slug: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: { slug: string } }) {
   const slug = params.slug;
 
   try {
@@ -33,7 +33,7 @@ export async function PATCH(req: Request, { params }: { params: { slug: string }
   }
 }
 
-export async function PUT(req: Request, { params }: { params: { slug: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: { slug: string } }) {
   const slug = params.slug;
 
   try {
@@ -53,7 +53,7 @@ export async function PUT(req: Request, { params }: { params: { slug: string } }
   }
 }
 
-export async function DELETE(_req: Request, { params }: { params: { slug: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: { slug: string } }) {
   const slug = params.slug;
 
   try {
