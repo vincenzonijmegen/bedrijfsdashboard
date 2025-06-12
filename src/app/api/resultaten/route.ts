@@ -6,10 +6,10 @@ export async function GET() {
     console.log("📡 API: /api/resultaten aangeroepen");
 
     const result = await db.query(
-      `SELECT naam, email, score, juist, totaal, slug, COALESCE(tijdstip, NOW()) as tijdstip
-       FROM toetsresultaten
-       ORDER BY tijdstip DESC`
+      `SELECT * FROM toetsresultaten LIMIT 1`
     );
+
+    console.log("✅ Kolommen:", Object.keys(result.rows[0] || {}));
 
     console.log("✅ Resultaten opgehaald:", result.rows.length);
     return NextResponse.json(result.rows);
