@@ -43,7 +43,24 @@ await db.query(
   }
 }
 
-export async function GET() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function GET(req: Request, context: any) {
+  const slug = context?.params?.slug;
+  if (slug) {
+    try {
+      const result = await db.query(
+        "SELECT id, titel, inhoud, nummer, functies FROM instructies WHERE slug = $1",
+        [Array.isArray(slug) ? slug[0] : slug]
+      );
+      if (result.rows.length === 0)
+        return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
+      return NextResponse.json(result.rows[0], { status: 200 });
+    } catch (err) {
+      console.error("🛑 Fout bij GET (één instructie):", err);
+      return NextResponse.json({ error: "Ophalen mislukt" }, { status: 500 });
+    }
+  }
+
 
   try {
     const result = await db.query(
