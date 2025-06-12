@@ -2,7 +2,6 @@
 
 import useSWR from "swr";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 
 interface Instructie {
   id: string;
@@ -12,7 +11,7 @@ interface Instructie {
   slug: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const fetcher = async (url: string): Promise<Instructie[]> => {
   const res = await fetch(url);
   const data = await res.json();
