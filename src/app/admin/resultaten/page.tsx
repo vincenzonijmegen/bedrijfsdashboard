@@ -4,6 +4,7 @@ import useSWR from "swr";
 
 interface Resultaat {
   email: string;
+  naam: string;
   score: number;
   juist: number;
   totaal: number;
@@ -30,6 +31,7 @@ export default function ResultatenOverzicht() {
         <thead>
           <tr className="bg-gray-100">
             <th className="border p-2 text-left">E-mail</th>
+            <th className="border p-2 text-left">Naam</th>
             <th className="border p-2 text-center">Score</th>
             <th className="border p-2 text-center">Goed / Totaal</th>
             <th className="border p-2 text-center">Slug</th>

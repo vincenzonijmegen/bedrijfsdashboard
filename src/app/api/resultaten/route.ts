@@ -6,7 +6,7 @@ export async function GET() {
     console.log("📡 API: /api/resultaten aangeroepen");
 
     const result = await db.query(
-      `SELECT email, score, juist, totaal, slug, tijdstip
+      `SELECT email, naam, score, juist, totaal, slug, tijdstip
        FROM toetsresultaten
        ORDER BY tijdstip DESC`
     );
