@@ -3,14 +3,18 @@ import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
+    console.log("📡 API: /api/resultaten aangeroepen");
+
     const result = await db.query(
       `SELECT email, score, juist, totaal, slug, tijdstip
        FROM resultaten
        ORDER BY tijdstip DESC`
     );
+
+    console.log("✅ Resultaten opgehaald:", result.rows.length);
     return NextResponse.json(result.rows);
   } catch (err) {
     console.error("🛑 Fout bij ophalen resultaten:", err);
-    return NextResponse.json({ error: "Fout bij ophalen resultaten" }, { status: 500 });
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
