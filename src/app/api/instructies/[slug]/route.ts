@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extractSlug(value: any): string {
   return Array.isArray(value) ? value[0] : value;
 }
