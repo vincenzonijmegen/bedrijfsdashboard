@@ -52,6 +52,7 @@ export async function GET() {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function PUT(req: Request, context: any) {
   const slug = Array.isArray(context.params.slug)
     ? context.params.slug[0]
