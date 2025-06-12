@@ -4,6 +4,6 @@ export default clerkMiddleware();
 
 export const config = {
   matcher: [
-    "/((?!api|sign-in|sign-up|sign-in/.*|sign-up/.*|_next/static|_next/image|favicon.ico).*)"
+    "/((?!api|sign-in|sign-up|sign-in/.*|sign-up/.*|_next/static|_next/image|favicon.ico).*)",
   ],
 };
