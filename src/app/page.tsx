@@ -7,9 +7,9 @@ export default async function Home() {
 
   if (!email) {
     redirect("/sign-in");
-  } else if (email === "herman@ijssalonvincenzo.nl") {
-    redirect("/admin");
-  } else {
-    redirect("/instructies");
   }
+  if (email === "herman@ijssalonvincenzo.nl") {
+    redirect("/admin");
+  }
+  redirect("/instructies");
 }
