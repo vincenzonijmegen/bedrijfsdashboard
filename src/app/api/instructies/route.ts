@@ -2,16 +2,31 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import slugify from "slugify";
 
+
+
 export async function POST(req: Request) {
   try {
+    
     const { titel, inhoud, nummer, functies } = await req.json();
     const slug = slugify(titel, { lower: true, strict: true });
     const created_at = new Date().toISOString();
 
-    await db.query(
-      `INSERT INTO instructies (titel, inhoud, slug, status, created_at, nummer, functies)
-       VALUES ($1, $2, $3, 'concept', $4, $5, $6)`,
-      [titel, inhoud, slug, created_at, nummer, JSON.stringify(functies)]
+    const functiesGeparsed = Array.isArray(functies)
+  ? functies
+  : typeof functies === "string"
+  ? (() => {
+      try {
+        return JSON.parse(functies);
+      } catch {
+        return [];
+      }
+    })()
+  : [];
+
+await db.query(
+  `INSERT INTO instructies (titel, inhoud, slug, status, created_at, nummer, functies)
+   VALUES ($1, $2, $3, 'concept', $4, $5, $6)`,
+  [titel, inhoud, slug, created_at, nummer, JSON.stringify(functiesGeparsed)]
     );
 
     return new NextResponse(JSON.stringify({ slug }), {
