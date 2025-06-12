@@ -14,10 +14,10 @@ interface Instructie {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const fetcher = async (url: string): Promise<Instructie[]> => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const res = await fetch(url);
   const data = await res.json();
-  return data.map((i: any) => ({
+  return data.map(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any(i: any) => ({
     ...i,
     functies: typeof i.functies === "string" ? JSON.parse(i.functies) : i.functies,
   }));
