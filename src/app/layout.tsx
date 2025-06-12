@@ -1,4 +1,6 @@
-import { ClerkProvider, UserButton, auth } from "@clerk/nextjs";
+"use client";
+
+import { ClerkProvider, UserButton, useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import "./globals.css";
 
@@ -8,8 +10,8 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const { userId, sessionClaims } = auth();
-  const email = sessionClaims?.email as string | undefined;
+  const { user } = useUser();
+  const email = user?.primaryEmailAddress?.emailAddress;
   const isAdmin = email === "herman@ijssalonvincenzo.nl";
 
   return (
