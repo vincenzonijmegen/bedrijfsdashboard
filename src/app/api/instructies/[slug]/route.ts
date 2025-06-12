@@ -5,6 +5,7 @@ function extractSlug(value: any): string {
   return Array.isArray(value) ? value[0] : value;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function GET(_req: Request, context: any) {
   const slug = extractSlug(context.params.slug);
 
@@ -19,6 +20,7 @@ export async function GET(_req: Request, context: any) {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function PATCH(req: Request, context: any) {
   const slug = extractSlug(context.params.slug);
 
@@ -37,6 +39,7 @@ export async function PATCH(req: Request, context: any) {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function PUT(req: Request, context: any) {
   const slug = extractSlug(context.params.slug);
 
@@ -57,6 +60,7 @@ export async function PUT(req: Request, context: any) {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function DELETE(_req: Request, context: any) {
   const slug = extractSlug(context.params.slug);
 
