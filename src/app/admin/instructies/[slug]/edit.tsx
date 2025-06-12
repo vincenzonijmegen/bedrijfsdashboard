@@ -1,33 +1,106 @@
-// Pagina: /admin/instructies/[slug]/edit.tsx
+"use client";
 
-import { db } from "@/lib/db";
-import { notFound } from "next/navigation";
-import dynamic from "next/dynamic";
-import { revalidatePath } from "next/cache";
+import { useEffect, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Image from "@tiptap/extension-image";
+import Placeholder from "@tiptap/extension-placeholder";
 import { Button } from "@/components/ui/button";
-import { redirect } from "next/navigation";
+import { uploadAfbeelding } from "@/utils/r2ClientUpload";
 
-// Dynamische import zodat Tiptap alleen in de browser laadt
-const Editor = dynamic(() => import("@/components/instructie/Editor"), { ssr: false });
+export default function InstructieBewerken() {
+  const router = useRouter();
+  const params = useParams();
+  const slug = params?.slug as string;
 
-export default async function EditInstructie({ params }: { params: { slug: string } }) {
-  const result = await db.query("SELECT * FROM instructies WHERE slug = $1", [params.slug]);
-  const instructie = result.rows[0];
+  const [titel, setTitel] = useState("");
+  const [nummer, setNummer] = useState("");
+  const [functies, setFuncties] = useState<string[]>([]);
+  const [geladen, setGeladen] = useState(false);
 
-  if (!instructie) return notFound();
+  const functiekeuzes = [
+    "scheppers overdag",
+    "scheppers overdag + avond",
+    "ijsvoorbereiders",
+    "keukenmedewerkers",
+  ];
 
-  async function handleSave(formData: FormData) {
-    "use server";
-    const inhoud = formData.get("inhoud")?.toString() ?? "";
-    await db.query("UPDATE instructies SET inhoud = $1 WHERE slug = $2", [inhoud, params.slug]);
-    revalidatePath("/instructies/" + params.slug);
-    redirect("/instructies/" + params.slug);
-  }
+  const editor = useEditor({
+    extensions: [StarterKit, Image, Placeholder.configure({ placeholder: "Typ hier de instructie..." })],
+    content: "<p>...</p>",
+  });
+
+  useEffect(() => {
+    if (!slug || !editor || geladen) return;
+    fetch(`/api/instructies/${slug}`)
+      .then(res => res.json())
+      .then(data => {
+        setTitel(data.titel);
+        setNummer(data.nummer || "");
+        setFuncties(data.functies || []);
+        editor.commands.setContent(data.inhoud);
+        setGeladen(true);
+      });
+  }, [slug, editor, geladen]);
+
+  const handleOpslaan = async () => {
+    if (!editor) return;
+    const inhoud = editor.getHTML();
+    const res = await fetch(`/api/instructies/${slug}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titel, inhoud, nummer, functies }),
+    });
+    if (res.ok) router.push("/admin/instructies");
+    else alert("Opslaan mislukt");
+  };
 
   return (
-    <form action={handleSave} className="p-4 space-y-4">
-      <Editor name="inhoud" defaultContent={instructie.inhoud ?? "<p></p>"} />
-      <Button type="submit">Opslaan</Button>
-    </form>
+    <main className="max-w-2xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Instructie bewerken</h1>
+
+      <input
+        type="text"
+        placeholder="Titel"
+        value={titel}
+        onChange={(e) => setTitel(e.target.value)}
+        className="w-full mb-4 border rounded px-3 py-2"
+      />
+
+      <input
+        type="text"
+        placeholder="Instructienummer (bijv. 1.1)"
+        value={nummer}
+        onChange={(e) => setNummer(e.target.value)}
+        className="w-full mb-4 border rounded px-3 py-2"
+      />
+
+      <div className="mb-4">
+        <label className="font-medium">Toon voor functies:</label>
+        <div className="grid grid-cols-2 gap-2 mt-1">
+          {functiekeuzes.map((f) => (
+            <label key={f} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={functies.includes(f)}
+                onChange={(e) => {
+                  setFuncties((prev) =>
+                    e.target.checked ? [...prev, f] : prev.filter((v) => v !== f)
+                  );
+                }}
+              />
+              {f}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="prose max-w-none mb-4 min-h-[200px] border rounded p-4">
+        {editor ? <EditorContent editor={editor} /> : <p>Editor wordt geladen...</p>}
+      </div>
+
+      <Button onClick={handleOpslaan}>Opslaan</Button>
+    </main>
   );
 }
