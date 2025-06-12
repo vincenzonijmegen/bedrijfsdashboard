@@ -42,14 +42,11 @@ export default function ResultatenOverzicht() {
           {data.map((r, i) => (
             <tr key={i}>
               <td className="border p-2">{r.email}</td>
+              <td className="border p-2">{r.naam}</td>
               <td className="border p-2 text-center">{r.score}%</td>
-              <td className="border p-2 text-center">
-                {r.juist} / {r.totaal}
-              </td>
+              <td className="border p-2 text-center">{r.juist} / {r.totaal}</td>
               <td className="border p-2 text-center">{r.slug}</td>
-              <td className="border p-2 text-center">
-                {new Date(r.tijdstip).toLocaleString()}
-              </td>
+              <td className="border p-2 text-center">{new Date(r.tijdstip).toLocaleString()}</td>
             </tr>
           ))}
         </tbody>
