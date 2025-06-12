@@ -11,8 +11,17 @@ import { Button } from "@/components/ui/button";
 
 export default function NieuweInstructie() {
   const [titel, setTitel] = useState("");
+  const [nummer, setNummer] = useState("");
+  const [functies, setFuncties] = useState<string[]>([]);
   const [editorKey] = useState(() => Math.random().toString(36).substring(2));
   const router = useRouter();
+
+  const functiekeuzes = [
+    "scheppers overdag",
+    "scheppers overdag + avond",
+    "ijsvoorbereiders",
+    "keukenmedewerkers",
+  ];
 
   const editor = useEditor({
     extensions: [
@@ -31,7 +40,7 @@ export default function NieuweInstructie() {
       const res = await fetch("/api/instructies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titel, inhoud }),
+        body: JSON.stringify({ titel, inhoud, nummer, functies }),
       });
 
       console.log("📦 Status:", res.status);
@@ -49,9 +58,9 @@ export default function NieuweInstructie() {
         throw new Error("Backend gaf geen leesbare JSON terug");
       }
 
-if (!res.ok || !data.slug) {
-  throw new Error("Geen instructie teruggekregen");
-}
+      if (!res.ok || !data.slug) {
+        throw new Error("Geen instructie teruggekregen");
+      }
 
       router.push("/admin/instructies");
     } catch (err) {
@@ -71,6 +80,34 @@ if (!res.ok || !data.slug) {
         onChange={(e) => setTitel(e.target.value)}
         className="w-full mb-4 border rounded px-3 py-2"
       />
+
+      <input
+        type="text"
+        placeholder="Instructienummer (bijv. 1.1)"
+        value={nummer}
+        onChange={(e) => setNummer(e.target.value)}
+        className="w-full mb-4 border rounded px-3 py-2"
+      />
+
+      <div className="mb-4">
+        <label className="font-medium">Toon voor functies:</label>
+        <div className="grid grid-cols-2 gap-2 mt-1">
+          {functiekeuzes.map((f) => (
+            <label key={f} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={functies.includes(f)}
+                onChange={(e) => {
+                  setFuncties((prev) =>
+                    e.target.checked ? [...prev, f] : prev.filter((v) => v !== f)
+                  );
+                }}
+              />
+              {f}
+            </label>
+          ))}
+        </div>
+      </div>
 
       <div className="prose max-w-none mb-4 min-h-[200px] border rounded p-4 prose-blue prose-li:my-1 prose-li:marker:text-gray-500">
         {!editor ? (
