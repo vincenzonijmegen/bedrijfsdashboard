@@ -8,6 +8,10 @@ export async function POST(req: Request) {
   try {
     
     const { titel, inhoud, nummer, functies } = await req.json();
+
+    if (!titel?.trim()) {
+      return NextResponse.json({ error: "Titel is verplicht" }, { status: 400 });
+    }
     const slug = slugify(titel, { lower: true, strict: true });
     const created_at = new Date().toISOString();
 
