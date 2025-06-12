@@ -31,7 +31,11 @@ export default function InstructieOverzicht() {
   if (error) return <div>Fout bij laden</div>;
   if (!data) return <div>Laden...</div>;
 
-  const gesorteerd = [...data].sort((a, b) => a.nummer?.localeCompare(b.nummer));
+  const gesorteerd = [...data].sort((a, b) => {
+    const na = a.nummer || "";
+    const nb = b.nummer || "";
+    return na.localeCompare(nb);
+  });
 
   return (
     <main className="max-w-4xl mx-auto p-4">
