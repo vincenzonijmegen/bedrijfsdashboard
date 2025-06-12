@@ -7,7 +7,7 @@ export async function GET() {
 
     const result = await db.query(
       `SELECT email, score, juist, totaal, slug, tijdstip
-       FROM resultaten
+       FROM toetsresultaten
        ORDER BY tijdstip DESC`
     );
 
