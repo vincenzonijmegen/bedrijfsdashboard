@@ -12,6 +12,7 @@ interface Instructie {
   slug: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const fetcher = async (url: string) => {
   const res = await fetch(url);
   const data = await res.json();
