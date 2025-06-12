@@ -7,7 +7,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Button } from "@/components/ui/button";
-import { uploadAfbeelding } from "@/utils/r2ClientUpload";
+
 
 export default function InstructieBewerken() {
   const router = useRouter();
