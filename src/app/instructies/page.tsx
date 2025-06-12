@@ -1,28 +1,66 @@
+"use client";
+
+import useSWR from "swr";
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { Button } from "@/components/ui/button";
 
-// Zorg dat we altijd live data tonen
-export const dynamic = "force-dynamic";
+interface Instructie {
+  id: string;
+  titel: string;
+  nummer?: string;
+  functies?: string[];
+  slug: string;
+}
 
-export default async function InstructieOverzicht() {
-  const result = await db.query("SELECT slug, titel FROM instructies ORDER BY titel ASC");
-  const instructies = result.rows;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const fetcher = async (url: string): Promise<Instructie[]> => {
+  const res = await fetch(url);
+  const data = await res.json();
+  return data.map(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (i: any) => ({
+      ...i,
+      functies: Array.isArray(i.functies)
+        ? i.functies
+        : typeof i.functies === "string"
+        ? (() => {
+            try {
+              const parsed = JSON.parse(i.functies);
+              return Array.isArray(parsed) ? parsed : [];
+            } catch {
+              return [];
+            }
+          })()
+        : []
+    })
+  );
+};
+
+export default function InstructieOverzicht() {
+  const { data, error } = useSWR("/api/instructies", fetcher);
+
+  if (error) return <div>Fout bij laden</div>;
+  if (!data) return <div>Laden...</div>;
+
+  const gesorteerd = [...data].sort((a, b) => {
+    const na = a.nummer || "";
+    const nb = b.nummer || "";
+    return na.localeCompare(nb);
+  });
 
   return (
-  <div className="p-6 max-w-4xl mx-auto space-y-6">
-    <h1 className="text-2xl font-bold">📚 Alle werkinstructies</h1>
-    <div className="space-y-2">
-      {instructies.map((i) => (
-        <Link
-          key={i.slug}
-          href={`/instructies/${i.slug}`}
-          className="block border rounded px-4 py-3 bg-white shadow hover:bg-blue-50"
-        >
-          {i.titel}
-        </Link>
-      ))}
-    </div>
-  </div>
-);
+    <main className="max-w-4xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">📘 Werkinstructies</h1>
 
+      <ul className="space-y-4">
+        {gesorteerd.map((i) => (
+          <li key={i.id} className="border p-4 rounded shadow bg-white">
+            <Link href={`/instructies/${i.slug}`} className="block text-blue-600 font-semibold">
+              {i.nummer ? `${i.nummer}. ` : ""}{i.titel}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </main>
+  );
 }
