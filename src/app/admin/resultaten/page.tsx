@@ -3,6 +3,7 @@
 import useSWR from "swr";
 
 interface Resultaat {
+  id: string;
   email: string;
   naam: string;
   score: number;
@@ -52,7 +53,7 @@ export default function ResultatenOverzicht() {
   <button
     onClick={async () => {
       if (confirm(`Verwijder resultaat van ${r.naam}?`)) {
-        await fetch(`/api/resultaten?email=${encodeURIComponent(r.email)}&slug=${encodeURIComponent(r.slug)}`, {
+        await fetch(`/api/resultaten?id=${r.id}`, {
           method: "DELETE",
         });
       }
