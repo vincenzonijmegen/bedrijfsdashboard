@@ -33,6 +33,29 @@ export async function PATCH(_req: Request, context: any) {
   }
 }
 
+
+export async function PUT(req: Request, context: any) {
+  const slug = context.params.slug;
+
+  try {
+    const { titel, inhoud, nummer, functies } = await req.json();
+
+    await db.query(
+      `UPDATE instructies
+       SET titel = $1, inhoud = $2, nummer = $3, functies = $4
+       WHERE slug = $5`,
+      [titel, inhoud, nummer, JSON.stringify(functies), slug]
+    );
+
+    return NextResponse.json({ slug }, { status: 200 });
+  } catch (err) {
+    console.error("🛑 Fout bij PUT:", err);
+    return NextResponse.json({ error: "Update mislukt" }, { status: 500 });
+  }
+}
+
+
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function DELETE(_req: Request, context: any) {
   const slug = context.params.slug;
@@ -45,3 +68,5 @@ export async function DELETE(_req: Request, context: any) {
     return NextResponse.json({ error: "Verwijderen mislukt" }, { status: 500 });
   }
 }
+
+
