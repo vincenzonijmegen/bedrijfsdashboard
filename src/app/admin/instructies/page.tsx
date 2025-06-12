@@ -12,6 +12,7 @@ interface Instructie {
   slug: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const fetcher = async (url: string): Promise<Instructie[]> => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const res = await fetch(url);
