@@ -68,12 +68,16 @@ export default function InstructieOverzicht() {
               <td className="border px-4 py-2 align-top">{i.nummer || "-"}</td>
               <td className="border px-4 py-2 align-top">{i.titel}</td>
               <td className="border px-4 py-2 align-top text-sm text-gray-600">
-                {Array.isArray(i.functies) ? i.functies.join(", ") : "-"}
+                {Array.isArray(i.functies) ? (
+          <ul className="list-disc list-inside">
+          {i.functies.map((f, idx) => <li key={idx}>{f}</li>)}
+        </ul>
+      ) : "-"}
               </td>
               <td className="border px-4 py-2 align-top">
   <div className="flex gap-2">
     <Link href={`/admin/instructies/${i.slug}/edit`}>
-      <Button variant="secondary" size="sm">Bewerken</Button>
+      <Button variant="default" size="sm">Bewerken</Button>
     </Link>
     <Button
       variant="destructive"
