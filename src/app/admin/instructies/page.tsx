@@ -49,7 +49,16 @@ export default function InstructieOverzicht() {
               <td className="border px-4 py-2 align-top">{i.nummer || "-"}</td>
               <td className="border px-4 py-2 align-top">{i.titel}</td>
               <td className="border px-4 py-2 align-top text-sm text-gray-600">
-                {Array.isArray(i.functies) ? i.functies.join(", ") : "-"}
+                {(() => {
+  if (Array.isArray(i.functies)) return i.functies.join(", ");
+  try {
+    const parsed = JSON.parse(i.functies as unknown as string);
+    return Array.isArray(parsed) ? parsed.join(", ") : "-";
+  } catch {
+    return "-";
+  }
+})()}
+
               </td>
               <td className="border px-4 py-2 align-top">
                 <Link href={`/admin/instructies/${i.slug}/edit`} className="text-blue-600 underline">
