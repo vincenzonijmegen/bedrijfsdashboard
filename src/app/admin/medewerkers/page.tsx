@@ -1,73 +1,127 @@
+// Bestand: /app/admin/medewerkers/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
-
-type Medewerker = {
-  id: number;
-  naam: string;
-  email: string;
-  functie: string;
-};
 
 export default function MedewerkersBeheer() {
-  const { user } = useUser();
-  const email = user?.primaryEmailAddress?.emailAddress;
-  const isAdmin = email === "herman@ijssalonvincenzo.nl";
-
-  const [naam, setNaam] = useState("");
-  const [functie, setFunctie] = useState("");
-  const [adres, setAdres] = useState("");
-  const [lijst, setLijst] = useState<Medewerker[]>([]);
+  const [medewerkers, setMedewerkers] = useState([]);
+  const [form, setForm] = useState({ naam: "", email: "", functie: "", wachtwoord: "" });
+  const [fout, setFout] = useState<string | null>(null);
+  const [succes, setSucces] = useState(false);
 
   useEffect(() => {
-    fetch("/api/medewerkers").then(res => res.json()).then(setLijst);
-  }, []);
+    fetch("/api/medewerkers")
+      .then((res) => res.json())
+      .then((data) => setMedewerkers(data));
+  }, [succes]);
 
-  const toevoegen = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFout(null);
+    setSucces(false);
+
     const res = await fetch("/api/medewerkers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ naam, functie, email: adres })
+      body: JSON.stringify(form),
     });
+
+    const data = await res.json();
     if (res.ok) {
-      setNaam(""); setFunctie(""); setAdres("");
-      const nieuwe = await res.json();
-      setLijst(prev => [...prev, nieuwe]);
+      setSucces(true);
+      setForm({ naam: "", email: "", functie: "", wachtwoord: "" });
+    } else {
+      setFout(data.error || "Onbekende fout");
     }
   };
 
-  if (!isAdmin) return null;
+  const handleDelete = async (email: string) => {
+    if (!confirm(`Verwijder medewerker met e-mail: ${email}?`)) return;
+    await fetch(`/api/medewerkers?email=${encodeURIComponent(email)}`, {
+      method: "DELETE",
+    });
+    setSucces(true); // triggert herladen
+  };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold">Medewerkersbeheer</h1>
+    <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <h1 className="text-2xl font-bold">👥 Medewerkersbeheer</h1>
 
-      <div className="space-y-2">
-        <input value={naam} onChange={e => setNaam(e.target.value)} placeholder="Naam" className="w-full border p-2 rounded" />
-        <input value={adres} onChange={e => setAdres(e.target.value)} placeholder="E-mailadres" className="w-full border p-2 rounded" />
-        <input value={functie} onChange={e => setFunctie(e.target.value)} placeholder="Functie" className="w-full border p-2 rounded" />
-        <button onClick={toevoegen} className="bg-green-600 text-white px-4 py-2 rounded">Toevoegen</button>
-      </div>
+      <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded shadow">
+        <div className="grid grid-cols-2 gap-4">
+          <input
+            type="text"
+            placeholder="Naam"
+            className="border p-2 rounded"
+            value={form.naam}
+            onChange={(e) => setForm({ ...form, naam: e.target.value })}
+            required
+          />
+          <input
+            type="email"
+            placeholder="E-mailadres"
+            className="border p-2 rounded"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            required
+          />
+          <input
+            type="text"
+            placeholder="Functie"
+            className="border p-2 rounded"
+            value={form.functie}
+            onChange={(e) => setForm({ ...form, functie: e.target.value })}
+            required
+          />
+          <input
+            type="text"
+            placeholder="Tijdelijk wachtwoord"
+            className="border p-2 rounded"
+            value={form.wachtwoord}
+            onChange={(e) => setForm({ ...form, wachtwoord: e.target.value })}
+            required
+          />
+        </div>
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Medewerker toevoegen
+        </button>
+        {fout && <p className="text-red-600">❌ {fout}</p>}
+        {succes && <p className="text-green-700">✅ Toegevoegd</p>}
+      </form>
 
-      <table className="w-full table-auto border mt-6">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="border p-2">Naam</th>
-            <th className="border p-2">E-mailadres</th>
-            <th className="border p-2">Functie</th>
-          </tr>
-        </thead>
-        <tbody>
-          {lijst.map((m, i) => (
-            <tr key={i} className="border-t">
-              <td className="p-2">{m.naam}</td>
-              <td className="p-2">{m.email}</td>
-              <td className="p-2">{m.functie}</td>
+      <div className="bg-white shadow rounded p-4">
+        <h2 className="text-lg font-semibold mb-2">Bestaande medewerkers</h2>
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border p-2 text-left">Naam</th>
+              <th className="border p-2 text-left">E-mail</th>
+              <th className="border p-2 text-left">Functie</th>
+              <th className="border p-2 text-center">Actie</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {medewerkers.map((m: any, i) => (
+              <tr key={i}>
+                <td className="border p-2">{m.naam}</td>
+                <td className="border p-2">{m.email}</td>
+                <td className="border p-2">{m.functie}</td>
+                <td className="border p-2 text-center">
+                  <button
+                    onClick={() => handleDelete(m.email)}
+                    className="text-red-600 underline text-sm"
+                  >
+                    Verwijderen
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

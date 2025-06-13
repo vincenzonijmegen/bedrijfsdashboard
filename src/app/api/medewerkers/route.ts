@@ -20,3 +20,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: "Toevoegen mislukt" }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const email = searchParams.get("email");
+
+  if (!email) {
+    return NextResponse.json({ error: "Email is vereist" }, { status: 400 });
+  }
+
+  try {
+    await db.query(`DELETE FROM medewerkers WHERE email = $1`, [email]);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Fout bij verwijderen medewerker:", err);
+    return NextResponse.json({ success: false, error: "Verwijderen mislukt" }, { status: 500 });
+  }
+}
