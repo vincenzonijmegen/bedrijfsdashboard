@@ -107,7 +107,8 @@ export default function InstructieBewerken() {
           <Button
             type="button"
             size="sm"
-            onClick={() => (editor.commands as any).setImageFromUpload()}
+            // @ts-expect-error: custom command via extended Image extension
+            onClick={() => editor.commands.setImageFromUpload()}
 
           >
             📷 Afbeelding toevoegen
