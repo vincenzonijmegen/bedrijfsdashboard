@@ -16,7 +16,7 @@ export async function sendUitnodiging(email: string, naam: string, wachtwoord: s
   const resend = new Resend(process.env.RESEND_API_KEY);
 
   const result = await resend.emails.send({
-    from: "IJssalon Vincenzo <noreply@mail.ijssalonvincenzo.nl>",
+    from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
     to: email,
     subject,
     html: body,
