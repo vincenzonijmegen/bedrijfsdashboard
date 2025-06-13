@@ -1,5 +1,6 @@
 import Image from "@tiptap/extension-image";
-import type { Editor } from "@tiptap/core";
+import type { CommandProps } from "@tiptap/core";
+
 
 export function addImageExtension(onUpload: (file: File) => Promise<string>) {
   return Image.extend({
@@ -17,7 +18,8 @@ export function addImageExtension(onUpload: (file: File) => Promise<string>) {
         setImageFromUpload:
           () =>
 
-            async ({ chain }: { chain: Editor["chain"] }) => {
+            async ({ chain }: CommandProps) => {
+
 
             const input = document.createElement("input");
             input.type = "file";
