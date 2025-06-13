@@ -35,3 +35,4 @@ console.log("🔑 Token aanwezig:", !!process.env.VERCEL_BLOB_READ_WRITE_TOKEN);
     { status: 500, headers: { "Content-Type": "application/json" } }
   );
 }
+}
