@@ -6,7 +6,7 @@ import { useUser } from "@clerk/nextjs";
 export default function AdminDashboard() {
   const { user } = useUser();
   const email = user?.primaryEmailAddress?.emailAddress;
-  const isAdmin = email === "herman@ijssalonvincenzo.nl";
+  // const isAdmin = email === "herman@ijssalonvincenzo.nl";
 
   // if (!isAdmin) return null;
 
