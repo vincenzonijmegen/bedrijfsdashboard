@@ -2,6 +2,8 @@ import Image from "@tiptap/extension-image";
 import type { CommandProps } from "@tiptap/core";
 
 
+
+
 export function addImageExtension(onUpload: (file: File) => Promise<string>) {
   return Image.extend({
     addOptions() {
