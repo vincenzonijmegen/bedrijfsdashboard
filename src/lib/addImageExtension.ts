@@ -15,24 +15,26 @@ export function addImageExtension(onUpload: (file: File) => Promise<string>) {
       return {
         ...this.parent?.(),
         setImageFromUpload:
-          () =>
-            async ({ chain }: CommandProps) => {
-              const input = document.createElement("input");
-              input.type = "file";
-              input.accept = "image/*";
-              input.click();
+  () =>
+    async (props: CommandProps) => {
+      const { chain } = props;
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.click();
 
-              return new Promise((resolve) => {
-                input.onchange = async () => {
-                  const file = input.files?.[0];
-                  if (file) {
-                    const url = await onUpload(file);
-                    chain().focus().setImage({ src: url }).run();
-                  }
-                  resolve(true);
-                };
-              });
-            },
+      return new Promise((resolve) => {
+        input.onchange = async () => {
+          const file = input.files?.[0];
+          if (file) {
+            const url = await onUpload(file);
+            chain().focus().setImage({ src: url }).run();
+          }
+          resolve(true);
+        };
+      });
+    },
+
       };
     },
 
