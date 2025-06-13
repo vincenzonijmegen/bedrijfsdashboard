@@ -10,6 +10,12 @@ export async function POST(req: Request) {
   const { naam, email, functie, wachtwoord } = await req.json();
 
   try {
+    // controleer op bestaand e-mailadres
+    const check = await db.query("SELECT 1 FROM medewerkers WHERE email = $1", [email]);
+    if (check.rowCount > 0) {
+      return NextResponse.json({ success: false, error: "E-mailadres bestaat al" }, { status: 400 });
+    }
+
     await db.query(
       `INSERT INTO medewerkers (naam, email, functie, wachtwoord) VALUES ($1, $2, $3, $4)`,
       [naam, email, functie, wachtwoord]
