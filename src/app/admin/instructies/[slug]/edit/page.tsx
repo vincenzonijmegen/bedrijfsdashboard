@@ -7,7 +7,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Button } from "@/components/ui/button";
 import { uploadAfbeelding } from "@/lib/upload";
-import ResizableImage from "@tiptap/extension-resizable-image";
+
 
 
 export default function InstructieBewerken() {
@@ -30,11 +30,6 @@ export default function InstructieBewerken() {
 const editor = useEditor({
   extensions: [
     StarterKit,
-    ResizableImage.configure({
-      inline: false,
-      allowBase64: false,
-      resizeIcon: true,
-    }),
     Placeholder.configure({
       placeholder: "Typ hier de instructie...",
     }),
@@ -120,7 +115,11 @@ const editor = useEditor({
       const file = input.files?.[0];
       if (file && editor) {
         const url = await uploadAfbeelding(file);
-        editor.chain().focus().setResizableImage({ src: url }).run();
+        editor.chain().focus().setImage({
+  src: url,
+  style: "width: 75%; display: block; margin: 0 auto;"
+}).run();
+
       }
     };
     input.click();
