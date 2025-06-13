@@ -1,4 +1,5 @@
 import Image from "@tiptap/extension-image";
+import type { Editor } from "@tiptap/core";
 
 export function addImageExtension(onUpload: (file: File) => Promise<string>) {
   return Image.extend({
@@ -16,7 +17,7 @@ export function addImageExtension(onUpload: (file: File) => Promise<string>) {
         setImageFromUpload:
           () =>
           // @ts-expect-error: Tiptap custom command argument is not typed
-            async ({ chain }: { chain: any }) => {
+            async ({ chain }: { chain: Editor["chain"] }) => {
 
             const input = document.createElement("input");
             input.type = "file";
