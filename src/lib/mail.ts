@@ -7,7 +7,7 @@ export async function sendUitnodiging(email: string, naam: string, wachtwoord: s
   const body = `
     <p>Hallo ${naam},</p>
     <p>Je bent toegevoegd aan het werkinstructiesysteem van IJssalon Vincenzo.</p>
-    <p><strong>Loginpagina:</strong> <a href="https://werkinstructies.vincenzo.nl/sign-in">klik hier om in te loggen</a></p>
+    <p><strong>Loginpagina:</strong> <a href="https://werkinstructies-app.vercel.app/sign-in">klik hier om in te loggen</a></p>
     <p><strong>Tijdelijk wachtwoord:</strong> ${wachtwoord}</p>
     <p>Wijzig dit wachtwoord na je eerste login.</p>
     <p>Met vriendelijke groet,<br/>IJssalon Vincenzo</p>

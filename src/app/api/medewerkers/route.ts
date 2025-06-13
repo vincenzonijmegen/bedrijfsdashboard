@@ -37,9 +37,11 @@ await db.query(
   `INSERT INTO medewerkers (naam, email, functie, wachtwoord, moet_wachtwoord_wijzigen) VALUES ($1, $2, $3, $4, true)`,
   [naam, email, functie, hashedWachtwoord]
 );
+    console.log("📨 Stuur uitnodiging naar:", email);
 
     // uitnodiging versturen
     await sendUitnodiging(email, naam, tijdelijkWachtwoord);
+    console.log("📬 Resend aanroep:", { email, naam, tijdelijkWachtwoord });
 
     return NextResponse.json({ success: true });
   } catch (err) {
