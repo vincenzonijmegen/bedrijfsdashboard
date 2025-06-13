@@ -24,6 +24,7 @@ export async function POST(req: Request) {
       naam: medewerker.naam,
       functie: medewerker.functie,
       email: medewerker.email,
+      moetWachtwoordWijzigen: medewerker.moet_wachtwoord_wijzigen,
     });
   } catch (err) {
     console.error("Fout bij inloggen:", err);

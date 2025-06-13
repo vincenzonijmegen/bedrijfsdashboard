@@ -33,10 +33,10 @@ export async function POST(req: Request) {
     const hashedWachtwoord = await bcrypt.hash(tijdelijkWachtwoord, 10);
 
     // opslaan in database
-    await db.query(
-      `INSERT INTO medewerkers (naam, email, functie, wachtwoord) VALUES ($1, $2, $3, $4)`,
-      [naam, email, functie, hashedWachtwoord]
-    );
+await db.query(
+  `INSERT INTO medewerkers (naam, email, functie, wachtwoord, moet_wachtwoord_wijzigen) VALUES ($1, $2, $3, $4, true)`,
+  [naam, email, functie, hashedWachtwoord]
+);
 
     // uitnodiging versturen
     await sendUitnodiging(email, naam, tijdelijkWachtwoord);

@@ -15,8 +15,7 @@ export async function sendUitnodiging(email: string, naam: string, wachtwoord: s
   `;
 
   const result = await resend.emails.send({
-    from: "IJssalon Vincenzo <onboarding@resend.dev>",
-
+    from: "IJssalon Vincenzo <noreply@mail.ijssalonvincenzo.nl>",
     to: email,
     subject,
     html: body,
