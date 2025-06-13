@@ -23,7 +23,7 @@ console.log("🔑 Token aanwezig:", !!process.env.VERCEL_BLOB_READ_WRITE_TOKEN);
     const { put } = await import("@vercel/blob");
     const uploadRes = await put(filename, buffer, {
   access: "public",
-  token: process.env.VERCEL_BLOB_READ_WRITE_TOKEN!,
+  token: process.env.BLOB_READ_WRITE_TOKEN,
 });
 
 
