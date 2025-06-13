@@ -39,7 +39,9 @@ export function addImageExtension(onUpload: (file: File) => Promise<string>) {
     addKeyboardShortcuts() {
       return {
         ...this.parent?.(),
-        "Mod-Shift-I": () => this.editor.commands.setImageFromUpload(),
+       // @ts-expect-error: custom command via Image extension
+        "Mod-Shift-I": () => (this.editor.commands as any).setImageFromUpload(),
+
       };
     },
   });
