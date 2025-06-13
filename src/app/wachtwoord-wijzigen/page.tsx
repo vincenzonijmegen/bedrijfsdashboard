@@ -1,12 +1,19 @@
 "use client";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function WachtwoordWijzigen() {
-  const searchParams = useSearchParams();
-  const email = searchParams.get("email") || "";
   const router = useRouter();
+  const [email, setEmail] = useState("");
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      const param = url.searchParams.get("email");
+      setEmail(param || "");
+    }
+  }, []);
+  
   const [wachtwoord, setWachtwoord] = useState("");
   const [herhaal, setHerhaal] = useState("");
   const [fout, setFout] = useState("");
