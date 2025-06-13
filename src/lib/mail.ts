@@ -3,6 +3,7 @@ import { Resend } from "resend";
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function sendUitnodiging(email: string, naam: string, wachtwoord: string) {
+  console.log("📧 Verstuur uitnodiging naar:", email, "met wachtwoord:", wachtwoord);
   const subject = "Je werkinstructie-account bij IJssalon Vincenzo";
   const body = `
     <p>Hallo ${naam},</p>
@@ -13,10 +14,12 @@ export async function sendUitnodiging(email: string, naam: string, wachtwoord: s
     <p>Met vriendelijke groet,<br/>IJssalon Vincenzo</p>
   `;
 
-  await resend.emails.send({
+  const result = await resend.emails.send({
     from: "IJssalon Vincenzo <noreply@mail.vincenzo.nl>",
     to: email,
     subject,
     html: body,
   });
+
+  console.log("📬 Resend response:", result);
 }
