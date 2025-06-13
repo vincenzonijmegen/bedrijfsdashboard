@@ -7,7 +7,8 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Button } from "@/components/ui/button";
 import { uploadAfbeelding } from "@/lib/upload";
-import { addImageExtension } from "@/lib/tiptap/addImageExtension";
+import ResizableImage from "@tiptap/extension-resizable-image";
+
 
 export default function InstructieBewerken() {
   const router = useRouter();
@@ -26,16 +27,20 @@ export default function InstructieBewerken() {
     "keukenmedewerkers",
   ];
 
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      addImageExtension(uploadAfbeelding),
-      Placeholder.configure({
-        placeholder: "Typ hier de instructie...",
-      }),
-    ],
-    content: "<p>...</p>",
-  });
+const editor = useEditor({
+  extensions: [
+    StarterKit,
+    ResizableImage.configure({
+      inline: false,
+      allowBase64: false,
+      resizeIcon: true,
+    }),
+    Placeholder.configure({
+      placeholder: "Typ hier de instructie...",
+    }),
+  ],
+});
+
 
   useEffect(() => {
     if (!slug || !editor || geladen) return;
@@ -115,7 +120,7 @@ export default function InstructieBewerken() {
       const file = input.files?.[0];
       if (file && editor) {
         const url = await uploadAfbeelding(file);
-        editor.chain().focus().setImage({ src: url }).run();
+        editor.chain().focus().setResizableImage({ src: url }).run();
       }
     };
     input.click();
@@ -123,6 +128,7 @@ export default function InstructieBewerken() {
 >
   📷 Afbeelding toevoegen
 </Button>
+
         </div>
       )}
 
