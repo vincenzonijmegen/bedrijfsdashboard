@@ -12,7 +12,7 @@ export async function POST(req: Request) {
   try {
     // controleer op bestaand e-mailadres
     const check = await db.query("SELECT 1 FROM medewerkers WHERE email = $1", [email]);
-    if (check.rowCount > 0) {
+    if (check && check.rowCount && check.rowCount > 0) {
       return NextResponse.json({ success: false, error: "E-mailadres bestaat al" }, { status: 400 });
     }
 
