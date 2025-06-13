@@ -1,14 +1,11 @@
 "use client";
-
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 
 export default function AdminDashboard() {
-  const { user } = useUser();
-  const email = user?.primaryEmailAddress?.emailAddress;
-  // const isAdmin = email === "herman@ijssalonvincenzo.nl";
-
-  // if (!isAdmin) return null;
+  // tijdelijk openstellen
+  const email = "tijdelijk@open.nl"; // of haal uit useUser
+  const isAdmin = true; // override controle
 
   return (
     <div className="p-6 space-y-6 max-w-xl mx-auto">
