@@ -1,19 +1,22 @@
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 export async function sendUitnodiging(email: string, naam: string, wachtwoord: string) {
-  const subject = "Uitnodiging: Werkinstructies Vincenzo";
+  const subject = "Je werkinstructie-account bij IJssalon Vincenzo";
   const body = `
-    Hallo ${naam},
-
-    Je bent toegevoegd aan het werkinstructiesysteem van IJssalon Vincenzo.
-
-    Je kunt inloggen via: https://werkinstructies.vincenzo.nl/inloggen  
-    Tijdelijk wachtwoord: ${wachtwoord}
-
-    Wijzig je wachtwoord na de eerste login.
-
-    Met vriendelijke groet,  
-    IJssalon Vincenzo
+    <p>Hallo ${naam},</p>
+    <p>Je bent toegevoegd aan het werkinstructiesysteem van IJssalon Vincenzo.</p>
+    <p><strong>Loginpagina:</strong> <a href="https://werkinstructies.vincenzo.nl/sign-in">klik hier om in te loggen</a></p>
+    <p><strong>Tijdelijk wachtwoord:</strong> ${wachtwoord}</p>
+    <p>Wijzig dit wachtwoord na je eerste login.</p>
+    <p>Met vriendelijke groet,<br/>IJssalon Vincenzo</p>
   `;
 
-  // Bijv. via Resend, Mailgun, of Nodemailer
-  await sendMail({ to: email, subject, body });
+  await resend.emails.send({
+    from: "IJssalon Vincenzo <noreply@mail.vincenzo.nl>",
+    to: email,
+    subject,
+    html: body,
+  });
 }
