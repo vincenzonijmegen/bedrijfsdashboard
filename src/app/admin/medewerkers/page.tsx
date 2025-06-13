@@ -3,8 +3,14 @@
 
 import { useEffect, useState } from "react";
 
+interface Medewerker {
+  naam: string;
+  email: string;
+  functie: string;
+}
+
 export default function MedewerkersBeheer() {
-  const [medewerkers, setMedewerkers] = useState([]);
+  const [medewerkers, setMedewerkers] = useState<Medewerker[]>([]);
   const [form, setForm] = useState({ naam: "", email: "", functie: "", wachtwoord: "" });
   const [fout, setFout] = useState<string | null>(null);
   const [succes, setSucces] = useState(false);
@@ -104,7 +110,7 @@ export default function MedewerkersBeheer() {
             </tr>
           </thead>
           <tbody>
-            {medewerkers.map((m: any, i) => (
+            {medewerkers.map((m, i) => (
               <tr key={i}>
                 <td className="border p-2">{m.naam}</td>
                 <td className="border p-2">{m.email}</td>
