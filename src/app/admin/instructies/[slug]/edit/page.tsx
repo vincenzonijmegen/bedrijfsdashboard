@@ -107,7 +107,8 @@ export default function InstructieBewerken() {
           <Button
             type="button"
             size="sm"
-            onClick={() => editor.commands.setImageFromUpload()}
+            onClick={() => (editor.commands as any).setImageFromUpload()}
+
           >
             📷 Afbeelding toevoegen
           </Button>
