@@ -93,7 +93,8 @@ const handleVerwijderen = async () => {
                 const file = input.files?.[0];
                 if (file) {
                   const url = await uploadAfbeelding(file);
-                  editor.chain().focus().setImage({ src: url }).run();
+                  editor.commands.insertContent(`<img src="${url}" style="width: 75%; display: block; margin: 0 auto;" />`);
+
                 }
               };
               input.click();
