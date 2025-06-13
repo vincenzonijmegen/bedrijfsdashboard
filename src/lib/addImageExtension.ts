@@ -39,7 +39,6 @@ export function addImageExtension(onUpload: (file: File) => Promise<string>) {
     addKeyboardShortcuts() {
       return {
         ...this.parent?.(),
-        // @ts-expect-error - custom command not in Tiptap types
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         "Mod-Shift-I": () => (this.editor.commands as any).setImageFromUpload(),
       };
