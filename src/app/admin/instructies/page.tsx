@@ -17,17 +17,16 @@ const fetcher = async (url: string): Promise<Instructie[]> => {
   const res = await fetch(url);
   const data = await res.json();
   return data.map(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (i: any) => ({
       ...i,
       functies: (() => {
-      try {
-        const parsed = JSON.parse(i.functies);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return i.functies;
-      }
-    })(),
+        try {
+          const parsed = JSON.parse(i.functies);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return i.functies;
+        }
+      })(),
     })
   );
 };
@@ -45,59 +44,60 @@ export default function InstructieOverzicht() {
   });
 
   return (
-    <main className="max-w-4xl mx-auto p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Instructies</h1>
+    <main className="max-w-5xl mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">Instructies</h1>
         <Link href="/admin/instructies/nieuw">
           <Button>+ Nieuwe instructie</Button>
         </Link>
       </div>
 
-      <table className="w-full border border-gray-300 text-left">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="border px-4 py-2">Nummer</th>
-            <th className="border px-4 py-2">Titel</th>
-            <th className="border px-4 py-2">Functies</th>
-            <th className="border px-4 py-2">Acties</th>
-          </tr>
-        </thead>
-        <tbody>
-          {gesorteerd.map((i: Instructie) => (
-            <tr key={i.id} className="border-t">
-              <td className="border px-4 py-2 align-top">{i.nummer || "-"}</td>
-              <td className="border px-4 py-2 align-top">{i.titel}</td>
-              <td className="border px-4 py-2 align-top text-sm text-gray-600">
-                {Array.isArray(i.functies) ? (
-          <ul className="list-disc list-inside">
-          {i.functies.map((f, idx) => <li key={idx}>{f}</li>)}
-        </ul>
-      ) : "-"}
-              </td>
-              <td className="border px-4 py-2 align-top">
-  <div className="flex gap-2">
-    <Link href={`/admin/instructies/${i.slug}/edit`}>
-      <Button variant="default" size="sm">Bewerken</Button>
-    </Link>
-    <Button
-      variant="destructive"
-      size="sm"
-      onClick={async () => {
-        if (confirm(`Verwijder instructie: ${i.titel}?`)) {
-          await fetch(`/api/instructies/${i.slug}`, { method: "DELETE" });
-          location.reload();
-        }
-      }}
-    >
-      Verwijderen
-    </Button>
-  </div>
-</td>
-
+      <div className="bg-white shadow-md rounded-xl overflow-hidden">
+        <table className="w-full text-left text-sm">
+          <thead className="bg-gray-100 text-gray-700">
+            <tr>
+              <th className="px-4 py-3">Nummer</th>
+              <th className="px-4 py-3">Titel</th>
+              <th className="px-4 py-3">Functies</th>
+              <th className="px-4 py-3">Acties</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {gesorteerd.map((i: Instructie, idx) => (
+              <tr key={i.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                <td className="px-4 py-3 align-top">{i.nummer || "-"}</td>
+                <td className="px-4 py-3 align-top font-medium">{i.titel}</td>
+                <td className="px-4 py-3 align-top text-gray-600 text-sm">
+                  {Array.isArray(i.functies) ? (
+                    <ul className="list-disc list-inside">
+                      {i.functies.map((f, idx) => <li key={idx}>{f}</li>)}
+                    </ul>
+                  ) : "-"}
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <div className="flex gap-2">
+                    <Link href={`/admin/instructies/${i.slug}/edit`}>
+                      <Button variant="default" size="sm">Bewerken</Button>
+                    </Link>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={async () => {
+                        if (confirm(`Verwijder instructie: ${i.titel}?`)) {
+                          await fetch(`/api/instructies/${i.slug}`, { method: "DELETE" });
+                          location.reload();
+                        }
+                      }}
+                    >
+                      Verwijderen
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </main>
   );
 }
