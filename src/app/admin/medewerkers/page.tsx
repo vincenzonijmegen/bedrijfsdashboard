@@ -1,4 +1,3 @@
-// Bestand: /app/admin/medewerkers/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,8 +8,14 @@ interface Medewerker {
   functie: string;
 }
 
+interface FunctieOptie {
+  id: number;
+  naam: string;
+}
+
 export default function MedewerkersBeheer() {
   const [medewerkers, setMedewerkers] = useState<Medewerker[]>([]);
+  const [functies, setFuncties] = useState<FunctieOptie[]>([]);
   const [form, setForm] = useState({ naam: "", email: "", functie: "", wachtwoord: "" });
   const [fout, setFout] = useState<string | null>(null);
   const [succes, setSucces] = useState(false);
@@ -19,6 +24,10 @@ export default function MedewerkersBeheer() {
     fetch("/api/medewerkers")
       .then((res) => res.json())
       .then((data) => setMedewerkers(data));
+
+    fetch("/api/medewerkers?type=functies")
+      .then((res) => res.json())
+      .then((data) => setFuncties(data));
   }, [succes]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,7 +55,7 @@ export default function MedewerkersBeheer() {
     await fetch(`/api/medewerkers?email=${encodeURIComponent(email)}`, {
       method: "DELETE",
     });
-    setSucces(true); // triggert herladen
+    setSucces(true);
   };
 
   return (
@@ -71,14 +80,17 @@ export default function MedewerkersBeheer() {
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             required
           />
-          <input
-            type="text"
-            placeholder="Functie"
+          <select
             className="border p-2 rounded"
             value={form.functie}
             onChange={(e) => setForm({ ...form, functie: e.target.value })}
             required
-          />
+          >
+            <option value="">Kies functie</option>
+            {functies.map((f) => (
+              <option key={f.id} value={f.naam}>{f.naam}</option>
+            ))}
+          </select>
           <input
             type="text"
             placeholder="Tijdelijk wachtwoord"
