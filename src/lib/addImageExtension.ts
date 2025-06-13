@@ -16,7 +16,7 @@ export function addImageExtension(onUpload: (file: File) => Promise<string>) {
         ...this.parent?.(),
         setImageFromUpload:
           () =>
-          // @ts-expect-error: Tiptap custom command argument is not typed
+
             async ({ chain }: { chain: Editor["chain"] }) => {
 
             const input = document.createElement("input");
