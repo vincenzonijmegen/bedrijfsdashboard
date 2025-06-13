@@ -1,25 +1,32 @@
-// 1. API route: /api/login/route.ts - controleer login op basis van medewerkers
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
   const { email, wachtwoord } = await req.json();
 
-  const result = await db.query(
-    `SELECT * FROM medewerkers WHERE email = $1 AND wachtwoord = $2`,
-    [email, wachtwoord]
-  );
+  try {
+    const result = await db.query(`SELECT * FROM medewerkers WHERE email = $1`, [email]);
 
-  if (result.rowCount === 1) {
+    if (result.rowCount !== 1) {
+      return NextResponse.json({ success: false, error: "Ongeldige inloggegevens" }, { status: 401 });
+    }
+
     const medewerker = result.rows[0];
+    const wachtwoordCorrect = await bcrypt.compare(wachtwoord, medewerker.wachtwoord);
+
+    if (!wachtwoordCorrect) {
+      return NextResponse.json({ success: false, error: "Ongeldige inloggegevens" }, { status: 401 });
+    }
+
     return NextResponse.json({
       success: true,
       naam: medewerker.naam,
       functie: medewerker.functie,
       email: medewerker.email,
     });
-  } else {
-    return NextResponse.json({ success: false, error: "Ongeldige inloggegevens" }, { status: 401 });
+  } catch (err) {
+    console.error("Fout bij inloggen:", err);
+    return NextResponse.json({ success: false, error: "Serverfout" }, { status: 500 });
   }
 }
-

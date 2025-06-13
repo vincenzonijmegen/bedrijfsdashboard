@@ -1,5 +1,8 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+import { sendUitnodiging } from "@/lib/mail";
+
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -16,7 +19,7 @@ export async function GET(req: Request) {
 
 
 export async function POST(req: Request) {
-  const { naam, email, functie, wachtwoord } = await req.json();
+  const { naam, email, functie } = await req.json();
 
   try {
     // controleer op bestaand e-mailadres
@@ -25,10 +28,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "E-mailadres bestaat al" }, { status: 400 });
     }
 
+    // tijdelijk wachtwoord genereren + hashen
+    const tijdelijkWachtwoord = Math.random().toString(36).slice(-8);
+    const hashedWachtwoord = await bcrypt.hash(tijdelijkWachtwoord, 10);
+
+    // opslaan in database
     await db.query(
       `INSERT INTO medewerkers (naam, email, functie, wachtwoord) VALUES ($1, $2, $3, $4)`,
-      [naam, email, functie, wachtwoord]
+      [naam, email, functie, hashedWachtwoord]
     );
+
+    // uitnodiging versturen
+    await sendUitnodiging(email, naam, tijdelijkWachtwoord);
+
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("Fout bij toevoegen medewerker:", err);
