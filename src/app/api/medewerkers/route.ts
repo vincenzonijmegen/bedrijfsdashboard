@@ -1,4 +1,6 @@
-// 2. API route: /api/medewerkers/route.ts - aanmaken en ophalen van medewerkers
+import { db } from "@/lib/db";
+import { NextResponse } from "next/server";
+
 export async function GET() {
   const result = await db.query("SELECT naam, email, functie FROM medewerkers ORDER BY naam");
   return NextResponse.json(result.rows);
