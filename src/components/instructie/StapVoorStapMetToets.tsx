@@ -192,13 +192,21 @@ export default function StapVoorStapMetToets({ html }: Props) {
       )}
 
       {fase === "klaar" && (
-        <div className="text-center text-xl font-semibold">
-          <p className={score >= 80 ? "text-green-700" : "text-red-700"}>
-            {score >= 80 ? "✅ Geslaagd!" : "❌ Niet geslaagd."} Je score: {score}%<br />
-            {aantalJuist} van {vragen.length} goed beantwoord
-          </p>
-        </div>
-      )}
+  <div className="text-center text-xl font-semibold space-y-4">
+    <p className={score >= 80 ? "text-green-700" : "text-red-700"}>
+      {score >= 80 ? "✅ Geslaagd!" : "❌ Niet geslaagd."} Je score: {score}%<br />
+      {aantalJuist} van {vragen.length} goed beantwoord
+    </p>
+    <a
+      href="/instructies"
+      className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+    >
+      Terug naar instructies
+    </a>
+  </div>
+)}
+
+
     </div>
   );
 }
