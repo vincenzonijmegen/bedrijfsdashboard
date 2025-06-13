@@ -115,12 +115,10 @@ const editor = useEditor({
       const file = input.files?.[0];
       if (file && editor) {
         const url = await uploadAfbeelding(file);
-editor.chain().focus().setImage({
-  src: url,
-  HTMLAttributes: {
-    style: "width: 75%; display: block; margin: 0 auto;"
-  }
-}).run();
+editor.commands.insertContent(
+  `<img src="${url}" style="width: 75%; display: block; margin: 0 auto;" />`
+);
+
 
 
       }
