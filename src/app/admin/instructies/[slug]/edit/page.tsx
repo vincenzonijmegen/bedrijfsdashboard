@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Button } from "@/components/ui/button";
-
+import { uploadAfbeelding } from "@/lib/upload";
+import { addImageExtension } from "@/lib/tiptap/addImageExtension";
 
 export default function InstructieBewerken() {
   const router = useRouter();
@@ -27,15 +27,21 @@ export default function InstructieBewerken() {
   ];
 
   const editor = useEditor({
-    extensions: [StarterKit, Image, Placeholder.configure({ placeholder: "Typ hier de instructie..." })],
+    extensions: [
+      StarterKit,
+      addImageExtension(uploadAfbeelding),
+      Placeholder.configure({
+        placeholder: "Typ hier de instructie...",
+      }),
+    ],
     content: "<p>...</p>",
   });
 
   useEffect(() => {
     if (!slug || !editor || geladen) return;
     fetch(`/api/instructies/${slug}`)
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         setTitel(data.titel);
         setNummer(data.nummer || "");
         setFuncties(data.functies || []);
@@ -84,17 +90,29 @@ export default function InstructieBewerken() {
               <input
                 type="checkbox"
                 checked={functies.includes(f)}
-                onChange={(e) => {
+                onChange={(e) =>
                   setFuncties((prev) =>
                     e.target.checked ? [...prev, f] : prev.filter((v) => v !== f)
-                  );
-                }}
+                  )
+                }
               />
               {f}
             </label>
           ))}
         </div>
       </div>
+
+      {editor && (
+        <div className="mb-2">
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => editor.commands.setImageFromUpload()}
+          >
+            📷 Afbeelding toevoegen
+          </Button>
+        </div>
+      )}
 
       <div className="prose max-w-none mb-4 min-h-[200px] border rounded p-4">
         {editor ? <EditorContent editor={editor} /> : <p>Editor wordt geladen...</p>}
