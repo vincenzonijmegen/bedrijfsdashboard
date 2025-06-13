@@ -16,7 +16,8 @@ export function addImageExtension(onUpload: (file: File) => Promise<string>) {
         setImageFromUpload:
           () =>
           // @ts-expect-error: Tiptap custom command argument is not typed
-            async ({ chain }) => {
+            async ({ chain }: { chain: any }) => {
+
             const input = document.createElement("input");
             input.type = "file";
             input.accept = "image/*";
