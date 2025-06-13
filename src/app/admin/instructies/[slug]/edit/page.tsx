@@ -7,6 +7,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Button } from "@/components/ui/button";
 import { uploadAfbeelding } from "@/lib/upload";
+import Image from "@tiptap/extension-image";
 
 
 
@@ -30,6 +31,7 @@ export default function InstructieBewerken() {
 const editor = useEditor({
   extensions: [
     StarterKit,
+    Image,
     Placeholder.configure({
       placeholder: "Typ hier de instructie...",
     }),

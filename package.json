@@ -12,7 +12,7 @@
   "dependencies": {
     "@clerk/nextjs": "^6.21.0",
     "@radix-ui/react-slot": "^1.2.3",
-    "@tiptap/extension-image": "^2.13.0",
+    "@tiptap/extension-image": "^2.14.0",
     "@tiptap/extension-placeholder": "^2.13.0",
     "@tiptap/react": "^2.14.0",
     "@tiptap/starter-kit": "^2.14.0",
