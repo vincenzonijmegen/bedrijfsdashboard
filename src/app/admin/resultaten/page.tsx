@@ -53,9 +53,10 @@ export default function ResultatenOverzicht() {
   <button
     onClick={async () => {
       if (confirm(`Verwijder resultaat van ${r.naam}?`)) {
-        await fetch(`/api/resultaten?id=${r.id}`, {
-          method: "DELETE",
-        });
+      await fetch(`/api/resultaten?email=${encodeURIComponent(r.email)}&slug=${encodeURIComponent(r.slug)}`, {
+      method: "DELETE",
+      });
+
       }
     }}
     className="text-red-600 underline text-sm"
