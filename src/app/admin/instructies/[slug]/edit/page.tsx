@@ -105,14 +105,24 @@ export default function InstructieBewerken() {
       {editor && (
         <div className="mb-2">
           <Button
-            type="button"
-            size="sm"
-            // @ts-expect-error: custom command via extended Image extension
-            onClick={() => editor.commands.setImageFromUpload()}
-
-          >
-            📷 Afbeelding toevoegen
-          </Button>
+  type="button"
+  size="sm"
+  onClick={async () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (file && editor) {
+        const url = await uploadAfbeelding(file);
+        editor.chain().focus().setImage({ src: url }).run();
+      }
+    };
+    input.click();
+  }}
+>
+  📷 Afbeelding toevoegen
+</Button>
         </div>
       )}
 
