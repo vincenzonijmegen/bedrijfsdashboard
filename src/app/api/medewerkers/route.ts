@@ -1,10 +1,19 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const type = url.searchParams.get("type");
+
+  if (type === "functies") {
+    const result = await db.query("SELECT id, naam FROM functies ORDER BY naam");
+    return NextResponse.json(result.rows);
+  }
+
   const result = await db.query("SELECT naam, email, functie FROM medewerkers ORDER BY naam");
   return NextResponse.json(result.rows);
 }
+
 
 export async function POST(req: Request) {
   const { naam, email, functie, wachtwoord } = await req.json();
