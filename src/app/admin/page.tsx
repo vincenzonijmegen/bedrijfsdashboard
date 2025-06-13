@@ -8,7 +8,7 @@ export default function AdminDashboard() {
   const email = user?.primaryEmailAddress?.emailAddress;
   const isAdmin = email === "herman@ijssalonvincenzo.nl";
 
-  if (!isAdmin) return null;
+  // if (!isAdmin) return null;
 
   return (
     <div className="p-6 space-y-6 max-w-xl mx-auto">
