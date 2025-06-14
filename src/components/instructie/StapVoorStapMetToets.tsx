@@ -25,7 +25,7 @@ export default function StapVoorStapMetToets({ html }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const pathname = usePathname();
-  const slug = pathname ? pathname.split("/").pop() : null;
+  
 
   useEffect(() => {
     const [stapDeel, ...vraagDeel] = html.split(/Vraag:\s/);
