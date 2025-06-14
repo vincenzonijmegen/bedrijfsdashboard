@@ -34,7 +34,7 @@ export default function SignInPage() {
       } else {
         setFout(data.error || "Inloggen mislukt");
       }
-    } catch (err) {
+    } catch {
       setFout("Serverfout bij inloggen.");
     }
   }
