@@ -20,6 +20,9 @@ export default function SignInPage() {
   });
   const data = await res.json();
 
+
+
+  
   if (data.success) {
     // 👇 Bewaar de gebruiker
     localStorage.setItem("gebruiker", JSON.stringify(data));
