@@ -22,7 +22,9 @@ export default function StapVoorStapMetToets({ html }: Props) {
   const [score, setScore] = useState(0);
   const [aantalJuist, setAantalJuist] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [fouten, setFouten] = useState<{ vraag: string; gegeven: string }[]>([]);
+  const [fouten, setFouten] = useState<
+  { vraag: string; gegeven: string; gekozenTekst: string }[]
+>([]);
 
 
   useEffect(() => {
@@ -91,8 +93,10 @@ export default function StapVoorStapMetToets({ html }: Props) {
   } else {
     setFouten((f) => [
       ...f,
-      { vraag: vragen[index].vraag, gegeven: letter },
-    ]);
+      { vraag: vragen[index].vraag,
+    gegeven: letter,
+    gekozenTekst: vragen[index].opties[["A", "B", "C"].indexOf(letter)],
+  },    ]);
   }
   setFeedback(juist ? "✅ Goed!" : `❌ Fout. Juiste antwoord: ${vragen[index].antwoord}`);
 };

@@ -41,11 +41,15 @@ export async function POST(req: Request) {
     );
 
     const foutenLijst =
-      fouten && fouten.length > 0
-        ? fouten
-            .map((f: Fout, i: number) => `${i + 1}. Vraag: ${f.vraag}\n   Antwoord: ${f.gegeven}`)
-            .join("\n")
-        : "✅ Alles correct beantwoord.";
+  fouten && fouten.length > 0
+    ? (fouten as Fout[])
+        .map(
+          (f, i) =>
+            `${i + 1}. Vraag: ${f.vraag}\n   Antwoord (${f.gegeven}): ${f.gekozenTekst}`
+        )
+        .join("\n")
+    : "✅ Alles correct beantwoord.";
+
 
     const mailContent = `
 Toetsresultaat van ${naam} (${email})
