@@ -5,13 +5,13 @@ import { useState, useEffect } from "react";
 export default function ResetWachtwoord() {
   const router = useRouter();
   const [token, setToken] = useState("");
+  const [email, setEmail] = useState("");
 
   const [wachtwoord, setWachtwoord] = useState("");
   const [herhaal, setHerhaal] = useState("");
   const [fout, setFout] = useState("");
   const [succes, setSucces] = useState("");
 
-  // ✅ Token ophalen via URL op de client
   useEffect(() => {
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
@@ -41,11 +41,31 @@ export default function ResetWachtwoord() {
     });
 
     const data = await res.json();
-    if (data.success) {
-      setSucces("Wachtwoord gewijzigd! Je wordt doorgestuurd...");
-      setTimeout(() => router.push("/sign-in"), 3000);
-    } else {
+
+    if (data.success && data.email) {
+      // automatisch inloggen
+      const loginRes = await fetch("/api/login", {
+        method: "POST",
+        body: JSON.stringify({ email: data.email, wachtwoord }),
+      });
+
+      const loginData = await loginRes.json();
+      if (loginData.success) {
+        localStorage.setItem("gebruiker", JSON.stringify(loginData));
+
+        if (loginData.functie === "beheerder") {
+          router.push("/admin");
+        } else {
+          router.push("/instructies");
+        }
+        return;
+      }
+    }
+
+    if (!data.success) {
       setFout(data.error || "Ongeldige of verlopen link.");
+    } else {
+      setFout("Wachtwoord is gewijzigd, maar automatisch inloggen is mislukt.");
     }
   };
 

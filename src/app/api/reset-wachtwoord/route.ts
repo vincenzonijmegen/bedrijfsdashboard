@@ -3,33 +3,38 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
-  const { token, nieuwWachtwoord } = await req.json();
-
-  if (!token || !nieuwWachtwoord) {
-    return NextResponse.json({ success: false, error: "Ongeldige aanvraag" }, { status: 400 });
-  }
-
   try {
+    const { token, nieuwWachtwoord } = await req.json();
+
     const result = await db.query(
-      `SELECT * FROM medewerkers WHERE reset_token = $1 AND reset_token_verloopt > NOW()`,
+      `SELECT email, token_verlopen_op FROM reset_tokens WHERE token = $1`,
       [token]
     );
 
     if (result.rowCount !== 1) {
-      return NextResponse.json({ success: false, error: "Ongeldige of verlopen resetlink" }, { status: 400 });
+      return NextResponse.json({ success: false, error: "Ongeldige of verlopen link." }, { status: 400 });
     }
 
-    const medewerker = result.rows[0];
+    const { email, token_verlopen_op } = result.rows[0];
+
+    const now = new Date();
+    const expiry = new Date(token_verlopen_op);
+    if (expiry < now) {
+      return NextResponse.json({ success: false, error: "Resetlink is verlopen." }, { status: 400 });
+    }
+
     const hash = await bcrypt.hash(nieuwWachtwoord, 10);
 
     await db.query(
-      `UPDATE medewerkers SET wachtwoord = $1, reset_token = NULL, reset_token_verloopt = NULL, moet_wachtwoord_wijzigen = false WHERE id = $2`,
-      [hash, medewerker.id]
+      `UPDATE medewerkers SET wachtwoord = $1, moet_wachtwoord_wijzigen = false WHERE email = $2`,
+      [hash, email]
     );
 
-    return NextResponse.json({ success: true });
+    await db.query(`DELETE FROM reset_tokens WHERE token = $1`, [token]);
+
+    return NextResponse.json({ success: true, email });
   } catch (err) {
-    console.error("❌ Fout bij wachtwoord-reset:", err);
-    return NextResponse.json({ success: false, error: "Serverfout" }, { status: 500 });
+    console.error("❌ Fout bij wachtwoord reset:", err);
+    return NextResponse.json({ success: false, error: "Serverfout bij reset." }, { status: 500 });
   }
 }
