@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 
 interface Medewerker {
@@ -99,9 +98,9 @@ export default function SkillBeheer() {
                     />
                     <span>{s.naam}</span>
                     {toewijzingen[s.id]?.actief && (
-                      <Input
+                      <input
                         type="number"
-                        className="w-20"
+                        className="w-20 border px-2 py-1 rounded"
                         value={toewijzingen[s.id]?.deadline ?? 10}
                         onChange={(e) => setToewijzingen((prev) => ({
                           ...prev,
