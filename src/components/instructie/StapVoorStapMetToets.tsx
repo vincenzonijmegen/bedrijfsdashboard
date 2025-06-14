@@ -2,9 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import Link from "next/link"; // ✅ toegevoegd
-
-localStorage.setItem("email", "voorbeeld@vincenzo.nl");
+import Link from "next/link";
 
 interface Props {
   html: string;
@@ -104,26 +102,18 @@ export default function StapVoorStapMetToets({ html }: Props) {
       setScore(percentage);
       setFase("klaar");
 
-      const emailFromStorage = localStorage.getItem("email");
+      const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
 
-      console.log("📤 Logging resultaat naar API", {
-        email: emailFromStorage ?? "onbekend@vincenzo.nl",
-        score: percentage,
-        aantalJuist,
-        totaal: vragen.length,
-        tijdstip: new Date().toISOString(),
-        slug,
-      });
-
-      fetch("/api/logscore", {
+      fetch("/api/resultaten", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: emailFromStorage,
+          email: gebruiker.email,
+          naam: gebruiker.naam,
+          functie: gebruiker.functie,
           score: percentage,
-          aantalJuist,
+          juist: aantalJuist,
           totaal: vragen.length,
-          tijdstip: new Date().toISOString(),
           slug,
         }),
       })
