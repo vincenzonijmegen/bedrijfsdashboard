@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
-// POST: resultaten opslaan met titel i.p.v. slug
+// POST: resultaat opslaan
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -32,6 +32,29 @@ export async function GET() {
     return NextResponse.json(result.rows);
   } catch (err) {
     console.error("❌ Fout bij ophalen resultaten:", err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
+  }
+}
+
+// DELETE: resultaat verwijderen o.b.v. email + titel
+export async function DELETE(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const email = url.searchParams.get("email");
+    const titel = url.searchParams.get("titel");
+
+    if (!email || !titel) {
+      return NextResponse.json({ error: "email en titel zijn verplicht" }, { status: 400 });
+    }
+
+    await db.query(
+      `DELETE FROM toetsresultaten WHERE email = $1 AND titel = $2`,
+      [email, titel]
+    );
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("❌ Fout bij verwijderen resultaat:", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }

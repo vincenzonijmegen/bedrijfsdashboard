@@ -1,6 +1,6 @@
 "use client";
 
-import useSWR from "swr";
+import useSWR, { mutate } from "swr"; // ⬅️ toegevoegd
 
 interface Resultaat {
   id: string;
@@ -52,13 +52,15 @@ export default function ResultatenOverzicht() {
 <td className="border p-2 text-center">
   <button
     onClick={async () => {
-      if (confirm(`Verwijder resultaat van ${r.naam}?`)) {
-      await fetch(`/api/resultaten?email=${encodeURIComponent(r.email)}&titel=${encodeURIComponent(r.titel)}`, {
-      method: "DELETE",
-      });
+  if (confirm(`Verwijder resultaat van ${r.naam}?`)) {
+    await fetch(
+      `/api/resultaten?email=${encodeURIComponent(r.email)}&titel=${encodeURIComponent(r.titel)}`,
+      { method: "DELETE" }
+    );
 
-      }
-    }}
+    mutate("/api/resultaten"); // ⬅️ ververs de lijst
+  }
+}}
     className="text-red-600 underline text-sm"
   >
     Verwijderen
