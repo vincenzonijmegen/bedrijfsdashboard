@@ -16,6 +16,11 @@ interface Skill {
   categorie: string;
 }
 
+interface ToegewezenSkill {
+  skill_id: string;
+  deadline_dagen: number;
+}
+
 export default function SkillBeheer() {
   const { data: medewerkers } = useSWR<Medewerker[]>("/api/medewerkers", fetcher);
   const { data: skills } = useSWR<Skill[]>("/api/skills", fetcher);
@@ -26,9 +31,9 @@ export default function SkillBeheer() {
     if (geselecteerd) {
       fetch(`/api/skills/toegewezen?medewerker_id=${geselecteerd}`)
         .then(res => res.json())
-        .then((data) => {
+        .then((data: ToegewezenSkill[]) => {
           const ingevuld = Object.fromEntries(
-            data.map((s: any) => [s.skill_id, { actief: true, deadline: s.deadline_dagen }])
+            data.map((s) => [s.skill_id, { actief: true, deadline: s.deadline_dagen }])
           );
           setToewijzingen(ingevuld);
         });
