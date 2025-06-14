@@ -1,40 +1,24 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function POST(req: Request) {
   try {
-    console.log("📡 API: /api/resultaten aangeroepen");
+    const { email, naam, functie, juist, totaal, slug } = await req.json();
 
-    const result = await db.query(
-      `SELECT naam, email, score, juist, totaal, slug, COALESCE(tijdstip, NOW()) as tijdstip FROM toetsresultaten ORDER BY tijdstip DESC`
-    );
+    if (!email || !naam || !slug) {
+      return NextResponse.json({ success: false, error: "Onvolledige gegevens" }, { status: 400 });
+    }
 
-    console.log("✅ Kolommen:", Object.keys(result.rows[0] || {}));
+    const tijdstip = new Date().toISOString();
 
-    console.log("✅ Resultaten opgehaald:", result.rows.length);
-    return NextResponse.json(result.rows);
-  } catch (err) {
-    console.error("🛑 Fout bij ophalen resultaten:", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
-  }
-}
-export async function DELETE(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const email = searchParams.get("email");
-  const slug = searchParams.get("slug");
-
-  if (!email || !slug) {
-    return NextResponse.json({ error: "email en slug zijn vereist" }, { status: 400 });
-  }
-
-  try {
     await db.query(
-      `DELETE FROM toetsresultaten WHERE email = $1 AND slug = $2`,
-      [email, slug]
+      `INSERT INTO toetsresultaten (email, naam, functie, juist, totaal, slug, tijdstip) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [email, naam, functie || null, juist, totaal, slug, tijdstip]
     );
+
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("🛑 Fout bij verwijderen resultaat:", err);
-    return NextResponse.json({ error: "Verwijderen mislukt" }, { status: 500 });
+    console.error("❌ Fout bij opslaan resultaat:", err);
+    return NextResponse.json({ success: false, error: "Opslaan mislukt" }, { status: 500 });
   }
 }
