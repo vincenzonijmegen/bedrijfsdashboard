@@ -104,20 +104,20 @@ export default function StapVoorStapMetToets({ html }: Props) {
 
       const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
 
-      fetch("/api/resultaten", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: gebruiker.email,
-          naam: gebruiker.naam,
-          functie: gebruiker.functie,
-          titel: gebruiker.titel,
-          score: percentage,
-          juist: aantalJuist,
-          totaal: vragen.length,
-          slug,
-        }),
-      })
+fetch("/api/resultaten", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    email: gebruiker.email,
+    naam: gebruiker.naam,
+    functie: gebruiker.functie,
+    titel: document.title, // ✅ hier staat nu de juiste titel
+    score: percentage,
+    juist: aantalJuist,
+    totaal: vragen.length,
+  }),
+})
+
         .then((res) => res.json())
         .then((res) => console.log("✅ API-response:", res))
         .catch((err) => console.error("❌ API-fout:", err));
