@@ -111,7 +111,7 @@ export default function SkillBeheer() {
                           ...prev,
                           [s.id]: {
                             ...prev[s.id],
-                            deadline: parseInt(e.target.value),
+                            deadline: Number(e.target.value) || 10
                           },
                         }))}
                       />
