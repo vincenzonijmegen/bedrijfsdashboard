@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { naam, email, score, juist, totaal, slug, tijdstip, functie } = body;
 
-    const result = await db.query(
+    await db.query(
       `INSERT INTO toetsresultaten (naam, email, score, juist, totaal, slug, tijdstip, functie)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [naam, email, score, juist, totaal, slug, tijdstip || new Date(), functie]
