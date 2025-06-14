@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 export default function ResetWachtwoord() {
   const router = useRouter();
   const [token, setToken] = useState("");
-  const [email, setEmail] = useState("");
 
   const [wachtwoord, setWachtwoord] = useState("");
   const [herhaal, setHerhaal] = useState("");
