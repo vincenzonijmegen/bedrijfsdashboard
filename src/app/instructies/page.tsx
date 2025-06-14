@@ -11,7 +11,6 @@ interface Instructie {
   slug: string;
 }
 
-
 const fetcher = async (url: string): Promise<Instructie[]> => {
   const res = await fetch(url);
   const data = await res.json();
@@ -30,13 +29,18 @@ const fetcher = async (url: string): Promise<Instructie[]> => {
               return [];
             }
           })()
-        : []
+        : [],
     })
   );
 };
 
 export default function InstructieOverzicht() {
   const { data, error } = useSWR("/api/instructies", fetcher);
+
+  const gebruiker = typeof window !== "undefined"
+    ? JSON.parse(localStorage.getItem("gebruiker") || "{}")
+    : {};
+  const isAdmin = gebruiker?.functie?.toLowerCase() === "beheerder";
 
   if (error) return <div>Fout bij laden</div>;
   if (!data) return <div>Laden...</div>;
@@ -49,13 +53,23 @@ export default function InstructieOverzicht() {
 
   return (
     <main className="max-w-4xl mx-auto p-4">
+      {isAdmin && (
+        <Link
+          href="/admin"
+          className="inline-block mb-4 bg-gray-200 text-sm text-gray-800 px-3 py-1 rounded hover:bg-gray-300"
+        >
+          ← Terug naar beheer
+        </Link>
+      )}
+
       <h1 className="text-2xl font-bold mb-4">📘 Werkinstructies</h1>
 
       <ul className="space-y-4">
         {gesorteerd.map((i) => (
           <li key={i.id} className="border p-4 rounded shadow bg-white">
             <Link href={`/instructies/${i.slug}`} className="block text-blue-600 font-semibold">
-              {i.nummer ? `${i.nummer}. ` : ""}{i.titel}
+              {i.nummer ? `${i.nummer}. ` : ""}
+              {i.titel}
             </Link>
           </li>
         ))}
