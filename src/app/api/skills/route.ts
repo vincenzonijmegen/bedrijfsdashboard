@@ -10,7 +10,7 @@ export async function GET() {
     console.error("Fout bij ophalen skills:", err);
     return NextResponse.json({ error: "Serverfout" }, { status: 500 });
   }
-}"
+}
 
 // /app/api/skills/toegewezen/route.ts
 // GET: /api/skills/toegewezen?medewerker_id=123
