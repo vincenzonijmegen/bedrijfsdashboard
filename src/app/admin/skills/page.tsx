@@ -25,7 +25,7 @@ export default function SkillBeheer() {
   const { data: medewerkers } = useSWR<Medewerker[]>("/api/medewerkers", fetcher);
   const { data: skills } = useSWR<Skill[]>("/api/skills", fetcher);
   const [geselecteerd, setGeselecteerd] = useState<number | null>(null);
-  const [toewijzingen, setToewijzingen] = useState<Record<string, { actief: boolean; deadline: number | "" }>>({});
+  const [toewijzingen, setToewijzingen] = useState<Record<string, { actief: boolean; deadline: number }>>({});
 
   useEffect(() => {
     if (geselecteerd) {
@@ -106,15 +106,14 @@ export default function SkillBeheer() {
                       <input
                         type="number"
                         className="w-20 border px-2 py-1 rounded"
-                        value={toewijzingen[s.id]?.deadline === "" ? "" : toewijzingen[s.id]?.deadline}
+                        value={toewijzingen[s.id]?.deadline ?? 10}
                         onChange={(e) => {
                           const value = e.target.value;
-                          const parsed = parseInt(value);
                           setToewijzingen((prev) => ({
                             ...prev,
                             [s.id]: {
                               ...prev[s.id],
-                              deadline: value === "" ? "" : isNaN(parsed) ? 10 : parsed,
+                              deadline: value === "" ? 0 : parseInt(value) || 0,
                             },
                           }));
                         }}
