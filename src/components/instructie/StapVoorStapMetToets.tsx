@@ -24,8 +24,6 @@ export default function StapVoorStapMetToets({ html }: Props) {
   const [aantalJuist, setAantalJuist] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const pathname = usePathname();
-  
 
   useEffect(() => {
     const [stapDeel, ...vraagDeel] = html.split(/Vraag:\s/);
