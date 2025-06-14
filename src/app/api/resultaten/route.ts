@@ -57,12 +57,13 @@ Fout beantwoorde vragen:
 ${foutenLijst}
     `;
 
-    await resend.emails.send({
-      from: "instructies@vincenzo.ijssalon",
-      to: "herman@ijssalonvincenzo.nl",
-      subject: `Nieuw toetsresultaat: ${titel} – ${naam}`,
-      text: mailContent,
-    });
+await resend.emails.send({
+  from: "IJssalon Vincenzo <instructies@vincenzo.ijssalon>",
+  to: "herman@ijssalonvincenzo.nl",
+  subject: `Nieuw toetsresultaat: ${titel} – ${naam}`,
+  text: mailContent,
+});
+
 
     return NextResponse.json({ success: true });
   } catch (err) {
