@@ -46,12 +46,11 @@ export async function POST(req: Request) {
   fouten && fouten.length > 0
     ? (fouten as Fout[])
         .map(
-          (f, i) =>
-            `${i + 1}. Vraag: ${f.vraag}\n   Antwoord (${f.gegeven}): ${f.gekozenTekst}`
-        )
-        .join("\n")
+  (f, i) =>
+    `${i + 1}. Vraag: ${f.vraag}\n   Antwoord (${f.gegeven}): ${f.gekozenTekst}\n`
+  )
+  .join("\n")
     : "✅ Alles correct beantwoord.";
-
 
     const mailContent = `
 Toetsresultaat van ${naam} (${email})
