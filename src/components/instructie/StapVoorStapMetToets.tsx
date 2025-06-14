@@ -22,6 +22,7 @@ export default function StapVoorStapMetToets({ html }: Props) {
   const [score, setScore] = useState(0);
   const [aantalJuist, setAantalJuist] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [fouten, setFouten] = useState<{ vraag: string; gegeven: string }[]>([]);
 
 
   useEffect(() => {
@@ -84,10 +85,18 @@ export default function StapVoorStapMetToets({ html }: Props) {
   }, [fase, index, stappen.length, vragen.length]);
 
   const selectAntwoord = (letter: "A" | "B" | "C") => {
-    const juist = letter === vragen[index].antwoord;
-    if (juist) setAantalJuist((n) => n + 1);
-    setFeedback(juist ? "✅ Goed!" : `❌ Fout. Juiste antwoord: ${vragen[index].antwoord}`);
-  };
+  const juist = letter === vragen[index].antwoord;
+  if (juist) {
+    setAantalJuist((n) => n + 1);
+  } else {
+    setFouten((f) => [
+      ...f,
+      { vraag: vragen[index].vraag, gegeven: letter },
+    ]);
+  }
+  setFeedback(juist ? "✅ Goed!" : `❌ Fout. Juiste antwoord: ${vragen[index].antwoord}`);
+};
+
 
   const naarVolgende = () => {
     setFeedback(null);
@@ -104,14 +113,15 @@ export default function StapVoorStapMetToets({ html }: Props) {
 fetch("/api/resultaten", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    email: gebruiker.email,
-    naam: gebruiker.naam,
-    functie: gebruiker.functie,
-    titel: document.title, // ✅ hier staat nu de juiste titel
-    score: percentage,
-    juist: aantalJuist,
-    totaal: vragen.length,
+ body: JSON.stringify({
+  email: gebruiker.email,
+  naam: gebruiker.naam,
+  functie: gebruiker.functie,
+  titel: document.title,
+  score: percentage,
+  juist: aantalJuist,
+  totaal: vragen.length,
+  fouten, // ✅ toegevoegd
   }),
 })
 
