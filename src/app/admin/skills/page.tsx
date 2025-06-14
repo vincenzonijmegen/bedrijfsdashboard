@@ -136,3 +136,5 @@ async function fetcher(url: string) {
   if (!res.ok) throw new Error("Fout bij ophalen");
   return res.json();
 }
+
+
