@@ -33,7 +33,7 @@ export default function SkillBeheer() {
         .then(res => res.json())
         .then((data: ToegewezenSkill[]) => {
           const ingevuld = Object.fromEntries(
-            data.map((s) => [s.skill_id, { actief: true, deadline: s.deadline_dagen }])
+            data.map((s) => [s.skill_id, { actief: true, deadline: Number(s.deadline_dagen) || 10 }])
           );
           setToewijzingen(ingevuld);
         });
@@ -107,13 +107,16 @@ export default function SkillBeheer() {
                         type="number"
                         className="w-20 border px-2 py-1 rounded"
                         value={toewijzingen[s.id]?.deadline ?? 10}
-                        onChange={(e) => setToewijzingen((prev) => ({
-                          ...prev,
-                          [s.id]: {
-                            ...prev[s.id],
-                            deadline: Number(e.target.value) || 10
-                          },
-                        }))}
+                        onChange={(e) => {
+                          const parsed = parseInt(e.target.value);
+                          setToewijzingen((prev) => ({
+                            ...prev,
+                            [s.id]: {
+                              ...prev[s.id],
+                              deadline: isNaN(parsed) ? 10 : parsed,
+                            },
+                          }));
+                        }}
                       />
                     )}
                   </label>
