@@ -36,7 +36,6 @@ export async function GET() {
   }
 }
 
-// DELETE: resultaat verwijderen o.b.v. email + titel
 export async function DELETE(req: Request) {
   try {
     const url = new URL(req.url);
@@ -58,3 +57,4 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
+

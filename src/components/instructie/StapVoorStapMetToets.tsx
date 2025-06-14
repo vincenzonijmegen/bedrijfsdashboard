@@ -111,6 +111,7 @@ export default function StapVoorStapMetToets({ html }: Props) {
           email: gebruiker.email,
           naam: gebruiker.naam,
           functie: gebruiker.functie,
+          titel: gebruiker.titel,
           score: percentage,
           juist: aantalJuist,
           totaal: vragen.length,
