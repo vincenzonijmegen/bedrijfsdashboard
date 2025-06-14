@@ -1,16 +1,16 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
-// POST: resultaten opslaan
+// POST: resultaten opslaan met titel i.p.v. slug
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { naam, email, score, juist, totaal, slug, tijdstip, functie } = body;
+    const { naam, email, score, juist, totaal, titel, tijdstip, functie } = body;
 
     await db.query(
-      `INSERT INTO toetsresultaten (naam, email, score, juist, totaal, slug, tijdstip, functie)
+      `INSERT INTO toetsresultaten (naam, email, score, juist, totaal, titel, tijdstip, functie)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [naam, email, score, juist, totaal, slug, tijdstip || new Date(), functie]
+      [naam, email, score, juist, totaal, titel, tijdstip || new Date(), functie]
     );
 
     return NextResponse.json({ success: true });
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
 export async function GET() {
   try {
     const result = await db.query(
-      `SELECT naam, email, score, juist, totaal, slug, tijdstip, functie
+      `SELECT naam, email, score, juist, totaal, titel, tijdstip, functie
        FROM toetsresultaten
        ORDER BY tijdstip DESC`
     );
