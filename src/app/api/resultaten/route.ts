@@ -58,7 +58,7 @@ ${foutenLijst}
     `;
 
     await resend.emails.send({
-      from: "IJssalon Vincenzo <instructies@vincenzo.ijssalon>",
+      from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
       to: "herman@ijssalonvincenzo.nl",
       subject: `Nieuw toetsresultaat: ${titel} – ${naam}`,
       text: mailContent,
