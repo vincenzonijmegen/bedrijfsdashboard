@@ -7,7 +7,9 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 type Fout = {
   vraag: string;
   gegeven: string;
+  gekozenTekst: string;
 };
+
 
 export async function POST(req: Request) {
   try {
