@@ -4,6 +4,11 @@ import { Resend } from "resend";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+type Fout = {
+  vraag: string;
+  gegeven: string;
+};
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -17,6 +22,16 @@ export async function POST(req: Request) {
       tijdstip,
       functie,
       fouten,
+    }: {
+      naam: string;
+      email: string;
+      score: number;
+      juist: number;
+      totaal: number;
+      titel: string;
+      tijdstip?: string;
+      functie: string;
+      fouten?: Fout[];
     } = body;
 
     await db.query(
@@ -25,10 +40,12 @@ export async function POST(req: Request) {
       [naam, email, score, juist, totaal, titel, tijdstip || new Date(), functie]
     );
 
-    // 📧 E-mail opstellen en verzenden
-    const foutenLijst = fouten && fouten.length > 0
-      ? fouten.map((f: any, i: number) => `${i + 1}. Vraag: ${f.vraag}\n   Antwoord: ${f.gegeven}`).join("\n")
-      : "✅ Alles correct beantwoord.";
+    const foutenLijst =
+      fouten && fouten.length > 0
+        ? fouten
+            .map((f: Fout, i: number) => `${i + 1}. Vraag: ${f.vraag}\n   Antwoord: ${f.gegeven}`)
+            .join("\n")
+        : "✅ Alles correct beantwoord.";
 
     const mailContent = `
 Toetsresultaat van ${naam} (${email})
@@ -41,8 +58,8 @@ ${foutenLijst}
     `;
 
     await resend.emails.send({
-      from: "instructies@vincenzo.ijssalon", // <- of een domein via Resend
-      to: "herman@ijssalonvincenzo.nl", // <- jouw vaste adres
+      from: "instructies@vincenzo.ijssalon",
+      to: "herman@ijssalonvincenzo.nl",
       subject: `Nieuw toetsresultaat: ${titel} – ${naam}`,
       text: mailContent,
     });
