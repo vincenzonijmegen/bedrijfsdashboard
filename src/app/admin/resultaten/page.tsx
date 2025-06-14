@@ -9,7 +9,7 @@ interface Resultaat {
   score: number;
   juist: number;
   totaal: number;
-  slug: string;
+  titel: string;
   tijdstip: string;
 }
 
@@ -35,7 +35,7 @@ export default function ResultatenOverzicht() {
             <th className="border p-2 text-left">Naam</th>
             <th className="border p-2 text-center">Score</th>
             <th className="border p-2 text-center">Goed / Totaal</th>
-            <th className="border p-2 text-center">Slug</th>
+            <th className="border p-2 text-center">Titel</th>
             <th className="border p-2 text-center">Tijdstip</th>
 <th className="border p-2 text-center">Actie</th>
           </tr>
@@ -47,7 +47,7 @@ export default function ResultatenOverzicht() {
               <td className="border p-2">{r.naam}</td>
               <td className="border p-2 text-center">{r.score}%</td>
               <td className="border p-2 text-center">{r.juist} / {r.totaal}</td>
-              <td className="border p-2 text-center">{r.slug}</td>
+              <td className="border p-2 text-center">{r.titel}</td>
               <td className="border p-2 text-center">{new Date(r.tijdstip).toLocaleString()}</td>
 <td className="border p-2 text-center">
   <button
