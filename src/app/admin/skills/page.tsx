@@ -25,7 +25,7 @@ export default function SkillBeheer() {
   const { data: medewerkers } = useSWR<Medewerker[]>("/api/medewerkers", fetcher);
   const { data: skills } = useSWR<Skill[]>("/api/skills", fetcher);
   const [geselecteerd, setGeselecteerd] = useState<number | null>(null);
-  const [toewijzingen, setToewijzingen] = useState<Record<string, { actief: boolean; deadline: string }>>({});
+  const [toewijzingen, setToewijzingen] = useState<Record<string, { actief: boolean; deadline: number }>>({});
 
   useEffect(() => {
     if (geselecteerd) {
@@ -33,7 +33,7 @@ export default function SkillBeheer() {
         .then(res => res.json())
         .then((data: ToegewezenSkill[]) => {
           const ingevuld = Object.fromEntries(
-            data.map((s) => [s.skill_id, { actief: true, deadline: s.deadline_dagen?.toString() ?? "10" }])
+            data.map((s) => [s.skill_id, { actief: true, deadline: Number(s.deadline_dagen) || 10 }])
           );
           setToewijzingen(ingevuld);
         });
@@ -45,7 +45,7 @@ export default function SkillBeheer() {
       ...prev,
       [skill_id]: prev[skill_id]
         ? { ...prev[skill_id], actief: !prev[skill_id].actief }
-        : { actief: true, deadline: "10" },
+        : { actief: true, deadline: 10 },
     }));
   };
 
@@ -53,7 +53,7 @@ export default function SkillBeheer() {
     if (!geselecteerd) return;
     const body = Object.entries(toewijzingen)
       .filter(([, val]) => val.actief)
-      .map(([skill_id, val]) => ({ medewerker_id: geselecteerd, skill_id, deadline_dagen: Number(val.deadline) || 10 }));
+      .map(([skill_id, val]) => ({ medewerker_id: geselecteerd, skill_id, deadline_dagen: val.deadline || 10 }));
     await fetch("/api/skills/toewijzen", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -106,13 +106,14 @@ export default function SkillBeheer() {
                       <input
                         type="number"
                         className="w-20 border px-2 py-1 rounded"
-                        value={toewijzingen[s.id]?.deadline ?? "10"}
+                        value={toewijzingen[s.id]?.deadline.toString()}
                         onChange={(e) => {
+                          const value = parseInt(e.target.value);
                           setToewijzingen((prev) => ({
                             ...prev,
                             [s.id]: {
                               ...prev[s.id],
-                              deadline: e.target.value,
+                              deadline: isNaN(value) ? 10 : value,
                             },
                           }));
                         }}
