@@ -90,7 +90,7 @@ export default function SkillBeheer() {
         >
           <option value="" disabled>-- Selecteer --</option>
           {medewerkers.map((m) => (
-            <option key={m.id} value={m.id}>{m.naam}</option>
+            <option key={m.id} value={Number(m.id)}>{m.naam}</option>
           ))}
         </select>
       </div>
