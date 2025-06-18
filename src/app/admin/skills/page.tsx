@@ -72,6 +72,9 @@ export default function SkillBeheer() {
     return acc;
   }, {});
 
+  console.log("↘️ Medewerkers uit API:", medewerkers);
+
+
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">🧠 Skillbeheer</h1>
