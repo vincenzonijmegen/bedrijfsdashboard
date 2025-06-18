@@ -79,10 +79,9 @@ export default function SkillBeheer() {
         <span>Kies medewerker:</span>
         <select
           className="border rounded px-2 py-1"
-          value={geselecteerd?.toString() ?? ""}
+          value={geselecteerd !== null ? String(geselecteerd) : ""}
           onChange={(e) => {
-            const val = e.target.value;
-            const parsed = parseInt(val);
+            const parsed = parseInt(e.target.value, 10);
             console.log("Geselecteerd:", parsed);
             if (!isNaN(parsed)) setGeselecteerd(parsed);
           }}
