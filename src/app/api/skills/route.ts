@@ -1,9 +1,11 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
-export async function GET(req: Request) {
+import { NextRequest } from "next/server";
+
+export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const searchParams = req.nextUrl.searchParams;
     const type = searchParams.get("type");
 
     if (type === "skills") {
