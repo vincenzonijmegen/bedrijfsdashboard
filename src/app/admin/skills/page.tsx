@@ -73,7 +73,7 @@ export default function SkillBeheer() {
   }, {});
 
 
-    console.log("↘️ Medewerkers API:", medewerkersAPI);", medewerkers);
+    console.log("↘️ Medewerkers API:", medewerkersAPI);
     medewerkersAPI?.forEach((m) => console.log("m.id:", m.id, typeof m.id));
 
 
