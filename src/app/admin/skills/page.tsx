@@ -36,7 +36,7 @@ export default function SkillBeheer() {
           const ingevuld = Object.fromEntries(
             data.map((s) => [s.skill_id, { actief: true, deadline: Number(s.deadline_dagen) || 10 }])
           );
-          console.log("Ingeladen skills:", ingevuld);
+          console.log("Ingeladen skills:", ingevuld); 
           setToewijzingen(ingevuld);
         });
     }
