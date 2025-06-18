@@ -82,7 +82,9 @@ export default function SkillBeheer() {
           value={geselecteerd?.toString() ?? ""}
           onChange={(e) => {
             const val = e.target.value;
-            if (val !== "") setGeselecteerd(parseInt(val));
+            const parsed = parseInt(val);
+            console.log("Geselecteerd:", parsed);
+            if (!isNaN(parsed)) setGeselecteerd(parsed);
           }}
         >
           <option value="" disabled>-- Selecteer --</option>
