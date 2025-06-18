@@ -28,7 +28,7 @@ export default function SkillBeheer() {
   const [toewijzingen, setToewijzingen] = useState<Record<string, { actief: boolean; deadline: number }>>({});
 
   useEffect(() => {
-    if (geselecteerd) {
+    if (geselecteerd !== null) {
       fetch(`/api/skills/toegewezen?medewerker_id=${geselecteerd}`)
         .then(res => res.json())
         .then((data: ToegewezenSkill[]) => {
@@ -78,7 +78,7 @@ export default function SkillBeheer() {
         <span>Kies medewerker:</span>
         <select
           className="border rounded px-2 py-1"
-          value={geselecteerd ?? ""}
+          value={geselecteerd !== null ? geselecteerd : ""}
           onChange={(e) => setGeselecteerd(Number(e.target.value))}
         >
           <option value="" disabled>-- Selecteer --</option>
@@ -88,7 +88,7 @@ export default function SkillBeheer() {
         </select>
       </div>
 
-      {geselecteerd && (
+      {geselecteerd !== null && (
         <div className="space-y-4">
           {Object.entries(skillsPerCategorie).map(([categorie, lijst]) => (
             <Card key={categorie} className="p-4">
@@ -106,7 +106,7 @@ export default function SkillBeheer() {
                       <input
                         type="number"
                         className="w-20 border px-2 py-1 rounded"
-                        value={(toewijzingen[s.id]?.deadline ?? 10).toString()}
+                        value={Number.isFinite(toewijzingen[s.id]?.deadline) ? toewijzingen[s.id].deadline.toString() : "10"}
                         onChange={(e) => {
                           const value = parseInt(e.target.value);
                           setToewijzingen((prev) => ({
