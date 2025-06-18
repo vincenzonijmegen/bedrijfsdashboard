@@ -29,14 +29,12 @@ export default function SkillBeheer() {
 
   useEffect(() => {
     if (geselecteerd !== null) {
-      console.log("Medewerker geselecteerd:", geselecteerd);
       fetch(`/api/skills/toegewezen?medewerker_id=${geselecteerd}`)
         .then(res => res.json())
         .then((data: ToegewezenSkill[]) => {
           const ingevuld = Object.fromEntries(
             data.map((s) => [s.skill_id, { actief: true, deadline: Number(s.deadline_dagen) || 10 }])
           );
-          console.log("Ingeladen skills:", ingevuld); 
           setToewijzingen(ingevuld);
         });
     }
@@ -72,11 +70,6 @@ export default function SkillBeheer() {
     return acc;
   }, {});
 
-
-    console.log("↘️ Medewerkers API:", medewerkersAPI);
-    medewerkersAPI?.forEach((m) => console.log("m.id:", m.id, typeof m.id));
-
-
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">🧠 Skillbeheer</h1>
@@ -85,11 +78,9 @@ export default function SkillBeheer() {
         <span>Kies medewerker:</span>
         <select
           className="border rounded px-2 py-1"
-          value={geselecteerd !== null ? String(geselecteerd) : ""}
+          value={geselecteerd?.toString() ?? ""}
           onChange={(e) => {
-            const val = parseInt(String(e.target.value), 10);
-            console.log("Geselecteerd waarde:", e.target.value);
-            console.log("Als nummer:", val);
+            const val = parseInt(e.target.value);
             if (!isNaN(val)) setGeselecteerd(val);
           }}
         >
@@ -146,8 +137,6 @@ export default function SkillBeheer() {
 
 async function fetcher(url: string) {
   const res = await fetch(url);
-  const data = await res.json();
-  console.log("🐛 ruwe fetch data:", data);
-  return data; // of: return data.rows;
+  if (!res.ok) throw new Error("Fout bij ophalen");
+  return res.json();
 }
-
