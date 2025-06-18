@@ -146,6 +146,8 @@ export default function SkillBeheer() {
 
 async function fetcher(url: string) {
   const res = await fetch(url);
-  if (!res.ok) throw new Error("Fout bij ophalen");
-  return res.json();
+  const data = await res.json();
+  console.log("🐛 ruwe fetch data:", data);
+  return data; // of: return data.rows;
 }
+
