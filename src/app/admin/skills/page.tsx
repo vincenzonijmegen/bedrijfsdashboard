@@ -80,7 +80,7 @@ export default function SkillBeheer() {
         <span>Kies medewerker:</span>
         <select
           className="border rounded px-2 py-1"
-          value={geselecteerd !== null ? geselecteerd : ""}
+          value={geselecteerd?.toString() ?? ""}
           onChange={(e) => {
             const val = Number(e.target.value);
             if (!isNaN(val)) setGeselecteerd(val);
