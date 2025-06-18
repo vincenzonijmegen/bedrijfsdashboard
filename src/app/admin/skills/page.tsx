@@ -22,7 +22,7 @@ interface ToegewezenSkill {
 }
 
 export default function SkillBeheer() {
-  const { data: medewerkers } = useSWR<Medewerker[]>("/api/medewerkers", fetcher);
+  const { data: medewerkersAPI } = useSWR<Medewerker[]>("/api/medewerkers", fetcher);
   const { data: skills } = useSWR<Skill[]>("/api/skills", fetcher);
   const [geselecteerd, setGeselecteerd] = useState<number | null>(null);
   const [toewijzingen, setToewijzingen] = useState<Record<string, { actief: boolean; deadline: number }>>({});
@@ -64,7 +64,7 @@ export default function SkillBeheer() {
     alert("Opgeslagen!");
   };
 
-  if (!medewerkers || !skills) return <div>Laden...</div>;
+  if (!medewerkersAPI || !skills) return <div>Laden...</div>;
 
   const skillsPerCategorie = skills.reduce((acc: Record<string, Skill[]>, skill) => {
     if (!acc[skill.categorie]) acc[skill.categorie] = [];
@@ -73,8 +73,8 @@ export default function SkillBeheer() {
   }, {});
 
 
-    console.log("↘️ Medewerkers API:", medewerkers);
-    medewerkers.forEach((m) => console.log("m.id:", m.id, typeof m.id));
+    console.log("↘️ Medewerkers API:", medewerkersAPI);", medewerkers);
+    medewerkersAPI?.forEach((m) => console.log("m.id:", m.id, typeof m.id));
 
 
   return (
@@ -94,7 +94,7 @@ export default function SkillBeheer() {
           }}
         >
           <option value="" disabled>-- Selecteer --</option>
-          {medewerkers.map((m) => (
+          {medewerkersAPI.map((m) => (
             <option key={m.id} value={String(m.id)}>{m.naam}</option>
           ))}
         </select>
