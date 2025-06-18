@@ -106,7 +106,7 @@ export default function SkillBeheer() {
                       <input
                         type="number"
                         className="w-20 border px-2 py-1 rounded"
-                        value={Number.isFinite(toewijzingen[s.id]?.deadline) ? toewijzingen[s.id].deadline : 10}
+                        value={toewijzingen[s.id]?.deadline?.toString() || "10"}
                         onChange={(e) => {
                           const value = parseInt(e.target.value);
                           setToewijzingen((prev) => ({
