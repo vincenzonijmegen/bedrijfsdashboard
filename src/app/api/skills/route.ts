@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 
     if (type === "skills") {
       const result = await db.query(
-        `SELECT id, naam FROM medewerkers ORDER BY naam`
+        `SELECT id, naam FROM skills ORDER BY naam`
       );
       console.log("🧠 API response for type=skills:", result.rows);
       return NextResponse.json(result.rows);
