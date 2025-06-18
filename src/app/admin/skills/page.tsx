@@ -80,8 +80,8 @@ export default function SkillBeheer() {
           className="border rounded px-2 py-1"
           value={geselecteerd?.toString() ?? ""}
           onChange={(e) => {
-            const val = parseInt(e.target.value);
-            if (!isNaN(val)) setGeselecteerd(val);
+            const val = e.target.value;
+            if (val !== "") setGeselecteerd(parseInt(val));
           }}
         >
           <option value="" disabled>-- Selecteer --</option>
