@@ -23,7 +23,7 @@ interface ToegewezenSkill {
 
 export default function SkillBeheer() {
   const { data: medewerkersAPI } = useSWR<Medewerker[]>("/api/medewerkers?type=skills", fetcher);
-  const { data: skills } = useSWR<Skill[]>("/api/skills", fetcher);
+  const { data: skills } = useSWR<Skill[]>("/api/skills?type=skills", fetcher);
   const [geselecteerd, setGeselecteerd] = useState<number | null>(null);
   const [toewijzingen, setToewijzingen] = useState<Record<string, { actief: boolean; deadline: number }>>({});
 
@@ -65,10 +65,11 @@ export default function SkillBeheer() {
   if (!medewerkersAPI || !skills) return <div>Laden...</div>;
 
   const skillsPerCategorie = skills.reduce((acc: Record<string, Skill[]>, skill) => {
-    if (!acc[skill.categorie]) acc[skill.categorie] = [];
-    acc[skill.categorie].push(skill);
-    return acc;
-  }, {});
+  const categorie = skill.categorie ?? "Onbekend";
+  if (!acc[categorie]) acc[categorie] = [];
+  acc[categorie].push(skill);
+  return acc;
+}, {});
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
