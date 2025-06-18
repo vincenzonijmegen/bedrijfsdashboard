@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 
 interface Medewerker {
+  id: number;
   naam: string;
   email: string;
   functie: string;
