@@ -29,12 +29,14 @@ export default function SkillBeheer() {
 
   useEffect(() => {
     if (geselecteerd !== null) {
+      console.log("Medewerker geselecteerd:", geselecteerd);
       fetch(`/api/skills/toegewezen?medewerker_id=${geselecteerd}`)
         .then(res => res.json())
         .then((data: ToegewezenSkill[]) => {
           const ingevuld = Object.fromEntries(
             data.map((s) => [s.skill_id, { actief: true, deadline: Number(s.deadline_dagen) || 10 }])
           );
+          console.log("Ingeladen skills:", ingevuld);
           setToewijzingen(ingevuld);
         });
     }
@@ -106,7 +108,7 @@ export default function SkillBeheer() {
                       <input
                         type="number"
                         className="w-20 border px-2 py-1 rounded"
-                        value={Number.isFinite(toewijzingen[s.id]?.deadline) ? toewijzingen[s.id].deadline.toString() : "10"}
+                        value={(toewijzingen[s.id]?.deadline ?? 10).toString()}
                         onChange={(e) => {
                           const value = parseInt(e.target.value);
                           setToewijzingen((prev) => ({
