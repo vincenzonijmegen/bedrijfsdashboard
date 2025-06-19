@@ -69,6 +69,28 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
     setStappen(stepSegments);
     setVragen(vraagMatches);
   }, [instructie_id, html]);
+const startTijd = useRef<number | null>(null);
+
+useEffect(() => {
+  startTijd.current = Date.now();
+
+  return () => {
+    const eindTijd = Date.now();
+    const duurSec = Math.round((eindTijd - (startTijd.current || eindTijd)) / 1000);
+
+    const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
+
+    fetch("/api/instructielog", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: gebruiker.email,
+        instructie_id,
+        duur_seconden: duurSec,
+      }),
+    });
+  };
+}, []);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -107,7 +129,6 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
       el.removeEventListener("touchend", onTouchEnd);
     };
   }, [fase, index, stappen.length, vragen.length]);
-
 
 
   
@@ -162,141 +183,6 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
       setIndex((i) => i + 1);
     }
   };
-
-"use client";
-
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-
-interface Props {
-  html: string;
-  instructie_id: string;
-}
-
-type Vraag = {
-  vraag: string;
-  opties: string[];
-  antwoord: string;
-};
-
-export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
-  const [stappen, setStappen] = useState<string[]>([]);
-  const [vragen, setVragen] = useState<Vraag[]>([]);
-  const [index, setIndex] = useState(0);
-  const [fase, setFase] = useState<"stappen" | "vragen" | "klaar">("stappen");
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [score, setScore] = useState(0);
-  const [aantalJuist, setAantalJuist] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const startTijd = useRef<number | null>(null);
-  const [fouten, setFouten] = useState<
-    { vraag: string; gegeven: string; gekozenTekst: string }[]
-  >([]);
-
-  useEffect(() => {
-    startTijd.current = Date.now();
-
-    return () => {
-      const eindTijd = Date.now();
-      const duurSeconden = Math.round((eindTijd - (startTijd.current || eindTijd)) / 1000);
-      const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
-
-      if (gebruiker?.email && instructie_id) {
-        fetch("/api/instructielog", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: gebruiker.email,
-            instructie_id,
-            duur_seconden: duurSeconden,
-          }),
-        });
-      }
-    };
-  }, [instructie_id]);
-
-  useEffect(() => {
-    const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
-    if (!gebruiker?.email || !instructie_id) return;
-
-    console.log("📤 Verstuur gelezen-registratie", { email: gebruiker.email, instructie_id });
-
-    fetch("/api/instructiestatus", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: gebruiker.email, instructie_id })
-    })
-      .then(async res => {
-        const result = await res.json().catch(() => ({}));
-        if (res.ok) {
-          console.log("✅ Gelezen registratie opgeslagen:", result);
-        } else {
-          console.warn("⚠️ Mislukt om gelezen instructie op te slaan:", result);
-        }
-      })
-      .catch(err => {
-        console.error("❌ Fout bij fetch /api/instructiestatus", err);
-      });
-
-    const [stapDeel, ...vraagDeel] = html.split(/Vraag:\s/);
-
-    const stepSegments = stapDeel
-      .split("[end]")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const questionPattern = /Vraag:\s*(.*?)\s*A\.\s*(.*?)\s*B\.\s*(.*?)\s*C\.\s*(.*?)\s*Antwoord:\s*([ABC])/gi;
-
-    const vragenHTML = ("Vraag: " + vraagDeel.join("Vraag:")).replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
-    const vraagMatches = Array.from(vragenHTML.matchAll(questionPattern)).map((m) => ({
-      vraag: m[1].trim(),
-      opties: [m[2].trim(), m[3].trim(), m[4].trim()],
-      antwoord: m[5].trim().toUpperCase(),
-    }));
-
-    setStappen(stepSegments);
-    setVragen(vraagMatches);
-  }, [instructie_id, html]);
-
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Enter") {
-        if (fase === "vragen" && feedback) setIndex((i) => Math.min(i + 1, vragen.length - 1));
-        else if (fase !== "vragen") setIndex((i) => Math.min(i + 1, stappen.length - 1));
-      }
-    };
-
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [fase, index, feedback, stappen.length, vragen.length]);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
-    let startX = 0;
-
-    const onTouchStart = (e: TouchEvent) => {
-      startX = e.touches[0].clientX;
-    };
-
-    const onTouchEnd = (e: TouchEvent) => {
-      const endX = e.changedTouches[0].clientX;
-      const delta = endX - startX;
-
-      if (delta < -40) setIndex((i) => Math.min(i + 1, fase === "vragen" ? vragen.length - 1 : stappen.length - 1));
-      if (delta > 40) setIndex((i) => Math.max(i - 1, 0));
-    };
-
-    el.addEventListener("touchstart", onTouchStart);
-    el.addEventListener("touchend", onTouchEnd);
-    return () => {
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchend", onTouchEnd);
-    };
-  }, [fase, index, stappen.length, vragen.length]);
-
-
 
   return (
     <div ref={containerRef} className="max-w-4xl mx-auto p-4 space-y-4">
