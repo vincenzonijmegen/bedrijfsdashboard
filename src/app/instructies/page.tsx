@@ -58,7 +58,7 @@ export default function InstructieOverzicht() {
   // ✅ aangepaste fetcher voor status!
   const { data: status } = useSWR<Status[]>(
     email ? `/api/instructiestatus?email=${email}` : null,
-    url => fetch(url).then(res => res.json())
+    (url: string) => fetch(url).then(res => res.json())
   );
 
   if (error) return <div>Fout bij laden</div>;
