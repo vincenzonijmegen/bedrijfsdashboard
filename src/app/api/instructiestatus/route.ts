@@ -23,16 +23,18 @@ export async function GET(req: Request) {
       [email]
     );
 
+    console.log("✅ Resultaten ontvangen:", result.rows);
+
     const status = result.rows.map((r) => ({
       slug: r.slug,
-      gelezen: r.gelezen,
+      gelezen: !!r.gelezen,
       score: r.score ?? undefined,
       totaal: r.totaal ?? undefined,
     }));
 
     return NextResponse.json(status);
-  } catch (err) {
-    console.error("❌ Fout in instructiestatus GET:", err);
+  } catch (err: any) {
+    console.error("❌ Fout in instructiestatus GET:", err.message || err);
     return NextResponse.json({ error: "Serverfout" }, { status: 500 });
   }
 }
