@@ -31,7 +31,7 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
     const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
     if (!gebruiker?.email || !instructie_id) return;
 
-    console.log("\ud83d\udce4 Verstuur gelezen-registratie", { email: gebruiker.email, instructie_id });
+    console.log("📤 Verstuur gelezen-registratie", { email: gebruiker.email, instructie_id });
 
     fetch("/api/instructiestatus", {
       method: "POST",
@@ -41,16 +41,18 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
       .then(async res => {
         const result = await res.json().catch(() => ({}));
         if (res.ok) {
-          console.log("\u2705 Gelezen registratie opgeslagen:", result);
+          console.log("✅ Gelezen registratie opgeslagen:", result);
         } else {
-          console.warn("\u26a0\ufe0f Mislukt om gelezen instructie op te slaan:", result);
+          console.warn("⚠️ Mislukt om gelezen instructie op te slaan:", result);
         }
       })
       .catch(err => {
-        console.error("\u274c Fout bij fetch /api/instructiestatus", err);
+        console.error("❌ Fout bij fetch /api/instructiestatus", err);
       });
 
-    const [stapDeel, ...vraagDeel] = html.split(/Vraag:\s/);
+    const split = html.split(/Vraag:\s/);
+    const stapDeel = split[0];
+    const vraagDeel = "Vraag: " + split.slice(1).join("Vraag:");
 
     const stepSegments = stapDeel
       .split("[end]")
@@ -59,7 +61,7 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
 
     const questionPattern = /Vraag:\s*(.*?)\s*A\.\s*(.*?)\s*B\.\s*(.*?)\s*C\.\s*(.*?)\s*Antwoord:\s*([ABC])/gi;
 
-    const vragenHTML = ("Vraag: " + vraagDeel.join("Vraag:")).replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
+    const vragenHTML = vraagDeel.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
     const vraagMatches = Array.from(vragenHTML.matchAll(questionPattern)).map((m) => ({
       vraag: m[1].trim(),
       opties: [m[2].trim(), m[3].trim(), m[4].trim()],
@@ -69,7 +71,7 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
     setStappen(stepSegments);
     setVragen(vraagMatches);
   }, [instructie_id, html]);
-const startTijd = useRef<number | null>(null);
+
 
 useEffect(() => {
   startTijd.current = Date.now();
