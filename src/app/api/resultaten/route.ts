@@ -53,6 +53,14 @@ export async function POST(req: Request) {
       ]
     );
 
+    // ⏱️ Haal leestijd op
+    const duurRes = await db.query(
+      `SELECT gelezen_duur_seconden FROM gelezen_instructies
+       WHERE email = $1 AND instructie_id = $2`,
+      [email, instructie_id]
+    );
+    const duur_seconden = duurRes.rows[0]?.gelezen_duur_seconden ?? "-";
+
     const foutenLijst =
       fouten && fouten.length > 0
         ? (fouten as Fout[])
@@ -70,6 +78,7 @@ Toetsresultaat van ${naam} (${email})
 
 📘 Titel: ${titel}
 🎯 Score: ${score}% (${juist} van ${totaal} juist)
+🕒 Leestijd: ${duur_seconden} seconden
 
 Fout beantwoorde vragen:
 ${foutenLijst}
