@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     return NextResponse.json(result.rows);
   }
 
-  const result = await db.query("SELECT naam, email, functie FROM medewerkers ORDER BY naam");
+  const result = await db.query("SELECT id, naam, email, functie FROM medewerkers ORDER BY naam");
   return NextResponse.json(result.rows);
 }
 
