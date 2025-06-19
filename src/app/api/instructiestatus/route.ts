@@ -1,7 +1,32 @@
 import { db } from "@/lib/db";
+import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
+import GelezenRegistratie from "@/components/instructie/GelezenRegistratie";
 import { NextResponse } from "next/server";
 
-// POST: registreer 'gelezen'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default async function Page(props: any) {
+  const slug = props.params?.slug;
+
+  const result = await db.query(
+    "SELECT * FROM instructies WHERE slug = $1",
+    [slug]
+  );
+
+  const instructie = result.rows[0];
+
+  if (!instructie) {
+    return <div className="p-6 text-red-700">❌ Instructie niet gevonden</div>;
+  }
+
+  return (
+    <>
+      <GelezenRegistratie instructie_id={instructie.id} />
+      <StapVoorStapMetToets html={instructie.inhoud} />
+    </>
+  );
+}
+
+// API voor instructiestatus
 export async function POST(req: Request) {
   const { email, instructie_id } = await req.json();
 
@@ -31,11 +56,9 @@ export async function GET(req: Request) {
   }
 
   try {
-    // Stap 1: Alle instructies ophalen (id + slug)
     const instructieRes = await db.query(`SELECT id, slug FROM instructies`);
     const instructieMap = new Map(instructieRes.rows.map((r) => [r.id, r.slug]));
 
-    // Stap 2: Gelezen instructies koppelen via instructie_id
     const gelezenRes = await db.query(
       `SELECT instructie_id FROM gelezen_instructies WHERE user_email = $1`,
       [email]
@@ -46,14 +69,12 @@ export async function GET(req: Request) {
         .filter((slug): slug is string => Boolean(slug))
     );
 
-    // Stap 3: Toetsresultaten ophalen (gebruiken slug)
     const toetsRes = await db.query(
       `SELECT slug, score, totaal FROM toetsresultaten WHERE email = $1`,
       [email]
     );
     const toetsMap = new Map(toetsRes.rows.map((r) => [r.slug, { score: r.score, totaal: r.totaal }]));
 
-    // Stap 4: Alle bekende slugs combineren
     const alleSlugs = new Set([...gelezenSlugs, ...toetsMap.keys()]);
 
     const status = Array.from(alleSlugs).map((slug) => ({
