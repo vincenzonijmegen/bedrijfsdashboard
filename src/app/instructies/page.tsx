@@ -11,45 +11,47 @@ interface Instructie {
   slug: string;
 }
 
-const fetcher = async (url: string): Promise<Instructie[]> => {
+interface Status {
+  slug: string;
+  gelezen?: boolean;
+  score?: number;
+  totaal?: number;
+}
+
+const fetcher = async (url: string): Promise<any> => {
   const res = await fetch(url);
-  const data = await res.json();
-  return data.map(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (i: any) => ({
-      ...i,
-      functies: Array.isArray(i.functies)
-        ? i.functies
-        : typeof i.functies === "string"
-        ? (() => {
-            try {
-              const parsed = JSON.parse(i.functies);
-              return Array.isArray(parsed) ? parsed : [];
-            } catch {
-              return [];
-            }
-          })()
-        : [],
-    })
-  );
+  return res.json();
 };
 
 export default function InstructieOverzicht() {
-  const { data, error } = useSWR("/api/instructies", fetcher);
-
   const gebruiker = typeof window !== "undefined"
     ? JSON.parse(localStorage.getItem("gebruiker") || "{}")
     : {};
   const isAdmin = gebruiker?.functie?.toLowerCase() === "beheerder";
+  const email = gebruiker?.email || "";
+
+  const { data: instructies, error } = useSWR<Instructie[]>("/api/instructies", fetcher);
+  const { data: status } = useSWR<Status[]>(email ? `/api/instructiestatus?email=${email}` : null, fetcher);
 
   if (error) return <div>Fout bij laden</div>;
-  if (!data) return <div>Laden...</div>;
+  if (!instructies) return <div>Laden...</div>;
 
-  const gesorteerd = [...data].sort((a, b) => {
+  const gesorteerd = [...instructies].sort((a, b) => {
     const na = a.nummer || "";
     const nb = b.nummer || "";
     return na.localeCompare(nb);
   });
+
+  const getStatus = (slug: string) => {
+    const s = status?.find((x) => x.slug === slug);
+    if (!s) return <span className="text-gray-400">⏳ Nog niet gelezen</span>;
+    if (s.gelezen && s.score !== undefined) {
+      const kleur = s.score < s.totaal ? "text-red-600" : "text-green-600";
+      return <span className={kleur}>🧠 {s.score}/{s.totaal}</span>;
+    }
+    if (s.gelezen) return <span className="text-blue-600">👁 Gelezen</span>;
+    return <span className="text-gray-400">⏳ Nog niet gelezen</span>;
+  };
 
   return (
     <main className="max-w-4xl mx-auto p-4">
@@ -67,10 +69,12 @@ export default function InstructieOverzicht() {
       <ul className="space-y-4">
         {gesorteerd.map((i) => (
           <li key={i.id} className="border p-4 rounded shadow bg-white">
-            <Link href={`/instructies/${i.slug}`} className="block text-blue-600 font-semibold">
-              {i.nummer ? `${i.nummer}. ` : ""}
-              {i.titel}
-            </Link>
+            <div className="flex justify-between items-center">
+              <Link href={`/instructies/${i.slug}`} className="text-blue-600 font-semibold">
+                {i.nummer ? `${i.nummer}. ` : ""}{i.titel}
+              </Link>
+              <div className="text-sm">{getStatus(i.slug)}</div>
+            </div>
           </li>
         ))}
       </ul>
