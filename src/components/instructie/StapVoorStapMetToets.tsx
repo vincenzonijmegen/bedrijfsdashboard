@@ -122,11 +122,11 @@ fetch("/api/resultaten", {
   naam: gebruiker.naam,
   functie: gebruiker.functie,
   titel: document.title,
+  instructie_id: gebruiker.instructie_id, // ✅ toegevoegd
   score: percentage,
   juist: aantalJuist,
   totaal: vragen.length,
-  fouten, // ✅ toegevoegd
-  }),
+  fouten,}),
 })
 
         .then((res) => res.json())
