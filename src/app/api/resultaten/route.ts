@@ -110,9 +110,10 @@ ${foutenLijst}
 export async function GET() {
   try {
     const result = await db.query(
-      `SELECT t.naam, t.email, t.score, t.juist, t.totaal, t.titel, t.tijdstip, t.functie,
+      `SELECT t.naam, t.email, t.score, t.juist, t.totaal, i.titel, t.tijdstip, t.functie,
               g.gelezen_duur_seconden AS duur_seconden
        FROM toetsresultaten t
+       LEFT JOIN instructies i ON t.instructie_id = i.id
        LEFT JOIN gelezen_instructies g
          ON g.email = t.email AND g.instructie_id = t.instructie_id
        ORDER BY t.tijdstip DESC`
