@@ -83,8 +83,13 @@ export default function SkillBeheer() {
           className="border rounded px-2 py-1"
           value={geselecteerd !== null ? String(geselecteerd) : ""}
           onChange={(e) => {
-            const val = e.target.value;
+            const val: string | undefined = e.target?.value;
             console.log("Verandering:", val);
+            if (!val) {
+              console.warn("⚠️ Lege of ongeldige waarde geselecteerd");
+              setGeselecteerd(null);
+              return;
+            }
             const parsed = Number(val);
             if (!isNaN(parsed)) {
               setGeselecteerd(parsed);
@@ -96,9 +101,11 @@ export default function SkillBeheer() {
         >
           <option value="">-- Selecteer --</option>
           {medewerkersAPI.map((m) => (
-            <option key={m.id} value={String(m.id)}>{m.naam}</option>
+            <option key={m.id ?? m.naam} value={m.id ? String(m.id) : ""}>{m.naam ?? "(onbekend)"}</option>
           ))}
         </select>
+
+        <pre className="text-xs bg-yellow-50 p-2">{JSON.stringify(medewerkersAPI, null, 2)}</pre>
       </div>
 
       {geselecteerd !== null && (
