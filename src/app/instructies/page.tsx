@@ -54,7 +54,12 @@ export default function InstructieOverzicht() {
   const email = gebruiker?.email || "";
 
   const { data: instructies, error } = useSWR<Instructie[]>("/api/instructies", fetcher);
-  const { data: status } = useSWR<Status[]>(email ? `/api/instructiestatus?email=${email}` : null, fetcher);
+
+  // ✅ aangepaste fetcher voor status!
+  const { data: status } = useSWR<Status[]>(
+    email ? `/api/instructiestatus?email=${email}` : null,
+    url => fetch(url).then(res => res.json())
+  );
 
   if (error) return <div>Fout bij laden</div>;
   if (!instructies) return <div>Laden...</div>;
@@ -69,9 +74,9 @@ export default function InstructieOverzicht() {
     const s = status?.find((x) => x.slug === slug);
     if (!s) return <span className="text-gray-400">⏳ Nog niet gelezen</span>;
     if (s.gelezen && s.score !== undefined && s.totaal !== undefined) {
-  const kleur = s.score < s.totaal ? "text-red-600" : "text-green-600";
-  return <span className={kleur}>🧠 {s.score}/{s.totaal}</span>;
-}
+      const kleur = s.score < s.totaal ? "text-red-600" : "text-green-600";
+      return <span className={kleur}>🧠 {s.score}/{s.totaal}</span>;
+    }
     if (s.gelezen) return <span className="text-blue-600">👁 Gelezen</span>;
     return <span className="text-gray-400">⏳ Nog niet gelezen</span>;
   };
