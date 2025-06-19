@@ -22,7 +22,7 @@ interface ToegewezenSkill {
 }
 
 export default function SkillBeheer() {
-  const { data: medewerkersAPI } = useSWR<Medewerker[]>("/api/medewerkers?type=skills", fetcher);
+  const { data: medewerkersAPI } = useSWR<Medewerker[]>("/api/medewerkers", fetcher);
   const { data: skills } = useSWR<Skill[]>("/api/skills?type=skills", fetcher);
   const [geselecteerd, setGeselecteerd] = useState<number | null>(null);
   const [toewijzingen, setToewijzingen] = useState<Record<string, { actief: boolean; deadline: number }>>({});
