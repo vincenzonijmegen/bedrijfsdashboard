@@ -33,7 +33,8 @@ export async function GET(req: Request) {
     }));
 
     return NextResponse.json(status);
-  } catch (err: any) {
+  } // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  catch (err: any) {
     console.error("❌ Fout in instructiestatus GET:", err.message || err);
     return NextResponse.json({ error: "Serverfout" }, { status: 500 });
   }
