@@ -25,7 +25,6 @@ export async function POST(req: Request) {
       tijdstip,
       functie,
       fouten,
-      duur_seconden,
     }: {
       naam: string;
       email: string;
@@ -37,12 +36,11 @@ export async function POST(req: Request) {
       tijdstip?: string;
       functie: string;
       fouten?: Fout[];
-      duur_seconden?: number;
     } = body;
 
     await db.query(
-      `INSERT INTO toetsresultaten (naam, email, score, juist, totaal, instructie_id, tijdstip, functie, duur_seconden)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      `INSERT INTO toetsresultaten (naam, email, score, juist, totaal, instructie_id, tijdstip, functie)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         naam,
         email,
@@ -51,8 +49,7 @@ export async function POST(req: Request) {
         totaal,
         instructie_id,
         tijdstip || new Date(),
-        functie,
-        duur_seconden ?? null,
+        functie
       ]
     );
 
@@ -73,7 +70,6 @@ Toetsresultaat van ${naam} (${email})
 
 📘 Titel: ${titel}
 🎯 Score: ${score}% (${juist} van ${totaal} juist)
-🕒 Leestijd: ${duur_seconden ?? "-"} seconden
 
 Fout beantwoorde vragen:
 ${foutenLijst}
@@ -96,9 +92,12 @@ ${foutenLijst}
 export async function GET() {
   try {
     const result = await db.query(
-      `SELECT naam, email, score, juist, totaal, titel, tijdstip, functie, duur_seconden
-       FROM toetsresultaten
-       ORDER BY tijdstip DESC`
+      `SELECT t.naam, t.email, t.score, t.juist, t.totaal, t.titel, t.tijdstip, t.functie,
+              g.gelezen_duur_seconden AS duur_seconden
+       FROM toetsresultaten t
+       LEFT JOIN gelezen_instructies g
+         ON g.email = t.email AND g.instructie_id = t.instructie_id
+       ORDER BY t.tijdstip DESC`
     );
 
     return NextResponse.json(result.rows);
