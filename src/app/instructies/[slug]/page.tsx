@@ -2,7 +2,8 @@ import { db } from "@/lib/db";
 import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
 import GelezenRegistratie from "@/components/instructie/GelezenRegistratie";
 
-export default async function Page({ params }: { params: { slug: string } }) {
+export default async function Page({ params }: { params: Record<"slug", string> }) {
+
   const slug = params.slug;
 
   const result = await db.query(
