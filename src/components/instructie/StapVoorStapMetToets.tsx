@@ -20,6 +20,7 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
   const [vragen, setVragen] = useState<Vraag[]>([]);
   const [index, setIndex] = useState(0);
   const [fase, setFase] = useState<"stappen" | "vragen" | "klaar">("stappen");
+  const [heeftToets, setHeeftToets] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [score, setScore] = useState(0);
   const [aantalJuist, setAantalJuist] = useState(0);
@@ -94,6 +95,7 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
 
     setStappen(stepSegments);
     setVragen(vraagMatches);
+    setHeeftToets(vraagMatches.length > 0);
   }, [instructie_id, html]);
 
 
@@ -121,7 +123,7 @@ useEffect(() => {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Enter") {
-        if (fase === "vragen" && feedback) setIndex((i) => Math.min(i + 1, vragen.length - 1));
+        if (fase === "vragen" && feedback && heeftToets) setIndex((i) => Math.min(i + 1, vragen.length - 1));
         else if (fase !== "vragen") setIndex((i) => Math.min(i + 1, stappen.length - 1));
       }
     };
@@ -177,13 +179,37 @@ useEffect(() => {
 
   const naarVolgende = () => {
     setFeedback(null);
-    if (fase === "stappen" && index >= stappen.length - 1 && vragen.length > 0) {
+    if (fase === "stappen" && index >= stappen.length - 1 && heeftToets) {
       setFase("vragen");
       setIndex(0);
-    } else if (fase === "vragen" && index >= vragen.length - 1) {
+    } else if (fase === "vragen" && index >= vragen.length - 1 && heeftToets) {
       const percentage = vragen.length > 0 ? Math.round((aantalJuist / vragen.length) * 100) : 0;
       setScore(percentage);
       setFase("klaar");
+
+      const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
+
+      fetch("/api/resultaten", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: gebruiker.email,
+          naam: gebruiker.naam,
+          functie: gebruiker.functie,
+          titel,
+          instructie_id,
+          score: percentage,
+          juist: aantalJuist,
+          totaal: vragen.length,
+          fouten,
+        }),
+      })
+        .then((res) => res.json())
+        .then((res) => console.log("✅ API-response:", res))
+        .catch((err) => console.error("❌ API-fout:", err));
+    } else if (!heeftToets && index >= stappen.length - 1) {
+      setFase("klaar");
+    }
 
       const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
 
@@ -212,6 +238,7 @@ useEffect(() => {
 
   return (
     <div ref={containerRef} className="max-w-4xl mx-auto p-4 space-y-4">
+      <h1 className="text-2xl font-bold">{titel}</h1>
       {fase === "stappen" && (
         <>
           <div
@@ -230,7 +257,7 @@ useEffect(() => {
               onClick={naarVolgende}
               className="bg-blue-600 text-white px-4 py-2 rounded"
             >
-              {index === stappen.length - 1 ? "Start toets (↵)" : "Volgende stap (↵)"}
+              {index === stappen.length - 1 && heeftToets ? "Start toets (↵)" : "Volgende stap (↵)"}
             </button>
           </div>
         </>
@@ -270,10 +297,14 @@ useEffect(() => {
 
       {fase === "klaar" && (
         <div className="text-center text-xl font-semibold space-y-4">
-          <p className={score >= 80 ? "text-green-700" : "text-red-700"}>
-            {score >= 80 ? "\u2705 Geslaagd!" : "\u274c Niet geslaagd."} Je score: {score}%<br />
-            {aantalJuist} van {vragen.length} goed beantwoord
-          </p>
+          {heeftToets ? (
+            <p className={score >= 80 ? "text-green-700" : "text-red-700"}>
+              {score >= 80 ? "✅ Geslaagd!" : "❌ Niet geslaagd."} Je score: {score}%<br />
+              {aantalJuist} van {vragen.length} goed beantwoord
+            </p>
+          ) : (
+            <p className="text-green-700">✅ Instructie gelezen</p>
+          )}
           <Link
             href="/instructies"
             className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
