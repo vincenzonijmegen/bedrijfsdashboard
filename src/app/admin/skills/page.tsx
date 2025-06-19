@@ -29,9 +29,11 @@ export default function SkillBeheer() {
 
   useEffect(() => {
     if (geselecteerd !== null) {
+      console.log("Fetching toegewezen skills voor", geselecteerd);
       fetch(`/api/skills/toegewezen?medewerker_id=${geselecteerd}`)
         .then(res => res.json())
         .then((data: ToegewezenSkill[]) => {
+          console.log("Ontvangen skills:", data);
           const ingevuld = Object.fromEntries(
             data.map((s) => [s.skill_id, { actief: true, deadline: Number(s.deadline_dagen) || 10 }])
           );
@@ -82,6 +84,7 @@ export default function SkillBeheer() {
           value={geselecteerd !== null ? String(geselecteerd) : ""}
           onChange={(e) => {
             const val = e.target.value;
+            console.log("Verandering:", val);
             const parsed = Number(val);
             if (!isNaN(parsed)) {
               setGeselecteerd(parsed);
@@ -136,6 +139,7 @@ export default function SkillBeheer() {
           ))}
 
           <Button onClick={opslaan}>Opslaan</Button>
+          <pre className="text-xs bg-gray-100 p-2 rounded overflow-x-auto">{JSON.stringify(toewijzingen, null, 2)}</pre>
         </div>
       )}
     </div>
