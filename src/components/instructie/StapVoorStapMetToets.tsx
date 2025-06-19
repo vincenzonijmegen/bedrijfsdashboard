@@ -29,6 +29,19 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
 
 
   useEffect(() => {
+    const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
+    if (!gebruiker?.email || !instructie_id) return;
+
+    fetch("/api/instructiestatus", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: gebruiker.email, instructie_id }),
+    }).then(res => {
+      if (res.ok) console.log("✅ Gelezen registratie opgeslagen");
+      else console.warn("⚠️ Mislukt om gelezen instructie op te slaan");
+    }).catch(err => {
+      console.error("❌ Fout bij fetch /api/instructiestatus", err);
+    });
     const [stapDeel, ...vraagDeel] = html.split(/Vraag:\s/);
 
     const stepSegments = stapDeel
