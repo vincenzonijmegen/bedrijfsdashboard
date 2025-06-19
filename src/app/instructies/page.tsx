@@ -74,7 +74,7 @@ export default function InstructieOverzicht() {
     const s = status?.find((x) => x.slug === slug);
     if (!s) return <span className="text-gray-400">⏳ Nog niet gelezen</span>;
 
-    if (s.score !== undefined && s.totaal !== undefined && s.juist !== undefined) {
+    if (s.score != null && s.totaal != null && s.juist != null) {
       const kleur = s.score < 100 ? "text-red-600" : "text-green-600";
       return <span className={kleur}>🧠 {s.juist}/{s.totaal}</span>;
     }
