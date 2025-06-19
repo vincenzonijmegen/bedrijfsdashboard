@@ -28,8 +28,7 @@ export default function SkillBeheer() {
   const [toewijzingen, setToewijzingen] = useState<Record<string, { actief: boolean; deadline: number }>>({});
 
   useEffect(() => {
-    console.log("👁 Medewerkers API inhoud:", medewerkersAPI);
-    if (geselecteerd !== null) {
+        if (geselecteerd !== null) {
       console.log("Fetching toegewezen skills voor", geselecteerd);
       fetch(`/api/skills/toegewezen?medewerker_id=${geselecteerd}`)
         .then(res => res.json())
@@ -85,17 +84,14 @@ export default function SkillBeheer() {
           value={geselecteerd !== null ? String(geselecteerd) : ""}
           onChange={(e) => {
             const val: string | undefined = e.target?.value;
-            console.log("Verandering:", val);
-            if (!val) {
-              console.warn("⚠️ Lege of ongeldige waarde geselecteerd");
-              setGeselecteerd(null);
+                        if (!val) {
+                            setGeselecteerd(null);
               return;
             }
             const parsed = Number(val);
             if (!isNaN(parsed)) {
               setGeselecteerd(parsed);
-              console.log("Geselecteerd:", parsed);
-            } else {
+                          } else {
               setGeselecteerd(null);
             }
           }}
@@ -106,8 +102,7 @@ export default function SkillBeheer() {
           ))}
         </select>
 
-        <pre className="text-xs bg-yellow-50 p-2">{JSON.stringify(medewerkersAPI, null, 2)}</pre>
-      </div>
+              </div>
 
       {geselecteerd !== null && (
         <div className="space-y-4">
@@ -147,7 +142,7 @@ export default function SkillBeheer() {
           ))}
 
           <Button onClick={opslaan}>Opslaan</Button>
-          <pre className="text-xs bg-gray-100 p-2 rounded overflow-x-auto">{JSON.stringify(toewijzingen, null, 2)}</pre>
+          
         </div>
       )}
     </div>
