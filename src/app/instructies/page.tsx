@@ -76,7 +76,19 @@ export default function InstructieOverzicht() {
 
     if (s.score != null && s.totaal != null && s.juist != null) {
       const kleur = s.score < 100 ? "text-red-600" : "text-green-600";
-      return <span className={kleur}>🧠 {s.juist}/{s.totaal}</span>;
+      const datum = s.gelezen_op
+        ? new Date(s.gelezen_op).toLocaleDateString("nl-NL", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })
+        : null;
+      return (
+        <span className={kleur}>
+          🧠 {s.juist}/{s.totaal}
+          {datum && <span className="ml-2 text-blue-600">👁 {datum}</span>}
+        </span>
+      );
     }
 
     if (s.gelezen_op) {
