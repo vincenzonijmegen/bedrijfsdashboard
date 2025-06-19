@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
 import GelezenRegistratie from "@/components/instructie/GelezenRegistratie";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function Page(props: any) {
   const slug = props.params?.slug;
 
