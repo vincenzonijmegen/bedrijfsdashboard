@@ -5,15 +5,17 @@ import { NextRequest } from "next/server";
 export async function GET(req: NextRequest) {
   try {
     const type = req.nextUrl.searchParams.get("type");
+    console.log("📥 Type-param:", type);
 
     if (type === "skills") {
+      console.log("🎯 Skills-query uitgevoerd");
       const result = await db.query(
         `SELECT id, naam, categorie FROM skills ORDER BY categorie, naam`
       );
       return NextResponse.json(result.rows);
     }
 
-    // Standaard: medewerkers met id + naam
+    console.log("👤 Medewerkers-query uitgevoerd");
     const result = await db.query(
       `SELECT id, naam FROM medewerkers ORDER BY naam`
     );
