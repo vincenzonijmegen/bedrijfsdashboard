@@ -6,6 +6,7 @@ import Link from "next/link";
 interface Props {
   html: string;
   instructie_id: string;
+  titel: string;
 }
 
 type Vraag = {
@@ -42,6 +43,9 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: gebruiker.email,
+          naam: gebruiker.naam,
+          functie: gebruiker.functie,
+          titel,
           instructie_id,
           duur_seconden: duurSec,
         }),
