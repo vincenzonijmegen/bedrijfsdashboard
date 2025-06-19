@@ -2,10 +2,8 @@ import { db } from "@/lib/db";
 import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
 import GelezenRegistratie from "@/components/instructie/GelezenRegistratie";
 
-type Params = { params: { slug: string } };
-
-export default async function Page(props: Params) {
-  const slug = props.params.slug;
+export default async function Page({ params }: { params: { slug: string } }) {
+  const slug = params.slug;
 
   const result = await db.query(
     "SELECT * FROM instructies WHERE slug = $1",
