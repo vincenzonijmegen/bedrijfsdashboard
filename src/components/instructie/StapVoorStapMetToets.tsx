@@ -5,6 +5,7 @@ import Link from "next/link";
 
 interface Props {
   html: string;
+  instructie_id: string;
 }
 
 type Vraag = {
@@ -13,7 +14,7 @@ type Vraag = {
   antwoord: string;
 };
 
-export default function StapVoorStapMetToets({ html }: Props) {
+export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
   const [stappen, setStappen] = useState<string[]>([]);
   const [vragen, setVragen] = useState<Vraag[]>([]);
   const [index, setIndex] = useState(0);
