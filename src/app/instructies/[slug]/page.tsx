@@ -20,7 +20,12 @@ export default async function Page(props: any) {
   return (
     <>
       <GelezenRegistratie instructie_id={instructie.id} />
-      <StapVoorStapMetToets html={instructie.inhoud} instructie_id={instructie.id} />
+      <StapVoorStapMetToets
+  html={instructie.inhoud}
+  instructie_id={instructie.id}
+  titel={instructie.titel}
+/>
+
     </>
   );
 }
