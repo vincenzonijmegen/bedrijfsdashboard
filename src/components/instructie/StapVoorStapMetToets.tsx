@@ -58,32 +58,15 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
     const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
     if (!gebruiker?.email || !instructie_id) return;
 
-    console.log("📤 Verstuur gelezen-registratie", { email: gebruiker.email, instructie_id });
-
     fetch("/api/instructiestatus", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: gebruiker.email, instructie_id })
-    })
-      .then(async res => {
-        const result = await res.json().catch(() => ({}));
-        if (res.ok) {
-          console.log("✅ Gelezen registratie opgeslagen:", result);
-        } else {
-          console.warn("⚠️ Mislukt om gelezen instructie op te slaan:", result);
-        }
-      })
-      .catch(err => {
-        console.error("❌ Fout bij fetch /api/instructiestatus", err);
-      });
+    });
 
     const parts = html.split("[end]");
-    const stepSegments = parts
-      .slice(0, -1)
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const stepSegments = parts.slice(0, -1).map((s) => s.trim()).filter(Boolean);
     const vraagDeel = parts.slice(-1)[0] || "";
-
     const vragenHTML = vraagDeel.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
 
     const questionPattern = /Vraag[:.]\s*(.*?)\s*A\.\s*(.*?)\s*B\.\s*(.*?)\s*C\.\s*(.*?)\s*Antwoord:\s*([ABC])/gi;
@@ -97,28 +80,6 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
     setVragen(vraagMatches);
     setHeeftToets(vraagMatches.length > 0);
   }, [instructie_id, html]);
-
-
-useEffect(() => {
-  startTijd.current = Date.now();
-
-  return () => {
-    const eindTijd = Date.now();
-    const duurSec = Math.round((eindTijd - (startTijd.current || eindTijd)) / 1000);
-
-    const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
-
-    fetch("/api/instructielog", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: gebruiker.email,
-        instructie_id,
-        duur_seconden: duurSec,
-      }),
-    });
-  };
-}, []);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -137,15 +98,10 @@ useEffect(() => {
     if (!el) return;
 
     let startX = 0;
-
-    const onTouchStart = (e: TouchEvent) => {
-      startX = e.touches[0].clientX;
-    };
-
+    const onTouchStart = (e: TouchEvent) => { startX = e.touches[0].clientX; };
     const onTouchEnd = (e: TouchEvent) => {
       const endX = e.changedTouches[0].clientX;
       const delta = endX - startX;
-
       if (delta < -40) setIndex((i) => Math.min(i + 1, fase === "vragen" ? vragen.length - 1 : stappen.length - 1));
       if (delta > 40) setIndex((i) => Math.max(i - 1, 0));
     };
@@ -158,8 +114,6 @@ useEffect(() => {
     };
   }, [fase, index, stappen.length, vragen.length]);
 
-
-  
   const selectAntwoord = (letter: "A" | "B" | "C") => {
     const juist = letter === vragen[index].antwoord;
     if (juist) {
@@ -174,20 +128,20 @@ useEffect(() => {
         },
       ]);
     }
-    setFeedback(juist ? "\u2705 Goed!" : `\u274c Fout. Juiste antwoord: ${vragen[index].antwoord}`);
+    setFeedback(juist ? "✅ Goed!" : `❌ Fout. Juiste antwoord: ${vragen[index].antwoord}`);
   };
 
   const naarVolgende = () => {
     setFeedback(null);
+    const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
+
     if (fase === "stappen" && index >= stappen.length - 1 && heeftToets) {
       setFase("vragen");
       setIndex(0);
     } else if (fase === "vragen" && index >= vragen.length - 1 && heeftToets) {
-      const percentage = vragen.length > 0 ? Math.round((aantalJuist / vragen.length) * 100) : 0;
+      const percentage = Math.round((aantalJuist / vragen.length) * 100);
       setScore(percentage);
       setFase("klaar");
-
-      const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
 
       fetch("/api/resultaten", {
         method: "POST",
@@ -209,28 +163,6 @@ useEffect(() => {
         .catch((err) => console.error("❌ API-fout:", err));
     } else if (!heeftToets && index >= stappen.length - 1) {
       setFase("klaar");
-    }
-
-      const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
-
-      fetch("/api/resultaten", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: gebruiker.email,
-          naam: gebruiker.naam,
-          functie: gebruiker.functie,
-          titel,
-          instructie_id,
-          score: percentage,
-          juist: aantalJuist,
-          totaal: vragen.length,
-          fouten,
-        }),
-      })
-        .then((res) => res.json())
-        .then((res) => console.log("\u2705 API-response:", res))
-        .catch((err) => console.error("\u274c API-fout:", err));
     } else {
       setIndex((i) => i + 1);
     }
@@ -241,22 +173,12 @@ useEffect(() => {
       <h1 className="text-2xl font-bold">{titel}</h1>
       {fase === "stappen" && (
         <>
-          <div
-            className="border rounded p-4 bg-white shadow min-h-[150px]"
-            dangerouslySetInnerHTML={{ __html: stappen[index] }}
-          />
+          <div className="border rounded p-4 bg-white shadow min-h-[150px]" dangerouslySetInnerHTML={{ __html: stappen[index] }} />
           <div className="flex justify-between">
-            <button
-              onClick={() => setIndex((i) => Math.max(i - 1, 0))}
-              disabled={index === 0}
-              className="px-4 py-2 rounded bg-gray-300 disabled:opacity-40"
-            >
+            <button onClick={() => setIndex((i) => Math.max(i - 1, 0))} disabled={index === 0} className="px-4 py-2 rounded bg-gray-300 disabled:opacity-40">
               Vorige
             </button>
-            <button
-              onClick={naarVolgende}
-              className="bg-blue-600 text-white px-4 py-2 rounded"
-            >
+            <button onClick={naarVolgende} className="bg-blue-600 text-white px-4 py-2 rounded">
               {index === stappen.length - 1 && heeftToets ? "Start toets (↵)" : "Volgende stap (↵)"}
             </button>
           </div>
@@ -283,10 +205,7 @@ useEffect(() => {
             <div className="text-sm mt-2">
               {feedback}
               <div className="mt-2">
-                <button
-                  onClick={naarVolgende}
-                  className="bg-blue-600 text-white px-4 py-2 rounded"
-                >
+                <button onClick={naarVolgende} className="bg-blue-600 text-white px-4 py-2 rounded">
                   {index === vragen.length - 1 ? "Bekijk resultaat" : "Volgende vraag (↵)"}
                 </button>
               </div>
@@ -305,10 +224,7 @@ useEffect(() => {
           ) : (
             <p className="text-green-700">✅ Instructie gelezen</p>
           )}
-          <Link
-            href="/instructies"
-            className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-          >
+          <Link href="/instructies" className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
             Terug naar instructies
           </Link>
         </div>
