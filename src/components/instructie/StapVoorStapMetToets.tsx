@@ -72,18 +72,16 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
         console.error("❌ Fout bij fetch /api/instructiestatus", err);
       });
 
-    const split = html.split(/Vraag:\s/);
-    const stapDeel = split[0];
-    const vraagDeel = "Vraag: " + split.slice(1).join("Vraag:");
-
-    const stepSegments = stapDeel
-      .split("[end]")
+    const parts = html.split("[end]");
+    const stepSegments = parts
+      .slice(0, -1)
       .map((s) => s.trim())
       .filter(Boolean);
-
-    const questionPattern = /Vraag:\s*(.*?)\s*A\.\s*(.*?)\s*B\.\s*(.*?)\s*C\.\s*(.*?)\s*Antwoord:\s*([ABC])/gi;
+    const vraagDeel = parts.slice(-1)[0] || "";
 
     const vragenHTML = vraagDeel.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
+
+    const questionPattern = /Vraag[:.]\s*(.*?)\s*A\.\s*(.*?)\s*B\.\s*(.*?)\s*C\.\s*(.*?)\s*Antwoord:\s*([ABC])/gi;
     const vraagMatches = Array.from(vragenHTML.matchAll(questionPattern)).map((m) => ({
       vraag: m[1].trim(),
       opties: [m[2].trim(), m[3].trim(), m[4].trim()],
@@ -93,6 +91,7 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
     setStappen(stepSegments);
     setVragen(vraagMatches);
   }, [instructie_id, html]);
+
 
 useEffect(() => {
   startTijd.current = Date.now();
