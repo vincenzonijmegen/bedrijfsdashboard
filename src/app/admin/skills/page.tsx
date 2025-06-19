@@ -65,11 +65,11 @@ export default function SkillBeheer() {
   if (!medewerkersAPI || !skills) return <div>Laden...</div>;
 
   const skillsPerCategorie = skills.reduce((acc: Record<string, Skill[]>, skill) => {
-  const categorie = skill.categorie ?? "Onbekend";
-  if (!acc[categorie]) acc[categorie] = [];
-  acc[categorie].push(skill);
-  return acc;
-}, {});
+    const categorie = skill.categorie ?? "Onbekend";
+    if (!acc[categorie]) acc[categorie] = [];
+    acc[categorie].push(skill);
+    return acc;
+  }, {});
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
@@ -83,11 +83,15 @@ export default function SkillBeheer() {
           onChange={(e) => {
             const val = e.target.value;
             const parsed = Number(val);
-            console.log("Geselecteerd:", parsed);
-            if (!isNaN(parsed)) setGeselecteerd(parsed);
+            if (!isNaN(parsed)) {
+              setGeselecteerd(parsed);
+              console.log("Geselecteerd:", parsed);
+            } else {
+              setGeselecteerd(null);
+            }
           }}
         >
-          <option value="" disabled>-- Selecteer --</option>
+          <option value="">-- Selecteer --</option>
           {medewerkersAPI.map((m) => (
             <option key={m.id} value={String(m.id)}>{m.naam}</option>
           ))}
