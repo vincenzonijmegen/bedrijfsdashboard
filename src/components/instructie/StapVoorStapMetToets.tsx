@@ -194,7 +194,7 @@ useEffect(() => {
           email: gebruiker.email,
           naam: gebruiker.naam,
           functie: gebruiker.functie,
-          titel: document.title || "Onbekende instructie",
+          titel,
           instructie_id,
           score: percentage,
           juist: aantalJuist,
