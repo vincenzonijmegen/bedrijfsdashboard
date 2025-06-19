@@ -24,6 +24,7 @@ interface Status {
   score?: number;
   totaal?: number;
   juist?: number;
+  gelezen_op?: string;
 }
 
 const fetcher = async (url: string): Promise<Instructie[]> => {
@@ -55,7 +56,6 @@ export default function InstructieOverzicht() {
 
   const { data: instructies, error } = useSWR<Instructie[]>("/api/instructies", fetcher);
 
-  // ✅ aangepaste fetcher voor status!
   const { data: status } = useSWR<Status[]>(
     email ? `/api/instructiestatus?email=${email}` : null,
     (url: string) => fetch(url).then(res => res.json())
@@ -77,6 +77,15 @@ export default function InstructieOverzicht() {
     if (s.score !== undefined && s.totaal !== undefined && s.juist !== undefined) {
       const kleur = s.score < 100 ? "text-red-600" : "text-green-600";
       return <span className={kleur}>🧠 {s.juist}/{s.totaal}</span>;
+    }
+
+    if (s.gelezen_op) {
+      const datum = new Date(s.gelezen_op).toLocaleDateString("nl-NL", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+      return <span className="text-blue-600">👁 Gelezen op {datum}</span>;
     }
 
     return <span className="text-blue-600">👁 Gelezen</span>;
