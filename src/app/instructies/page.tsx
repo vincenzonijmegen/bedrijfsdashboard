@@ -71,15 +71,16 @@ export default function InstructieOverzicht() {
   });
 
   const getStatus = (slug: string) => {
-    const s = status?.find((x) => x.slug === slug);
-    if (!s) return <span className="text-gray-400">⏳ Nog niet gelezen</span>;
-    if (s.gelezen && s.score !== undefined && s.totaal !== undefined) {
-      const kleur = s.score < s.totaal ? "text-red-600" : "text-green-600";
-      return <span className={kleur}>🧠 {s.score}/{s.totaal}</span>;
-    }
-    if (s.gelezen) return <span className="text-blue-600">👁 Gelezen</span>;
-    return <span className="text-gray-400">⏳ Nog niet gelezen</span>;
-  };
+  const s = status?.find((x) => x.slug === slug);
+  if (!s) return <span className="text-gray-400">⏳ Nog niet gelezen</span>;
+
+  if (s.score !== undefined && s.totaal !== undefined) {
+    const kleur = s.score < 100 ? "text-red-600" : "text-green-600";
+    return <span className={kleur}>🧠 {s.juist}/{s.totaal}</span>;
+  }
+
+  return <span className="text-blue-600">👁 Gelezen</span>;
+};
 
   return (
     <main className="max-w-4xl mx-auto p-4">
