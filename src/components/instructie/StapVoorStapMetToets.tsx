@@ -23,9 +23,31 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
   const [score, setScore] = useState(0);
   const [aantalJuist, setAantalJuist] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const startTijd = useRef<number | null>(null);
   const [fouten, setFouten] = useState<
     { vraag: string; gegeven: string; gekozenTekst: string }[]
   >([]);
+
+  useEffect(() => {
+    startTijd.current = Date.now();
+
+    return () => {
+      const eindTijd = Date.now();
+      const duurSec = Math.round((eindTijd - (startTijd.current || eindTijd)) / 1000);
+
+      const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
+
+      fetch("/api/instructielog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: gebruiker.email,
+          instructie_id,
+          duur_seconden: duurSec,
+        }),
+      });
+    };
+  }, [instructie_id]);
 
   useEffect(() => {
     const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
@@ -71,7 +93,6 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
     setStappen(stepSegments);
     setVragen(vraagMatches);
   }, [instructie_id, html]);
-
 
 useEffect(() => {
   startTijd.current = Date.now();
