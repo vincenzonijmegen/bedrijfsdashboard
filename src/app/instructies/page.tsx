@@ -11,6 +11,14 @@ interface Instructie {
   slug: string;
 }
 
+interface RawInstructie {
+  id: string;
+  titel: string;
+  nummer?: string;
+  functies?: string | string[];
+  slug: string;
+}
+
 interface Status {
   slug: string;
   gelezen?: boolean;
@@ -18,9 +26,24 @@ interface Status {
   totaal?: number;
 }
 
-const fetcher = async (url: string): Promise<any> => {
+const fetcher = async (url: string): Promise<Instructie[]> => {
   const res = await fetch(url);
-  return res.json();
+  const data: RawInstructie[] = await res.json();
+  return data.map((i) => ({
+    ...i,
+    functies: Array.isArray(i.functies)
+      ? i.functies
+      : typeof i.functies === "string"
+      ? (() => {
+          try {
+            const parsed = JSON.parse(i.functies);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch {
+            return [];
+          }
+        })()
+      : [],
+  }));
 };
 
 export default function InstructieOverzicht() {
