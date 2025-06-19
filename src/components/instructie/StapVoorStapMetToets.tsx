@@ -122,7 +122,7 @@ fetch("/api/resultaten", {
   naam: gebruiker.naam,
   functie: gebruiker.functie,
   titel: document.title,
-  instructie_id: document.instructie_id, // ✅ toegevoegd
+  instructie_id: instructie_id, // ✅ toegevoegd
   score: percentage,
   juist: aantalJuist,
   totaal: vragen.length,
