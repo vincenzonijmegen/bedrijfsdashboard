@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(result.rows);
     }
 
+    // Standaard: medewerkers met id + naam
     const result = await db.query(
       `SELECT id, naam FROM medewerkers ORDER BY naam`
     );
