@@ -24,15 +24,14 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
   const [aantalJuist, setAantalJuist] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const [fouten, setFouten] = useState<
-  { vraag: string; gegeven: string; gekozenTekst: string }[]
->([]);
-
+    { vraag: string; gegeven: string; gekozenTekst: string }[]
+  >([]);
 
   useEffect(() => {
     const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
     if (!gebruiker?.email || !instructie_id) return;
 
-    console.log("📤 Verstuur gelezen-registratie", { email: gebruiker.email, instructie_id });
+    console.log("\ud83d\udce4 Verstuur gelezen-registratie", { email: gebruiker.email, instructie_id });
 
     fetch("/api/instructiestatus", {
       method: "POST",
@@ -42,27 +41,15 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
       .then(async res => {
         const result = await res.json().catch(() => ({}));
         if (res.ok) {
-          console.log("✅ Gelezen registratie opgeslagen:", result);
+          console.log("\u2705 Gelezen registratie opgeslagen:", result);
         } else {
-          console.warn("⚠️ Mislukt om gelezen instructie op te slaan:", result);
+          console.warn("\u26a0\ufe0f Mislukt om gelezen instructie op te slaan:", result);
         }
       })
       .catch(err => {
-        console.error("❌ Fout bij fetch /api/instructiestatus", err);
+        console.error("\u274c Fout bij fetch /api/instructiestatus", err);
       });
-    const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
-    if (!gebruiker?.email || !instructie_id) return;
 
-    fetch("/api/instructiestatus", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: gebruiker.email, instructie_id }),
-    }).then(res => {
-      if (res.ok) console.log("✅ Gelezen registratie opgeslagen");
-      else console.warn("⚠️ Mislukt om gelezen instructie op te slaan");
-    }).catch(err => {
-      console.error("❌ Fout bij fetch /api/instructiestatus", err);
-    });
     const [stapDeel, ...vraagDeel] = html.split(/Vraag:\s/);
 
     const stepSegments = stapDeel
@@ -81,7 +68,7 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
 
     setStappen(stepSegments);
     setVragen(vraagMatches);
-  }, [instructie_id]);
+  }, [instructie_id, html]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -122,20 +109,21 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
   }, [fase, index, stappen.length, vragen.length]);
 
   const selectAntwoord = (letter: "A" | "B" | "C") => {
-  const juist = letter === vragen[index].antwoord;
-  if (juist) {
-    setAantalJuist((n) => n + 1);
-  } else {
-    setFouten((f) => [
-      ...f,
-      { vraag: vragen[index].vraag,
-    gegeven: letter,
-    gekozenTekst: vragen[index].opties[["A", "B", "C"].indexOf(letter)],
-  },    ]);
-  }
-  setFeedback(juist ? "✅ Goed!" : `❌ Fout. Juiste antwoord: ${vragen[index].antwoord}`);
-};
-
+    const juist = letter === vragen[index].antwoord;
+    if (juist) {
+      setAantalJuist((n) => n + 1);
+    } else {
+      setFouten((f) => [
+        ...f,
+        {
+          vraag: vragen[index].vraag,
+          gegeven: letter,
+          gekozenTekst: vragen[index].opties[["A", "B", "C"].indexOf(letter)],
+        },
+      ]);
+    }
+    setFeedback(juist ? "\u2705 Goed!" : `\u274c Fout. Juiste antwoord: ${vragen[index].antwoord}`);
+  };
 
   const naarVolgende = () => {
     setFeedback(null);
@@ -149,24 +137,24 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
 
       const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
 
-fetch("/api/resultaten", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
- body: JSON.stringify({
-  email: gebruiker.email,
-  naam: gebruiker.naam,
-  functie: gebruiker.functie,
-  titel: document.title,
-  instructie_id,
-  score: percentage,
-  juist: aantalJuist,
-  totaal: vragen.length,
-  fouten,}),
-})
-
+      fetch("/api/resultaten", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: gebruiker.email,
+          naam: gebruiker.naam,
+          functie: gebruiker.functie,
+          titel: document.title || "Onbekende instructie",
+          instructie_id,
+          score: percentage,
+          juist: aantalJuist,
+          totaal: vragen.length,
+          fouten,
+        }),
+      })
         .then((res) => res.json())
-        .then((res) => console.log("✅ API-response:", res))
-        .catch((err) => console.error("❌ API-fout:", err));
+        .then((res) => console.log("\u2705 API-response:", res))
+        .catch((err) => console.error("\u274c API-fout:", err));
     } else {
       setIndex((i) => i + 1);
     }
@@ -233,7 +221,7 @@ fetch("/api/resultaten", {
       {fase === "klaar" && (
         <div className="text-center text-xl font-semibold space-y-4">
           <p className={score >= 80 ? "text-green-700" : "text-red-700"}>
-            {score >= 80 ? "✅ Geslaagd!" : "❌ Niet geslaagd."} Je score: {score}%<br />
+            {score >= 80 ? "\u2705 Geslaagd!" : "\u274c Niet geslaagd."} Je score: {score}%<br />
             {aantalJuist} van {vragen.length} goed beantwoord
           </p>
           <Link
