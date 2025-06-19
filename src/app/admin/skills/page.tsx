@@ -89,7 +89,7 @@ export default function SkillBeheer() {
         >
           <option value="" disabled>-- Selecteer --</option>
           {medewerkersAPI.map((m) => (
-            <option key={m.id} value={m.id}>{m.naam}</option>
+            <option key={m.id} value={String(m.id)}>{m.naam}</option>
           ))}
         </select>
       </div>
