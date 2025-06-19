@@ -14,7 +14,7 @@ export default async function Page(props: any) {
   const instructie = result.rows[0];
 
   if (!instructie) {
-    return <div className="p-6 text-red-700">❌ Instructie niet gevonden</div>;
+    return null;
   }
 
   return (
