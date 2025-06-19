@@ -60,7 +60,7 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
 
     setStappen(stepSegments);
     setVragen(vraagMatches);
-  }, [html]);
+  }, [instructie_id]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
