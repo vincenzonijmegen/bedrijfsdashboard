@@ -28,6 +28,7 @@ export default function SkillBeheer() {
   const [toewijzingen, setToewijzingen] = useState<Record<string, { actief: boolean; deadline: number }>>({});
 
   useEffect(() => {
+    console.log("👁 Medewerkers API inhoud:", medewerkersAPI);
     if (geselecteerd !== null) {
       console.log("Fetching toegewezen skills voor", geselecteerd);
       fetch(`/api/skills/toegewezen?medewerker_id=${geselecteerd}`)
