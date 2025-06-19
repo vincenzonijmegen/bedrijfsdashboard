@@ -1,3 +1,5 @@
+console.log("✅ Vercel API /api/medewerkers route.ts geladen");
+
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
