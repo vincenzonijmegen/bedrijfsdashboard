@@ -97,7 +97,7 @@ export default function InstructieOverzicht() {
         month: "2-digit",
         year: "numeric",
       });
-      return <span className="text-blue-600">👁 Gelezen op {datum}</span>;
+      return <span className="text-blue-600">👁 {datum}</span>;
     }
 
     return <span className="text-blue-600">👁 Gelezen</span>;
