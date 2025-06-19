@@ -59,7 +59,9 @@ export async function POST(req: Request) {
        WHERE email = $1 AND instructie_id = $2`,
       [email, instructie_id]
     );
-    const duur_seconden = duurRes.rows[0]?.gelezen_duur_seconden ?? "-";
+    const duur_seconden = typeof duurRes.rows[0]?.gelezen_duur_seconden === "number"
+  ? duurRes.rows[0].gelezen_duur_seconden
+  : "-";
 
     const foutenLijst =
       fouten && fouten.length > 0
