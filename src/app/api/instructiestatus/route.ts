@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await db.query(
-      `SELECT g.instructie_id, i.titel, g.gelezen_op
+      `SELECT g.instructie_id, i.slug, i.titel, g.gelezen_op
        FROM gelezen_instructies g
        JOIN instructies i ON g.instructie_id = i.id
        WHERE g.email = $1
