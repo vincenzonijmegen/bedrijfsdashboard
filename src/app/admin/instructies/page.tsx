@@ -12,27 +12,23 @@ interface Instructie {
   slug: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const fetcher = async (url: string): Promise<Instructie[]> => {
   const res = await fetch(url);
   const data = await res.json();
-  return data.map(
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-(i: unknown) => {
-  const item = i as Instructie & { functies: string };
-  return {
-    ...item,
-    functies: (() => {
-      try {
-        const parsed = JSON.parse(item.functies);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch {
-        return item.functies;
-}
-        })(),
-      };
-    }
-  );
+  return data.map((i: unknown) => {
+    const item = i as Instructie & { functies: string };
+    return {
+      ...item,
+      functies: (() => {
+        try {
+          const parsed = JSON.parse(item.functies);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return item.functies;
+        }
+      })(),
+    };
+  });
 };
 
 export default function InstructieOverzicht() {

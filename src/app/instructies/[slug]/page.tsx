@@ -2,24 +2,29 @@ import { db } from "@/lib/db";
 import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
 import GelezenRegistratie from "@/components/instructie/GelezenRegistratie";
 
-export default async function Page(props: any) {
-  const slug = props?.params?.slug;
+export default async function Page({ params }: { params: { slug: string } }) {
+  const slug = params.slug;
 
-  const result = await db.query(
-    "SELECT * FROM instructies WHERE slug = $1",
-    [slug]
-  );
+  try {
+    const result = await db.query(
+      "SELECT * FROM instructies WHERE slug = $1",
+      [slug]
+    );
 
-  const instructie = result.rows[0];
+    const instructie = result.rows[0];
 
-  if (!instructie) {
-    return <div className="p-6 text-red-700">❌ Instructie niet gevonden</div>;
+    if (!instructie) {
+      return <div className="p-6 text-red-700">❌ Instructie niet gevonden</div>;
+    }
+
+    return (
+      <>
+        <GelezenRegistratie instructie_id={instructie.id} />
+        <StapVoorStapMetToets html={instructie.inhoud} />
+      </>
+    );
+  } catch (err) {
+    console.error("Fout bij ophalen instructie:", err);
+    return <div className="p-6 text-red-700">❌ Fout bij ophalen instructie</div>;
   }
-
-  return (
-    <>
-      <GelezenRegistratie instructie_id={instructie.id} />
-      <StapVoorStapMetToets html={instructie.inhoud} />
-    </>
-  );
 }
