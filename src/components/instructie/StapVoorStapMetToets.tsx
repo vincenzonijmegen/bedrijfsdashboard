@@ -53,23 +53,9 @@ export default function StapVoorStapMetToets({ html, instructie_id }: Props) {
     const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
     if (!gebruiker?.email || !instructie_id) return;
 
-    
     fetch("/api/instructiestatus", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: gebruiker.email, instructie_id })
-    })
-      .then(async res => {
-        const result = await res.json().catch(() => ({}));
-        if (res.ok) {
-          console.log("✅ Gelezen registratie opgeslagen:", result);
-        } else {
-          console.warn("⚠️ Mislukt om gelezen instructie op te slaan:", result);
-        }
-      })
-      .catch(err => {
-        console.error("❌ Fout bij fetch /api/instructiestatus", err);
-      });,
       body: JSON.stringify({ email: gebruiker.email, instructie_id }),
     }).then(res => {
       if (res.ok) console.log("✅ Gelezen registratie opgeslagen");
