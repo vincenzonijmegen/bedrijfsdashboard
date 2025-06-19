@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { UUID } from "crypto";
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 
@@ -20,6 +21,7 @@ export async function POST(req: Request) {
       score,
       juist,
       totaal,
+      instructie_id,
       titel,
       tijdstip,
       functie,
@@ -30,6 +32,7 @@ export async function POST(req: Request) {
       score: number;
       juist: number;
       totaal: number;
+      instructie_id: UUID;
       titel: string;
       tijdstip?: string;
       functie: string;
@@ -37,10 +40,10 @@ export async function POST(req: Request) {
     } = body;
 
     await db.query(
-      `INSERT INTO toetsresultaten (naam, email, score, juist, totaal, titel, tijdstip, functie)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [naam, email, score, juist, totaal, titel, tijdstip || new Date(), functie]
-    );
+  `INSERT INTO toetsresultaten (naam, email, score, juist, totaal, instructie_id, tijdstip, functie)
+   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+  [naam, email, score, juist, totaal, instructie_id, tijdstip || new Date(), functie]
+);
 
     const foutenLijst =
   fouten && fouten.length > 0
