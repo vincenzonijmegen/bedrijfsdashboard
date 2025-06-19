@@ -38,9 +38,16 @@ export async function POST(req: Request) {
       fouten?: Fout[];
     } = body;
 
-    await db.query(
-      `INSERT INTO toetsresultaten (naam, email, score, juist, totaal, instructie_id, tijdstip, functie)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+await db.query(
+  `INSERT INTO toetsresultaten (naam, email, score, juist, totaal, instructie_id, tijdstip, functie)
+   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+   ON CONFLICT (email, instructie_id)
+   DO UPDATE SET
+     score = EXCLUDED.score,
+     juist = EXCLUDED.juist,
+     totaal = EXCLUDED.totaal,
+     tijdstip = EXCLUDED.tijdstip,
+     functie = EXCLUDED.functie`,
       [
         naam,
         email,
