@@ -234,7 +234,7 @@ fetch("/api/resultaten", {
             href="/instructies"
             className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
           >
-            Terug naar instructies
+            Terug naar instructies.
           </Link>
         </div>
       )}
