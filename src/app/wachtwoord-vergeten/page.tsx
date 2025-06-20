@@ -1,45 +1,66 @@
-import { db } from "@/lib/db";
-import { randomUUID } from "crypto";
-import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
+"use client";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { useState } from "react";
 
-export async function POST(req: NextRequest) {
-  try {
-    const { email } = await req.json();
-    const schoonEmail = email.trim().toLowerCase();
+export default function WachtwoordVergeten() {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
 
-    const gebruiker = await db.query(
-      "SELECT email FROM medewerkers WHERE LOWER(email) = $1",
-      [schoonEmail]
-    );
+  const verstuur = async () => {
+    try {
+      const res = await fetch("/api/wachtwoord-reset-aanvragen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
 
-    if (gebruiker.rowCount === 0) {
-      return NextResponse.json({ error: "E-mailadres niet gevonden." }, { status: 404 });
+      if (res.status === 404) {
+        setStatus("notfound");
+      } else if (!res.ok) {
+        setStatus("serverfout");
+      } else {
+        const data = await res.json();
+        if (data.success) {
+          setStatus("success");
+        } else {
+          setStatus("serverfout");
+        }
+      }
+    } catch (err) {
+      console.error("Fout bij versturen resetverzoek:", err);
+      setStatus("serverfout");
     }
+  };
 
-    const token = randomUUID();
-    const vervaltijd = new Date(Date.now() + 1000 * 60 * 30); // 30 min geldig
+  return (
+    <div className="max-w-md mx-auto mt-20 p-4 border rounded bg-white shadow">
+      <h1 className="text-xl font-bold mb-4">🔑 Wachtwoord vergeten?</h1>
+      <p className="text-sm mb-4">Vul je e-mailadres in. Je ontvangt een link om een nieuw wachtwoord in te stellen.</p>
 
-    await db.query(
-      `INSERT INTO wachtwoord_resets (email, token, vervaltijd)
-       VALUES ($1, $2, $3)`,
-      [schoonEmail, token, vervaltijd]
-    );
+      <input
+        type="email"
+        placeholder="E-mailadres"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className="w-full p-2 border rounded mb-2"
+      />
 
-    const resetLink = `${process.env.NEXT_PUBLIC_SITE_URL}/wachtwoord-reset?token=${token}`;
+      <button
+        onClick={verstuur}
+        className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+      >
+        Verstuur resetlink
+      </button>
 
-    await resend.emails.send({
-      from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
-      to: schoonEmail,
-      subject: "Wachtwoord herstellen",
-      text: `Klik op onderstaande link om je wachtwoord opnieuw in te stellen. Deze link is 30 minuten geldig.\n\n${resetLink}`,
-    });
-
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error("❌ Fout bij versturen resetlink:", err);
-    return NextResponse.json({ error: "Interne fout." }, { status: 500 });
-  }
+      {status === "success" && (
+        <p className="text-green-600 mt-4">✅ Resetlink verzonden. Controleer je e-mail.</p>
+      )}
+      {status === "notfound" && (
+        <p className="text-red-600 mt-4">❌ E-mailadres niet gevonden.</p>
+      )}
+      {status === "serverfout" && (
+        <p className="text-red-600 mt-4">❌ Fout bij versturen van de e-mail.</p>
+      )}
+    </div>
+  );
 }
