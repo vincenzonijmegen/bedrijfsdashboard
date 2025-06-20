@@ -3,15 +3,31 @@
 
 import { useState } from "react";
 
+interface ParsedActie {
+  datum: string;
+  tijd: string;
+  shift: string;
+  van: string;
+  naar: string;
+  type: string;
+  bron_email: string;
+}
+
 export default function ShiftMailParser() {
   const [input, setInput] = useState("");
-  const [parsed, setParsed] = useState<any | null>(null);
+  const [parsed, setParsed] = useState<ParsedActie | null>(null);
 
   const parse = () => {
     const lines = input.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
 
     const mailText = input.toLowerCase();
-    const result: any = {
+    const result: ParsedActie = {
+      datum: "",
+      tijd: "",
+      shift: "",
+      van: "",
+      naar: "",
+      type: "",
       bron_email: input,
     };
 
