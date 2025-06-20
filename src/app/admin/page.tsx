@@ -31,6 +31,9 @@ export default function AdminDashboard() {
         <Link href="/instructies" className="block bg-gray-500 text-white p-4 rounded shadow">
           Bekijk instructies als medewerker
         </Link>
+        <Link href="/open-shifts" className="block bg-cyan-600 text-white p-4 rounded shadow">
+          Open Shifts PDF
+        </Link>
       </div>
     </div>
   );

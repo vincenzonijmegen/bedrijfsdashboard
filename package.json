@@ -21,6 +21,9 @@
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dayjs": "^1.11.13",
+    "jspdf": "^3.0.1",
+    "jspdf-autotable": "^5.0.2",
     "linkify-react": "^4.3.1",
     "lucide-react": "^0.513.0",
     "next": "15.3.3",
@@ -29,7 +32,8 @@
     "react-dom": "^19.0.0",
     "resend": "^4.5.2",
     "slugify": "^1.6.6",
-    "tailwind-merge": "^3.3.0"
+    "tailwind-merge": "^3.3.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
