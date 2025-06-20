@@ -7,8 +7,11 @@ export default function Home() {
     <main className="p-8 max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold mb-8">📋 Management Portaal</h1>
       <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3">
-        <Link href="/admin" className="block bg-blue-600 text-white p-6 rounded-xl shadow hover:bg-blue-700">
-          Beheerscherm
+        <Link href="/admin/instructies" className="block bg-blue-600 text-white p-6 rounded-xl shadow hover:bg-blue-700">
+          Instructies beheren
+        </Link>
+        <Link href="/admin/medewerkers" className="block bg-green-600 text-white p-6 rounded-xl shadow hover:bg-green-700">
+          Medewerkers beheren
         </Link>
         <Link href="/instructies" className="block bg-gray-700 text-white p-6 rounded-xl shadow hover:bg-gray-800">
           Instructies voor medewerkers
