@@ -103,6 +103,17 @@ export default function InstructieOverzicht() {
     return <span className="text-blue-600">👁 Gelezen</span>;
   };
 
+<button
+  onClick={() => {
+    localStorage.removeItem("gebruiker");
+    window.location.href = "/sign-in";
+  }}
+  className="text-sm text-red-600 hover:underline"
+>
+  Uitloggen
+</button>
+
+
   return (
     <main className="max-w-4xl mx-auto p-4">
       {isAdmin && (
