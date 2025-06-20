@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const schoonEmail = email.trim().toLowerCase();
 
 
-    const gebruiker = await db.query("SELECT email FROM medewerkers WHERE schoonEmail = $1", [email]);
+    const gebruiker = await db.query("SELECT email FROM medewerkers WHERE email = $1", [schoonEmail]);
     if (gebruiker.rowCount === 0) {
       return NextResponse.json({ error: "E-mailadres niet gevonden." }, { status: 404 });
     }
