@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 
-export default function WachtwoordReset() {
+function ResetForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
@@ -70,5 +70,13 @@ export default function WachtwoordReset() {
         </>
       )}
     </div>
+  );
+}
+
+export default function WachtwoordReset() {
+  return (
+    <Suspense>
+      <ResetForm />
+    </Suspense>
   );
 }
