@@ -12,8 +12,7 @@ export async function POST(req: NextRequest) {
     const { email } = await req.json();
     const schoonEmail = email.trim().toLowerCase();
 
-
-    const gebruiker = await db.query("SELECT email FROM medewerkers WHERE email = $1", [schoonEmail]);
+    const gebruiker = await db.query("SELECT email FROM medewerkers WHERE LOWER(email) = $1", [schoonEmail]);
     if (gebruiker.rowCount === 0) {
       return NextResponse.json({ error: "E-mailadres niet gevonden." }, { status: 404 });
     }
@@ -24,14 +23,14 @@ export async function POST(req: NextRequest) {
     await db.query(
       `INSERT INTO wachtwoord_resets (email, token, vervaltijd)
        VALUES ($1, $2, $3)`,
-      [email, token, vervaltijd]
+      [schoonEmail, token, vervaltijd]
     );
 
     const resetLink = `${process.env.NEXT_PUBLIC_SITE_URL}/wachtwoord-reset?token=${token}`;
 
     await resend.emails.send({
       from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
-      to: email,
+      to: schoonEmail,
       subject: "Wachtwoord herstellen",
       text: `Klik op onderstaande link om je wachtwoord opnieuw in te stellen. Deze link is 30 minuten geldig.
 
