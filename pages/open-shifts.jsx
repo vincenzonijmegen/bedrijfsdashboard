@@ -6,6 +6,8 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
+import Link from "next/link";
+
 dayjs.extend(isoWeek);
 
 export default function OpenShiftsApp() {
@@ -101,13 +103,17 @@ export default function OpenShiftsApp() {
   };
 
   return (
-    <div style={{ padding: "2rem", fontFamily: "sans-serif" }}>
-      <h1>Open Shifts PDF Generator</h1>
+    <div className="p-6 font-sans max-w-3xl mx-auto">
+      <Link href="/" className="text-blue-600 underline block mb-6">
+        ← Terug naar startpagina
+      </Link>
+      <h1 className="text-2xl font-bold mb-4">Open Shifts PDF Generator</h1>
       <input type="file" accept=".xlsx,.xls" onChange={handleExcelUpload} />
       {data.length > 0 && (
         <button
           style={{ marginTop: "1rem", padding: "0.5rem 1rem" }}
           onClick={generatePDF}
+          className="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
         >
           Genereer PDF
         </button>

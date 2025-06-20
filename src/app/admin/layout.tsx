@@ -28,9 +28,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-4">
       <div className="flex justify-between items-center">
-        <Link href="/admin" className="text-sm text-blue-600 hover:underline">
-          ← Terug naar admin-dashboard
+        <Link href="/" className="text-sm text-blue-600 hover:underline">
+        ← Terug naar startpagina
         </Link>
+
         <button
           onClick={() => {
             localStorage.removeItem("gebruiker");
