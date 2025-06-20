@@ -8,6 +8,7 @@ export default function WachtwoordVergeten() {
 
   const verstuur = async () => {
     try {
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://werkinstructies-app.vercel.app";
       const res = await fetch("/api/wachtwoord-reset-aanvragen", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
