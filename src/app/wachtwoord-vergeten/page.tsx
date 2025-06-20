@@ -13,11 +13,17 @@ export default function WachtwoordVergeten() {
       body: JSON.stringify({ email }),
     });
 
-    const data = await res.json();
-    if (res.ok && data.success) {
-      setStatus("success");
+    if (res.status === 404) {
+      setStatus("notfound");
+    } else if (!res.ok) {
+      setStatus("serverfout");
     } else {
-      setStatus("error");
+      const data = await res.json();
+      if (data.success) {
+        setStatus("success");
+      } else {
+        setStatus("serverfout");
+      }
     }
   };
 
@@ -44,8 +50,11 @@ export default function WachtwoordVergeten() {
       {status === "success" && (
         <p className="text-green-600 mt-4">✅ Resetlink verzonden. Controleer je e-mail.</p>
       )}
-      {status === "error" && (
-        <p className="text-red-600 mt-4">❌ E-mailadres niet gevonden of fout bij versturen.</p>
+      {status === "notfound" && (
+        <p className="text-red-600 mt-4">❌ E-mailadres niet gevonden.</p>
+      )}
+      {status === "serverfout" && (
+        <p className="text-red-600 mt-4">❌ Fout bij versturen van de e-mail.</p>
       )}
     </div>
   );
