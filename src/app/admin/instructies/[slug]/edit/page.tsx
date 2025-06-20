@@ -46,7 +46,18 @@ const editor = useEditor({
       .then((data) => {
         setTitel(data.titel);
         setNummer(data.nummer || "");
-        setFuncties(data.functies || []);
+        setFuncties(() => {
+  try {
+    return Array.isArray(data.functies)
+      ? data.functies
+      : typeof data.functies === "string"
+      ? JSON.parse(data.functies)
+      : [];
+  } catch {
+    return [];
+  }
+});
+
         editor.commands.setContent(data.inhoud);
         setGeladen(true);
       });
