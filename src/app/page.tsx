@@ -1,4 +1,4 @@
-// pages/index.tsx
+// app/page.tsx
 
 import Link from "next/link";
 
@@ -16,13 +16,12 @@ export default function Home() {
         <Link href="/open-shifts" className="block bg-cyan-600 text-white p-6 rounded-xl shadow hover:bg-cyan-700">
           Open Shifts PDF
         </Link>
-        <Link href="/resultaten" className="block bg-purple-600 text-white p-6 rounded-xl shadow hover:bg-purple-700">
+        <Link href="/admin/resultaten" className="block bg-purple-600 text-white p-6 rounded-xl shadow hover:bg-purple-700">
           Toetsresultaten
         </Link>
-        <Link href="/skills" className="block bg-yellow-500 text-white p-6 rounded-xl shadow hover:bg-yellow-600">
+        <Link href="/admin/skills" className="block bg-yellow-500 text-white p-6 rounded-xl shadow hover:bg-yellow-600">
           Skills Overzicht
         </Link>
-        {/* Voeg hier toekomstige modules toe */}
       </div>
     </main>
   );
