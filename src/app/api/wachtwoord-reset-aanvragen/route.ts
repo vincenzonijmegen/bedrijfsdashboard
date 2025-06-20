@@ -10,8 +10,10 @@ import { NextRequest } from "next/server";
 export async function POST(req: NextRequest) {
   try {
     const { email } = await req.json();
+    const schoonEmail = email.trim().toLowerCase();
 
-    const gebruiker = await db.query("SELECT email FROM medewerkers WHERE email = $1", [email]);
+
+    const gebruiker = await db.query("SELECT schoonEmail FROM medewerkers WHERE email = $1", [email]);
     if (gebruiker.rowCount === 0) {
       return NextResponse.json({ error: "E-mailadres niet gevonden." }, { status: 404 });
     }
