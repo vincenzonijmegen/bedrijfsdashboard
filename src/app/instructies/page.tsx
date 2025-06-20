@@ -1,3 +1,4 @@
+
 "use client";
 
 import useSWR from "swr";
@@ -66,7 +67,7 @@ export default function InstructieOverzicht() {
 
   const gesorteerd = [...instructies]
     .filter((i) => {
-      if (!i.functies || i.functies.length === 0) return true; // zichtbaar voor iedereen
+      if (!i.functies || i.functies.length === 0) return true;
       return !gebruiker?.functie || i.functies.map(f => f.toLowerCase()).includes(gebruiker.functie.toLowerCase());
     })
     .sort((a, b) => {
@@ -113,10 +114,10 @@ export default function InstructieOverzicht() {
       <div className="flex justify-between items-center mb-4">
         {isAdmin && (
           <Link
-            href="/admin"
+            href="/"
             className="bg-gray-200 text-sm text-gray-800 px-3 py-1 rounded hover:bg-gray-300"
           >
-            ← Terug naar beheer
+            ← Terug naar startpagina
           </Link>
         )}
         <button
