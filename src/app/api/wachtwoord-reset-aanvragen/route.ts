@@ -26,7 +26,9 @@ export async function POST(req: NextRequest) {
       [schoonEmail, token, vervaltijd]
     );
 
-    const resetLink = `${process.env.NEXT_PUBLIC_SITE_URL}/wachtwoord-reset?token=${token}`;
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://werkinstructies-app.vercel.app";
+    const resetLink = `${baseUrl}/wachtwoord-reset?token=${token}`;
+
 
     await resend.emails.send({
       from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
