@@ -25,6 +25,9 @@ export default function Home() {
         <Link href="/admin/skills" className="block bg-yellow-500 text-white p-6 rounded-xl shadow hover:bg-yellow-600">
           Skills Overzicht
         </Link>
+        <Link href="/shift-acties" className="block bg-pink-600 text-white p-6 rounded-xl shadow hover:bg-pink-700">
+          Shiftacties & Statistieken
+        </Link>
       </div>
     </main>
   );
