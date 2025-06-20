@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -8,7 +9,7 @@ export default function SignInPage() {
   const [wachtwoord, setWachtwoord] = useState("");
   const [fout, setFout] = useState("");
 
-  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
+  async function handleLogin(e) {
     e.preventDefault();
     setFout("");
 
@@ -65,6 +66,12 @@ export default function SignInPage() {
       <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
         Inloggen
       </button>
+
+      <p className="text-sm mt-2 text-center">
+        <a href="/wachtwoord-vergeten" className="text-blue-600 hover:underline">
+          Wachtwoord vergeten?
+        </a>
+      </p>
     </form>
   );
 }
