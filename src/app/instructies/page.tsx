@@ -103,27 +103,27 @@ export default function InstructieOverzicht() {
     return <span className="text-blue-600">👁 Gelezen</span>;
   };
 
-<button
-  onClick={() => {
-    localStorage.removeItem("gebruiker");
-    window.location.href = "/sign-in";
-  }}
-  className="text-sm text-red-600 hover:underline"
->
-  Uitloggen
-</button>
-
-
   return (
     <main className="max-w-4xl mx-auto p-4">
-      {isAdmin && (
-        <Link
-          href="/admin"
-          className="inline-block mb-4 bg-gray-200 text-sm text-gray-800 px-3 py-1 rounded hover:bg-gray-300"
+      <div className="flex justify-between items-center mb-4">
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className="bg-gray-200 text-sm text-gray-800 px-3 py-1 rounded hover:bg-gray-300"
+          >
+            ← Terug naar beheer
+          </Link>
+        )}
+        <button
+          onClick={() => {
+            localStorage.removeItem("gebruiker");
+            window.location.href = "/sign-in";
+          }}
+          className="text-sm text-red-600 hover:underline"
         >
-          ← Terug naar beheer
-        </Link>
-      )}
+          Uitloggen
+        </button>
+      </div>
 
       <h1 className="text-2xl font-bold mb-4">📘 Werkinstructies</h1>
 
