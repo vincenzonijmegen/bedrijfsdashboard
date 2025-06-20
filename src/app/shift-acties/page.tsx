@@ -15,7 +15,7 @@ interface Actie {
 }
 
 export default function ShiftActiesPage() {
-  const { data, error } = useSWR<Actie[]>("/api/shift-acties", (url) =>
+  const { data, error } = useSWR<Actie[]>("/api/shift-acties", (url: string) =>
     fetch(url).then((res) => res.json())
   );
 
