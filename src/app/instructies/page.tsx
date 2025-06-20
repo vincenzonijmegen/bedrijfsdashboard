@@ -64,11 +64,16 @@ export default function InstructieOverzicht() {
   if (error) return <div>Fout bij laden</div>;
   if (!instructies) return <div>Laden...</div>;
 
-  const gesorteerd = [...instructies].sort((a, b) => {
-    const na = a.nummer || "";
-    const nb = b.nummer || "";
-    return na.localeCompare(nb);
-  });
+  const gesorteerd = [...instructies]
+    .filter((i) => {
+      if (!i.functies || i.functies.length === 0) return true; // zichtbaar voor iedereen
+      return i.functies.includes(gebruiker?.functie);
+    })
+    .sort((a, b) => {
+      const na = a.nummer || "";
+      const nb = b.nummer || "";
+      return na.localeCompare(nb);
+    });
 
   const getStatus = (slug: string) => {
     const s = status?.find((x) => x.slug === slug);
