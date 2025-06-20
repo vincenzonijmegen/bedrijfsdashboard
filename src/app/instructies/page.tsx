@@ -67,7 +67,7 @@ export default function InstructieOverzicht() {
   const gesorteerd = [...instructies]
     .filter((i) => {
       if (!i.functies || i.functies.length === 0) return true; // zichtbaar voor iedereen
-      return i.functies.map((f) => f.toLowerCase()).includes((gebruiker?.functie || '').toLowerCase());
+      return !gebruiker?.functie || i.functies.map(f => f.toLowerCase()).includes(gebruiker.functie.toLowerCase());
     })
     .sort((a, b) => {
       const na = a.nummer || "";
