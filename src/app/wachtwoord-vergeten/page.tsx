@@ -1,82 +1,52 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState, Suspense } from "react";
+import { useState } from "react";
 
-function ResetForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = searchParams.get("token") || "";
-
-  const [wachtwoord, setWachtwoord] = useState("");
-  const [bevestiging, setBevestiging] = useState("");
-  const [fout, setFout] = useState("");
-  const [succes, setSucces] = useState(false);
+export default function WachtwoordVergeten() {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<string | null>(null);
 
   const verstuur = async () => {
-    if (wachtwoord !== bevestiging) {
-      setFout("Wachtwoorden komen niet overeen.");
-      return;
-    }
-    if (!token) {
-      setFout("Geen geldige resetlink.");
-      return;
-    }
-
-    const res = await fetch("/api/wachtwoord-reset", {
+    const res = await fetch("/api/wachtwoord-reset-aanvragen", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, nieuwWachtwoord: wachtwoord })
+      body: JSON.stringify({ email }),
     });
 
     const data = await res.json();
-    if (data.success) {
-      setSucces(true);
-      setFout("");
-      setTimeout(() => router.push("/login"), 3000);
+    if (res.ok && data.success) {
+      setStatus("success");
     } else {
-      setFout(data.error || "Er ging iets mis.");
+      setStatus("error");
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-4 border bg-white rounded shadow">
-      <h1 className="text-xl font-bold mb-4">🔐 Stel nieuw wachtwoord in</h1>
-      {succes ? (
-        <p className="text-green-600">Wachtwoord succesvol aangepast. Je wordt doorgestuurd...</p>
-      ) : (
-        <>
-          <input
-            type="password"
-            placeholder="Nieuw wachtwoord"
-            value={wachtwoord}
-            onChange={(e) => setWachtwoord(e.target.value)}
-            className="w-full border p-2 rounded mb-2"
-          />
-          <input
-            type="password"
-            placeholder="Bevestig wachtwoord"
-            value={bevestiging}
-            onChange={(e) => setBevestiging(e.target.value)}
-            className="w-full border p-2 rounded mb-2"
-          />
-          {fout && <p className="text-red-600 text-sm mb-2">{fout}</p>}
-          <button
-            onClick={verstuur}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Stel wachtwoord in
-          </button>
-        </>
+    <div className="max-w-md mx-auto mt-20 p-4 border rounded bg-white shadow">
+      <h1 className="text-xl font-bold mb-4">🔑 Wachtwoord vergeten?</h1>
+      <p className="text-sm mb-4">Vul je e-mailadres in. Je ontvangt een link om een nieuw wachtwoord in te stellen.</p>
+
+      <input
+        type="email"
+        placeholder="E-mailadres"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className="w-full p-2 border rounded mb-2"
+      />
+
+      <button
+        onClick={verstuur}
+        className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+      >
+        Verstuur resetlink
+      </button>
+
+      {status === "success" && (
+        <p className="text-green-600 mt-4">✅ Resetlink verzonden. Controleer je e-mail.</p>
+      )}
+      {status === "error" && (
+        <p className="text-red-600 mt-4">❌ E-mailadres niet gevonden of fout bij versturen.</p>
       )}
     </div>
-  );
-}
-
-export default function WachtwoordReset() {
-  return (
-    <Suspense>
-      <ResetForm />
-    </Suspense>
   );
 }
