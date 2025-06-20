@@ -9,7 +9,7 @@ export default function SignInPage() {
   const [wachtwoord, setWachtwoord] = useState("");
   const [fout, setFout] = useState("");
 
-  async function handleLogin(e) {
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFout("");
 
