@@ -5,7 +5,8 @@ import { useState, Suspense } from "react";
 
 function ResetForm() {
   const router = useRouter();
-  const token = useSearchParams().get("token") || "";
+  const searchParams = useSearchParams();
+  const token = searchParams?.get("token") || "";
 
   const [wachtwoord, setWachtwoord] = useState("");
   const [bevestiging, setBevestiging] = useState("");
