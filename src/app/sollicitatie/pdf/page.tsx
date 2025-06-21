@@ -48,7 +48,13 @@ export default function SollicitatiePDF() {
       ["Andere bijbaan", parsed["Andere bijbaan"] || ""],
       ["Vakantie", parsed["Vakantie"] || ""]
     ];
-    autoTable(doc, { startY: y, head: [["Persoonlijke gegevens", ""]], body: personal });
+    autoTable(doc, {
+      startY: y,
+      head: [["Persoonlijke gegevens", ""]],
+      body: personal,
+      margin: { left: 14, right: 115 },
+      tableWidth: 80,
+    });
     const tableEndY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
 y = tableEndY + 10;
 
@@ -65,6 +71,8 @@ y = tableEndY + 10;
 
     autoTable(doc, {
       startY: y,
+      margin: { left: 110 },
+      tableWidth: 85,
       head: [["BESCHIKBAARHEID", "SHIFT 1", "SHIFT 2"]],
       body: dagrijen,
       styles: { halign: "center" },
