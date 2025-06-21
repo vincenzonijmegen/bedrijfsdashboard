@@ -108,14 +108,14 @@ export default function SollicitatiePDF() {
     doc.setTextColor(0);
     doc.setFont("helvetica", "bold");
     doc.text("Overige gegevens", 14, extraStartY + 12);
-    
+
     autoTable(doc, {
       startY: extraStartY + 16,
       body: extra,
       styles: {
-      valign: 'top',
-      cellPadding: 2,
-      overflow: 'linebreak'
+        valign: 'top',
+        cellPadding: 2,
+        overflow: 'linebreak'
       },
       columnStyles: {
         0: { fontStyle: 'bold' },
