@@ -45,8 +45,7 @@ export default function SollicitatiePDF() {
       ["Telefoonnummer", parsed["Telefoonnummer"] || ""],
       ["Startdatum", parsed["Startdatum"] || ""],
       ["Einddatum", parsed["Einddatum"] || ""],
-      ["Andere bijbaan", parsed["Andere bijbaan"] || ""],
-      ["Extra", parsed["Extra"] || ""]
+      ["Andere bijbaan", parsed["Andere bijbaan"] || ""]
     ];
     autoTable(doc, {
       startY: y,
@@ -85,6 +84,7 @@ export default function SollicitatiePDF() {
       ["Rekenvaardigheid", parsed["Rekenvaardigheid"] || ""],
       ["Kassa-ervaring", parsed["Kassa-ervaring"] || ""],
       ["Duits", parsed["Duits"] || ""],
+      ["Extra", parsed["Extra"] || ""],
       ["Overige zaken", parsed["Overige zaken"] || ""]
     ];
 
