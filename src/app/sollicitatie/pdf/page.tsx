@@ -31,7 +31,7 @@ export default function SollicitatiePDF() {
     const parsed = parseMail(input);
     const doc = new jsPDF();
     doc.setFontSize(14);
-    doc.text("Sollicitatieformulier IJssalon Vincenzo - Datum Gesprek:", 14, 20);
+    doc.text("Sollicitatieformulier IJssalon Vincenzo - Datum gesprek:", 14, 20);
     doc.setFontSize(11);
 
     const y = 30;
@@ -50,7 +50,7 @@ export default function SollicitatiePDF() {
     ];
     autoTable(doc, {
       startY: y,
-      head: [["Persoonlijke gegevens", ""]],
+      head: [["Gegevens", ""]],
       margin: { left: 14 },
       tableWidth: 90,
       body: personal,
@@ -107,7 +107,10 @@ doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
       const parsed = parseMail(input);
       const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
 
+      const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
+
       const payload = {
+        dagen,
         voornaam: parsed["Voornaam"],
         achternaam: parsed["Achternaam"],
         geboortedatum: parsed["Geboortedatum"],
