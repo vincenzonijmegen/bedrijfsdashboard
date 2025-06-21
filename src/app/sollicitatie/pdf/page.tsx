@@ -182,15 +182,13 @@ function getZomerfeesten(year: number): [Date, Date] {
 }
 
 const feestdagen: [string, string][] = [
-  ["Pasen (1e dag)", format(eerstePasen)],
-  ["Pasen (2e dag)", format(tweedePasen)],
+  ["Pasen", `${format(eerstePasen)} t/m ${format(tweedePasen)}`],
   ["Koningsdag", `27-04-${jaar}`],
   ["Meivakantie", `28-04-${jaar} t/m 05-05-${jaar}`],
   ["Bevrijdingsdag", `05-05-${jaar}`],
   ["Moederdag", format(moederdag)],
   ["Hemelvaartsdag", format(hemelvaart)],
-  ["Pinksteren (1e dag)", format(pinksteren)],
-  ["Pinksteren (2e dag)", format(tweedePinksteren)],
+  ["Pinksteren", `${format(pinksteren)} t/m ${format(tweedePinksteren)}`],
   ["Vaderdag", format(vaderdag)],
   ["Zomerfeesten Nijmegen", (() => { const [start, eind] = getZomerfeesten(jaar); return `${format(start)} t/m ${format(eind)}` })()]
 ];
@@ -219,7 +217,6 @@ autoTable(doc, {
 
 doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
   };
-
 
   const handleEmailSend = async () => {
     const parsed = parseMail(input);
