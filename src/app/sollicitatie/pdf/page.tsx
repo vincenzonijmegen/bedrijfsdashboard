@@ -46,8 +46,7 @@ export default function SollicitatiePDF() {
       ["Startdatum", parsed["Startdatum"] || ""],
       ["Einddatum", parsed["Einddatum"] || ""],
       ["Andere bijbaan", parsed["Andere bijbaan"] || ""],
-      ["Vakantie", parsed["Vakantie"] || ""],
-      ["Extra", parsed["Extra"] || ""]
+      ["Vakantie", parsed["Vakantie"] || ""]
     ];
     autoTable(doc, {
       startY: y,
@@ -86,7 +85,7 @@ const extra = [
   ["Rekenvaardigheid", parsed["Rekenvaardigheid"] || ""],
   ["Kassa-ervaring", parsed["Kassa-ervaring"] || ""],
   ["Duits", parsed["Duits"] || ""],
-  ["Overige zaken", parsed["Extra"] || ""]
+  ["Overige zaken", parsed["Overige zaken"] || ""]
 ];
 
 const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
