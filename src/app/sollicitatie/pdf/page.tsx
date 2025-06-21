@@ -43,7 +43,7 @@ export default function SollicitatiePDF() {
     const parsed = parseMail(input);
     const doc = new jsPDF();
     doc.setFontSize(14);
-    doc.text("Sollicitatieformulier IJssalon Vincenzo - Datum gesprek:", 14, 20);
+    doc.text("Sollicitatieformulier IJssalon Vincenzo            Datum gesprek:", 14, 20);
     doc.setFontSize(11);
 
     const y = 30;
@@ -227,7 +227,7 @@ await fetch("/api/mail-pdf", {
   })
 });
 
-doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
+doc.save(`${parsed["Voornaam"] || "onbekend"}-${parsed["Achternaam"] || ""}.pdf`);
   };
 
   // ... rest van de code blijft hetzelfde
