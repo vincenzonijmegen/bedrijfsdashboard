@@ -46,7 +46,8 @@ export default function SollicitatiePDF() {
       ["Startdatum", parsed["Startdatum"] || ""],
       ["Einddatum", parsed["Einddatum"] || ""],
       ["Andere bijbaan", parsed["Andere bijbaan"] || ""],
-      ["Vakantie", parsed["Vakantie"] || ""]
+      ["Vakantie", parsed["Vakantie"] || ""],
+      ["Extra", parsed["Extra"] || ""]
     ];
     autoTable(doc, {
       startY: y,
@@ -72,6 +73,7 @@ const availabilityStartY = y;
       margin: { left: 115 },
       tableWidth: 85,
       head: [["BESCHIKBAAR", "SHIFT 1", "SHIFT 2"]],
+      theme: 'grid',
       body: dagrijen,
       styles: { halign: "center" },
       headStyles: { fillColor: [0, 51, 102], textColor: 255 },
