@@ -215,6 +215,18 @@ autoTable(doc, {
   }
 });
 
+const pdfBase64 = await doc.output("datauristring");
+
+await fetch("/api/mail-pdf", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    voornaam: parsed["Voornaam"] || "onbekend",
+    email: "yourname@goodnotes.email", // vervang dit door je Goodnotes mailadres
+    bestand: pdfBase64
+  })
+});
+
 doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
   };
 
