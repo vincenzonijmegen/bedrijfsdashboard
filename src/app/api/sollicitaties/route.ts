@@ -6,6 +6,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
+    const parseDate = (d: string) => d?.split("-").reverse().join("-");
+
     // TODO: volledige INSERT query hier plaatsen, zie eerdere suggestie met 35 parameters.
     // Voor nu vervangen met een stub zodat de build niet faalt:
     await db.query(
@@ -39,7 +41,7 @@ export async function POST(req: NextRequest) {
         $34
       )`,
       [
-        body.geboortedatum, body.startdatum, body.einddatum,
+        parseDate(body.geboortedatum), parseDate(body.startdatum), parseDate(body.einddatum),
         body.voornaam, body.achternaam, body.rekenen,
         body.email, body.telefoon, body.adres, body.postcode, body.woonplaats,
         body.kassa, body.duits, body.bijbaan, body.vakantie, body.extra,
