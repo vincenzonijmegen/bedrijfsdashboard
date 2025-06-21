@@ -36,16 +36,17 @@ export default function SollicitatiePDF() {
 
     const y = 30;
     const personal = [
-      ["Voornaam", parsed["Voornaam"] || ""],
-      ["Achternaam", parsed["Achternaam"] || ""],
-      ["Adres", `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`],
-      ["Postcode/Woonplaats", `${parsed["Postcode"] || ""} ${parsed["Woonplaats"] || ""}`],
-      ["Geboortedatum", parsed["Geboortedatum"] || ""],
-      ["E-mailadres", parsed["E-mailadres"] || ""],
-      ["Telefoonnummer", parsed["Telefoonnummer"] || ""],
-      ["Startdatum", parsed["Startdatum"] || ""],
-      ["Einddatum", parsed["Einddatum"] || ""],
-      ["Andere bijbaan", parsed["Andere bijbaan"] || ""]
+      ["\u0000Voornaam", parsed["Voornaam"] || ""],
+      ["\u0000Achternaam", parsed["Achternaam"] || ""],
+      ["\u0000Adres", `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`],
+      ["\u0000Postcode/Woonplaats", `${parsed["Postcode"] || ""} ${parsed["Woonplaats"] || ""}`],
+      ["\u0000Geboortedatum", parsed["Geboortedatum"] || ""],
+      ["\u0000E-mailadres", parsed["E-mailadres"] || ""],
+      ["\u0000Telefoonnummer", parsed["Telefoonnummer"] || ""],
+      ["\u0000Startdatum", parsed["Startdatum"] || ""],
+      ["\u0000Einddatum", parsed["Einddatum"] || ""],
+      ["\u0000Andere bijbaan", parsed["Andere bijbaan"] || ""],
+      ["\u0000Extra", parsed["Extra"] || ""]
     ];
     autoTable(doc, {
       startY: y,
@@ -53,6 +54,10 @@ export default function SollicitatiePDF() {
       margin: { left: 14 },
       tableWidth: 90,
       body: personal,
+      styles: { cellPadding: 2 },
+      columnStyles: {
+        0: { fontStyle: 'bold' }
+      }
     });
 
     const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
@@ -76,16 +81,20 @@ export default function SollicitatiePDF() {
       body: dagrijen,
       styles: { halign: "center" },
       headStyles: { fillColor: [0, 51, 102], textColor: 255 },
+      didParseCell(data) {
+        if (data.cell.raw === "JA") {
+          data.cell.styles.fillColor = [200, 255, 200];
+        }
+      }
     });
 
     const extra = [
-      ["Opleiding", parsed["Opleiding"] || ""],
-      ["Werkervaring", parsed["Werkervaring"] || ""],
-      ["Rekenvaardigheid", parsed["Rekenvaardigheid"] || ""],
-      ["Kassa-ervaring", parsed["Kassa-ervaring"] || ""],
-      ["Duits", parsed["Duits"] || ""],
-      ["Extra", parsed["Extra"] || ""],
-      ["Overige zaken", parsed["Overige zaken"] || ""]
+      ["\u0000Opleiding", parsed["Opleiding"] || ""],
+      ["\u0000Werkervaring", parsed["Werkervaring"] || ""],
+      ["\u0000Rekenvaardigheid", parsed["Rekenvaardigheid"] || ""],
+      ["\u0000Kassa-ervaring", parsed["Kassa-ervaring"] || ""],
+      ["\u0000Duits", parsed["Duits"] || ""],
+      ["\u0000Overige zaken", parsed["Overige zaken"] || ""]
     ];
 
     const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
@@ -93,8 +102,14 @@ export default function SollicitatiePDF() {
       startY: extraStartY + 10,
       head: [["Extra informatie", ""]],
       body: extra,
-      styles: { valign: 'top' },
-      columnStyles: { 1: { cellWidth: 140 } }
+      styles: { valign: 'top', cellPadding: 2 },
+      columnStyles: {
+        0: { fontStyle: 'bold' },
+        1: { cellWidth: 140 }
+      },
+      rowStyles: (rowIndex) => {
+        return rowIndex === 0 || rowIndex === 1 ? { minCellHeight: 20 } : {};
+      }
     });
 
     doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
