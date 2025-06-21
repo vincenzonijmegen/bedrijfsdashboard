@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-const parseMail = (txt: string) => {
+function parseMail(txt: string): Record<string, string> {
   const obj: Record<string, string> = {};
   const lines = txt.split(/\r?\n/);
   lines.forEach((line) => {
@@ -16,7 +16,7 @@ const parseMail = (txt: string) => {
     }
   });
   return obj;
-};
+}
 
 export default function SollicitatiePDF() {
   const [input, setInput] = useState("");
