@@ -1,8 +1,6 @@
 "use client";
-
 import Link from "next/link";
 // app/sollicitatie/pdf/page.tsx
-"use client";
 
 import { useEffect, useState } from "react";
 import jsPDF from "jspdf";
