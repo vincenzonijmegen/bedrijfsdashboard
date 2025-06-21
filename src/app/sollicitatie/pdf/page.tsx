@@ -94,6 +94,7 @@ export default function SollicitatiePDF() {
       ["\u0000Rekenvaardigheid", parsed["Rekenvaardigheid"] || ""],
       ["\u0000Kassa-ervaring", parsed["Kassa-ervaring"] || ""],
       ["\u0000Duits", parsed["Duits"] || ""],
+      ["\u0000Vakantie", parsed["Vakantie"] || ""],
       ["\u0000Overige zaken", parsed["Overige zaken"] || ""]
     ];
 
