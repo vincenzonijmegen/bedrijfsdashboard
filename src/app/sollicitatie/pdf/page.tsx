@@ -58,7 +58,7 @@ export default function SollicitatiePDF() {
       ["\u0000Startdatum", parsed["Startdatum"] || ""],
       ["\u0000Einddatum", parsed["Einddatum"] || ""],
       ["\u0000Andere bijbaan", parsed["Andere bijbaan"] || ""],
-      ["\u0000Extra", parsed["Extra"] || ""]
+
     ];
     autoTable(doc, {
       startY: y,
@@ -132,10 +132,89 @@ export default function SollicitatiePDF() {
       }
     });
 
-    doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
+    // Dynamisch feestdagenoverzicht
+const jaar = new Date().getFullYear();
+
+function getPasen(year: number): Date[] {
+  const f = Math.floor,
+    G = year % 19,
+    C = f(year / 100),
+    H = (C - f(C / 4) - f((8 * C + 13) / 25) + 19 * G + 15) % 30,
+    I = H - f(H / 28) * (1 - f(29 / (H + 1)) * f((21 - G) / 11)),
+    J = (year + f(year / 4) + I + 2 - C + f(C / 4)) % 7,
+    L = I - J,
+    maand = 3 + f((L + 40) / 44),
+    dag = L + 28 - 31 * f(maand / 4);
+  const eerste = new Date(year, maand - 1, dag);
+  const tweede = new Date(eerste);
+  tweede.setDate(eerste.getDate() + 1);
+  return [eerste, tweede];
+}
+
+function format(d: Date): string {
+  return d.toLocaleDateString("nl-NL");
+}
+
+const [eerstePasen, tweedePasen] = getPasen(jaar);
+const pinksteren = new Date(eerstePasen);
+pinksteren.setDate(eerstePasen.getDate() + 49);
+const tweedePinksteren = new Date(pinksteren);
+tweedePinksteren.setDate(pinksteren.getDate() + 1);
+
+const hemelvaart = new Date(eerstePasen);
+hemelvaart.setDate(eerstePasen.getDate() + 39);
+
+const moederdag = new Date(jaar, 4, 1);
+while (moederdag.getDay() !== 0) moederdag.setDate(moederdag.getDate() + 1);
+moederdag.setDate(moederdag.getDate() + 7);
+
+const vaderdag = new Date(jaar, 5, 1);
+while (vaderdag.getDay() !== 0) vaderdag.setDate(vaderdag.getDate() + 1);
+vaderdag.setDate(vaderdag.getDate() + 14);
+
+function getZomerfeesten(year: number): [Date, Date] {
+  const eersteDag = new Date(year, 6, 1); // juli = maand 6
+  while (eersteDag.getDay() !== 6) eersteDag.setDate(eersteDag.getDate() + 1); // eerste zaterdag
+  eersteDag.setDate(eersteDag.getDate() + 14); // derde zaterdag
+  const laatsteDag = new Date(eersteDag);
+  laatsteDag.setDate(eersteDag.getDate() + 6);
+  return [eersteDag, laatsteDag];
+}
+
+const feestdagen: [string, string][] = [
+  ["Pasen (1e dag)", format(eerstePasen)],
+  ["Pasen (2e dag)", format(tweedePasen)],
+  ["Koningsdag", `27-04-${jaar}`],
+  ["Meivakantie", `28-04-${jaar} t/m 05-05-${jaar}`],
+  ["Bevrijdingsdag", `05-05-${jaar}`],
+  ["Moederdag", format(moederdag)],
+  ["Hemelvaartsdag", format(hemelvaart)],
+  ["Pinksteren (1e dag)", format(pinksteren)],
+  ["Pinksteren (2e dag)", format(tweedePinksteren)],
+  ["Vaderdag", format(vaderdag)],
+  ["Zomerfeesten Nijmegen", (() => { const [start, eind] = getZomerfeesten(jaar); return `${format(start)} t/m ${format(eind)}` })()]
+];
+
+const feestdagenStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
+doc.setFontSize(12);
+doc.setFont("helvetica", "bold");
+doc.text(`Feestdagen seizoen ${jaar}`, 14, feestdagenStartY + 12);
+
+autoTable(doc, {
+  startY: feestdagenStartY + 16,
+  body: feestdagen,
+  styles: { valign: 'top', cellPadding: 2 },
+  columnStyles: {
+    0: { fontStyle: 'bold' },
+    1: { cellWidth: 100 }
+  }
+});
+
+doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
   };
 
   // ... rest van de code blijft hetzelfde
+
 
   const handleEmailSend = async () => {
     const parsed = parseMail(input);
