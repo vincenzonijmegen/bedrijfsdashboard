@@ -107,8 +107,10 @@ export default function SollicitatiePDF() {
         0: { fontStyle: 'bold' },
         1: { cellWidth: 140 }
       },
-      rowStyles: (rowIndex) => {
-        return rowIndex === 0 || rowIndex === 1 ? { minCellHeight: 20 } : {};
+      didParseCell(data) {
+        if ([0, 1].includes(data.row.index)) {
+          data.cell.styles.minCellHeight = 20;
+        }
       }
     });
 
