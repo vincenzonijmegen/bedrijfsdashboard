@@ -107,8 +107,6 @@ doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
       const parsed = parseMail(input);
       const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
 
-      const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
-
       const payload = {
         dagen,
         voornaam: parsed["Voornaam"],
