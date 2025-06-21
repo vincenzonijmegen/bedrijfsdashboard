@@ -290,6 +290,14 @@ export default function SollicitatiePDF() {
       >
         📤 Genereer & Verstuur PDF
       </button>
+      <div className="mt-6">
+        <a
+          href="/"
+          className="inline-block text-blue-600 hover:underline text-sm"
+        >
+          ← Terug naar startpagina
+        </a>
+      </div>
     </div>
   );
 }
