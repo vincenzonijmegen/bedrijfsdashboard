@@ -18,17 +18,7 @@ function parseMail(txt: string): Record<string, string> {
   return obj;
 }
 
-function getLeeftijd(dob: string): number {
-  const [dag, maand, jaar] = dob.split("-").map(Number);
-  const geboortedatum = new Date(jaar, maand - 1, dag);
-  const nu = new Date();
-  let leeftijd = nu.getFullYear() - geboortedatum.getFullYear();
-  const maandVerschil = nu.getMonth() - geboortedatum.getMonth();
-  if (maandVerschil < 0 || (maandVerschil === 0 && nu.getDate() < geboortedatum.getDate())) {
-    leeftijd--;
-  }
-  return leeftijd;
-}
+
 
 export default function SollicitatiePDF() {
   const [input, setInput] = useState("");
