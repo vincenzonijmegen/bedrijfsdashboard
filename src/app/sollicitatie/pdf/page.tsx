@@ -55,8 +55,7 @@ export default function SollicitatiePDF() {
       tableWidth: 90,
       body: personal,
     });
-    const tableEndY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
-y = tableEndY + 10;
+    const leftTableEndY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
 
     const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
     const dagrijen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"].map((dag) => {
@@ -70,7 +69,7 @@ y = tableEndY + 10;
     dagrijen.push(["afd. voorkeur", "", parsed["Voorkeur functie"] || ""]);
 
     autoTable(doc, {
-      startY: y,
+      startY: leftTableEndY,
       margin: { left: 115 },
       tableWidth: 85,
       head: [["BESCHIKBAAR", "SHIFT 1", "SHIFT 2"]],
