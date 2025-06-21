@@ -31,7 +31,7 @@ export default function SollicitatiePDF() {
     const parsed = parseMail(input);
     const doc = new jsPDF();
     doc.setFontSize(14);
-    doc.text("Sollicitatieformulier IJssalon Vincenzo", 14, 20);
+    doc.text("Sollicitatieformulier IJssalon Vincenzo - Datum Gesprek:", 14, 20);
     doc.setFontSize(11);
 
     let y = 30;
@@ -51,6 +51,8 @@ export default function SollicitatiePDF() {
     autoTable(doc, {
       startY: y,
       head: [["Persoonlijke gegevens", ""]],
+      margin: { left: 14 },
+      tableWidth: 90,
       body: personal,
       margin: { left: 14, right: 115 },
       tableWidth: 80,
@@ -72,6 +74,7 @@ y = tableEndY + 10;
     autoTable(doc, {
       startY: y,
       margin: { left: 110 },
+      tableWidth: 90,
       tableWidth: 85,
       head: [["BESCHIKBAARHEID", "SHIFT 1", "SHIFT 2"]],
       body: dagrijen,
