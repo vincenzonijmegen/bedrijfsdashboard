@@ -56,15 +56,16 @@ export default function SollicitatiePDF() {
       tableWidth: 90,
       body: personal,
     });
+
     const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
-const dagrijen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"].map((dag) => {
-  return [
-    dag,
-    dagen.includes(`${dag} shift 1`) ? "JA" : "",
-    dagen.includes(`${dag} shift 2`) ? "JA" : ""
-  ];
-});
-const availabilityStartY = y;
+    const dagrijen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"].map((dag) => {
+      return [
+        dag,
+        dagen.includes(`${dag} shift 1`) ? "JA" : "",
+        dagen.includes(`${dag} shift 2`) ? "JA" : ""
+      ];
+    });
+    const availabilityStartY = y;
     dagrijen.push(["shifts per week", "", parsed["Shifts per week"] || ""]);
     dagrijen.push(["afd. voorkeur", "", parsed["Voorkeur functie"] || ""]);
 
@@ -79,26 +80,25 @@ const availabilityStartY = y;
       headStyles: { fillColor: [0, 51, 102], textColor: 255 },
     });
 
-    // extra velden
-const extra = [
-  ["Opleiding", parsed["Opleiding"] || ""],
-  ["Werkervaring", parsed["Werkervaring"] || ""],
-  ["Rekenvaardigheid", parsed["Rekenvaardigheid"] || ""],
-  ["Kassa-ervaring", parsed["Kassa-ervaring"] || ""],
-  ["Duits", parsed["Duits"] || ""],
-  ["Overige zaken", parsed["Extra"] || ""]
-];
+    const extra = [
+      ["Opleiding", parsed["Opleiding"] || ""],
+      ["Werkervaring", parsed["Werkervaring"] || ""],
+      ["Rekenvaardigheid", parsed["Rekenvaardigheid"] || ""],
+      ["Kassa-ervaring", parsed["Kassa-ervaring"] || ""],
+      ["Duits", parsed["Duits"] || ""],
+      ["Overige zaken", parsed["Overige zaken"] || ""]
+    ];
 
-const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
-autoTable(doc, {
-  startY: extraStartY + 10,
-  head: [["Extra informatie", ""]],
-  body: extra,
-  styles: { valign: 'top' },
-  columnStyles: { 1: { cellWidth: 140 } }
-});
+    const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
+    autoTable(doc, {
+      startY: extraStartY + 10,
+      head: [["Extra informatie", ""]],
+      body: extra,
+      styles: { valign: 'top' },
+      columnStyles: { 1: { cellWidth: 140 } }
+    });
 
-doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
+    doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
   };
 
   const handleEmailSend = async () => {
