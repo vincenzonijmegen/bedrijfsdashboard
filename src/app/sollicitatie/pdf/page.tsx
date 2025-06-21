@@ -92,7 +92,7 @@ autoTable(doc, {
 doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
   };
 
-  const handleEmailSend = () => {
+  const handleEmailSend = async () => {
     const parsed = parseMail(input);
     if (!to || !parsed) return;
     localStorage.setItem("sollicitatie_email", to);
