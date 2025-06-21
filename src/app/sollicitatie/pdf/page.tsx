@@ -27,7 +27,7 @@ export default function SollicitatiePDF() {
     if (saved) setTo(saved);
   }, []);
 
-  const generatePDF = () => {
+  const generatePDF = async () => {
     const parsed = parseMail(input);
     const doc = new jsPDF();
     doc.setFontSize(14);
@@ -96,7 +96,54 @@ doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
     const parsed = parseMail(input);
     if (!to || !parsed) return;
     localStorage.setItem("sollicitatie_email", to);
-    alert(`(Demo) PDF verstuurd naar ${to}`);
+    try {
+      const parsed = parseMail(input);
+      const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
+
+      const payload = {
+        voornaam: parsed["Voornaam"],
+        achternaam: parsed["Achternaam"],
+        geboortedatum: parsed["Geboortedatum"],
+        email: parsed["E-mailadres"],
+        telefoon: parsed["Telefoonnummer"],
+        adres: `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`.trim(),
+        postcode: parsed["Postcode"],
+        woonplaats: parsed["Woonplaats"],
+        startdatum: parsed["Startdatum"],
+        einddatum: parsed["Einddatum"],
+        bijbaan: parsed["Andere bijbaan"],
+        vakantie: parsed["Vakantie"],
+        shifts_per_week: Number(parsed["Shifts per week"] || 0),
+        voorkeur: parsed["Voorkeur functie"],
+        opleiding: parsed["Opleiding"],
+        ervaring: parsed["Werkervaring"],
+        rekenen: parsed["Rekenvaardigheid"],
+        kassa: parsed["Kassa-ervaring"],
+        duits: parsed["Duits"],
+        extra: parsed["Extra"],
+        ...Object.fromEntries(
+          ["ma","di","wo","do","vr","za","zo"].flatMap((dag) => [
+            [`beschikbaar_${dag}_1`, dagen.includes(`${dag} shift 1`)],
+            [`beschikbaar_${dag}_2`, dagen.includes(`${dag} shift 2`)],
+          ])
+        )
+      };
+
+      const res = await fetch("/api/sollicitaties", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert(`PDF-data opgeslagen in database. Naar ${to}`);
+      } else {
+        alert("Fout bij opslaan: " + json.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Verwerken mislukt");
+    }
   };
 
   return (
