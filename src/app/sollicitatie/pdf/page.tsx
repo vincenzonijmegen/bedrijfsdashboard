@@ -39,7 +39,7 @@ export default function SollicitatiePDF() {
       ["\u0000Voornaam", parsed["Voornaam"] || ""],
       ["\u0000Achternaam", parsed["Achternaam"] || ""],
       ["\u0000Adres", `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`],
-      ["\u0000Postcode/Woonplaats", `${parsed["Postcode"] || ""} ${parsed["Woonplaats"] || ""}`],
+      ["\u0000Postcode/Woonplaats", `${parsed["PC"] || ""} ${parsed["Woonplaats"] || ""}`],
       ["\u0000Geboortedatum", parsed["Geboortedatum"] || ""],
       ["\u0000E-mailadres", parsed["E-mailadres"] || ""],
       ["\u0000Telefoonnummer", parsed["Telefoonnummer"] || ""],
@@ -60,6 +60,9 @@ export default function SollicitatiePDF() {
       },
       headStyles: { cellPadding: 2, fontStyle: 'bold', halign: 'left', minCellHeight: 8 },
     });
+
+    doc.setDrawColor(200);
+    doc.line(10, (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!.finalY + 5, 200, (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!.finalY + 5);
 
     const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
     const dagrijen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"].map((dag) => {
@@ -91,6 +94,9 @@ export default function SollicitatiePDF() {
         }
       }
     });
+
+    doc.setDrawColor(200);
+    doc.line(10, (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!.finalY + 5, 200, (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!.finalY + 5);
 
     const extra = [
       ["\u0000Opleiding", parsed["Opleiding"] || ""],
