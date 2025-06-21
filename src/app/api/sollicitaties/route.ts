@@ -10,8 +10,11 @@ export async function POST(req: NextRequest) {
     // Voor nu vervangen met een stub zodat de build niet faalt:
     await db.query(
       `INSERT INTO sollicitaties (
-        voornaam, achternaam, geboortedatum, email, telefoon, adres, postcode, woonplaats,
-        startdatum, einddatum, bijbaan, vakantie,
+        geboortedatum, startdatum, einddatum,
+        voornaam, achternaam, rekenen,
+        email, telefoon, adres, postcode, woonplaats,
+        kassa, duits, bijbaan, vakantie, extra,
+        voorkeur, opleiding, ervaring,
         beschikbaar_ma_1, beschikbaar_ma_2,
         beschikbaar_di_1, beschikbaar_di_2,
         beschikbaar_wo_1, beschikbaar_wo_2,
@@ -19,17 +22,28 @@ export async function POST(req: NextRequest) {
         beschikbaar_vr_1, beschikbaar_vr_2,
         beschikbaar_za_1, beschikbaar_za_2,
         beschikbaar_zo_1, beschikbaar_zo_2,
-        shifts_per_week, voorkeur, opleiding, ervaring, rekenen, kassa, duits, extra
+        shifts_per_week
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8,
-        $9, $10, $11, $12,
-        $13, $14, $15, $16, $17, $18, $19, $20,
-        $21, $22, $23, $24, $25, $26, $27, $28,
-        $29, $30, $31, $32, $33, $34, $35
+        $1, $2, $3,
+        $4, $5, $6,
+        $7, $8, $9, $10, $11,
+        $12, $13, $14, $15, $16,
+        $17, $18, $19,
+        $20, $21,
+        $22, $23,
+        $24, $25,
+        $26, $27,
+        $28, $29,
+        $30, $31,
+        $32, $33,
+        $34
       )`,
       [
-        body.voornaam, body.achternaam, body.geboortedatum, body.email, body.telefoon, body.adres,
-        body.postcode, body.woonplaats, body.startdatum, body.einddatum, body.bijbaan, body.vakantie,
+        body.geboortedatum, body.startdatum, body.einddatum,
+        body.voornaam, body.achternaam, body.rekenen,
+        body.email, body.telefoon, body.adres, body.postcode, body.woonplaats,
+        body.kassa, body.duits, body.bijbaan, body.vakantie, body.extra,
+        body.voorkeur, body.opleiding, body.ervaring,
         body.beschikbaar_ma_1, body.beschikbaar_ma_2,
         body.beschikbaar_di_1, body.beschikbaar_di_2,
         body.beschikbaar_wo_1, body.beschikbaar_wo_2,
@@ -37,8 +51,7 @@ export async function POST(req: NextRequest) {
         body.beschikbaar_vr_1, body.beschikbaar_vr_2,
         body.beschikbaar_za_1, body.beschikbaar_za_2,
         body.beschikbaar_zo_1, body.beschikbaar_zo_2,
-        body.shifts_per_week, body.voorkeur, body.opleiding,
-        body.ervaring, body.rekenen, body.kassa, body.duits, body.extra
+        body.shifts_per_week
       ]
     ); // result verwijderd omdat het niet gebruikt wordt
 
