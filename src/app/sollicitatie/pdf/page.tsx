@@ -46,7 +46,6 @@ export default function SollicitatiePDF() {
       ["\u0000Startdatum", parsed["Startdatum"] || ""],
       ["\u0000Einddatum", parsed["Einddatum"] || ""],
       ["\u0000Andere bijbaan", parsed["Andere bijbaan"] || ""],
-      ["\u0000Extra", parsed["Extra"] || ""]
     ];
     autoTable(doc, {
       startY: y,
