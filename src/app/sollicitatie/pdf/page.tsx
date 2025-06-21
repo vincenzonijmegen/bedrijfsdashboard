@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 
 function parseMail(txt: string): Record<string, string> {
