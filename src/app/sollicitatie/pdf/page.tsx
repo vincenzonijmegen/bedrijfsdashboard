@@ -45,8 +45,7 @@ export default function SollicitatiePDF() {
       ["\u0000Telefoonnummer", parsed["Telefoonnummer"] || ""],
       ["\u0000Startdatum", parsed["Startdatum"] || ""],
       ["\u0000Einddatum", parsed["Einddatum"] || ""],
-      ["\u0000Andere bijbaan", parsed["Andere bijbaan"] || ""],
-      ["\u0000Extra", parsed["Extra"] || ""]
+      ["\u0000Andere bijbaan", parsed["Andere bijbaan"] || ""]
     ];
     autoTable(doc, {
       startY: y,
@@ -57,7 +56,8 @@ export default function SollicitatiePDF() {
       styles: { cellPadding: 2 },
       columnStyles: {
         0: { fontStyle: 'bold' }
-      }
+      },
+      headStyles: { cellPadding: 2, fontStyle: 'bold', halign: 'left' },
     });
 
     const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
@@ -82,6 +82,9 @@ export default function SollicitatiePDF() {
       styles: { halign: "center" },
       headStyles: { fillColor: [0, 51, 102], textColor: 255 },
       didParseCell(data) {
+        if (data.column.index === 0) {
+          data.cell.styles.fontStyle = 'bold';
+        }
         if (data.cell.raw === "JA") {
           data.cell.styles.fillColor = [200, 255, 200];
         }
@@ -105,6 +108,7 @@ export default function SollicitatiePDF() {
       head: [["Extra informatie", ""]],
       body: extra,
       styles: { valign: 'top', cellPadding: 2 },
+      headStyles: { cellPadding: 2, fontStyle: 'bold', halign: 'left', minCellHeight: 8 },
       columnStyles: {
         0: { fontStyle: 'bold' },
         1: { cellWidth: 140 }
