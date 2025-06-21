@@ -45,7 +45,7 @@ export default function SollicitatiePDF() {
     // ... (alles blijft hetzelfde tot het einde van de PDF-opbouw)
 
     const pdfBase64 = await doc.output("datauristring");
-    const bestandNaam = `${(parsed["Voornaam"] || "onbekend").trim()}-${(parsed["Achternaam"] || "").trim()}.pdf`;
+    const bestandNaam = `${parsed["Voornaam"] || "onbekend"}-${parsed["Achternaam"] || ""}.pdf`;
 
     // ✅ eerst DB opslaan
     const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
@@ -188,16 +188,14 @@ export default function SollicitatiePDF() {
       </div>
 
       <div className="flex gap-4">
-  <button
-    onClick={generatePDF}
-    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-  >
-    📥 Download PDF
-  </button>
-  <a href="/" className="text-blue-600 underline text-sm mt-2 self-center">
-    ← Terug naar startpagina
-  </a>
-</div>
+        <button
+          onClick={generatePDF}
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          📥 Download PDF
+        </button>
+        
+      </div>
     </div>
   );
 }
