@@ -34,7 +34,7 @@ export default function SollicitatiePDF() {
     doc.text("Sollicitatieformulier IJssalon Vincenzo - Datum Gesprek:", 14, 20);
     doc.setFontSize(11);
 
-    let y = 30;
+    const y = 30;
     const personal = [
       ["Voornaam", parsed["Voornaam"] || ""],
       ["Achternaam", parsed["Achternaam"] || ""],
