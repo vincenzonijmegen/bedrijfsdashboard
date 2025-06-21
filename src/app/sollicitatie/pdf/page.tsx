@@ -2,8 +2,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+
 
 function parseMail(txt: string): Record<string, string> {
   const obj: Record<string, string> = {};
@@ -98,64 +99,8 @@ export default function SollicitatiePDF() {
     doc.save(bestandNaam);
   };
 
-  // ... rest van de code blijft hetzelfde
-
-
-  const handleEmailSend = async () => {
-    const parsed = parseMail(input);
-    if (!to || !parsed) return;
-    localStorage.setItem("sollicitatie_email", to);
-    try {
-      const parsed = parseMail(input);
-      const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
-
-      const payload = {
-        dagen,
-        voornaam: parsed["Voornaam"],
-        achternaam: parsed["Achternaam"],
-        geboortedatum: parsed["Geboortedatum"],
-        email: parsed["E-mailadres"],
-        telefoon: parsed["Telefoonnummer"],
-        adres: `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`.trim(),
-        postcode: parsed["Postcode"],
-        woonplaats: parsed["Woonplaats"],
-        startdatum: parsed["Startdatum"],
-        einddatum: parsed["Einddatum"],
-        bijbaan: parsed["Andere bijbaan"],
-        vakantie: parsed["Vakantie"],
-        shifts_per_week: Number(parsed["Shifts per week"] || 0),
-        voorkeur: parsed["Voorkeur functie"],
-        opleiding: parsed["Opleiding"],
-        ervaring: parsed["Werkervaring"],
-        rekenen: parsed["Rekenvaardigheid"],
-        kassa: parsed["Kassa-ervaring"],
-        duits: parsed["Duits"],
-        extra: parsed["Extra"],
-        overige_zaken: parsed["Overige zaken"],
-        ...Object.fromEntries(
-          ["ma","di","wo","do","vr","za","zo"].flatMap((dag) => [
-            [`beschikbaar_${dag}_1`, dagen.includes(`${dag} shift 1`)],
-            [`beschikbaar_${dag}_2`, dagen.includes(`${dag} shift 2`)],
-          ])
-        )
-      };
-
-      const res = await fetch("/api/sollicitaties", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const json = await res.json();
-      if (json.success) {
-        alert(`PDF-data opgeslagen in database. Naar ${to}`);
-      } else {
-        alert("Fout bij opslaan: " + json.error);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Verwerken mislukt");
-    }
-  };
+  
+      
 
   return (
     <div className="max-w-2xl mx-auto p-6">
@@ -184,9 +129,9 @@ export default function SollicitatiePDF() {
   >
     📥 Download PDF
   </button>
-  <a href="/" className="text-blue-600 underline text-sm mt-2 self-center">
+  <Link href="/" className="text-blue-600 underline text-sm mt-2 self-center">
     ← Terug naar startpagina
-  </a>
+  </Link>
 </div>
     </div>
   );
