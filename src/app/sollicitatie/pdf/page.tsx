@@ -55,7 +55,7 @@ export default function SollicitatiePDF() {
       tableWidth: 90,
       body: personal,
     });
-    const leftTableEndY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
+    // const leftTableEndY is unused and removed
 const availabilityStartY = y;
     dagrijen.push(["shifts per week", "", parsed["Shifts per week"] || ""]);
     dagrijen.push(["afd. voorkeur", "", parsed["Voorkeur functie"] || ""]);
