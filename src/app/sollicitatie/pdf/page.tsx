@@ -1,3 +1,4 @@
+
 // app/sollicitatie/pdf/page.tsx
 "use client";
 
@@ -37,7 +38,7 @@ export default function SollicitatiePDF() {
     lines.forEach((line) => {
       const match = line.match(/^([^:]+):\s*(.*)$/);
       if (match) {
-        const [_, key, val] = match;
+        const [, key, val] = match;
         obj[key.trim()] = val.trim();
       }
     });
@@ -47,7 +48,6 @@ export default function SollicitatiePDF() {
   const handleEmailSend = () => {
     if (!to || !parsed) return;
     localStorage.setItem("sollicitatie_email", to);
-    // hier zou normaal een backend/emailservice aangeroepen worden
     alert(`(Demo) PDF verstuurd naar ${to}`);
   };
 
