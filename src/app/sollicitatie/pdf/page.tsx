@@ -58,7 +58,7 @@ export default function SollicitatiePDF() {
       columnStyles: {
         0: { fontStyle: 'bold' }
       },
-      headStyles: { cellPadding: 2, fontStyle: 'bold', halign: 'left' },
+      headStyles: { cellPadding: 2, fontStyle: 'bold', halign: 'left', minCellHeight: 8 },
     });
 
     const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
@@ -99,6 +99,7 @@ export default function SollicitatiePDF() {
       ["\u0000Kassa-ervaring", parsed["Kassa-ervaring"] || ""],
       ["\u0000Duits", parsed["Duits"] || ""],
       ["\u0000Vakantie", parsed["Vakantie"] || ""],
+      ["\u0000Extra", parsed["Extra"] || ""],
       ["\u0000Overige zaken", parsed["Overige zaken"] || ""]
     ];
 
