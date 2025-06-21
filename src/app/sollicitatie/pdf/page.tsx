@@ -61,9 +61,6 @@ export default function SollicitatiePDF() {
       headStyles: { cellPadding: 2, fontStyle: 'bold', halign: 'left', minCellHeight: 8 },
     });
 
-    doc.setDrawColor(200);
-    doc.line(10, (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!.finalY + 5, 200, (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!.finalY + 5);
-
     const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
     const dagrijen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"].map((dag) => {
       return [
@@ -94,9 +91,6 @@ export default function SollicitatiePDF() {
         }
       }
     });
-
-    doc.setDrawColor(200);
-    doc.line(10, (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!.finalY + 5, 200, (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!.finalY + 5);
 
     const extra = [
       ["\u0000Opleiding", parsed["Opleiding"] || ""],
