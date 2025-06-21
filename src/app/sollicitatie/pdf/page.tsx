@@ -207,6 +207,63 @@ export default function SollicitatiePDF() {
         1: { cellWidth: 85 }
       }
     });
+
+    const pdfBase64 = doc.output("datauristring");
+
+    await fetch("/api/mail-pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        voornaam: parsed["Voornaam"] || "onbekend",
+        email: to,
+        bestand: pdfBase64
+      })
+    });
+
+    const payload = {
+      dagen,
+      voornaam: parsed["Voornaam"],
+      achternaam: parsed["Achternaam"],
+      geboortedatum: parsed["Geboortedatum"],
+      email: parsed["E-mailadres"],
+      telefoon: parsed["Telefoonnummer"],
+      adres: `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`.trim(),
+      postcode: parsed["Postcode"],
+      woonplaats: parsed["Woonplaats"],
+      startdatum: parsed["Startdatum"],
+      einddatum: parsed["Einddatum"],
+      bijbaan: parsed["Andere bijbaan"],
+      vakantie: parsed["Vakantie"],
+      shifts_per_week: Number(parsed["Shifts per week"] || 0),
+      voorkeur: parsed["Voorkeur functie"],
+      opleiding: parsed["Opleiding"],
+      ervaring: parsed["Werkervaring"],
+      rekenen: parsed["Rekenvaardigheid"],
+      kassa: parsed["Kassa-ervaring"],
+      duits: parsed["Duits"],
+      extra: parsed["Extra"],
+      overige_zaken: parsed["Overige zaken"],
+      ...Object.fromEntries(
+        ["ma","di","wo","do","vr","za","zo"].flatMap((dag) => [
+          [`beschikbaar_${dag}_1`, dagen.includes(`${dag} shift 1`)],
+          [`beschikbaar_${dag}_2`, dagen.includes(`${dag} shift 2`)]
+        ])
+      )
+    };
+
+    const res = await fetch("/api/sollicitaties", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const json = await res.json();
+    if (json.success) {
+      alert(`PDF verzonden én data opgeslagen in database. Naar ${to}`);
+      doc.save(`${parsed["Voornaam"] || "onbekend"}-${parsed["Achternaam"] || ""}.pdf`);
+    } else {
+      alert("Fout bij opslaan: " + json.error);
+    }
   };
 
   return (
