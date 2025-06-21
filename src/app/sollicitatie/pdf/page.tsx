@@ -72,12 +72,12 @@ export default function SollicitatiePDF() {
       ];
     });
     dagrijen.push([
-  { content: "shifts per week", colSpan: 2, styles: { halign: "left", fontStyle: "bold" } },
-  parsed["Shifts per week"] || ""
+  "shifts per week",
+  { content: parsed["Shifts per week"] || "", colSpan: 2, styles: { halign: "left" } }
 ]);
 dagrijen.push([
-  { content: "afd. voorkeur", colSpan: 2, styles: { halign: "left", fontStyle: "bold" } },
-  parsed["Voorkeur functie"] || ""
+  "afd. voorkeur",
+  { content: parsed["Voorkeur functie"] || "", colSpan: 2, styles: { halign: "left" } }
 ]);
 
     autoTable(doc, {
