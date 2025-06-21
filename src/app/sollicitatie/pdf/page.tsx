@@ -192,7 +192,7 @@ export default function SollicitatiePDF() {
       if (i % 2 === 0) {
         acc.push([
           `${cur[0]}: ${cur[1]}`,
-          feestdagen[i + 1] ? `${feastdagen[i + 1][0]}: ${feastdagen[i + 1][1]}` : ""
+          feestdagen[i + 1] ? `${feestdagen[i + 1][0]}: ${feestdagen[i + 1][1]}` : ""
         ]);
       }
       return acc;
