@@ -104,13 +104,9 @@ export default function SollicitatiePDF() {
     ];
 
     const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
-    doc.setFontSize(12);
-    doc.setTextColor(0);
-    doc.setFont("helvetica", "bold");
-    doc.text("Overige gegevens", 14, extraStartY + 12);
-    
+
     autoTable(doc, {
-      startY: extraStartY + 16,
+      startY: extraStartY + 4,
       body: extra,
       styles: { valign: 'top', cellPadding: 2 },
       columnStyles: {
