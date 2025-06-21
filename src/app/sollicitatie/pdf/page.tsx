@@ -1,6 +1,7 @@
+import Link from "next/link";
 // app/sollicitatie/pdf/page.tsx
 "use client";
-import Link from "next/link";
+
 import { useEffect, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -292,12 +293,11 @@ export default function SollicitatiePDF() {
       </button>
       <div className="mt-6">
         <Link
-  href="/"
-  className="inline-block text-blue-600 hover:underline text-sm"
->
-  ← Terug naar startpagina
-</Link>
-
+          href="/"
+          className="inline-block text-blue-600 hover:underline text-sm"
+        >
+          ← Terug naar startpagina
+        </Link>
       </div>
     </div>
   );

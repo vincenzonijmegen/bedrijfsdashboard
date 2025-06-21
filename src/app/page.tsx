@@ -28,6 +28,9 @@ export default function Home() {
         <Link href="/shift-acties" className="block bg-pink-600 text-white p-6 rounded-xl shadow hover:bg-pink-700">
           Shiftacties & Statistieken
         </Link>
+        <Link href="/sollicitatie/pdf" className="block bg-red-600 text-white p-6 rounded-xl shadow hover:bg-red-700">
+        Sollicitatiemails
+        </Link>
       </div>
     </main>
   );
