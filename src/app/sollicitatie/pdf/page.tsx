@@ -18,8 +18,9 @@ function parseMail(txt: string): Record<string, string> {
   return obj;
 }
 
-function getLeeftijd(dob: string): number {
+function getLeeftijd(dob: string): number | string {
   const [dag, maand, jaar] = dob.split("-").map(Number);
+  if (!dag || !maand || !jaar) return "onbekend";
   const geboortedatum = new Date(jaar, maand - 1, dag);
   const nu = new Date();
   let leeftijd = nu.getFullYear() - geboortedatum.getFullYear();
@@ -48,18 +49,18 @@ export default function SollicitatiePDF() {
 
     const y = 30;
     const personal = [
-      ["\u0000Voornaam", parsed["Voornaam"] || ""],
-      ["\u0000Achternaam", parsed["Achternaam"] || ""],
-      ["\u0000Adres", `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`],
-      ["\u0000PC/Woonplaats", `${parsed["Postcode"] || ""} ${parsed["Woonplaats"] || ""}`],
-      ["\u0000Geboortedatum", `${parsed["Geboortedatum"] || ""} (${parsed["Geboortedatum"] ? getLeeftijd(parsed["Geboortedatum"]) + ' jaar' : ''})`],
-      ["\u0000E-mailadres", parsed["E-mailadres"] || ""],
-      ["\u0000Telefoonnummer", parsed["Telefoonnummer"] || ""],
-      ["\u0000Startdatum", parsed["Startdatum"] || ""],
-      ["\u0000Einddatum", parsed["Einddatum"] || ""],
-      ["\u0000Andere bijbaan", parsed["Andere bijbaan"] || ""],
-
+      ["Voornaam", parsed["Voornaam"] || ""],
+      ["Achternaam", parsed["Achternaam"] || ""],
+      ["Adres", `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`],
+      ["PC/Woonplaats", `${parsed["Postcode"] || ""} ${parsed["Woonplaats"] || ""}`],
+      ["Geboortedatum", `${parsed["Geboortedatum"] || ""} (${parsed["Geboortedatum"] ? getLeeftijd(parsed["Geboortedatum"]) + ' jaar' : ''})`],
+      ["E-mailadres", parsed["E-mailadres"] || ""],
+      ["Telefoonnummer", parsed["Telefoonnummer"] || ""],
+      ["Startdatum", parsed["Startdatum"] || ""],
+      ["Einddatum", parsed["Einddatum"] || ""],
+      ["Andere bijbaan", parsed["Andere bijbaan"] || ""]
     ];
+
     autoTable(doc, {
       startY: y,
       head: [["Gegevens", ""]],
@@ -67,26 +68,21 @@ export default function SollicitatiePDF() {
       tableWidth: 90,
       body: personal,
       styles: { cellPadding: 2 },
-      columnStyles: {
-        0: { fontStyle: 'bold' }
-      },
-      headStyles: { cellPadding: 2, fontStyle: 'bold', halign: 'left', minCellHeight: 8 },
+      columnStyles: { 0: { fontStyle: 'bold' } },
+      headStyles: { cellPadding: 2, fontStyle: 'bold', halign: 'left', minCellHeight: 8 }
     });
 
     const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
-    const dagrijen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"].map((dag) => {
-      return [
-        dag,
-        dagen.includes(`${dag} shift 1`) ? "JA" : "",
-        dagen.includes(`${dag} shift 2`) ? "JA" : ""
-      ];
-    });
-    const availabilityStartY = y;
-    dagrijen.push(["shifts per week", "", parsed["Shifts per week"] || ""]);
-    dagrijen.push(["afd. voorkeur", "", parsed["Voorkeur functie"] || ""]);
+    const dagrijen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"].map((dag) => [
+      dag,
+      dagen.includes(`${dag} shift 1`) ? "JA" : "",
+      dagen.includes(`${dag} shift 2`) ? "JA" : ""
+    ]);
+    dagrijen.push(["shifts per week", parsed["Shifts per week"] || "", ""]);
+    dagrijen.push(["afd. voorkeur", parsed["Voorkeur functie"] || "", ""]);
 
     autoTable(doc, {
-      startY: availabilityStartY,
+      startY: y,
       margin: { left: 115 },
       tableWidth: 85,
       head: [["BESCHIKBAAR", "SHIFT 1", "SHIFT 2"]],
@@ -95,26 +91,21 @@ export default function SollicitatiePDF() {
       styles: { halign: "center" },
       headStyles: { fillColor: [0, 51, 102], textColor: 255 },
       didParseCell(data) {
-        if (data.column.index === 0) {
-          data.cell.styles.fontStyle = 'bold';
-        }
-        if (data.cell.raw === "JA") {
-          data.cell.styles.fillColor = [200, 255, 200];
-        }
+        if (data.column.index === 0) data.cell.styles.fontStyle = 'bold';
+        if (data.cell.raw === "JA") data.cell.styles.fillColor = [200, 255, 200];
       }
     });
 
     const extra = [
-      ["\u0000Opleiding", parsed["Opleiding"] || ""],
-      ["\u0000Werkervaring", parsed["Werkervaring"] || ""],
-      ["\u0000Rekenvaardigheid", parsed["Rekenvaardigheid"] || ""],
-      ["\u0000Kassa-ervaring", parsed["Kassa-ervaring"] || ""],
-      ["\u0000Duits", parsed["Duits"] || ""],
-      ["\u0000Vakantie", parsed["Vakantie"] || ""],
-      ["\u0000Extra", parsed["Extra"] || ""],
-      ["\u0000Overige zaken", parsed["Overige zaken"] || ""]
+      ["Opleiding", parsed["Opleiding"] || ""],
+      ["Werkervaring", parsed["Werkervaring"] || ""],
+      ["Rekenvaardigheid", parsed["Rekenvaardigheid"] || ""],
+      ["Kassa-ervaring", parsed["Kassa-ervaring"] || ""],
+      ["Duits", parsed["Duits"] || ""],
+      ["Vakantie", parsed["Vakantie"] || ""],
+      ["Extra", parsed["Extra"] || ""],
+      ["Overige zaken", parsed["Overige zaken"] || ""]
     ];
-
     const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
 
     autoTable(doc, {
@@ -126,166 +117,65 @@ export default function SollicitatiePDF() {
         1: { cellWidth: 140 }
       },
       didParseCell(data) {
-        if ([0, 1].includes(data.row.index)) {
-          data.cell.styles.minCellHeight = 20;
-        }
+        if ([0, 1].includes(data.row.index)) data.cell.styles.minCellHeight = 20;
       }
     });
 
-    // Dynamisch feestdagenoverzicht
-const jaar = new Date().getFullYear();
+    const pdfBase64 = doc.output("datauristring");
 
-function getPasen(year: number): Date[] {
-  const f = Math.floor,
-    G = year % 19,
-    C = f(year / 100),
-    H = (C - f(C / 4) - f((8 * C + 13) / 25) + 19 * G + 15) % 30,
-    I = H - f(H / 28) * (1 - f(29 / (H + 1)) * f((21 - G) / 11)),
-    J = (year + f(year / 4) + I + 2 - C + f(C / 4)) % 7,
-    L = I - J,
-    maand = 3 + f((L + 40) / 44),
-    dag = L + 28 - 31 * f(maand / 4);
-  const eerste = new Date(year, maand - 1, dag);
-  const tweede = new Date(eerste);
-  tweede.setDate(eerste.getDate() + 1);
-  return [eerste, tweede];
-}
+    await fetch("/api/mail-pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        voornaam: parsed["Voornaam"] || "onbekend",
+        email: to,
+        bestand: pdfBase64
+      })
+    });
 
-function format(d: Date): string {
-  return d.toLocaleDateString("nl-NL");
-}
+    const payload = {
+      dagen,
+      voornaam: parsed["Voornaam"],
+      achternaam: parsed["Achternaam"],
+      geboortedatum: parsed["Geboortedatum"],
+      email: parsed["E-mailadres"],
+      telefoon: parsed["Telefoonnummer"],
+      adres: `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`.trim(),
+      postcode: parsed["Postcode"],
+      woonplaats: parsed["Woonplaats"],
+      startdatum: parsed["Startdatum"],
+      einddatum: parsed["Einddatum"],
+      bijbaan: parsed["Andere bijbaan"],
+      vakantie: parsed["Vakantie"],
+      shifts_per_week: Number(parsed["Shifts per week"] || 0),
+      voorkeur: parsed["Voorkeur functie"],
+      opleiding: parsed["Opleiding"],
+      ervaring: parsed["Werkervaring"],
+      rekenen: parsed["Rekenvaardigheid"],
+      kassa: parsed["Kassa-ervaring"],
+      duits: parsed["Duits"],
+      extra: parsed["Extra"],
+      overige_zaken: parsed["Overige zaken"],
+      ...Object.fromEntries(
+        ["ma", "di", "wo", "do", "vr", "za", "zo"].flatMap((dag) => [
+          [`beschikbaar_${dag}_1`, dagen.includes(`${dag} shift 1`)],
+          [`beschikbaar_${dag}_2`, dagen.includes(`${dag} shift 2`)]
+        ])
+      )
+    };
 
-const [eerstePasen, tweedePasen] = getPasen(jaar);
-const pinksteren = new Date(eerstePasen);
-pinksteren.setDate(eerstePasen.getDate() + 49);
-const tweedePinksteren = new Date(pinksteren);
-tweedePinksteren.setDate(pinksteren.getDate() + 1);
+    const res = await fetch("/api/sollicitaties", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
 
-const hemelvaart = new Date(eerstePasen);
-hemelvaart.setDate(eerstePasen.getDate() + 39);
-
-const moederdag = new Date(jaar, 4, 1);
-while (moederdag.getDay() !== 0) moederdag.setDate(moederdag.getDate() + 1);
-moederdag.setDate(moederdag.getDate() + 7);
-
-const vaderdag = new Date(jaar, 5, 1);
-while (vaderdag.getDay() !== 0) vaderdag.setDate(vaderdag.getDate() + 1);
-vaderdag.setDate(vaderdag.getDate() + 14);
-
-function getZomerfeesten(year: number): [Date, Date] {
-  const eersteDag = new Date(year, 6, 1); // juli = maand 6
-  while (eersteDag.getDay() !== 6) eersteDag.setDate(eersteDag.getDate() + 1); // eerste zaterdag
-  eersteDag.setDate(eersteDag.getDate() + 7); // tweede zaterdag // derde zaterdag
-  const laatsteDag = new Date(eersteDag);
-  laatsteDag.setDate(eersteDag.getDate() + 6);
-  return [eersteDag, laatsteDag];
-}
-
-const feestdagen: [string, string][] = [
-  ["Pasen", `${format(eerstePasen)} en ${format(tweedePasen)}`],
-  ["Koningsdag", `${["zo","ma","di","wo","do","vr","za"][new Date(`${jaar}-04-27`).getDay()]} 27-04-${jaar}`],
-  ["Meivakantie", `28-04-${jaar} t/m 05-05-${jaar}`],
-  ["Bevrijdingsdag", `${["zo","ma","di","wo","do","vr","za"][new Date(`${jaar}-05-05`).getDay()]} 05-05-${jaar}`],
-  ["Moederdag", format(moederdag)],
-  ["Hemelvaartsdag", `do ${format(hemelvaart)}`],
-  ["Pinksteren", `${format(pinksteren)} en ${format(tweedePinksteren)}`],
-  ["Vaderdag", format(vaderdag)],
-  ["Zomerfeesten Nijmegen", (() => { const [start, eind] = getZomerfeesten(jaar); return `${format(start)} t/m ${format(eind)}` })()]
-];
-
-const feestdagenStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
-doc.setFontSize(12);
-doc.setFont("helvetica", "bold");
-doc.text(`Feestdagen seizoen ${jaar}`, 14, feestdagenStartY + 12);
-
-const feestdagenInTweeKolommen = feestdagen.reduce<[string, string][]>((acc, cur, i) => {
-  if (i % 2 === 0) {
-    acc.push([`${cur[0]}: ${cur[1]}`, feestdagen[i + 1] ? `${feestdagen[i + 1][0]}: ${feestdagen[i + 1][1]}` : ""]);
-  }
-  return acc;
-}, []);
-
-autoTable(doc, {
-  startY: feestdagenStartY + 16,
-  body: feestdagenInTweeKolommen,
-  styles: { valign: 'top', cellPadding: 2 },
-  columnStyles: {
-    0: { cellWidth: 85 },
-    1: { cellWidth: 85 }
-  }
-});
-
-const pdfBase64 = await doc.output("datauristring");
-
-await fetch("/api/mail-pdf", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    voornaam: parsed["Voornaam"] || "onbekend",
-    email: to, // vervang dit door je Goodnotes mailadres
-    bestand: pdfBase64
-  })
-});
-
-doc.save(`${parsed["Voornaam"] || "onbekend"}-${parsed["Achternaam"] || ""}.pdf`);
-  };
-
-  // ... rest van de code blijft hetzelfde
-
-
-  const handleEmailSend = async () => {
-    const parsed = parseMail(input);
-    if (!to || !parsed) return;
-    localStorage.setItem("sollicitatie_email", to);
-    try {
-      const parsed = parseMail(input);
-      const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
-
-      const payload = {
-        dagen,
-        voornaam: parsed["Voornaam"],
-        achternaam: parsed["Achternaam"],
-        geboortedatum: parsed["Geboortedatum"],
-        email: parsed["E-mailadres"],
-        telefoon: parsed["Telefoonnummer"],
-        adres: `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`.trim(),
-        postcode: parsed["Postcode"],
-        woonplaats: parsed["Woonplaats"],
-        startdatum: parsed["Startdatum"],
-        einddatum: parsed["Einddatum"],
-        bijbaan: parsed["Andere bijbaan"],
-        vakantie: parsed["Vakantie"],
-        shifts_per_week: Number(parsed["Shifts per week"] || 0),
-        voorkeur: parsed["Voorkeur functie"],
-        opleiding: parsed["Opleiding"],
-        ervaring: parsed["Werkervaring"],
-        rekenen: parsed["Rekenvaardigheid"],
-        kassa: parsed["Kassa-ervaring"],
-        duits: parsed["Duits"],
-        extra: parsed["Extra"],
-        overige_zaken: parsed["Overige zaken"],
-        ...Object.fromEntries(
-          ["ma","di","wo","do","vr","za","zo"].flatMap((dag) => [
-            [`beschikbaar_${dag}_1`, dagen.includes(`${dag} shift 1`)],
-            [`beschikbaar_${dag}_2`, dagen.includes(`${dag} shift 2`)],
-          ])
-        )
-      };
-
-      const res = await fetch("/api/sollicitaties", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      const json = await res.json();
-      if (json.success) {
-        alert(`PDF-data opgeslagen in database. Naar ${to}`);
-      } else {
-        alert("Fout bij opslaan: " + json.error);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Verwerken mislukt");
+    const json = await res.json();
+    if (json.success) {
+      alert(`PDF verzonden én data opgeslagen in database. Naar ${to}`);
+      doc.save(`${parsed["Voornaam"] || "onbekend"}-${parsed["Achternaam"] || ""}.pdf`);
+    } else {
+      alert("Fout bij opslaan: " + json.error);
     }
   };
 
@@ -309,22 +199,12 @@ doc.save(`${parsed["Voornaam"] || "onbekend"}-${parsed["Achternaam"] || ""}.pdf`
         />
       </div>
 
-      <div className="flex gap-4">
-        <button
-          onClick={generatePDF}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          📥 Download PDF
-        </button>
-        <button
-          onClick={handleEmailSend}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-        >
-          📧 Verstuur PDF
-        </button>
-      </div>
+      <button
+        onClick={generatePDF}
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+      >
+        📤 Genereer & Verstuur PDF
+      </button>
     </div>
   );
 }
-
-
