@@ -6,6 +6,9 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
+    const dagen = body?.dagen || [];
+    const isBeschikbaar = (dag: string, shift: number) => dagen.includes(`${dag} shift ${shift}`);
+
     const parseDate = (d: string) => d?.split("-").reverse().join("-");
 
     // TODO: volledige INSERT query hier plaatsen, zie eerdere suggestie met 35 parameters.
@@ -46,13 +49,13 @@ export async function POST(req: NextRequest) {
         body.email, body.telefoon, body.adres, body.postcode, body.woonplaats,
         body.kassa, body.duits, body.bijbaan, body.vakantie, body.extra,
         body.voorkeur, body.opleiding, body.ervaring,
-        body.beschikbaar_ma_1, body.beschikbaar_ma_2,
-        body.beschikbaar_di_1, body.beschikbaar_di_2,
-        body.beschikbaar_wo_1, body.beschikbaar_wo_2,
-        body.beschikbaar_do_1, body.beschikbaar_do_2,
-        body.beschikbaar_vr_1, body.beschikbaar_vr_2,
-        body.beschikbaar_za_1, body.beschikbaar_za_2,
-        body.beschikbaar_zo_1, body.beschikbaar_zo_2,
+        isBeschikbaar('maandag', 1), isBeschikbaar('maandag', 2),
+        isBeschikbaar('dinsdag', 1), isBeschikbaar('dinsdag', 2),
+        isBeschikbaar('woensdag', 1), isBeschikbaar('woensdag', 2),
+        isBeschikbaar('donderdag', 1), isBeschikbaar('donderdag', 2),
+        isBeschikbaar('vrijdag', 1), isBeschikbaar('vrijdag', 2),
+        isBeschikbaar('zaterdag', 1), isBeschikbaar('zaterdag', 2),
+        isBeschikbaar('zondag', 1), isBeschikbaar('zondag', 2),
         body.shifts_per_week
       ]
     ); // result verwijderd omdat het niet gebruikt wordt
