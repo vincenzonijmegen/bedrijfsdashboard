@@ -71,7 +71,26 @@ y = tableEndY + 10;
       headStyles: { fillColor: [0, 51, 102], textColor: 255 },
     });
 
-    doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
+    // extra velden
+const extra = [
+  ["Opleiding", parsed["Opleiding"] || ""],
+  ["Werkervaring", parsed["Werkervaring"] || ""],
+  ["Rekenvaardigheid", parsed["Rekenvaardigheid"] || ""],
+  ["Kassa-ervaring", parsed["Kassa-ervaring"] || ""],
+  ["Duits", parsed["Duits"] || ""],
+  ["Overige zaken", parsed["Extra"] || ""]
+];
+
+const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
+autoTable(doc, {
+  startY: extraStartY + 10,
+  head: [["Extra informatie", ""]],
+  body: extra,
+  styles: { valign: 'top' },
+  columnStyles: { 1: { cellWidth: 140 } }
+});
+
+doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
   };
 
   const handleEmailSend = () => {
