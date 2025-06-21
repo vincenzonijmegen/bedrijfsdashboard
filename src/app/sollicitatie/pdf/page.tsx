@@ -121,62 +121,92 @@ export default function SollicitatiePDF() {
       }
     });
 
-    const pdfBase64 = doc.output("datauristring");
-
-    await fetch("/api/mail-pdf", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        voornaam: parsed["Voornaam"] || "onbekend",
-        email: to,
-        bestand: pdfBase64
-      })
-    });
-
-    const payload = {
-      dagen,
-      voornaam: parsed["Voornaam"],
-      achternaam: parsed["Achternaam"],
-      geboortedatum: parsed["Geboortedatum"],
-      email: parsed["E-mailadres"],
-      telefoon: parsed["Telefoonnummer"],
-      adres: `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`.trim(),
-      postcode: parsed["Postcode"],
-      woonplaats: parsed["Woonplaats"],
-      startdatum: parsed["Startdatum"],
-      einddatum: parsed["Einddatum"],
-      bijbaan: parsed["Andere bijbaan"],
-      vakantie: parsed["Vakantie"],
-      shifts_per_week: Number(parsed["Shifts per week"] || 0),
-      voorkeur: parsed["Voorkeur functie"],
-      opleiding: parsed["Opleiding"],
-      ervaring: parsed["Werkervaring"],
-      rekenen: parsed["Rekenvaardigheid"],
-      kassa: parsed["Kassa-ervaring"],
-      duits: parsed["Duits"],
-      extra: parsed["Extra"],
-      overige_zaken: parsed["Overige zaken"],
-      ...Object.fromEntries(
-        ["ma", "di", "wo", "do", "vr", "za", "zo"].flatMap((dag) => [
-          [`beschikbaar_${dag}_1`, dagen.includes(`${dag} shift 1`)],
-          [`beschikbaar_${dag}_2`, dagen.includes(`${dag} shift 2`)]
-        ])
-      )
-    };
-
-    const res = await fetch("/api/sollicitaties", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const json = await res.json();
-    if (json.success) {
-      alert(`PDF verzonden én data opgeslagen in database. Naar ${to}`);
-      doc.save(`${parsed["Voornaam"] || "onbekend"}-${parsed["Achternaam"] || ""}.pdf`);
-    } else {
-      alert("Fout bij opslaan: " + json.error);
+    const jaar = new Date().getFullYear();
+    function getPasen(year: number): Date[] {
+      const f = Math.floor,
+        G = year % 19,
+        C = f(year / 100),
+        H = (C - f(C / 4) - f((8 * C + 13) / 25) + 19 * G + 15) % 30,
+        I = H - f(H / 28) * (1 - f(29 / (H + 1)) * f((21 - G) / 11)),
+        J = (year + f(year / 4) + I + 2 - C + f(C / 4)) % 7,
+        L = I - J,
+        maand = 3 + f((L + 40) / 44),
+        dag = L + 28 - 31 * f(maand / 4);
+      const eerste = new Date(year, maand - 1, dag);
+      const tweede = new Date(eerste);
+      tweede.setDate(eerste.getDate() + 1);
+      return [eerste, tweede];
     }
+
+    function format(d: Date): string {
+      return d.toLocaleDateString("nl-NL");
+    }
+
+    const [eerstePasen, tweedePasen] = getPasen(jaar);
+    const pinksteren = new Date(eerstePasen);
+    pinksteren.setDate(eerstePasen.getDate() + 49);
+    const tweedePinksteren = new Date(pinksteren);
+    tweedePinksteren.setDate(pinksteren.getDate() + 1);
+
+    const hemelvaart = new Date(eerstePasen);
+    hemelvaart.setDate(eerstePasen.getDate() + 39);
+
+    const moederdag = new Date(jaar, 4, 1);
+    while (moederdag.getDay() !== 0) moederdag.setDate(moederdag.getDate() + 1);
+    moederdag.setDate(moederdag.getDate() + 7);
+
+    const vaderdag = new Date(jaar, 5, 1);
+    while (vaderdag.getDay() !== 0) vaderdag.setDate(vaderdag.getDate() + 1);
+    vaderdag.setDate(vaderdag.getDate() + 14);
+
+    function getZomerfeesten(year: number): [Date, Date] {
+      const eersteDag = new Date(year, 6, 1);
+      while (eersteDag.getDay() !== 6) eersteDag.setDate(eersteDag.getDate() + 1);
+      eersteDag.setDate(eersteDag.getDate() + 7);
+      const laatsteDag = new Date(eersteDag);
+      laatsteDag.setDate(eersteDag.getDate() + 6);
+      return [eersteDag, laatsteDag];
+    }
+
+    const feestdagen: [string, string][] = [
+      ["Pasen", `${format(eerstePasen)} en ${format(tweedePasen)}`],
+      ["Koningsdag", `${["zo","ma","di","wo","do","vr","za"][new Date(`${jaar}-04-27`).getDay()]} 27-04-${jaar}`],
+      ["Meivakantie", `28-04-${jaar} t/m 05-05-${jaar}`],
+      ["Bevrijdingsdag", `${["zo","ma","di","wo","do","vr","za"][new Date(`${jaar}-05-05`).getDay()]} 05-05-${jaar}`],
+      ["Moederdag", format(moederdag)],
+      ["Hemelvaartsdag", `do ${format(hemelvaart)}`],
+      ["Pinksteren", `${format(pinksteren)} en ${format(tweedePinksteren)}`],
+      ["Vaderdag", format(vaderdag)],
+      ["Zomerfeesten Nijmegen", (() => {
+        const [start, eind] = getZomerfeesten(jaar);
+        return `${format(start)} t/m ${format(eind)}`;
+      })()]
+    ];
+
+    const feestdagenStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Feestdagen seizoen ${jaar}`, 14, feestdagenStartY + 12);
+
+    const feestdagenInTweeKolommen = feestdagen.reduce<[string, string][]>((acc, cur, i) => {
+      if (i % 2 === 0) {
+        acc.push([
+          `${cur[0]}: ${cur[1]}`,
+          feestdagen[i + 1] ? `${feastdagen[i + 1][0]}: ${feastdagen[i + 1][1]}` : ""
+        ]);
+      }
+      return acc;
+    }, []);
+
+    autoTable(doc, {
+      startY: feestdagenStartY + 16,
+      body: feestdagenInTweeKolommen,
+      styles: { valign: 'top', cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 85 },
+        1: { cellWidth: 85 }
+      }
+    });
   };
 
   return (
@@ -188,7 +218,6 @@ export default function SollicitatiePDF() {
         value={input}
         onChange={(e) => setInput(e.target.value)}
       />
-
       <div className="mb-4">
         <label className="block mb-1 text-sm">Verstuur PDF naar e-mailadres:</label>
         <input
@@ -198,7 +227,6 @@ export default function SollicitatiePDF() {
           onChange={(e) => setTo(e.target.value)}
         />
       </div>
-
       <button
         onClick={generatePDF}
         className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
