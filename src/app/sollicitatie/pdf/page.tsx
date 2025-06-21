@@ -108,7 +108,6 @@ export default function SollicitatiePDF() {
     doc.save(bestandNaam);
   };
 
-  // ... rest van de code blijft hetzelfde
 
 
   const handleEmailSend = async () => {
@@ -194,7 +193,12 @@ export default function SollicitatiePDF() {
         >
           📥 Download PDF
         </button>
-        
+        <button
+          onClick={handleEmailSend}
+          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+        >
+          📧 Verstuur PDF
+        </button>
       </div>
     </div>
   );
