@@ -112,10 +112,14 @@ export default function SollicitatiePDF() {
     autoTable(doc, {
       startY: extraStartY + 16,
       body: extra,
-      styles: { valign: 'top', cellPadding: 2 },
+      styles: {
+      valign: 'top',
+      cellPadding: 2,
+      overflow: 'linebreak'
+      },
       columnStyles: {
         0: { fontStyle: 'bold' },
-        1: { cellWidth: 140 }
+        1: { cellWidth: 'wrap' }
       },
       didParseCell(data) {
         if ([0, 1].includes(data.row.index)) {
