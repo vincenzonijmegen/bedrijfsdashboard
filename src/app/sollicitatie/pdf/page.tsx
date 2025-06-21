@@ -49,7 +49,8 @@ export default function SollicitatiePDF() {
       ["Vakantie", parsed["Vakantie"] || ""]
     ];
     autoTable(doc, { startY: y, head: [["Persoonlijke gegevens", ""]], body: personal });
-    y = (doc as any).lastAutoTable.finalY + 10;
+    const tableEndY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
+y = tableEndY + 10;
 
     const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
     const dagrijen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"].map((dag) => {
