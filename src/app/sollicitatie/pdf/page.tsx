@@ -1,3 +1,4 @@
+"use client";
 import Link from "next/link";
 // app/sollicitatie/pdf/page.tsx
 "use client";
