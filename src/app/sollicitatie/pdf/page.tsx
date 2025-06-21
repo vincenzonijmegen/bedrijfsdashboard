@@ -175,7 +175,7 @@ vaderdag.setDate(vaderdag.getDate() + 14);
 function getZomerfeesten(year: number): [Date, Date] {
   const eersteDag = new Date(year, 6, 1); // juli = maand 6
   while (eersteDag.getDay() !== 6) eersteDag.setDate(eersteDag.getDate() + 1); // eerste zaterdag
-  eersteDag.setDate(eersteDag.getDate() + 14); // derde zaterdag
+  eersteDag.setDate(eersteDag.getDate() + 7); // tweede zaterdag // derde zaterdag
   const laatsteDag = new Date(eersteDag);
   laatsteDag.setDate(eersteDag.getDate() + 6);
   return [eersteDag, laatsteDag];
@@ -200,20 +200,25 @@ doc.setFontSize(12);
 doc.setFont("helvetica", "bold");
 doc.text(`Feestdagen seizoen ${jaar}`, 14, feestdagenStartY + 12);
 
+const feestdagenInTweeKolommen = feestdagen.reduce<[string, string][]>((acc, cur, i) => {
+  if (i % 2 === 0) {
+    acc.push([`${cur[0]}: ${cur[1]}`, feestdagen[i + 1] ? `${feestdagen[i + 1][0]}: ${feestdagen[i + 1][1]}` : ""]);
+  }
+  return acc;
+}, []);
+
 autoTable(doc, {
   startY: feestdagenStartY + 16,
-  body: feestdagen,
+  body: feestdagenInTweeKolommen,
   styles: { valign: 'top', cellPadding: 2 },
   columnStyles: {
-    0: { fontStyle: 'bold' },
-    1: { cellWidth: 100 }
+    0: { cellWidth: 85 },
+    1: { cellWidth: 85 }
   }
 });
 
 doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
   };
-
-  // ... rest van de code blijft hetzelfde
 
 
   const handleEmailSend = async () => {
