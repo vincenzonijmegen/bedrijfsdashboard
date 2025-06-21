@@ -46,7 +46,6 @@ export default function SollicitatiePDF() {
       ["Startdatum", parsed["Startdatum"] || ""],
       ["Einddatum", parsed["Einddatum"] || ""],
       ["Andere bijbaan", parsed["Andere bijbaan"] || ""],
-      ["Vakantie", parsed["Vakantie"] || ""],
       ["Extra", parsed["Extra"] || ""]
     ];
     autoTable(doc, {
@@ -85,7 +84,8 @@ export default function SollicitatiePDF() {
       ["Werkervaring", parsed["Werkervaring"] || ""],
       ["Rekenvaardigheid", parsed["Rekenvaardigheid"] || ""],
       ["Kassa-ervaring", parsed["Kassa-ervaring"] || ""],
-      ["Duits", parsed["Duits"] || ""]
+      ["Duits", parsed["Duits"] || ""],
+      ["Overige zaken", parsed["Overige zaken"] || ""]
     ];
 
     const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
@@ -130,6 +130,7 @@ export default function SollicitatiePDF() {
         kassa: parsed["Kassa-ervaring"],
         duits: parsed["Duits"],
         extra: parsed["Extra"],
+        overige_zaken: parsed["Overige zaken"],
         ...Object.fromEntries(
           ["ma","di","wo","do","vr","za","zo"].flatMap((dag) => [
             [`beschikbaar_${dag}_1`, dagen.includes(`${dag} shift 1`)],
