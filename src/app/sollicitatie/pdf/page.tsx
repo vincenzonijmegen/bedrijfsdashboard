@@ -85,8 +85,7 @@ export default function SollicitatiePDF() {
       ["Werkervaring", parsed["Werkervaring"] || ""],
       ["Rekenvaardigheid", parsed["Rekenvaardigheid"] || ""],
       ["Kassa-ervaring", parsed["Kassa-ervaring"] || ""],
-      ["Duits", parsed["Duits"] || ""],
-      ["Overige zaken", parsed["Overige zaken"] || ""]
+      ["Duits", parsed["Duits"] || ""]
     ];
 
     const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
