@@ -95,7 +95,8 @@ export default function SollicitatiePDF() {
       ["\u0000Kassa-ervaring", parsed["Kassa-ervaring"] || ""],
       ["\u0000Duits", parsed["Duits"] || ""],
       ["\u0000Vakantie", parsed["Vakantie"] || ""],
-      ["\u0000Overige zaken", parsed["Overige zaken"] || ""]
+      ["\u0000Overige zaken", parsed["Overige zaken"] || ""],
+      ["\u0000Extra", parsed["Extra"] || ""]
     ];
 
     const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
@@ -103,7 +104,7 @@ export default function SollicitatiePDF() {
       startY: extraStartY + 10,
       head: [["Extra informatie", ""]],
       body: extra,
-      styles: { valign: 'top', cellPadding: 2 },
+      styles: { valign: 'top', cellPadding: 1 },
       columnStyles: {
         0: { fontStyle: 'bold' },
         1: { cellWidth: 140 }
