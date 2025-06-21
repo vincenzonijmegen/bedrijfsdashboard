@@ -1,9 +1,21 @@
-
 // app/sollicitatie/pdf/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import jsPDF from "jspdf";
+
+const parseMail = (txt: string) => {
+  const obj: Record<string, string> = {};
+  const lines = txt.split(/\r?\n/);
+  lines.forEach((line) => {
+    const match = line.match(/^([^:]+):\s*(.*)$/);
+    if (match) {
+      const [, key, val] = match;
+      obj[key.trim()] = val.trim();
+    }
+  });
+  return obj;
+};
 
 export default function SollicitatiePDF() {
   const [input, setInput] = useState("");
@@ -14,9 +26,8 @@ export default function SollicitatiePDF() {
     if (saved) setTo(saved);
   }, []);
 
-  const parsed = parseMail(input);
-
   const generatePDF = () => {
+    const parsed = parseMail(input);
     const doc = new jsPDF();
     doc.setFontSize(14);
     doc.text("Sollicitatieformulier IJssalon Vincenzo", 14, 20);
@@ -32,20 +43,8 @@ export default function SollicitatiePDF() {
     doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
   };
 
-  const parseMail = (txt: string) => {
-    const obj: Record<string, string> = {};
-    const lines = txt.split(/\r?\n/);
-    lines.forEach((line) => {
-      const match = line.match(/^([^:]+):\s*(.*)$/);
-      if (match) {
-        const [, key, val] = match;
-        obj[key.trim()] = val.trim();
-      }
-    });
-    return obj;
-  };
-
   const handleEmailSend = () => {
+    const parsed = parseMail(input);
     if (!to || !parsed) return;
     localStorage.setItem("sollicitatie_email", to);
     alert(`(Demo) PDF verstuurd naar ${to}`);
