@@ -39,7 +39,7 @@ export default function SollicitatiePDF() {
       ["\u0000Voornaam", parsed["Voornaam"] || ""],
       ["\u0000Achternaam", parsed["Achternaam"] || ""],
       ["\u0000Adres", `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`],
-      ["\u0000Postcode/Woonplaats", `${parsed["PC"] || ""} ${parsed["Woonplaats"] || ""}`],
+      ["\u0000Postcode/Woonplaats", `${parsed["Postcode"] || ""} ${parsed["Woonplaats"] || ""}`],
       ["\u0000Geboortedatum", parsed["Geboortedatum"] || ""],
       ["\u0000E-mailadres", parsed["E-mailadres"] || ""],
       ["\u0000Telefoonnummer", parsed["Telefoonnummer"] || ""],
@@ -61,8 +61,7 @@ export default function SollicitatiePDF() {
       headStyles: { cellPadding: 2, fontStyle: 'bold', halign: 'left', minCellHeight: 8 },
     });
 
-    doc.setDrawColor(200);
-    doc.line(10, (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!.finalY + 5, 200, (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!.finalY + 5);
+    const personalFinalY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!.finalY;
 
     const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
     const dagrijen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"].map((dag) => {
@@ -72,12 +71,17 @@ export default function SollicitatiePDF() {
         dagen.includes(`${dag} shift 2`) ? "JA" : ""
       ];
     });
-    const availabilityStartY = y;
-    dagrijen.push(["shifts per week", "", parsed["Shifts per week"] || ""]);
-    dagrijen.push(["afd. voorkeur", "", parsed["Voorkeur functie"] || ""]);
+    dagrijen.push([
+  { content: "shifts per week", colSpan: 2, styles: { halign: "left", fontStyle: "bold" } },
+  parsed["Shifts per week"] || ""
+]);
+dagrijen.push([
+  { content: "afd. voorkeur", colSpan: 2, styles: { halign: "left", fontStyle: "bold" } },
+  parsed["Voorkeur functie"] || ""
+]);
 
     autoTable(doc, {
-      startY: availabilityStartY,
+      startY: personalFinalY + 8,
       margin: { left: 115 },
       tableWidth: 85,
       head: [["BESCHIKBAAR", "SHIFT 1", "SHIFT 2"]],
@@ -95,8 +99,7 @@ export default function SollicitatiePDF() {
       }
     });
 
-    doc.setDrawColor(200);
-    doc.line(10, (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!.finalY + 5, 200, (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!.finalY + 5);
+    const availFinalY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable!.finalY;
 
     const extra = [
       ["\u0000Opleiding", parsed["Opleiding"] || ""],
@@ -109,9 +112,8 @@ export default function SollicitatiePDF() {
       ["\u0000Overige zaken", parsed["Overige zaken"] || ""]
     ];
 
-    const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
     autoTable(doc, {
-      startY: extraStartY + 10,
+      startY: availFinalY + 8,
       body: extra,
       styles: { valign: 'top', cellPadding: 2 },
       columnStyles: {
