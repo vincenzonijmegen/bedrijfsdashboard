@@ -222,7 +222,7 @@ await fetch("/api/mail-pdf", {
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     voornaam: parsed["Voornaam"] || "onbekend",
-    email: "yourname@goodnotes.email", // vervang dit door je Goodnotes mailadres
+    email: to, // vervang dit door je Goodnotes mailadres
     bestand: pdfBase64
   })
 });
