@@ -45,7 +45,7 @@ export default function SollicitatiePDF() {
     // ... (alles blijft hetzelfde tot het einde van de PDF-opbouw)
 
     const pdfBase64 = await doc.output("datauristring");
-    const bestandNaam = `${parsed["Voornaam"] || "onbekend"}-${parsed["Achternaam"] || ""}.pdf`;
+    const bestandNaam = `${(parsed["Voornaam"] || "onbekend").trim()}-${(parsed["Achternaam"] || "").trim()}.pdf`;
 
     // ✅ eerst DB opslaan
     const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
