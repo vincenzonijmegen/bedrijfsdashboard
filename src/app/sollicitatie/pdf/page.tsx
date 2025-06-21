@@ -104,22 +104,27 @@ export default function SollicitatiePDF() {
     ];
 
     const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
-    autoTable(doc, {
-      startY: extraStartY + 10,
-      head: [["Extra informatie", ""]],
-      body: extra,
-      styles: { valign: 'top', cellPadding: 2 },
-      headStyles: { cellPadding: 2, fontStyle: 'bold', halign: 'left', minCellHeight: 2 },
-      columnStyles: {
-        0: { fontStyle: 'bold' },
-        1: { cellWidth: 140 }
-      },
-      didParseCell(data) {
-        if ([0, 1].includes(data.row.index)) {
-          data.cell.styles.minCellHeight = 20;
-        }
-      }
-    });
+autoTable(doc, {
+  startY: extraStartY + 10,
+  head: [["Extra informatie", ""]],
+  body: extra,
+  styles: { valign: 'top', cellPadding: 2 },
+  headStyles: {
+    cellPadding: 2,
+    fontStyle: 'bold',
+    halign: 'left',
+    minCellHeight: 2  // <-- hier aangepast
+  },
+  columnStyles: {
+    0: { fontStyle: 'bold' },
+    1: { cellWidth: 140 }
+  },
+  didParseCell(data) {
+    if ([0, 1].includes(data.row.index)) {
+      data.cell.styles.minCellHeight = 20;
+    }
+  }
+});
 
     doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
   };
