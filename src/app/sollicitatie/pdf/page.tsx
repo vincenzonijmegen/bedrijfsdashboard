@@ -106,7 +106,7 @@ export default function SollicitatiePDF() {
     const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
 
     autoTable(doc, {
-      startY: extraStartY + 4,
+      startY: extraStartY + 10,
       body: extra,
       styles: { valign: 'top', cellPadding: 2 },
       columnStyles: {
@@ -122,6 +122,7 @@ export default function SollicitatiePDF() {
 
     doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
   };
+
 
   const handleEmailSend = async () => {
     const parsed = parseMail(input);
