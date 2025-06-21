@@ -52,11 +52,90 @@ export default function SollicitatiePDF() {
       ["\u0000Achternaam", parsed["Achternaam"] || ""],
       ["\u0000Adres", `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`],
       ["\u0000PC/Woonplaats", `${parsed["Postcode"] || ""} ${parsed["Woonplaats"] || ""}`],
-      ["
+      ["\u0000Geboortedatum", `${parsed["Geboortedatum"] || ""} (${parsed["Geboortedatum"] ? getLeeftijd(parsed["Geboortedatum"]) + ' jaar' : ''})`],
+      ["\u0000E-mailadres", parsed["E-mailadres"] || ""],
+      ["\u0000Telefoonnummer", parsed["Telefoonnummer"] || ""],
+      ["\u0000Startdatum", parsed["Startdatum"] || ""],
+      ["\u0000Einddatum", parsed["Einddatum"] || ""],
+      ["\u0000Andere bijbaan", parsed["Andere bijbaan"] || ""],
+      ["\u0000Extra", parsed["Extra"] || ""]
+    ];
+    autoTable(doc, {
+      startY: y,
+      head: [["Gegevens", ""]],
+      margin: { left: 14 },
+      tableWidth: 90,
+      body: personal,
+      styles: { cellPadding: 2 },
+      columnStyles: {
+        0: { fontStyle: 'bold' }
+      },
+      headStyles: { cellPadding: 2, fontStyle: 'bold', halign: 'left', minCellHeight: 8 },
+    });
+
+    const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
+    const dagrijen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"].map((dag) => {
+      return [
+        dag,
+        dagen.includes(`${dag} shift 1`) ? "JA" : "",
+        dagen.includes(`${dag} shift 2`) ? "JA" : ""
+      ];
+    });
+    const availabilityStartY = y;
+    dagrijen.push(["shifts per week", "", parsed["Shifts per week"] || ""]);
+    dagrijen.push(["afd. voorkeur", "", parsed["Voorkeur functie"] || ""]);
+
+    autoTable(doc, {
+      startY: availabilityStartY,
+      margin: { left: 115 },
+      tableWidth: 85,
+      head: [["BESCHIKBAAR", "SHIFT 1", "SHIFT 2"]],
+      theme: 'grid',
+      body: dagrijen,
+      styles: { halign: "center" },
+      headStyles: { fillColor: [0, 51, 102], textColor: 255 },
+      didParseCell(data) {
+        if (data.column.index === 0) {
+          data.cell.styles.fontStyle = 'bold';
+        }
+        if (data.cell.raw === "JA") {
+          data.cell.styles.fillColor = [200, 255, 200];
+        }
+      }
+    });
+
+    const extra = [
+      ["\u0000Opleiding", parsed["Opleiding"] || ""],
+      ["\u0000Werkervaring", parsed["Werkervaring"] || ""],
+      ["\u0000Rekenvaardigheid", parsed["Rekenvaardigheid"] || ""],
+      ["\u0000Kassa-ervaring", parsed["Kassa-ervaring"] || ""],
+      ["\u0000Duits", parsed["Duits"] || ""],
+      ["\u0000Vakantie", parsed["Vakantie"] || ""],
+      ["\u0000Extra", parsed["Extra"] || ""],
+      ["\u0000Overige zaken", parsed["Overige zaken"] || ""]
+    ];
+
+    const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
+
+    autoTable(doc, {
+      startY: extraStartY + 16,
+      body: extra,
+      styles: { valign: 'top', cellPadding: 2 },
+      columnStyles: {
+        0: { fontStyle: 'bold' },
+        1: { cellWidth: 140 }
+      },
+      didParseCell(data) {
+        if ([0, 1].includes(data.row.index)) {
+          data.cell.styles.minCellHeight = 20;
+        }
+      }
+    });
+
+    doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
+  };
 
   // ... rest van de code blijft hetzelfde
-
-
 
   const handleEmailSend = async () => {
     const parsed = parseMail(input);
