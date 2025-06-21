@@ -109,7 +109,7 @@ export default function SollicitatiePDF() {
       head: [["Extra informatie", ""]],
       body: extra,
       styles: { valign: 'top', cellPadding: 2 },
-      headStyles: { cellPadding: 2, fontStyle: 'bold', halign: 'left', minCellHeight: 8 },
+      headStyles: { cellPadding: 2, fontStyle: 'bold', halign: 'left', minCellHeight: 2 },
       columnStyles: {
         0: { fontStyle: 'bold' },
         1: { cellWidth: 140 }
