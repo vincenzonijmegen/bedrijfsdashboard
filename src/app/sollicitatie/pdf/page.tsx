@@ -39,7 +39,7 @@ export default function SollicitatiePDF() {
       ["\u0000Voornaam", parsed["Voornaam"] || ""],
       ["\u0000Achternaam", parsed["Achternaam"] || ""],
       ["\u0000Adres", `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`],
-      ["\u0000Postcode/Woonplaats", `${parsed["PCostcode"] || ""} ${parsed["Woonplaats"] || ""}`],
+      ["\u0000Postcode/Woonplaats", `${parsed["Postcode"] || ""} ${parsed["Woonplaats"] || ""}`],
       ["\u0000Geboortedatum", parsed["Geboortedatum"] || ""],
       ["\u0000E-mailadres", parsed["E-mailadres"] || ""],
       ["\u0000Telefoonnummer", parsed["Telefoonnummer"] || ""],
