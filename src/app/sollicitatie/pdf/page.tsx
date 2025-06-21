@@ -56,20 +56,12 @@ export default function SollicitatiePDF() {
       body: personal,
     });
     const leftTableEndY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
-
-    const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
-    const dagrijen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"].map((dag) => {
-      return [
-        dag,
-        dagen.includes(`${dag} shift 1`) ? "JA" : "",
-        dagen.includes(`${dag} shift 2`) ? "JA" : ""
-      ];
-    });
+const availabilityStartY = y;
     dagrijen.push(["shifts per week", "", parsed["Shifts per week"] || ""]);
     dagrijen.push(["afd. voorkeur", "", parsed["Voorkeur functie"] || ""]);
 
     autoTable(doc, {
-      startY: leftTableEndY,
+      startY: availabilityStartY,
       margin: { left: 115 },
       tableWidth: 85,
       head: [["BESCHIKBAAR", "SHIFT 1", "SHIFT 2"]],
