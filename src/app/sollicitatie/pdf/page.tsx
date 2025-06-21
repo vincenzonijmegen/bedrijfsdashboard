@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const parseMail = (txt: string) => {
   const obj: Record<string, string> = {};
@@ -33,11 +34,40 @@ export default function SollicitatiePDF() {
     doc.text("Sollicitatieformulier IJssalon Vincenzo", 14, 20);
     doc.setFontSize(11);
 
-    const rows = Object.entries(parsed);
     let y = 30;
-    rows.forEach(([key, value]) => {
-      doc.text(`${key}: ${value}`, 14, y);
-      y += 8;
+    const personal = [
+      ["Voornaam", parsed["Voornaam"] || ""],
+      ["Achternaam", parsed["Achternaam"] || ""],
+      ["Adres", `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`],
+      ["Postcode/Woonplaats", `${parsed["Postcode"] || ""} ${parsed["Woonplaats"] || ""}`],
+      ["Geboortedatum", parsed["Geboortedatum"] || ""],
+      ["E-mailadres", parsed["E-mailadres"] || ""],
+      ["Telefoonnummer", parsed["Telefoonnummer"] || ""],
+      ["Startdatum", parsed["Startdatum"] || ""],
+      ["Einddatum", parsed["Einddatum"] || ""],
+      ["Andere bijbaan", parsed["Andere bijbaan"] || ""],
+      ["Vakantie", parsed["Vakantie"] || ""]
+    ];
+    autoTable(doc, { startY: y, head: [["Persoonlijke gegevens", ""]], body: personal });
+    y = (doc as any).lastAutoTable.finalY + 10;
+
+    const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
+    const dagrijen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"].map((dag) => {
+      return [
+        dag,
+        dagen.includes(`${dag} shift 1`) ? "JA" : "",
+        dagen.includes(`${dag} shift 2`) ? "JA" : ""
+      ];
+    });
+    dagrijen.push(["shifts per week", "", parsed["Shifts per week"] || ""]);
+    dagrijen.push(["afd. voorkeur", "", parsed["Voorkeur functie"] || ""]);
+
+    autoTable(doc, {
+      startY: y,
+      head: [["BESCHIKBAARHEID", "SHIFT 1", "SHIFT 2"]],
+      body: dagrijen,
+      styles: { halign: "center" },
+      headStyles: { fillColor: [0, 51, 102], textColor: 255 },
     });
 
     doc.save(`sollicitatie_${parsed["Voornaam"] || "onbekend"}.pdf`);
