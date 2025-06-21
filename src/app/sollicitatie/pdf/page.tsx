@@ -55,7 +55,14 @@ export default function SollicitatiePDF() {
       tableWidth: 90,
       body: personal,
     });
-    // const leftTableEndY is unused and removed
+    const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
+const dagrijen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"].map((dag) => {
+  return [
+    dag,
+    dagen.includes(`${dag} shift 1`) ? "JA" : "",
+    dagen.includes(`${dag} shift 2`) ? "JA" : ""
+  ];
+});
 const availabilityStartY = y;
     dagrijen.push(["shifts per week", "", parsed["Shifts per week"] || ""]);
     dagrijen.push(["afd. voorkeur", "", parsed["Voorkeur functie"] || ""]);
