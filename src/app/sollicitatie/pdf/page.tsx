@@ -106,9 +106,9 @@ export default function SollicitatiePDF() {
     const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
     doc.setDrawColor(0);
     doc.setLineWidth(0.5);
-    doc.line(14, extraStartY + 10, 200, extraStartY + 10);
+    doc.line(14, extraStartY + 2, 200, extraStartY + 2);
     autoTable(doc, {
-      startY: extraStartY + 10,
+      startY: extraStartY + 4,
       body: extra,
       styles: { valign: 'top', cellPadding: 2 },
       columnStyles: {
