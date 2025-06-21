@@ -51,11 +51,9 @@ export default function SollicitatiePDF() {
     autoTable(doc, {
       startY: y,
       head: [["Persoonlijke gegevens", ""]],
-      margin: { left: 14 },
+      margin: { left: 14, right: 115 },
       tableWidth: 90,
       body: personal,
-      margin: { left: 14, right: 115 },
-      tableWidth: 80,
     });
     const tableEndY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
 y = tableEndY + 10;
@@ -74,9 +72,8 @@ y = tableEndY + 10;
     autoTable(doc, {
       startY: y,
       margin: { left: 110 },
-      tableWidth: 90,
       tableWidth: 85,
-      head: [["BESCHIKBAARHEID", "SHIFT 1", "SHIFT 2"]],
+      head: [["BESCHIKBAAR", "SHIFT 1", "SHIFT 2"]],
       body: dagrijen,
       styles: { halign: "center" },
       headStyles: { fillColor: [0, 51, 102], textColor: 255 },
