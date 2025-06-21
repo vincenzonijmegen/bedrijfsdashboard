@@ -51,7 +51,7 @@ export default function SollicitatiePDF() {
     autoTable(doc, {
       startY: y,
       head: [["Persoonlijke gegevens", ""]],
-      margin: { left: 14, right: 115 },
+      margin: { left: 14 },
       tableWidth: 90,
       body: personal,
     });
@@ -71,7 +71,7 @@ y = tableEndY + 10;
 
     autoTable(doc, {
       startY: y,
-      margin: { left: 110 },
+      margin: { left: 115 },
       tableWidth: 85,
       head: [["BESCHIKBAAR", "SHIFT 1", "SHIFT 2"]],
       body: dagrijen,
