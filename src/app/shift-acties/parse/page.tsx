@@ -50,6 +50,7 @@ export default function ShiftMailParser() {
       return;
     }
 
+    console.log("[DEBUG] Geparse resultaat:", result);
     setParsed(result);
   };
 
@@ -91,16 +92,22 @@ export default function ShiftMailParser() {
     if (maand === undefined || isNaN(day) || isNaN(year)) return "";
 
     const d = new Date(year, maand, day);
-    return isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
+    const iso = isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
+    console.log("[DEBUG] parseDate input:", line);
+    console.log("[DEBUG] parseDate resultaat:", iso);
+    return iso;
   };
 
   const getValueAfter = (lines: string[], key: string) => {
     const found = lines.find((l) => l.toLowerCase().startsWith(key.toLowerCase()));
-    return found?.split(/:|\t/)[1]?.trim() || "";
+    console.log(`[DEBUG] Waarde na '${key}':`, found);
+    return found?.split(/:|	/)[1]?.trim() || "";|\t/)[1]?.trim() || "";
   };
 
   const getLineContaining = (lines: string[], keyword: string) => {
-    return lines.find((l) => l.toLowerCase().includes(keyword.toLowerCase())) || "";
+    const line = lines.find((l) => l.toLowerCase().includes(keyword.toLowerCase())) || "";
+    console.log(`[DEBUG] Regel met '${keyword}':`, line);
+    return line;
   };
 
   const sendToDatabase = async () => {
