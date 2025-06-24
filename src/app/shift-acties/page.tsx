@@ -37,6 +37,15 @@ export default function ShiftActiesPage() {
     return acc;
   }, {} as Record<number, Actie[]>);
 
+  // Statistieken
+  const totalActies = data.length;
+  const openActies = data.filter((a) => a.type === "Open dienst opgepakt").length;
+  const ruilActies = data.filter((a) => a.type === "Ruil geaccepteerd").length;
+    acc[week] = acc[week] || [];
+    acc[week].push(actie);
+    return acc;
+  }, {} as Record<number, Actie[]>);
+
   return (
     <div className="max-w-5xl mx-auto p-6">
       <button onClick={() => router.push('/')} className="mb-4 text-blue-600 hover:underline">
@@ -88,12 +97,11 @@ export default function ShiftActiesPage() {
           </div>
         ))}
 
+            <div className="mt-6 border-t pt-4">
+        <h2 className="text-xl font-semibold mb-2">Samenvatting statistieken</h2>
+        <p>Totaal aantal shiftacties: {totalActies}</p>
+        <p>Aantal open diensten opgepakt: {openActies}</p>
+        <p>Aantal ruilacties geaccepteerd: {ruilActies}</p>
+      </div>
+
       <Link
-        href="/shift-acties/parse"
-        className="inline-block text-sm text-blue-600 hover:underline mt-4"
-      >
-        ➕ Nieuwe shiftactie invoeren
-      </Link>
-    </div>
-  );
-}
