@@ -71,7 +71,7 @@ export default function ShiftMailParser() {
       dec: 11, december: 11,
     };
 
-    const afterColon = line.includes(":") ? line.split(":")[1].trim() : line.trim();
+    const afterColon = line.includes(":") ? line.split(":").slice(1).join(":").trim() : line.trim();
 
     const cleaned = afterColon
       .toLowerCase()
@@ -80,10 +80,10 @@ export default function ShiftMailParser() {
       .replace(/ +/g, " ")
       .trim();
 
-    const match = cleaned.match(/^(\d{1,2}) ([a-z\u00e4\u00eb]+) (\d{4})$/i);
-    if (!match) return "";
+    const parts = cleaned.split(" ");
+    if (parts.length !== 3) return "";
 
-    const [, dayStr, maandNaam, jaarStr] = match;
+    const [dayStr, maandNaam, jaarStr] = parts;
     const day = Number(dayStr);
     const year = Number(jaarStr);
     const maand = maandnamen[maandNaam.toLowerCase()] ?? maandnamen[maandNaam.slice(0, 3).toLowerCase()];
