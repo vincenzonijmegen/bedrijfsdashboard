@@ -64,9 +64,10 @@ export default function ShiftMailParser() {
       .replace("aug", "Aug")
       .replace("okt", "Oct");
 
-    const parts = cleaned.match(/\d{1,2} (jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|mei|mrt|okt) \d{4}/i);
+      const parts = cleaned.match(/\d{1,2} [a-zA-Z]+ \d{4}/);
+
     if (!parts) return "";
-    const d = new Date(parts[0]);
+    const d = new Date(Date.parse(parts[0]));
     return isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
   };
 
