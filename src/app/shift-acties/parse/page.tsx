@@ -64,7 +64,7 @@ export default function ShiftMailParser() {
       .replace("aug", "Aug")
       .replace("okt", "Oct");
 
-      const parts = cleaned.match(/\d{1,2} [a-z]{3,9} \d{4}/i);
+      const parts = cleaned.match(/\d{1,2} (jan|feb|mrt|apr|mei|jun|jul|aug|sep|okt|nov|dec) \d{4}/i);
 
     if (!parts) return "";
     const [day, monthName, year] = parts[0].split(" ");
