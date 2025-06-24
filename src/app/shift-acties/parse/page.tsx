@@ -59,22 +59,39 @@ export default function ShiftMailParser() {
     const afterColon = line.includes(":") ? line.split(":")[1].trim() : line.trim();
 
     const cleaned = afterColon
+      .toLowerCase()
       .replace(/\b(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\b/gi, "")
       .replace(/\./g, "")
       .replace(/ +/g, " ")
       .trim();
 
-    const parts = cleaned.match(/(\d{1,2}) (jan|feb|mrt|apr|mei|jun|jul|aug|sep|okt|nov|dec) (\d{4})/i);
-    if (!parts) return "";
-
-    const [, day, monthName, year] = parts;
-    const months: Record<string, number> = {
-      jan: 0, feb: 1, mar: 2, mrt: 2, apr: 3, mei: 4, may: 4, jun: 5, jul: 6,
-      aug: 7, sep: 8, oct: 9, okt: 9, nov: 10, dec: 11
+    // Ondersteuning voor "6 aug 2025" en "6 augustus 2025"
+    const maandnamen: Record<string, number> = {
+      jan: 0, januari: 0,
+      feb: 1, februari: 1,
+      mrt: 2, maart: 2,
+      apr: 3, april: 3,
+      mei: 4, may: 4,
+      jun: 5, juni: 5,
+      jul: 6, juli: 6,
+      aug: 7, augustus: 7,
+      sep: 8, september: 8,
+      okt: 9, october: 9, oct: 9,
+      nov: 10, november: 10,
+      dec: 11, december: 11,
     };
 
-    const maand = monthName.slice(0, 3).toLowerCase();
-    const d = new Date(Number(year), months[maand], Number(day));
+    const match = cleaned.match(/(\d{1,2}) ([a-zäë]+) (\d{4})/i);
+    if (!match) return "";
+
+    const [, dayStr, maandNaam, jaarStr] = match;
+    const day = Number(dayStr);
+    const year = Number(jaarStr);
+    const maand = maandnamen[maandNaam.slice(0, 3).toLowerCase()] ?? maandnamen[maandNaam.toLowerCase()];
+
+    if (maand === undefined || isNaN(day) || isNaN(year)) return "";
+
+    const d = new Date(year, maand, day);
     return isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
   };
 
