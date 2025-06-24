@@ -53,29 +53,33 @@ export default function ShiftMailParser() {
     setParsed(result);
   };
 
-  const parseDate = (line?: string) => {
-    if (!line) return "";
-    const cleaned = line
-      .replace(/\b(open dienst|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\b/gi, "")
-      .replace(/\./g, "")
-      .replace(/ +/g, " ")
-      .replace("mei", "May")
-      .replace("mrt", "Mar")
-      .replace("aug", "Aug")
-      .replace("okt", "Oct");
+const parseDate = (line?: string) => {
+  if (!line) return "";
 
-      const parts = cleaned.match(/\d{1,2} (jan|feb|mrt|apr|mei|jun|jul|aug|sep|okt|nov|dec) \d{4}/i);
+  // Haal alleen het stuk na de dubbele punt als dat er is
+  const afterColon = line.includes(":") ? line.split(":")[1].trim() : line.trim();
 
-    if (!parts) return "";
-    const [day, monthName, year] = parts[0].split(" ");
-    const months: Record<string, number> = {
-      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, mei: 4, jun: 5, jul: 6,
-      aug: 7, sep: 8, oct: 9, okt: 9, nov: 10, dec: 11
-    };
-    const maand = monthName.slice(0, 3).toLowerCase();
-    const d = new Date(Number(year), months[maand], Number(day));
-    return isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
+  // Verwijder dagnaam en dubbele spaties
+  const cleaned = afterColon
+    .replace(/\b(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\b/gi, "")
+    .replace(/\./g, "")
+    .replace(/ +/g, " ")
+    .trim();
+
+  // Probeer het patroon "6 aug 2025"
+  const parts = cleaned.match(/\d{1,2} (jan|feb|mrt|apr|mei|jun|jul|aug|sep|okt|nov|dec) \d{4}/i);
+  if (!parts) return "";
+
+  const [day, monthName, year] = parts[0].split(" ");
+  const months: Record<string, number> = {
+    jan: 0, feb: 1, mar: 2, mrt: 2, apr: 3, mei: 4, may: 4, jun: 5, jul: 6,
+    aug: 7, sep: 8, oct: 9, okt: 9, nov: 10, dec: 11
   };
+  const maand = monthName.slice(0, 3).toLowerCase();
+  const d = new Date(Number(year), months[maand], Number(day));
+  return isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
+};
+
 
   const getValueAfter = (lines: string[], key: string) => {
     const found = lines.find((l) => l.toLowerCase().startsWith(key.toLowerCase()));
