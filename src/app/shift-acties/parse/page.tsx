@@ -19,8 +19,8 @@ export default function ShiftMailParser() {
 
   const parse = () => {
     const lines = input.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-
     const mailText = input.toLowerCase();
+
     const result: ParsedActie = {
       datum: "",
       tijd: "",
@@ -32,15 +32,13 @@ export default function ShiftMailParser() {
     };
 
     if (mailText.includes("heeft een open dienst geaccepteerd")) {
-      // Open dienst opgepakt
       result.type = "Open dienst opgepakt";
       result.naar = lines.find((l) => l.includes("heeft een open dienst geaccepteerd"))?.split(" heeft")[0] || "";
-      result.datum = parseDate(getValueAfter(lines, "open dienst"));
-      result.tijd = getValueAfter(lines, "tijd").replace(/.*?(\d{2}:\d{2}[^\n]*)/, "$1");
+      result.datum = parseDate(getLineContaining(lines, "open dienst"));
+      result.tijd = getValueAfter(lines, "tijd");
       result.shift = getValueAfter(lines, "dienst");
       result.van = "";
     } else if (mailText.includes("heeft een ruilaanvraag") && mailText.includes("geaccepteerd")) {
-      // Dienst geruild
       result.type = "Ruil geaccepteerd";
       result.naar = lines.find((l) => l.toLowerCase().includes("heeft een ruilaanvraag"))?.split(" heeft")[0] || "";
       result.van = getValueAfter(lines, "van");
@@ -57,15 +55,27 @@ export default function ShiftMailParser() {
 
   const parseDate = (line?: string) => {
     if (!line) return "";
-    const cleaned = line.replace(/[a-zA-Z]+\.?/g, (match) => match.slice(0, 3)).replace("mei", "May").replace("mrt", "Mar");
-    const parts = cleaned.match(/(\d{2}-\d{2}-\d{4}|\d{1,2} \w{3}\.? \d{4})/);
+    const cleaned = line
+      .replace(/\b(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\b/i, "")
+      .replace(/\./g, "")
+      .replace("mei", "May")
+      .replace("mrt", "Mar")
+      .replace("aug", "Aug")
+      .replace("okt", "Oct");
+
+    const parts = cleaned.match(/\d{1,2}[ -]\w{3,9}[ -]\d{4}/);
     if (!parts) return "";
-    return new Date(parts[0]).toISOString().split("T")[0];
+    const d = new Date(parts[0]);
+    return isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
   };
 
   const getValueAfter = (lines: string[], key: string) => {
     const found = lines.find((l) => l.toLowerCase().startsWith(key.toLowerCase()));
     return found?.split(/:|\t/)[1]?.trim() || "";
+  };
+
+  const getLineContaining = (lines: string[], keyword: string) => {
+    return lines.find((l) => l.toLowerCase().includes(keyword.toLowerCase())) || "";
   };
 
   const sendToDatabase = async () => {
