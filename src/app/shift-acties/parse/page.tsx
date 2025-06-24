@@ -101,7 +101,8 @@ export default function ShiftMailParser() {
   const getValueAfter = (lines: string[], key: string) => {
     const found = lines.find((l) => l.toLowerCase().startsWith(key.toLowerCase()));
     console.log(`[DEBUG] Waarde na '${key}':`, found);
-    return found?.split(/:|	/)[1]?.trim() || "";|	/)[1]?.trim() || "";|	/)[1]?.trim() || "";|\t/)[1]?.trim() || "";
+    // Splits on colon or tab
+    return found?.split(/:|	/)[1]?.trim() || "";
   };
 
   const getLineContaining = (lines: string[], keyword: string) => {
