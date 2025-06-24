@@ -80,7 +80,7 @@ export default function ShiftMailParser() {
       dec: 11, december: 11,
     };
 
-    const match = cleaned.match(/(\d{1,2}) ([a-zäë]+) (\d{4})/i);
+    let match = cleaned.match(/(\d{1,2}) ([a-zäë]+) (\d{4})/i);
     if (!match) {
       const fallback = input.match(/(\d{1,2}) ([a-zäë]+) (\d{4})/i);
       if (!fallback) return "";
