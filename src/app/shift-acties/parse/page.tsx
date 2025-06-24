@@ -35,7 +35,7 @@ export default function ShiftMailParser() {
       result.type = "Open dienst opgepakt";
       result.naar = lines.find((l) => l.includes("heeft een open dienst geaccepteerd"))?.split(" heeft")[0] || "";
       result.datum = parseDate(getLineContaining(lines, "open dienst"));
-      result.tijd = getValueAfter(lines, "tijd");
+      result.tijd = getLineContaining(lines, "tijd").split(/:|	/)[1]?.trim() || "";
       result.shift = getValueAfter(lines, "dienst");
       result.van = "";
     } else if (mailText.includes("heeft een ruilaanvraag") && mailText.includes("geaccepteerd")) {
