@@ -80,6 +80,36 @@ export default function ShiftMailParser() {
 
     const cleaned = afterColon
       .toLowerCase()
+      .replace(/(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)/gi, "")
+      .replace(/[.,]/g, "")
+      .replace(/ +/g, " ")
+      .trim();
+
+    const parts = cleaned.split(" ");
+    if (parts.length !== 3) return "";
+
+    const [dayStr, maandNaam, jaarStr] = parts;
+    const day = Number(dayStr);
+    const year = Number(jaarStr);
+    const maand = maandnamen[maandNaam.toLowerCase()] ?? maandnamen[maandNaam.slice(0, 3).toLowerCase()];
+
+    if (maand === undefined || isNaN(day) || isNaN(year)) return "";
+
+    // Maak datum in lokale tijd zonder timezone-shift
+    const d = new Date(year, maand, day);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const iso = `${yyyy}-${mm}-${dd}`;
+    console.log("[DEBUG] parseDate input:", line);
+    console.log("[DEBUG] parseDate resultaat:", iso);
+    return iso;
+  };
+
+    const afterColon = line.includes(":") ? line.split(":").slice(1).join(":").trim() : line.trim();
+
+    const cleaned = afterColon
+      .toLowerCase()
       .replace(/\b(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\b/gi, "")
       .replace(/[.,]/g, "")
       .replace(/ +/g, " ")
