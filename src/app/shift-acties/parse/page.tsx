@@ -34,7 +34,11 @@ export default function ShiftMailParser() {
     if (mailText.includes("heeft een open dienst geaccepteerd")) {
       result.type = "Open dienst opgepakt";
       result.naar = lines.find((l) => l.includes("heeft een open dienst geaccepteerd"))?.split(" heeft")[0] || "";
-      result.datum = parseDate(getLineContaining(lines, "open dienst"));
+      // Zoek specifiek de datumregel die met 'Open dienst:' begint
+      const dateLine = lines.find((l) => l.toLowerCase().startsWith("open dienst:"));
+      console.log("[DEBUG] Datumregel gevonden:", dateLine);
+      result.datum = parseDate(dateLine);
+
       result.tijd = getLineContaining(lines, "tijd").match(/\d{2}:\d{2}\s*-\s*\d{2}:\d{2}/)?.[0] || "";
       result.shift = getValueAfter(lines, "dienst");
       result.van = "";
