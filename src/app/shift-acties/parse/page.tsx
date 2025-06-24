@@ -160,8 +160,9 @@ export default function ShiftMailParser() {
             ← Terug naar startpagina
           </button>
           <pre className="bg-gray-100 p-4 text-sm rounded">
-          {JSON.stringify(parsed, null, 2)}
-        </pre>
+            {JSON.stringify(parsed, null, 2)}
+          </pre>
+        </div>
       )}
     </div>
   );
