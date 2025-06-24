@@ -34,21 +34,32 @@ export default function ShiftMailParser() {
     if (mailText.includes("heeft een open dienst geaccepteerd")) {
       result.type = "Open dienst opgepakt";
       result.naar = lines.find((l) => l.includes("heeft een open dienst geaccepteerd"))?.split(" heeft")[0] || "";
-      // Zoek specifiek de datumregel die met 'Open dienst:' begint
+
+      // Neem expliciet de regel die begint met "Open dienst:"
       const dateLine = lines.find((l) => l.toLowerCase().startsWith("open dienst:"));
       console.log("[DEBUG] Datumregel gevonden:", dateLine);
-      result.datum = parseDate(dateLine);
+      result.datum = parseDate(dateLine || "");
 
-      result.tijd = getLineContaining(lines, "tijd").match(/\d{2}:\d{2}\s*-\s*\d{2}:\d{2}/)?.[0] || "";
-      result.shift = getValueAfter(lines, "dienst");
+      result.tijd = lines.find((l) => l.toLowerCase().startsWith("tijd"))
+        ?.match(/\d{2}:\d{2}\s*-\s*\d{2}:\d{2}/)?.[0] || "";
+      result.shift = lines.find((l) => l.toLowerCase().startsWith("dienst"))
+        ?.split(/:|\t/)[1]?.trim() || "";
       result.van = "";
     } else if (mailText.includes("heeft een ruilaanvraag") && mailText.includes("geaccepteerd")) {
       result.type = "Ruil geaccepteerd";
       result.naar = lines.find((l) => l.toLowerCase().includes("heeft een ruilaanvraag"))?.split(" heeft")[0] || "";
-      result.van = getValueAfter(lines, "van");
-      result.tijd = getValueAfter(lines, "van") + " - " + getValueAfter(lines, "tot");
-      result.datum = parseDate(getValueAfter(lines, "datum"));
-      result.shift = getValueAfter(lines, "dienst");
+      result.van = lines.find((l) => l.toLowerCase().startsWith("van"))
+        ?.split(/:|\t/)[1]?.trim() || "";
+      result.tijd = (lines.find((l) => l.toLowerCase().startsWith("van"))
+        ?.split(/:|\t/)[1]?.trim() || "") + " - " +
+        (lines.find((l) => l.toLowerCase().startsWith("tot"))
+        ?.split(/:|\t/)[1]?.trim() || "");
+      result.datum = parseDate(
+        lines.find((l) => l.toLowerCase().startsWith("datum"))
+          ?.split(/:|\t/)[1]?.trim() || ""
+      );
+      result.shift = lines.find((l) => l.toLowerCase().startsWith("dienst"))
+        ?.split(/:|\t/)[1]?.trim() || "";
     } else {
       alert("Onbekend e-mailformaat");
       return;
@@ -58,7 +69,7 @@ export default function ShiftMailParser() {
     setParsed(result);
   };
 
-  const parseDate = (line?: string) => {
+  const parseDate = (line: string) => {
     if (!line) return "";
 
     const maandnamen: Record<string, number> = {
@@ -76,40 +87,9 @@ export default function ShiftMailParser() {
       dec: 11, december: 11,
     };
 
-    const afterColon = line.includes(":") ? line.split(":").slice(1).join(":").trim() : line.trim();
-
-    const cleaned = afterColon
+    const cleaned = line
       .toLowerCase()
-      .replace(/(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)/gi, "")
-      .replace(/[.,]/g, "")
-      .replace(/ +/g, " ")
-      .trim();
-
-    const parts = cleaned.split(" ");
-    if (parts.length !== 3) return "";
-
-    const [dayStr, maandNaam, jaarStr] = parts;
-    const day = Number(dayStr);
-    const year = Number(jaarStr);
-    const maand = maandnamen[maandNaam.toLowerCase()] ?? maandnamen[maandNaam.slice(0, 3).toLowerCase()];
-
-    if (maand === undefined || isNaN(day) || isNaN(year)) return "";
-
-    // Maak datum in lokale tijd zonder timezone-shift
-    const d = new Date(year, maand, day);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const iso = `${yyyy}-${mm}-${dd}`;
-    console.log("[DEBUG] parseDate input:", line);
-    console.log("[DEBUG] parseDate resultaat:", iso);
-    return iso;
-  };
-
-    const afterColon = line.includes(":") ? line.split(":").slice(1).join(":").trim() : line.trim();
-
-    const cleaned = afterColon
-      .toLowerCase()
+      .replace(/^.*:/, "")
       .replace(/\b(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\b/gi, "")
       .replace(/[.,]/g, "")
       .replace(/ +/g, " ")
@@ -119,30 +99,22 @@ export default function ShiftMailParser() {
     if (parts.length !== 3) return "";
 
     const [dayStr, maandNaam, jaarStr] = parts;
-    const day = Number(dayStr);
-    const year = Number(jaarStr);
-    const maand = maandnamen[maandNaam.toLowerCase()] ?? maandnamen[maandNaam.slice(0, 3).toLowerCase()];
+    const day = parseInt(dayStr, 10);
+    const year = parseInt(jaarStr, 10);
+    const maand = maandnamen[maandNaam] !== undefined
+      ? maandnamen[maandNaam]
+      : maandnamen[maandNaam.slice(0, 3)];
 
     if (maand === undefined || isNaN(day) || isNaN(year)) return "";
 
+    // Maak datum in lokale tijd
     const d = new Date(year, maand, day);
-    const iso = isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
-    console.log("[DEBUG] parseDate input:", line);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const iso = `${yyyy}-${mm}-${dd}`;
     console.log("[DEBUG] parseDate resultaat:", iso);
     return iso;
-  };
-
-  const getValueAfter = (lines: string[], key: string) => {
-    const found = lines.find((l) => l.toLowerCase().startsWith(key.toLowerCase()));
-    console.log(`[DEBUG] Waarde na '${key}':`, found);
-    // Splits on colon or tab
-    return found?.split(/:|	/)[1]?.trim() || "";
-  };
-
-  const getLineContaining = (lines: string[], keyword: string) => {
-    const line = lines.find((l) => l.toLowerCase().includes(keyword.toLowerCase())) || "";
-    console.log(`[DEBUG] Regel met '${keyword}':`, line);
-    return line;
   };
 
   const sendToDatabase = async () => {
