@@ -67,7 +67,13 @@ export default function ShiftMailParser() {
       const parts = cleaned.match(/\d{1,2} [a-zA-Z]+ \d{4}/);
 
     if (!parts) return "";
-    const d = new Date(Date.parse(parts[0]));
+    const [day, monthName, year] = parts[0].split(" ");
+    const months: Record<string, number> = {
+      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, mei: 4, jun: 5, jul: 6,
+      aug: 7, sep: 8, oct: 9, okt: 9, nov: 10, dec: 11
+    };
+    const maand = monthName.slice(0, 3).toLowerCase();
+    const d = new Date(Number(year), months[maand], Number(day));
     return isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
   };
 
