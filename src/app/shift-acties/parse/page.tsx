@@ -53,35 +53,30 @@ export default function ShiftMailParser() {
     setParsed(result);
   };
 
-const parseDate = (line?: string) => {
-  if (!line) return "";
+  const parseDate = (line?: string) => {
+    if (!line) return "";
 
-  // Haal het stuk na de dubbele punt als dat er is
-  const afterColon = line.includes(":") ? line.split(":")[1].trim() : line.trim();
+    const afterColon = line.includes(":") ? line.split(":")[1].trim() : line.trim();
 
-  // Verwijder dagnaam en puntjes
-  const cleaned = afterColon
-    .replace(/\b(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\b/gi, "")
-    .replace(/\./g, "")
-    .replace(/ +/g, " ")
-    .trim();
+    const cleaned = afterColon
+      .replace(/\b(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\b/gi, "")
+      .replace(/\./g, "")
+      .replace(/ +/g, " ")
+      .trim();
 
-  // Zoek een datum in de vorm "6 aug 2025"
-  const parts = cleaned.match(/(\d{1,2}) (jan|feb|mrt|apr|mei|jun|jul|aug|sep|okt|nov|dec) (\d{4})/i);
-  if (!parts) return "";
+    const parts = cleaned.match(/(\d{1,2}) (jan|feb|mrt|apr|mei|jun|jul|aug|sep|okt|nov|dec) (\d{4})/i);
+    if (!parts) return "";
 
-  const [_, day, monthName, year] = parts;
-  const months: Record<string, number> = {
-    jan: 0, feb: 1, mar: 2, mrt: 2, apr: 3, mei: 4, may: 4, jun: 5, jul: 6,
-    aug: 7, sep: 8, oct: 9, okt: 9, nov: 10, dec: 11
+    const [, day, monthName, year] = parts;
+    const months: Record<string, number> = {
+      jan: 0, feb: 1, mar: 2, mrt: 2, apr: 3, mei: 4, may: 4, jun: 5, jul: 6,
+      aug: 7, sep: 8, oct: 9, okt: 9, nov: 10, dec: 11
+    };
+
+    const maand = monthName.slice(0, 3).toLowerCase();
+    const d = new Date(Number(year), months[maand], Number(day));
+    return isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
   };
-
-  const maand = monthName.slice(0, 3).toLowerCase();
-  const d = new Date(Number(year), months[maand], Number(day));
-  return isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
-};
-
-
 
   const getValueAfter = (lines: string[], key: string) => {
     const found = lines.find((l) => l.toLowerCase().startsWith(key.toLowerCase()));
