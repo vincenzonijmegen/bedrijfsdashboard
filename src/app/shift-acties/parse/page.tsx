@@ -56,16 +56,15 @@ export default function ShiftMailParser() {
   const parseDate = (line?: string) => {
     if (!line) return "";
     const cleaned = line
-      .replace(/\b(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\b/i, "")
+      .replace(/\b(open dienst|maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\b/gi, "")
       .replace(/\./g, "")
+      .replace(/ +/g, " ")
       .replace("mei", "May")
       .replace("mrt", "Mar")
       .replace("aug", "Aug")
       .replace("okt", "Oct");
 
     const parts = cleaned.match(/\d{1,2} (jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|mei|mrt|okt) \d{4}/i);
-
-
     if (!parts) return "";
     const d = new Date(parts[0]);
     return isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
