@@ -56,15 +56,6 @@ export default function ShiftMailParser() {
   const parseDate = (line?: string) => {
     if (!line) return "";
 
-    const afterColon = line.includes(":") ? line.split(":")[1].trim() : line.trim();
-
-    const cleaned = afterColon
-      .toLowerCase()
-      .replace(/\b(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\b/gi, "")
-      .replace(/[.,]/g, "")
-      .replace(/ +/g, " ")
-      .trim();
-
     const maandnamen: Record<string, number> = {
       jan: 0, januari: 0,
       feb: 1, februari: 1,
@@ -80,17 +71,22 @@ export default function ShiftMailParser() {
       dec: 11, december: 11,
     };
 
-    let match = cleaned.match(/(\d{1,2}) ([a-zäë]+) (\d{4})/i);
-    if (!match) {
-      const fallback = input.match(/(\d{1,2}) ([a-zäë]+) (\d{4})/i);
-      if (!fallback) return "";
-      match = fallback;
-    }
+    const afterColon = line.includes(":") ? line.split(":")[1].trim() : line.trim();
+
+    const cleaned = afterColon
+      .toLowerCase()
+      .replace(/\b(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\b/gi, "")
+      .replace(/[.,]/g, "")
+      .replace(/ +/g, " ")
+      .trim();
+
+    const match = cleaned.match(/^(\d{1,2}) ([a-z\u00e4\u00eb]+) (\d{4})$/i);
+    if (!match) return "";
 
     const [, dayStr, maandNaam, jaarStr] = match;
     const day = Number(dayStr);
     const year = Number(jaarStr);
-    const maand = maandnamen[maandNaam.slice(0, 3).toLowerCase()] ?? maandnamen[maandNaam.toLowerCase()];
+    const maand = maandnamen[maandNaam.toLowerCase()] ?? maandnamen[maandNaam.slice(0, 3).toLowerCase()];
 
     if (maand === undefined || isNaN(day) || isNaN(year)) return "";
 
