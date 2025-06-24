@@ -61,11 +61,10 @@ export default function ShiftMailParser() {
     const cleaned = afterColon
       .toLowerCase()
       .replace(/\b(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\b/gi, "")
-      .replace(/\./g, "")
+      .replace(/[.,]/g, "")
       .replace(/ +/g, " ")
       .trim();
 
-    // Ondersteuning voor "6 aug 2025" en "6 augustus 2025"
     const maandnamen: Record<string, number> = {
       jan: 0, januari: 0,
       feb: 1, februari: 1,
@@ -82,7 +81,11 @@ export default function ShiftMailParser() {
     };
 
     const match = cleaned.match(/(\d{1,2}) ([a-zäë]+) (\d{4})/i);
-    if (!match) return "";
+    if (!match) {
+      const fallback = input.match(/(\d{1,2}) ([a-zäë]+) (\d{4})/i);
+      if (!fallback) return "";
+      match = fallback;
+    }
 
     const [, dayStr, maandNaam, jaarStr] = match;
     const day = Number(dayStr);
