@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from 'next/navigation';
 
 interface ParsedActie {
   datum: string;
@@ -14,6 +15,7 @@ interface ParsedActie {
 }
 
 export default function ShiftMailParser() {
+  const router = useRouter();
   const [input, setInput] = useState("");
   const [parsed, setParsed] = useState<ParsedActie | null>(null);
 
@@ -130,6 +132,9 @@ export default function ShiftMailParser() {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
+      <button onClick={() => router.push('/')} className="mb-4 text-blue-600 hover:underline">
+        ← Terug naar startpagina
+      </button>
       <h1 className="text-xl font-bold mb-4">📬 Mailparser: Shiftactie invoer</h1>
       <textarea
         className="w-full h-60 border p-2 font-mono text-sm"
@@ -150,7 +155,11 @@ export default function ShiftMailParser() {
       </div>
 
       {parsed && (
-        <pre className="bg-gray-100 p-4 text-sm rounded">
+        <div className="mt-4">
+          <button onClick={() => router.push('/')} className="mb-4 text-blue-600 hover:underline">
+            ← Terug naar startpagina
+          </button>
+          <pre className="bg-gray-100 p-4 text-sm rounded">
           {JSON.stringify(parsed, null, 2)}
         </pre>
       )}
