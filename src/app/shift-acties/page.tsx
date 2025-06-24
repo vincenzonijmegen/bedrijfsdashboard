@@ -102,9 +102,66 @@ export default function ShiftActiesPage() {
         <p>Aantal ruilacties geaccepteerd: {ruilActies}</p>
       </div>
 
+      {/* Statistieken per persoon */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+        {/* Open diensten opgepakt */}
+        <div className="p-4 border rounded-lg">
+          <h3 className="text-lg font-semibold mb-2">Open diensten opgepakt</h3>
+          <ul>
+            {(() => {
+              const counts: Record<string, number> = {};
+              data.forEach(a => {
+                if (a.type === 'Open dienst opgepakt') counts[a.naar] = (counts[a.naar] || 0) + 1;
+              });
+              return Object.entries(counts)
+                .sort(([, a], [, b]) => b - a)
+                .map(([naam, count]) => (
+                  <li key={naam} className="mb-1"><strong>{naam}</strong>: {count}×</li>
+                ));
+            })()}
+          </ul>
+        </div>
+
+        {/* Shift overgenomen door */}
+        <div className="p-4 border rounded-lg">
+          <h3 className="text-lg font-semibold mb-2">Shift overgenomen door</h3>
+          <ul>
+            {(() => {
+              const counts: Record<string, number> = {};
+              data.forEach(a => {
+                if (a.type === 'Ruil geaccepteerd') counts[a.naar] = (counts[a.naar] || 0) + 1;
+              });
+              return Object.entries(counts)
+                .sort(([, a], [, b]) => b - a)
+                .map(([naam, count]) => (
+                  <li key={naam} className="mb-1"><strong>{naam}</strong>: {count}×</li>
+                ));
+            })()}
+          </ul>
+        </div>
+
+        {/* Shift overgenomen van */}
+        <div className="p-4 border rounded-lg">
+          <h3 className="text-lg font-semibold mb-2">Shift overgenomen van</h3>
+          <ul>
+            {(() => {
+              const counts: Record<string, number> = {};
+              data.forEach(a => {
+                if (a.type === 'Ruil geaccepteerd' && a.van) counts[a.van] = (counts[a.van] || 0) + 1;
+              });
+              return Object.entries(counts)
+                .sort(([, a], [, b]) => b - a)
+                .map(([naam, count]) => (
+                  <li key={naam} className="mb-1"><strong>{naam}</strong>: {count}×</li>
+                ));
+            })()}
+          </ul>
+        </div>
+      </div>
+
       <Link
         href="/shift-acties/parse"
-        className="inline-block text-sm text-blue-600 hover:underline mt-4"
+        className="inline-block text-sm text-blue-600 hover:underline mt-6"
       >
         ➕ Nieuwe shiftactie invoeren
       </Link>
