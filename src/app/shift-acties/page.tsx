@@ -23,16 +23,17 @@ interface Actie {
 }
 
 export default function ShiftActiesPage() {
+  const [filterWeek, setFilterWeek] = useState<'all' | 'thisWeek'>('all');
   const router = useRouter();
-  const { data, error } = useSWR<Actie[]>('/api/shift-acties', (url: string) =>
-    fetch(url).then(res => res.json())
-  );
+  const { data, error } = useSWR<Actie[]>('/api/shift-acties', (url: string) => fetch(url).then(res => res.json()));
+  const huidigeWeek = dayjs().isoWeek();
+  const filteredData = data?.filter(a => filterWeek === 'all' || dayjs(a.datum).isoWeek() >= huidigeWeek) || [];
 
   if (error) return <p>Fout bij laden</p>;
   if (!data) return <p>Laden...</p>;
 
   // Groeperen op weeknummer
-  const grouped = data.reduce((acc, actie) => {
+  const grouped = filteredData.reduce((acc, actie) => {
     const week = dayjs(actie.datum).isoWeek();
     acc[week] = acc[week] || [];
     acc[week].push(actie);
@@ -49,7 +50,35 @@ export default function ShiftActiesPage() {
       <button onClick={() => router.push('/')} className="mb-4 text-blue-600 hover:underline">
         ← Terug naar startpagina
       </button>
-      <h1 className="text-2xl font-bold mb-6">📊 Shiftacties & Statistieken</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">📊 Shiftacties & Statistieken</h1>
+        <Link href="/shift-acties/parse" className="text-sm text-blue-600 hover:underline">
+          ➕ Nieuwe shiftactie invoeren
+        </Link>
+      </div>
+
+      <div className="mb-6">
+        <label className="mr-4">
+          <input
+            type="radio"
+            name="filter"
+            value="all"
+            checked={filterWeek === 'all'}
+            onChange={() => setFilterWeek('all')}
+            className="mr-1"
+          /> Alles
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="filter"
+            value="thisWeek"
+            checked={filterWeek === 'thisWeek'}
+            onChange={() => setFilterWeek('thisWeek')}
+            className="mr-1"
+          /> Vanaf deze week
+        </label>
+      </div>
 
       {Object.entries(grouped)
         .sort(([a], [b]) => Number(a) - Number(b))
