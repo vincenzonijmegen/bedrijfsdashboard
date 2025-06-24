@@ -35,7 +35,7 @@ export default function ShiftMailParser() {
       result.type = "Open dienst opgepakt";
       result.naar = lines.find((l) => l.includes("heeft een open dienst geaccepteerd"))?.split(" heeft")[0] || "";
       result.datum = parseDate(getLineContaining(lines, "open dienst"));
-      result.tijd = getLineContaining(lines, "tijd").split(/:|	/)[1]?.trim() || "";
+      result.tijd = getLineContaining(lines, "tijd").match(/\d{2}:\d{2}\s*-\s*\d{2}:\d{2}/)?.[0] || "";
       result.shift = getValueAfter(lines, "dienst");
       result.van = "";
     } else if (mailText.includes("heeft een ruilaanvraag") && mailText.includes("geaccepteerd")) {
@@ -63,7 +63,8 @@ export default function ShiftMailParser() {
       .replace("aug", "Aug")
       .replace("okt", "Oct");
 
-    const parts = cleaned.match(/\d{1,2}[ -]\w{3,9}[ -]\d{4}/);
+    const parts = cleaned.match(/\d{1,2} (jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec) \d{4}/i);
+
     if (!parts) return "";
     const d = new Date(parts[0]);
     return isNaN(d.getTime()) ? "" : d.toISOString().split("T")[0];
