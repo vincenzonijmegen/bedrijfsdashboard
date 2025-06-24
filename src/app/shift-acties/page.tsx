@@ -5,6 +5,7 @@ import useSWR from "swr";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import Link from "next/link";
+import { useRouter } from 'next/navigation';
 import "dayjs/locale/nl";
 dayjs.extend(isoWeek);
 dayjs.locale("nl");
@@ -21,6 +22,7 @@ interface Actie {
 }
 
 export default function ShiftActiesPage() {
+  const router = useRouter();
   const { data, error } = useSWR<Actie[]>("/api/shift-acties", (url: string) =>
     fetch(url).then((res) => res.json())
   );
@@ -37,6 +39,9 @@ export default function ShiftActiesPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-6">
+      <button onClick={() => router.push('/')} className="mb-4 text-blue-600 hover:underline">
+        ← Terug naar startpagina
+      </button>
       <h1 className="text-2xl font-bold mb-6">📊 Shiftacties & Statistieken</h1>
 
       {Object.entries(grouped)
