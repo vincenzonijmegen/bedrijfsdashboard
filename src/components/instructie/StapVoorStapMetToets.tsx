@@ -166,7 +166,7 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
     );
     if (match) {
       const url = match[1];
-      const cleaned = stepHtml.replace(/<a[^>]*>.*?<\/a>/i, "");
+      const cleaned = stepHtml.replace(/<a[^>]*href=["']https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^"']+["'][^>]*>.*?<\/a>/gi, "");
       return (
         <>
           <div className="player-wrapper mb-4">
