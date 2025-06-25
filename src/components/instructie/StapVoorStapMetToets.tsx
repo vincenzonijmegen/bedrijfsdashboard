@@ -173,7 +173,7 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
       <h1 className="text-2xl font-bold">{titel}</h1>
       {fase === "stappen" && (
         <>
-          <div className="border rounded p-4 bg-white shadow min-h-[150px]" dangerouslySetInnerHTML={{ __html: stappen[index] }} />
+          <div className="border rounded p-4 bg-white shadow min-h-[150px]" className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none" dangerouslySetInnerHTML={{ __html: stappen[index] }} />
           <div className="flex justify-between">
             <button onClick={() => setIndex((i) => Math.max(i - 1, 0))} disabled={index === 0} className="px-4 py-2 rounded bg-gray-300 disabled:opacity-40">
               Vorige
