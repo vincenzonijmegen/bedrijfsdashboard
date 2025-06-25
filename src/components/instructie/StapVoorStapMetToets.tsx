@@ -175,9 +175,9 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
         <>
 <div
   className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none"
-dangerouslySetInnerHTML={{
+  dangerouslySetInnerHTML={{
   __html: (stappen[index] || '').replace(
-    /<a href="(https:\/\/(www\.youtube\.com|youtu\.be)[^"]+)"[^>]*>[\s\S]*?<\/a>/g,
+    /<a[^>]*href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^"']+)["'][^>]*>[\s\S]*?<\/a>/gi,
     (match, url) => {
       const rawId = url.includes('watch?v=')
         ? url.split('watch?v=')[1].split('&')[0]
@@ -192,7 +192,6 @@ dangerouslySetInnerHTML={{
     }
   )
 }}
-
 />
 
 
