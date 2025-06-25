@@ -61,7 +61,7 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
     fetch("/api/instructiestatus", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: gebruiker.email, instructie_id })
+      body: JSON.stringify({ email: gebruiker.email, instructie_id }),
     });
 
     const parts = html.split("[end]");
@@ -84,8 +84,10 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === "Enter") {
-        if (fase === "vragen" && feedback && heeftToets) setIndex((i) => Math.min(i + 1, vragen.length - 1));
-        else if (fase !== "vragen") setIndex((i) => Math.min(i + 1, stappen.length - 1));
+        if (fase === "vragen" && feedback && heeftToets)
+          setIndex((i) => Math.min(i + 1, vragen.length - 1));
+        else if (fase !== "vragen")
+          setIndex((i) => Math.min(i + 1, stappen.length - 1));
       }
     };
 
@@ -157,10 +159,7 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
           totaal: vragen.length,
           fouten,
         }),
-      })
-        .then((res) => res.json())
-        .then((res) => console.log("✅ API-response:", res))
-        .catch((err) => console.error("❌ API-fout:", err));
+      });
     } else if (!heeftToets && index >= stappen.length - 1) {
       setFase("klaar");
     } else {
@@ -173,28 +172,18 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
       <h1 className="text-2xl font-bold">{titel}</h1>
       {fase === "stappen" && (
         <>
-<div
-  className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none"
-  dangerouslySetInnerHTML={{
-    __html: (stappen[index] || '').replace(
-      /<a href="(https:\/\/(www\.youtube\.com|youtu\.be)[^"]+)"[^>]*>[\s\S]*?<\/a>/g,
-      (match, url) => {
-        const rawId = url.includes('watch?v=')
-          ? url.split('watch?v=')[1].split('&')[0]
-          : url.split('/').pop()?.split('?')[0] || '';
-        return `<iframe
-          width="560" height="315"
-          src="https://www.youtube.com/embed/${rawId}"
-          frameborder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen
-        ></iframe>`;
-      }
-    )
-  }}
-/>
-
-
+          <div
+            className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none"
+            dangerouslySetInnerHTML={{ __html: (stappen[index] || '').replace(
+              /<a href="(https:\/\/(www\.youtube\.com|youtu\.be)[^"]+)"[^>]*>[\s\S]*?<\/a>/g,
+              (match, url) => {
+                const rawId = url.includes('watch?v=')
+                  ? url.split('watch?v=')[1].split('&')[0]
+                  : url.split('/').pop()?.split('?')[0] || '';
+                return `<iframe width="560" height="315" src="https://www.youtube.com/embed/${rawId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+              }
+            ) }}
+          />
           <div className="flex justify-between">
             <button onClick={() => setIndex((i) => Math.max(i - 1, 0))} disabled={index === 0} className="px-4 py-2 rounded bg-gray-300 disabled:opacity-40">
               Vorige
