@@ -175,7 +175,7 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
         <>
 <div
   className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none"
-  dangerouslySetInnerHTML={{
+dangerouslySetInnerHTML={{
   __html: (stappen[index] || '').replace(
     /<a href="(https:\/\/(www\.youtube\.com|youtu\.be)[^"]+)"[^>]*>[\s\S]*?<\/a>/g,
     (match, url) => {
@@ -192,6 +192,7 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
     }
   )
 }}
+
 />
 
 
