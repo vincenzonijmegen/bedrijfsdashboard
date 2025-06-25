@@ -1,3 +1,5 @@
+// src/app/admin/skills/page.tsx
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -28,12 +30,10 @@ export default function SkillBeheer() {
   const [toewijzingen, setToewijzingen] = useState<Record<string, { actief: boolean; deadline: number }>>({});
 
   useEffect(() => {
-        if (geselecteerd !== null) {
-      console.log("Fetching toegewezen skills voor", geselecteerd);
+    if (geselecteerd !== null) {
       fetch(`/api/skills/toegewezen?medewerker_id=${geselecteerd}`)
         .then(res => res.json())
         .then((data: ToegewezenSkill[]) => {
-          console.log("Ontvangen skills:", data);
           const ingevuld = Object.fromEntries(
             data.map((s) => [s.skill_id, { actief: true, deadline: Number(s.deadline_dagen) || 10 }])
           );
@@ -84,14 +84,14 @@ export default function SkillBeheer() {
           value={geselecteerd !== null ? String(geselecteerd) : ""}
           onChange={(e) => {
             const val: string | undefined = e.target?.value;
-                        if (!val) {
-                            setGeselecteerd(null);
+            if (!val) {
+              setGeselecteerd(null);
               return;
             }
             const parsed = Number(val);
             if (!isNaN(parsed)) {
               setGeselecteerd(parsed);
-                          } else {
+            } else {
               setGeselecteerd(null);
             }
           }}
@@ -101,8 +101,7 @@ export default function SkillBeheer() {
             <option key={m.id ?? m.naam} value={m.id ? String(m.id) : ""}>{m.naam ?? "(onbekend)"}</option>
           ))}
         </select>
-
-              </div>
+      </div>
 
       {geselecteerd !== null && (
         <div className="space-y-4">
@@ -142,7 +141,6 @@ export default function SkillBeheer() {
           ))}
 
           <Button onClick={opslaan}>Opslaan</Button>
-          
         </div>
       )}
     </div>
