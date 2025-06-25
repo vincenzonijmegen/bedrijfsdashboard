@@ -139,9 +139,22 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
         <>
           <div
             className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none"
-            dangerouslySetInnerHTML={{
-              __html: stappen[index] || ''
-            }}/>
+dangerouslySetInnerHTML={{
+  __html: (stappen[index] || '').replace(
+    /<a[^>]*href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^"']+)["'][^>]*>[\s\S]*?<\/a>/gi,
+    (match, url) => {
+      const rawId = url.includes("watch?v=")
+        ? url.split("watch?v=")[1].split("&")[0]
+        : url.split("/").pop()?.split("?")[0] || "";
+      return `<div class="aspect-video max-w-full rounded overflow-hidden mb-4">
+        <iframe class="w-full h-full" src="https://www.youtube.com/embed/${rawId}" frameborder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen></iframe>
+      </div>`;
+    }
+  )
+}}/>
+
           <div className="flex justify-between">
             <button onClick={() => setIndex((i) => Math.max(i - 1, 0))} disabled={index === 0} className="px-4 py-2 rounded bg-gray-300 disabled:opacity-40">Vorige</button>
             <button onClick={naarVolgende} className="bg-blue-600 text-white px-4 py-2 rounded">{index === stappen.length - 1 && heeftToets ? 'Start toets (↵)' : 'Volgende stap (↵)'}</button>
