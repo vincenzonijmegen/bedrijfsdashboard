@@ -173,8 +173,7 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
       <h1 className="text-2xl font-bold">{titel}</h1>
       {fase === "stappen" && (
         <>
-          <div className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none" dangerouslySetInnerHTML={{ __html: (stappen[index] || '').replace(/<a href="(https:\/\/(www\.youtube\.com|youtu\.be)[^"]+)"[^>]*>[\s\S]*?<\/a>/g
-, (match, url) => {
+          <div className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none" dangerouslySetInnerHTML={{ __html: (stappen[index] || '').replace(/<a href="(https:\/\/(www\.youtube\.com|youtu\.be)[^"]+)"[^>]*>[\s\S]*?<\/a>/g, (match, url) => {
               const videoId = url.includes('watch?v=') ? url.split('watch?v=')[1].split('&')[0] : url.split('/').pop()?.split('?')[0];
               return `<iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/${videoId}\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture\" allowfullscreen></iframe>`;
             }) }} />
