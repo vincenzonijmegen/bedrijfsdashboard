@@ -111,7 +111,14 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
     if (juist) {
       setAantalJuist((n) => n + 1);
     } else {
-      setFouten((f) => [...f, { vraag: vragen[index].vraag, gegeven: letter, gekozenTekst: vragen[index].opties[["A","B","C"].indexOf(letter)] }]);
+      setFouten((f) => [
+        ...f,
+        {
+          vraag: vragen[index].vraag,
+          gegeven: letter,
+          gekozenTekst: vragen[index].opties[["A","B","C"].indexOf(letter)],
+        },
+      ]);
     }
     setFeedback(juist ? "✅ Goed!" : `❌ Fout. Juiste antwoord: ${vragen[index].antwoord}`);
   };
@@ -125,10 +132,26 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
     if (fase === "vragen" && index === vragen.length - 1 && heeftToets) {
       const percentage = Math.round((aantalJuist / vragen.length) * 100);
       setScore(percentage); setFase("klaar");
-      fetch("/api/resultaten", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: gebruiker.email, naam: gebruiker.naam, functie: gebruiker.functie, titel, instructie_id, score: percentage, juist: aantalJuist, totaal: vragen.length, fouten }) });
+      fetch("/api/resultaten", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: gebruiker.email,
+          naam: gebruiker.naam,
+          functie: gebruiker.functie,
+          titel,
+          instructie_id,
+          score: percentage,
+          juist: aantalJuist,
+          totaal: vragen.length,
+          fouten,
+        }),
+      });
       return;
     }
-    if (!heeftToets && index === stappen.length - 1) { setFase("klaar"); return; }
+    if (!heeftToets && index === stappen.length - 1) {
+      setFase("klaar"); return;
+    }
     setIndex((i) => i + 1);
   };
 
@@ -139,46 +162,81 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
         <>
           <div
             className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none"
-dangerouslySetInnerHTML={{
-  __html: (stappen[index] || '').replace(
-    /<a[^>]*href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^"']+)["'][^>]*>[\s\S]*?<\/a>/gi,
-    (match, url) => {
-      const rawId = url.includes("watch?v=")
-        ? url.split("watch?v=")[1].split("&")[0]
-        : url.split("/").pop()?.split("?")[0] || "";
-      return `<div class="aspect-video max-w-full rounded overflow-hidden mb-4">
-        <iframe class="w-full h-full" src="https://www.youtube.com/embed/${rawId}" frameborder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen></iframe>
-      </div>`;
-    }
-  )
-}}/>
-
+            dangerouslySetInnerHTML={{
+              __html: (stappen[index] || '')
+                .replace(
+                  /<a[^>]*href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^"']+)["'][^>]*>[\s\S]*?<\/a>/gi,
+                  (match, url) => {
+                    const rawId = url.includes('watch?v=')
+                      ? url.split('watch?v=')[1].split('&')[0]
+                      : url.split('/').pop()?.split('?')[0] || '';
+                    return `<iframe
+                      class="w-full aspect-video rounded mb-4"
+                      src="https://www.youtube.com/embed/${rawId}"
+                      frameborder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowfullscreen
+                    ></iframe>`;
+                  }
+                )
+            }}
+          />
           <div className="flex justify-between">
-            <button onClick={() => setIndex((i) => Math.max(i - 1, 0))} disabled={index === 0} className="px-4 py-2 rounded bg-gray-300 disabled:opacity-40">Vorige</button>
-            <button onClick={naarVolgende} className="bg-blue-600 text-white px-4 py-2 rounded">{index === stappen.length - 1 && heeftToets ? 'Start toets (↵)' : 'Volgende stap (↵)'}</button>
+            <button
+              onClick={() => setIndex((i) => Math.max(i - 1, 0))}
+              disabled={index === 0}
+              className="px-4 py-2 rounded bg-gray-300 disabled:opacity-40"
+            >
+              Vorige
+            </button>
+            <button onClick={naarVolgende} className="bg-blue-600 text-white px-4 py-2 rounded">
+              {index === stappen.length - 1 && heeftToets
+                ? "Start toets (↵)"
+                : "Volgende stap (↵)"}
+            </button>
           </div>
         </>
       )}
-
       {fase === "vragen" && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Vraag {index + 1}</h2>
           <p>{vragen[index].vraag}</p>
           <div className="space-y-2">
             {['A','B','C'].map((letter, i) => (
-              <button key={letter} onClick={() => selectAntwoord(letter as 'A'|'B'|'C')} className="block w-full border rounded px-4 py-2 text-left bg-white hover:bg-blue-50" disabled={feedback!=null}> {letter}. {vragen[index].opties[i]}</button>
+              <button
+                key={letter}
+                onClick={() => selectAntwoord(letter as 'A'|'B'|'C')}
+                className="block w-full border rounded px-4 py-2 text-left bg-white hover:bg-blue-50"
+                disabled={feedback!=null}
+              >
+                {letter}. {vragen[index].opties[i]}
+              </button>
             ))}
           </div>
-          {feedback && (<div className="text-sm mt-2">{feedback}<div className="mt-2"><button onClick={naarVolgende} className="bg-blue-600 text-white px-4 py-2 rounded">{index===vragen.length-1?'Bekijk resultaat':'Volgende vraag (↵)'}</button></div></div>)}
+          {feedback && (
+            <div className="text-sm mt-2">
+              {feedback}
+              <div className="mt-2">
+                <button onClick={naarVolgende} className="bg-blue-600 text-white px-4 py-2 rounded">
+                  {index===vragen.length-1?'Bekijk resultaat':'Volgende vraag (↵)'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
-
       {fase === "klaar" && (
         <div className="text-center text-xl font-semibold space-y-4">
-          {heeftToets ? (<p className={score >= 80 ? 'text-green-700' : 'text-red-700'}>{score>=80?'✅ Geslaagd!':'❌ Niet geslaagd.'} Je score: {score}%<br/>{aantalJuist} van {vragen.length} goed beantwoord</p>) : (<p className="text-green-700">✅ Instructie gelezen</p>)}
-          <Link href="/instructies" className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Terug naar instructies</Link>
+          {heeftToets ? (
+            <p className={score>=80?'text-green-700':'text-red-700'}>
+              {score>=80?'✅ Geslaagd!':'❌ Niet geslaagd.'} Je score: {score}%<br/>{aantalJuist} van {vragen.length} goed beantwoord
+            </p>
+          ) : (
+            <p className="text-green-700">✅ Instructie gelezen</p>
+          )}
+          <Link href="/instructies" className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+            Terug naar instructies
+          </Link>
         </div>
       )}
     </div>
