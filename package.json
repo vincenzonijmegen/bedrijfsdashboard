@@ -22,6 +22,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.13",
+    "html-entities": "^2.6.0",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
     "linkify-react": "^4.3.1",

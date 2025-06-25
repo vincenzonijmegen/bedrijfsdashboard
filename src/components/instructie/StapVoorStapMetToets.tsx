@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { decode } from 'html-entities';
+
 
 interface Props {
   html: string;
@@ -160,27 +162,30 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
       <h1 className="text-2xl font-bold">{titel}</h1>
       {fase === "stappen" && (
         <>
-          <div
-            className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none"
-            dangerouslySetInnerHTML={{
-              __html: (stappen[index] || '')
-                .replace(
-                  /<a[^>]*href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^"']+)["'][^>]*>[\s\S]*?<\/a>/gi,
-                  (match, url) => {
-                    const rawId = url.includes('watch?v=')
-                      ? url.split('watch?v=')[1].split('&')[0]
-                      : url.split('/').pop()?.split('?')[0] || '';
-                    return `<iframe
-                      class="w-full aspect-video rounded mb-4"
-                      src="https://www.youtube.com/embed/${rawId}"
-                      frameborder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowfullscreen
-                    ></iframe>`;
-                  }
-                )
-            }}
-          />
+<div
+  className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none"
+  dangerouslySetInnerHTML={{
+    __html: decode(
+      (stappen[index] || '')
+        .replace(
+          /<a[^>]*href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^"']+)["'][^>]*>[\s\S]*?<\/a>/gi,
+          (_match, url) => {
+            const rawId = url.includes('watch?v=')
+              ? url.split('watch?v=')[1].split('&')[0]
+              : url.split('/').pop()?.split('?')[0] || '';
+            return `<iframe
+              class="w-full aspect-video rounded mb-4"
+              src="https://www.youtube.com/embed/${rawId}"
+              frameborder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+            ></iframe>`;
+          }
+        )
+    )
+  }}
+/>
+
           <div className="flex justify-between">
             <button
               onClick={() => setIndex((i) => Math.max(i - 1, 0))}
