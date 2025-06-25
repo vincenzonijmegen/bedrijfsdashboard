@@ -1,199 +1,164 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { uploadAfbeelding } from "@/utils/r2ClientUpload";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Image from "@tiptap/extension-image";
+import Placeholder from "@tiptap/extension-placeholder";
+import { Button } from "@/components/ui/button";
 
-interface Props {
-  html: string;
-  instructie_id: string;
-  titel: string;
-}
+export default function NieuweInstructie() {
+  const [titel, setTitel] = useState("");
+  const [nummer, setNummer] = useState("");
+  const [functies, setFuncties] = useState<string[]>([]);
+  const [editorKey] = useState(() => Math.random().toString(36).substring(2));
+  const router = useRouter();
 
-type Vraag = {
-  vraag: string;
-  opties: string[];
-  antwoord: string;
-};
+  const functiekeuzes = [
+    "scheppers overdag",
+    "scheppers overdag + avond",
+    "ijsvoorbereiders",
+    "keukenmedewerkers",
+  ];
 
-export default function StapVoorStapMetToets({ html, instructie_id, titel }: Props) {
-  const [stappen, setStappen] = useState<string[]>([]);
-  const [vragen, setVragen] = useState<Vraag[]>([]);
-  const [index, setIndex] = useState(0);
-  const [fase, setFase] = useState<"stappen" | "vragen" | "klaar">("stappen");
-  const [heeftToets, setHeeftToets] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [score, setScore] = useState(0);
-  const [aantalJuist, setAantalJuist] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const startTijd = useRef<number | null>(null);
-  const [fouten, setFouten] = useState<
-    { vraag: string; gegeven: string; gekozenTekst: string }[]
-  >([]);
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Image,
+      Placeholder.configure({ placeholder: "Typ hier de instructie..." }),
+    ],
+    content: "",
+  });
 
-  useEffect(() => {
-    startTijd.current = Date.now();
-    return () => {
-      const eindTijd = Date.now();
-      const duurSec = Math.round((eindTijd - (startTijd.current || eindTijd)) / 1000);
-      const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
-      fetch("/api/instructielog", {
+  const handleOpslaan = async () => {
+    if (!titel.trim() || !editor) return;
+    const inhoud = editor.getHTML();
+
+    try {
+      const res = await fetch("/api/instructies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: gebruiker.email,
-          naam: gebruiker.naam,
-          functie: gebruiker.functie,
-          titel,
-          instructie_id,
-          duur_seconden: duurSec,
-        }),
+        body: JSON.stringify({ titel, inhoud, nummer, functies }),
       });
-    };
-  }, [instructie_id]);
 
-  useEffect(() => {
-    const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
-    if (!gebruiker?.email || !instructie_id) return;
+      console.log("📦 Status:", res.status);
+      console.log("📦 Content-Type:", res.headers.get("content-type"));
 
-    fetch("/api/instructiestatus", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: gebruiker.email, instructie_id })
-    });
+      const rawText = await res.text();
+      console.log("📦 Body als tekst:", rawText);
 
-    const parts = html.split("[end]");
-    const stepSegments = parts.slice(0, -1).map((s) => s.trim()).filter(Boolean);
-    const vraagDeel = parts.slice(-1)[0] || "";
-    const vragenHTML = vraagDeel.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
-
-    const questionPattern = /Vraag[:.]\s*(.*?)\s*A\.\s*(.*?)\s*B\.\s*(.*?)\s*C\.\s*(.*?)\s*Antwoord:\s*([ABC])/gi;
-    const vraagMatches = Array.from(vragenHTML.matchAll(questionPattern)).map((m) => ({
-      vraag: m[1].trim(),
-      opties: [m[2].trim(), m[3].trim(), m[4].trim()],
-      antwoord: m[5].trim().toUpperCase(),
-    }));
-
-    setStappen(stepSegments);
-    setVragen(vraagMatches);
-    setHeeftToets(vraagMatches.length > 0);
-  }, [instructie_id, html]);
-
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Enter") {
-        if (fase === "vragen" && feedback && heeftToets) setIndex((i) => Math.min(i + 1, vragen.length - 1));
-        else if (fase !== "vragen") setIndex((i) => Math.min(i + 1, stappen.length - 1));
+      let data;
+      try {
+        data = JSON.parse(rawText);
+        console.log("✅ Parsed JSON:", data);
+      } catch (err) {
+        console.error("❌ JSON parse fout:", err);
+        throw new Error("Backend gaf geen leesbare JSON terug");
       }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [fase, index, feedback, stappen.length, vragen.length]);
 
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    let startX = 0;
-    const onTouchStart = (e: TouchEvent) => { startX = e.touches[0].clientX; };
-    const onTouchEnd = (e: TouchEvent) => {
-      const endX = e.changedTouches[0].clientX;
-      const delta = endX - startX;
-      if (delta < -40) setIndex((i) => Math.min(i + 1, fase === "vragen" ? vragen.length - 1 : stappen.length - 1));
-      if (delta > 40) setIndex((i) => Math.max(i - 1, 0));
-    };
-    el.addEventListener("touchstart", onTouchStart);
-    el.addEventListener("touchend", onTouchEnd);
-    return () => {
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchend", onTouchEnd);
-    };
-  }, [fase, index, stappen.length, vragen.length]);
+      if (!res.ok || !data.slug) {
+        throw new Error("Geen instructie teruggekregen");
+      }
 
-  const selectAntwoord = (letter: "A" | "B" | "C") => {
-    const juist = letter === vragen[index].antwoord;
-    if (juist) {
-      setAantalJuist((n) => n + 1);
-    } else {
-      setFouten((f) => [
-        ...f,
-        {
-          vraag: vragen[index].vraag,
-          gegeven: letter,
-          gekozenTekst: vragen[index].opties[["A", "B", "C"].indexOf(letter)],
-        },
-      ]);
+      router.push("/admin/instructies");
+    } catch (err) {
+      console.error("🛑 Fout bij toevoegen:", err);
+      alert("Fout bij opslaan. Probeer het later opnieuw.");
     }
-    setFeedback(juist ? "✅ Goed!" : `❌ Fout. Juiste antwoord: ${vragen[index].antwoord}`);
-  };
-
-  const naarVolgende = () => {
-    setFeedback(null);
-    const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
-    if (fase === "stappen" && index >= stappen.length - 1 && heeftToets) {
-      setFase("vragen");
-      setIndex(0);
-    } else if (fase === "vragen" && index >= vragen.length - 1 && heeftToets) {
-      const percentage = Math.round((aantalJuist / vragen.length) * 100);
-      setScore(percentage);
-      setFase("klaar");
-      fetch("/api/resultaten", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: gebruiker.email,
-          naam: gebruiker.naam,
-          functie: gebruiker.functie,
-          titel,
-          instructie_id,
-          score: percentage,
-          juist: aantalJuist,
-          totaal: vragen.length,
-          fouten,
-        }),
-      }).catch((err) => console.error("❌ API-fout:", err));
-    } else if (!heeftToets && index >= stappen.length - 1) setFase("klaar");
-    else setIndex((i) => i + 1);
   };
 
   return (
-    <div ref={containerRef} className="max-w-4xl mx-auto p-4 space-y-4">
-      <h1 className="text-2xl font-bold">{titel}</h1>
-      {fase === "stappen" && (
-        <>
-          <div
-            className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none"
-            dangerouslySetInnerHTML={{
-              __html: (stappen[index] || '').replace(
-                /<a[^>]*href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^"']+)["'][^>]*>[\s\S]*?<\/a>/gi,
-                (match, url) => {
-                  const rawId = url.includes('watch?v=')
-                    ? url.split('watch?v=')[1].split('&')[0]
-                    : url.split('/').pop()?.split('?')[0] || '';
-                  return `<div class="aspect-video max-w-full rounded overflow-hidden mb-4">
-                    <iframe
-                      class="w-full h-full"
-                      src="https://www.youtube.com/embed/${rawId}"
-                      frameborder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowfullscreen
-                    ></iframe>
-                  </div>`;
-                }
-              )
-            }}
-          />
+    <main className="max-w-2xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Nieuwe instructie</h1>
 
-          <div className="flex justify-between">
-            <button onClick={() => setIndex((i) => Math.max(i - 1, 0))} disabled={index === 0} className="px-4 py-2 rounded bg-gray-300 disabled:opacity-40">
-              Vorige
-            </button>
-            <button onClick={naarVolgende} className="bg-blue-600 text-white px-4 py-2 rounded">
-              {index === stappen.length - 1 && heeftToets ? "Start toets (↵)" : "Volgende stap (↵)"}
-            </button>
-          </div>
-        </>
-      )}
+      <input
+        type="text"
+        placeholder="Titel"
+        value={titel}
+        onChange={(e) => setTitel(e.target.value)}
+        className="w-full mb-4 border rounded px-3 py-2"
+      />
 
-      {/* vragen- en klaar-fase blijven ongewijzigd */}
-    </div>
+      <input
+        type="text"
+        placeholder="Instructienummer (bijv. 1.1)"
+        value={nummer}
+        onChange={(e) => setNummer(e.target.value)}
+        className="w-full mb-4 border rounded px-3 py-2"
+      />
+
+      <div className="mb-4">
+        <label className="font-medium">Toon voor functies:</label>
+        <div className="grid grid-cols-2 gap-2 mt-1">
+          {functiekeuzes.map((f) => (
+            <label key={f} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={functies.includes(f)}
+                onChange={(e) => {
+                  setFuncties((prev) =>
+                    e.target.checked ? [...prev, f] : prev.filter((v) => v !== f)
+                  );
+                }}
+              />
+              {f}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className="prose max-w-none mb-4 min-h-[200px] border rounded p-4 prose-blue prose-li:my-1 prose-li:marker:text-gray-500">
+        {!editor ? (
+          <p className="text-sm text-gray-500">Editor wordt geladen...</p>
+        ) : (
+          <>
+            <Button
+              className="mb-2"
+              onClick={async () => {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "image/*";
+                input.onchange = async () => {
+                  const file = input.files?.[0];
+                  if (file && editor) {
+                    const url = await uploadAfbeelding(file);
+                    editor.commands.insertContent(`<img src="${url}" style="width: 75%; display: block; margin: 0 auto;" />`);
+
+                  }
+                };
+                input.click();
+              }}
+            >
+              Afbeelding uploaden
+            </Button>
+            <Button
+  className="mb-2 ml-2"
+  onClick={() => {
+    const link = prompt("Plak hier de YouTube-link (bijv. https://youtu.be/abc123)");
+    if (!link || !editor) return;
+
+    let rawId = "";
+    if (link.includes("watch?v=")) {
+      rawId = link.split("watch?v=")[1].split("&")[0];
+    } else {
+      rawId = link.split("/").pop()?.split("?")[0] || "";
+    }
+
+    const iframe = `<iframe src="https://www.youtube.com/embed/${rawId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full aspect-video rounded mb-4"></iframe>`;
+    editor.commands.insertContent(iframe);
+  }}
+>
+  YouTube-video toevoegen
+</Button>
+
+            <EditorContent key={editorKey} editor={editor} />
+          </>
+        )}
+      </div>
+
+      <Button onClick={handleOpslaan}>Opslaan</Button>
+    </main>
   );
 }
