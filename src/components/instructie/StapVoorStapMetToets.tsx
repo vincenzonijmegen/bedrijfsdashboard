@@ -175,27 +175,10 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
         <>
           <div
             className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none"
-            dangerouslySetInnerHTML={{
-  __html: (stappen[index] || '')
-    // laat bestaande <iframe> staan
-    .replace(
-      /<a[^>]*href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^"']+)["'][^>]*>[\s\S]*?<\/a>/gi,
-      (match, url) => {
-        const rawId = url.includes("watch?v=")
-          ? url.split("watch?v=")[1].split("&")[0]
-          : url.split("/").pop()?.split("?")[0] || "";
-        return `<div class="aspect-video max-w-full rounded overflow-hidden mb-4">
-          <iframe
-            class="w-full h-full"
-            src="https://www.youtube.com/embed/${rawId}"
-            frameborder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen
-          ></iframe>
-        </div>`;
-      }
-    )
+dangerouslySetInnerHTML={{
+  __html: stappen[index] || ''
 }}
+
 
           />
 
