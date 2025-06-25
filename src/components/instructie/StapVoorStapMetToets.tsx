@@ -164,10 +164,12 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
     const match = stepHtml.match(
       /href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^"']+)["']/i
     );
+    let cleaned = stepHtml;
     if (match) {
-      const url = match[1];
-      const cleaned = stepHtml.replace(/<a[^>]*href=["']https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^"']+["'][^>]*>.*?<\/a>/gi, "");
-      return (
+      const anchorPattern = /<a[^>]*href=["']https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^"']+["'][^>]*>(.*?)<\/a>/gi;
+      cleaned = stepHtml.replace(anchorPattern, '');
+    }
+    return (
         <>
           <div className="player-wrapper mb-4">
             <ReactPlayer url={url} controls width="100%" />
