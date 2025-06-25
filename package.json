@@ -30,6 +30,7 @@
     "pg": "^8.16.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-player": "^2.16.0",
     "resend": "^4.5.2",
     "slugify": "^1.6.6",
     "tailwind-merge": "^3.3.0",
