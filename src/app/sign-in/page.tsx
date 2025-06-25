@@ -28,7 +28,7 @@ export default function SignInPage() {
         if (data.moetWachtwoordWijzigen) {
           router.push(`/wachtwoord-wijzigen?email=${encodeURIComponent(email)}`);
         } else if (data.functie === "beheerder") {
-          router.push("/admin");
+          router.push("/");
         } else {
           router.push("/instructies");
         }
