@@ -4,7 +4,6 @@
 
 import useSWR from "swr";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 
 interface Leverancier {
   id: number;
@@ -24,7 +23,7 @@ interface Product {
 export default function Productbeheer() {
   const [leverancierId, setLeverancierId] = useState<number | null>(null);
   const { data: leveranciers } = useSWR<Leverancier[]>("/api/leveranciers", fetcher);
-  const { data: producten, mutate } = useSWR<Product[]>(
+  const { data: producten } = useSWR<Product[]>(
     leverancierId ? `/api/producten?leverancier=${leverancierId}` : null,
     fetcher
   );
