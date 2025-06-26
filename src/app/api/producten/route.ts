@@ -95,6 +95,7 @@ export async function GET(req: Request) {
       [leverancierId]
     );
 
+    console.log("Producten response:", result.rows);
     return NextResponse.json(result.rows);
   } catch (err) {
     console.error("Fout bij ophalen producten:", err);
