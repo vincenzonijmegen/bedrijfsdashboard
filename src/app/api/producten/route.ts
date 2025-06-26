@@ -38,6 +38,7 @@ export async function POST(req: Request) {
 
     let pid = id;
     let vorigePrijs = null;
+    let nieuwePrijs = prijs;
 
     if (id) {
       const check = await db.query(
@@ -45,13 +46,16 @@ export async function POST(req: Request) {
         [id]
       );
       vorigePrijs = check.rows[0]?.huidige_prijs ?? null;
+      if (prijs === undefined) {
+        nieuwePrijs = vorigePrijs;
+      }
 
       await db.query(
         `UPDATE producten
          SET leverancier_id = $1, naam = $2, bestelnummer = $3, minimum_voorraad = $4,
              besteleenheid = $5, huidige_prijs = $6, actief = $7, volgorde = $8
          WHERE id = $9`,
-        [lid, naam, bestelnummer ?? null, minimum_voorraad ?? null, besteleenheid ?? 1, prijs ?? null, actief ?? true, volgorde ?? null, id]
+        [lid, naam, bestelnummer ?? null, minimum_voorraad ?? null, besteleenheid ?? 1, nieuwePrijs ?? null, actief ?? true, volgorde ?? null, id]
       );
     } else {
       const insert = await db.query(
@@ -64,10 +68,10 @@ export async function POST(req: Request) {
       pid = insert.rows[0].id;
     }
 
-    if (prijs != null && prijs !== vorigePrijs) {
+    if (nieuwePrijs != null && nieuwePrijs !== vorigePrijs) {
       await db.query(
         `INSERT INTO productprijzen (product_id, prijs) VALUES ($1, $2)`,
-        [pid, prijs]
+        [pid, nieuwePrijs]
       );
     }
 
