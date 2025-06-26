@@ -67,7 +67,7 @@ export async function POST(req: Request) {
       [lid, naam, bestelnummer ?? null, min_voorraad ?? null, besteleenheid ?? 1, prijs ?? null]
     );
 
-    if (prijs && result.rows[0]?.huidige_prijs !== priceAsFloat(price)) {
+    if (prijs && result.rows[0]?.huidige_prijs !== priceAsFloat(p.prijs)) {
       await db.query(
         `INSERT INTO productprijzen (product_id, prijs)
          VALUES ($1, $2)`,
