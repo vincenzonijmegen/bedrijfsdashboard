@@ -19,13 +19,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Beide tabbladen 'Leveranciers' en 'Producten' zijn verplicht" }, { status: 400 });
   }
 
-  const leveranciers = xlsx.utils.sheet_to_json(leveranciersSheet);
-  const producten = xlsx.utils.sheet_to_json(productenSheet);
+  type LeverancierRow = {
+    naam: string;
+    whatsapp?: string;
+    email?: string;
+  };
+
+  type ProductRow = {
+    leverancier: string;
+    naam: string;
+    bestelnummer?: string;
+    min_voorraad?: number;
+    besteleenheid?: number;
+    prijs?: number;
+  };
+
+  const leveranciers = xlsx.utils.sheet_to_json(leveranciersSheet) as LeverancierRow[];
+  const producten = xlsx.utils.sheet_to_json(productenSheet) as ProductRow[];
 
   const leverancierIds: Record<string, number> = {};
 
   for (const l of leveranciers) {
-    const { naam, whatsapp, email } = l as any;
+    const { naam, whatsapp, email } = l;
     if (!naam) continue;
     const result = await db.query(
       `INSERT INTO leveranciers (naam, whatsapp, email)
@@ -38,7 +53,7 @@ export async function POST(req: Request) {
   }
 
   for (const p of producten) {
-    const { leverancier, naam, bestelnummer, min_voorraad, besteleenheid, prijs } = p as any;
+    const { leverancier, naam, bestelnummer, min_voorraad, besteleenheid, prijs } = p;
     if (!leverancier || !naam) continue;
     const lid = leverancierIds[leverancier.trim()];
     if (!lid) continue;
@@ -52,7 +67,6 @@ export async function POST(req: Request) {
       [lid, naam, bestelnummer ?? null, min_voorraad ?? null, besteleenheid ?? 1, prijs ?? null]
     );
 
-    // optioneel prijslog
     if (prijs && result.rows[0]?.huidige_prijs !== priceAsFloat(price)) {
       await db.query(
         `INSERT INTO productprijzen (product_id, prijs)
@@ -65,7 +79,7 @@ export async function POST(req: Request) {
   return NextResponse.json({ status: "ok" });
 }
 
-function priceAsFloat(p: any): number {
-  const f = parseFloat(p);
+function priceAsFloat(p: unknown): number {
+  const f = parseFloat(String(p));
   return isNaN(f) ? 0 : Number(f.toFixed(2));
 }
