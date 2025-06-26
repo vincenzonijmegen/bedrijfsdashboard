@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR, { mutate } from "swr";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Leverancier {
   id: number;
@@ -33,6 +33,12 @@ export default function Productbeheer() {
     leverancierId ? `/api/producten?leverancier=${leverancierId}` : null,
     fetcher
   );
+
+  useEffect(() => {
+    if (leverancierId) {
+      mutate(`/api/producten?leverancier=${leverancierId}`);
+    }
+  }, [leverancierId]);
 
   if (!leveranciers) return <p>Laden...</p>;
 
