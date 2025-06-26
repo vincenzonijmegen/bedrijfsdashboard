@@ -167,7 +167,7 @@ export default function Productbeheer() {
                 <td className="p-2">{p.bestelnummer}</td>
                 <td className="p-2">{p.minimum_voorraad}</td>
                 <td className="p-2">{p.besteleenheid}</td>
-                <td className="p-2">{typeof p.huidige_prijs === "number" ? `€ ${p.huidige_prijs.toFixed(2)}` : "–"}</td>
+                <td className="p-2">{p.huidige_prijs != null ? `€ ${Number(p.huidige_prijs).toFixed(2)}` : "–"}</td>
                 <td className="p-2">{p.volgorde ?? "–"}</td>
                 <td className="p-2">{p.actief ? "✅" : "❌"}</td>
                 <td className="p-2">
