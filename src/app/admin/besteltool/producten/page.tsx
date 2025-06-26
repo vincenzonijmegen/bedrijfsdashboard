@@ -70,7 +70,10 @@ export default function Productbeheer() {
               setPrijs(undefined);
               setActief(true);
               setNieuweLeverancier("");
-              mutate();
+              if (leverancierId) {
+                mutate(`/api/producten?leverancier=${leverancierId}`);
+              }
+              mutate("/api/leveranciers");
             } else {
               const fout = await response.json();
               alert("Fout: " + fout.error);
