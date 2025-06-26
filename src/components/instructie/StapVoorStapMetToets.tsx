@@ -67,10 +67,14 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
     const vragenHTML = vraagDeel.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
     const questionPattern = /Vraag[:.]\s*(.*?)\s*A\.[\s\S]*?B\.(.*?)C\.(.*?)Antwoord:\s*([ABC])/gi;
     const vraagMatches = Array.from(vragenHTML.matchAll(questionPattern)).map((m) => ({
-      vraag: m[1].trim(),
-      opties: [m[2].trim(), m[3].trim(), m[4].trim()],
-      antwoord: m[5].trim().toUpperCase(),
-    }));
+  vraag: m[1]?.trim() ?? "",
+  opties: [
+    m[2]?.trim() ?? "",
+    m[3]?.trim() ?? "",
+    m[4]?.trim() ?? "",
+  ],
+  antwoord: m[5]?.trim()?.toUpperCase() ?? "",
+}));
     setStappen(stepSegments);
     setVragen(vraagMatches);
     setHeeftToets(vraagMatches.length > 0);
