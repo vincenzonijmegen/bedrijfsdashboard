@@ -61,20 +61,34 @@ export async function POST(req: Request) {
     const lid = leverancierIds[leverancier.trim()];
     if (!lid) continue;
 
-    const result = await db.query(
-      `INSERT INTO producten (leverancier_id, naam, bestelnummer, minimum_voorraad, besteleenheid, actief, huidige_prijs)
-       VALUES ($1, $2, $3, $4, $5, TRUE, $6)
-       ON CONFLICT (leverancier_id, naam)
-       DO UPDATE SET bestelnummer = EXCLUDED.bestelnummer, minimum_voorraad = EXCLUDED.minimum_voorraad, besteleenheid = EXCLUDED.besteleenheid, huidige_prijs = EXCLUDED.huidige_prijs
-       RETURNING id, huidige_prijs`,
-      [lid, naam, bestelnummer ?? null, min_voorraad ?? null, besteleenheid ?? 1, prijs ?? null]
+    let productId: number;
+    const check = await db.query(
+      `SELECT id, huidige_prijs FROM producten WHERE leverancier_id = $1 AND LOWER(naam) = LOWER($2)`,
+      [lid, naam]
     );
 
-    if (prijs && result.rows[0]?.huidige_prijs !== priceAsFloat(p.prijs)) {
+    if (check.rows.length > 0) {
+      productId = check.rows[0].id;
+      await db.query(
+        `UPDATE producten SET bestelnummer = $1, minimum_voorraad = $2, besteleenheid = $3, huidige_prijs = $4
+         WHERE id = $5`,
+        [bestelnummer ?? null, min_voorraad ?? null, besteleenheid ?? 1, prijs ?? null, productId]
+      );
+    } else {
+      const insert = await db.query(
+        `INSERT INTO producten (leverancier_id, naam, bestelnummer, minimum_voorraad, besteleenheid, actief, huidige_prijs)
+         VALUES ($1, $2, $3, $4, $5, TRUE, $6)
+         RETURNING id`,
+        [lid, naam, bestelnummer ?? null, min_voorraad ?? null, besteleenheid ?? 1, prijs ?? null]
+      );
+      productId = insert.rows[0].id;
+    }
+
+    if (prijs && check.rows[0]?.huidige_prijs !== priceAsFloat(p.prijs)) {
       await db.query(
         `INSERT INTO productprijzen (product_id, prijs)
          VALUES ($1, $2)`,
-        [result.rows[0].id, priceAsFloat(p.prijs)]
+        [productId, priceAsFloat(p.prijs)]
       );
     }
   }
