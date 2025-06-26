@@ -1,8 +1,6 @@
-// src/app/admin/besteltool/producten/page.tsx
-
 "use client";
 
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import { useState } from "react";
 
 interface Leverancier {
@@ -22,6 +20,14 @@ interface Product {
 
 export default function Productbeheer() {
   const [leverancierId, setLeverancierId] = useState<number | null>(null);
+  const [nieuweLeverancier, setNieuweLeverancier] = useState("");
+  const [naam, setNaam] = useState("");
+  const [bestelnummer, setBestelnummer] = useState("");
+  const [minimumVoorraad, setMinimumVoorraad] = useState<number | undefined>();
+  const [besteleenheid, setBesteleenheid] = useState<number>(1);
+  const [prijs, setPrijs] = useState<number | undefined>();
+  const [actief, setActief] = useState(true);
+
   const { data: leveranciers } = useSWR<Leverancier[]>("/api/leveranciers", fetcher);
   const { data: producten } = useSWR<Product[]>(
     leverancierId ? `/api/producten?leverancier=${leverancierId}` : null,
@@ -36,7 +42,41 @@ export default function Productbeheer() {
 
       <details className="border p-4 rounded bg-gray-50">
         <summary className="cursor-pointer font-semibold mb-2">➕ Nieuw product toevoegen</summary>
-        <form className="grid grid-cols-2 gap-4 mt-4 text-sm" onSubmit={(e) => e.preventDefault()}>
+        <form
+          className="grid grid-cols-2 gap-4 mt-4 text-sm"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const response = await fetch("/api/producten", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                leverancier_id: leverancierId,
+                nieuwe_leverancier: nieuweLeverancier || undefined,
+                naam,
+                bestelnummer,
+                minimum_voorraad: minimumVoorraad,
+                besteleenheid,
+                prijs,
+                actief,
+              }),
+            });
+
+            if (response.ok) {
+              alert("Product opgeslagen!");
+              setNaam("");
+              setBestelnummer("");
+              setMinimumVoorraad(undefined);
+              setBesteleenheid(1);
+              setPrijs(undefined);
+              setActief(true);
+              setNieuweLeverancier("");
+              mutate();
+            } else {
+              const fout = await response.json();
+              alert("Fout: " + fout.error);
+            }
+          }}
+        >
           <div className="col-span-2">
             <label className="block">Kies bestaande leverancier:</label>
             <select
@@ -53,16 +93,23 @@ export default function Productbeheer() {
 
           <div className="col-span-2">
             <label className="block">of nieuwe leverancier:</label>
-            <input type="text" placeholder="Nieuwe leverancier" className="w-full border rounded px-2 py-1" />
+            <input
+              type="text"
+              placeholder="Nieuwe leverancier"
+              className="w-full border rounded px-2 py-1"
+              value={nieuweLeverancier}
+              onChange={(e) => setNieuweLeverancier(e.target.value)}
+            />
           </div>
 
-          <input type="text" placeholder="Productnaam" className="border px-2 py-1 rounded" />
-          <input type="text" placeholder="Bestelnummer" className="border px-2 py-1 rounded" />
-          <input type="number" placeholder="Min. voorraad" className="border px-2 py-1 rounded" />
-          <input type="number" placeholder="Besteleenheid" className="border px-2 py-1 rounded" />
-          <input type="number" placeholder="Prijs (€)" className="border px-2 py-1 rounded" step="0.01" />
+          <input type="text" placeholder="Productnaam" className="border px-2 py-1 rounded" value={naam} onChange={(e) => setNaam(e.target.value)} />
+          <input type="text" placeholder="Bestelnummer" className="border px-2 py-1 rounded" value={bestelnummer} onChange={(e) => setBestelnummer(e.target.value)} />
+          <input type="number" placeholder="Min. voorraad" className="border px-2 py-1 rounded" value={minimumVoorraad ?? ""} onChange={(e) => setMinimumVoorraad(e.target.value ? Number(e.target.value) : undefined)} />
+          <input type="number" placeholder="Besteleenheid" className="border px-2 py-1 rounded" value={besteleenheid} onChange={(e) => setBesteleenheid(Number(e.target.value))} />
+          <input type="number" placeholder="Prijs (€)" className="border px-2 py-1 rounded" step="0.01" value={prijs ?? ""} onChange={(e) => setPrijs(e.target.value ? Number(e.target.value) : undefined)} />
+
           <label className="flex items-center gap-2">
-            <input type="checkbox" defaultChecked /> Actief
+            <input type="checkbox" checked={actief} onChange={(e) => setActief(e.target.checked)} /> Actief
           </label>
 
           <div className="col-span-2">
@@ -103,8 +150,8 @@ export default function Productbeheer() {
                 <td className="p-2">{p.besteleenheid}</td>
                 <td className="p-2">
                   {typeof p.huidige_prijs === "number"
-                ? `€ ${p.huidige_prijs.toFixed(2)}`
-                : "–"}
+                    ? `€ ${p.huidige_prijs.toFixed(2)}`
+                    : "–"}
                 </td>
                 <td className="p-2">{p.actief ? "✅" : "❌"}</td>
               </tr>
