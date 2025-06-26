@@ -16,6 +16,7 @@ interface Product {
   besteleenheid?: number;
   huidige_prijs?: number;
   actief: boolean;
+  volgorde?: number;
 }
 
 export default function Productbeheer() {
@@ -27,6 +28,7 @@ export default function Productbeheer() {
   const [besteleenheid, setBesteleenheid] = useState<number>(1);
   const [prijs, setPrijs] = useState<number | undefined>();
   const [actief, setActief] = useState(true);
+  const [volgorde, setVolgorde] = useState<number | undefined>();
   const [productId, setProductId] = useState<number | null>(null);
 
   const { data: leveranciers } = useSWR<Leverancier[]>("/api/leveranciers", fetcher);
@@ -66,6 +68,7 @@ export default function Productbeheer() {
                 besteleenheid,
                 prijs,
                 actief,
+                volgorde,
               }),
             });
 
@@ -78,6 +81,7 @@ export default function Productbeheer() {
               setPrijs(undefined);
               setActief(true);
               setNieuweLeverancier("");
+              setVolgorde(undefined);
               setProductId(null);
               if (leverancierId) {
                 mutate(`/api/producten?leverancier=${leverancierId}`);
@@ -119,6 +123,7 @@ export default function Productbeheer() {
           <input type="number" placeholder="Min. voorraad" className="border px-2 py-1 rounded" value={minimumVoorraad ?? ""} onChange={(e) => setMinimumVoorraad(e.target.value ? Number(e.target.value) : undefined)} />
           <input type="number" placeholder="Besteleenheid" className="border px-2 py-1 rounded" value={besteleenheid} onChange={(e) => setBesteleenheid(Number(e.target.value))} />
           <input type="number" placeholder="Prijs (€)" className="border px-2 py-1 rounded" step="0.01" value={prijs ?? ""} onChange={(e) => setPrijs(e.target.value ? Number(e.target.value) : undefined)} />
+          <input type="number" placeholder="Volgorde" className="border px-2 py-1 rounded" value={volgorde ?? ""} onChange={(e) => setVolgorde(e.target.value ? Number(e.target.value) : undefined)} />
 
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={actief} onChange={(e) => setActief(e.target.checked)} /> Actief
@@ -150,6 +155,7 @@ export default function Productbeheer() {
               <th className="text-left p-2">Min</th>
               <th className="text-left p-2">Eenh.</th>
               <th className="text-left p-2">Prijs</th>
+              <th className="text-left p-2">Volgorde</th>
               <th className="text-left p-2">Actief</th>
               <th className="text-left p-2">Actie</th>
             </tr>
@@ -162,6 +168,7 @@ export default function Productbeheer() {
                 <td className="p-2">{p.minimum_voorraad}</td>
                 <td className="p-2">{p.besteleenheid}</td>
                 <td className="p-2">{typeof p.huidige_prijs === "number" ? `€ ${p.huidige_prijs.toFixed(2)}` : "–"}</td>
+                <td className="p-2">{p.volgorde ?? "–"}</td>
                 <td className="p-2">{p.actief ? "✅" : "❌"}</td>
                 <td className="p-2">
                   <button
@@ -172,6 +179,7 @@ export default function Productbeheer() {
                       setMinimumVoorraad(p.minimum_voorraad);
                       setBesteleenheid(p.besteleenheid ?? 1);
                       setPrijs(p.huidige_prijs);
+                      setVolgorde(p.volgorde);
                       setActief(p.actief);
                       setNieuweLeverancier("");
                     }}
