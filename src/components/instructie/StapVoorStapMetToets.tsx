@@ -62,7 +62,7 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
       body: JSON.stringify({ email: gebruiker.email, instructie_id }),
     });
     const parts = html.split("[end]");
-    const stepSegments = parts.slice(0, -1).map((s) => s.trim()).filter(Boolean);
+    const stepSegments = parts.slice(0, -1).map((s) => (typeof s === "string" ? s.trim() : "")).filter(Boolean);
     const vraagDeel = parts.slice(-1)[0] || "";
     const vragenHTML = vraagDeel.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
     const questionPattern = /Vraag[:.]\s*(.*?)\s*A\.[\s\S]*?B\.(.*?)C\.(.*?)Antwoord:\s*([ABC])/gi;
