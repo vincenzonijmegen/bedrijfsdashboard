@@ -34,6 +34,43 @@ export default function Productbeheer() {
     <main className="max-w-5xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">🛒 Productbeheer</h1>
 
+      <details className="border p-4 rounded bg-gray-50">
+        <summary className="cursor-pointer font-semibold mb-2">➕ Nieuw product toevoegen</summary>
+        <form className="grid grid-cols-2 gap-4 mt-4 text-sm" onSubmit={(e) => e.preventDefault()}>
+          <div className="col-span-2">
+            <label className="block">Kies bestaande leverancier:</label>
+            <select
+              className="w-full border rounded px-2 py-1"
+              value={leverancierId ?? ""}
+              onChange={(e) => setLeverancierId(Number(e.target.value))}
+            >
+              <option value="">-- Kies --</option>
+              {leveranciers.map((l) => (
+                <option key={l.id} value={l.id}>{l.naam}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="col-span-2">
+            <label className="block">of nieuwe leverancier:</label>
+            <input type="text" placeholder="Nieuwe leverancier" className="w-full border rounded px-2 py-1" />
+          </div>
+
+          <input type="text" placeholder="Productnaam" className="border px-2 py-1 rounded" />
+          <input type="text" placeholder="Bestelnummer" className="border px-2 py-1 rounded" />
+          <input type="number" placeholder="Min. voorraad" className="border px-2 py-1 rounded" />
+          <input type="number" placeholder="Besteleenheid" className="border px-2 py-1 rounded" />
+          <input type="number" placeholder="Prijs (€)" className="border px-2 py-1 rounded" step="0.01" />
+          <label className="flex items-center gap-2">
+            <input type="checkbox" defaultChecked /> Actief
+          </label>
+
+          <div className="col-span-2">
+            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Opslaan</button>
+          </div>
+        </form>
+      </details>
+
       <select
         className="border rounded px-2 py-1"
         value={leverancierId ?? ""}
