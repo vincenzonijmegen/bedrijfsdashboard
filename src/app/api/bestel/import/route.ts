@@ -6,10 +6,13 @@ import * as xlsx from "xlsx";
 
 export async function POST(req: Request) {
   const formData = await req.formData();
-  const file = formData.get("file") as File;
-  if (!file) return NextResponse.json({ error: "Geen bestand ontvangen" }, { status: 400 });
+  const file = formData.get("file");
+  if (!file || typeof file === "string") {
+    return NextResponse.json({ error: "Geen geldig bestand ontvangen" }, { status: 400 });
+  }
 
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const arrayBuffer = await (file as Blob).arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
   const wb = xlsx.read(buffer, { type: "buffer" });
 
   const leveranciersSheet = wb.Sheets["Leveranciers"];
