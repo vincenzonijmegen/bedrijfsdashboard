@@ -7,6 +7,7 @@ export async function POST(req: Request) {
   try {
     const data = await req.json();
     const {
+      id, // toegevoegd voor bewerken
       leverancier_id,
       nieuwe_leverancier,
       naam,
@@ -34,19 +35,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "leverancier en naam verplicht" }, { status: 400 });
     }
 
-    const check = await db.query(
-      `SELECT id, huidige_prijs FROM producten WHERE leverancier_id = $1 AND LOWER(naam) = LOWER($2)`,
-      [lid, naam]
-    );
+    let pid = id;
+    let vorigePrijs = null;
 
-    let pid;
-    if (check.rows.length > 0) {
-      pid = check.rows[0].id;
+    if (id) {
+      const check = await db.query(
+        `SELECT huidige_prijs FROM producten WHERE id = $1`,
+        [id]
+      );
+      vorigePrijs = check.rows[0]?.huidige_prijs ?? null;
+
       await db.query(
         `UPDATE producten
-         SET bestelnummer = $1, minimum_voorraad = $2, besteleenheid = $3, huidige_prijs = $4, actief = $5
-         WHERE id = $6`,
-        [bestelnummer ?? null, minimum_voorraad ?? null, besteleenheid ?? 1, prijs ?? null, actief ?? true, pid]
+         SET leverancier_id = $1, naam = $2, bestelnummer = $3, minimum_voorraad = $4,
+             besteleenheid = $5, huidige_prijs = $6, actief = $7
+         WHERE id = $8`,
+        [lid, naam, bestelnummer ?? null, minimum_voorraad ?? null, besteleenheid ?? 1, prijs ?? null, actief ?? true, id]
       );
     } else {
       const insert = await db.query(
@@ -59,7 +63,7 @@ export async function POST(req: Request) {
       pid = insert.rows[0].id;
     }
 
-    if (prijs && check.rows[0]?.huidige_prijs !== prijs) {
+    if (prijs != null && prijs !== vorigePrijs) {
       await db.query(
         `INSERT INTO productprijzen (product_id, prijs) VALUES ($1, $2)`,
         [pid, prijs]
@@ -68,7 +72,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ status: "ok", id: pid });
   } catch (err) {
-    console.error("Fout bij toevoegen product:", err);
+    console.error("Fout bij opslaan product:", err);
     return NextResponse.json({ error: "Serverfout" }, { status: 500 });
   }
 }
