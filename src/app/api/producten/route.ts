@@ -16,6 +16,7 @@ export async function POST(req: Request) {
       besteleenheid,
       prijs,
       actief,
+      volgorde,
     } = data;
 
     let lid = leverancier_id;
@@ -48,17 +49,17 @@ export async function POST(req: Request) {
       await db.query(
         `UPDATE producten
          SET leverancier_id = $1, naam = $2, bestelnummer = $3, minimum_voorraad = $4,
-             besteleenheid = $5, huidige_prijs = $6, actief = $7
-         WHERE id = $8`,
-        [lid, naam, bestelnummer ?? null, minimum_voorraad ?? null, besteleenheid ?? 1, prijs ?? null, actief ?? true, id]
+             besteleenheid = $5, huidige_prijs = $6, actief = $7, volgorde = $8
+         WHERE id = $9`,
+        [lid, naam, bestelnummer ?? null, minimum_voorraad ?? null, besteleenheid ?? 1, prijs ?? null, actief ?? true, volgorde ?? null, id]
       );
     } else {
       const insert = await db.query(
         `INSERT INTO producten
-         (leverancier_id, naam, bestelnummer, minimum_voorraad, besteleenheid, actief, huidige_prijs)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         (leverancier_id, naam, bestelnummer, minimum_voorraad, besteleenheid, actief, huidige_prijs, volgorde)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
          RETURNING id`,
-        [lid, naam, bestelnummer ?? null, minimum_voorraad ?? null, besteleenheid ?? 1, actief ?? true, prijs ?? null]
+        [lid, naam, bestelnummer ?? null, minimum_voorraad ?? null, besteleenheid ?? 1, actief ?? true, prijs ?? null, volgorde ?? null]
       );
       pid = insert.rows[0].id;
     }
@@ -87,10 +88,10 @@ export async function GET(req: Request) {
 
   try {
     const result = await db.query(
-      `SELECT id, naam, bestelnummer, minimum_voorraad, besteleenheid, huidige_prijs, actief
+      `SELECT id, naam, bestelnummer, minimum_voorraad, besteleenheid, huidige_prijs, actief, volgorde
        FROM producten
        WHERE leverancier_id = $1
-       ORDER BY naam`,
+       ORDER BY volgorde NULLS LAST, naam`,
       [leverancierId]
     );
 
