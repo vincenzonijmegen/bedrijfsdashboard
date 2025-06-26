@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       await db.query(
         `INSERT INTO productprijzen (product_id, prijs)
          VALUES ($1, $2)`,
-        [result.rows[0].id, priceAsFloat(price)]
+        [result.rows[0].id, priceAsFloat(p.prijs)]
       );
     }
   }
