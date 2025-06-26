@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR, { mutate } from "swr";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 interface Leverancier {
   id: number;
@@ -27,6 +27,7 @@ export default function Productbeheer() {
   const [besteleenheid, setBesteleenheid] = useState<number>(1);
   const [prijs, setPrijs] = useState<number | undefined>();
   const [actief, setActief] = useState(true);
+  const [productId, setProductId] = useState<number | null>(null);
 
   const { data: leveranciers } = useSWR<Leverancier[]>("/api/leveranciers", fetcher);
   const { data: producten } = useSWR<Product[]>(
@@ -46,7 +47,7 @@ export default function Productbeheer() {
     <main className="max-w-5xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">🛒 Productbeheer</h1>
 
-      <details className="border p-4 rounded bg-gray-50">
+      <details className="border p-4 rounded bg-gray-50" open={!!productId}>
         <summary className="cursor-pointer font-semibold mb-2">➕ Nieuw product toevoegen</summary>
         <form
           className="grid grid-cols-2 gap-4 mt-4 text-sm"
@@ -56,6 +57,7 @@ export default function Productbeheer() {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
+                id: productId,
                 leverancier_id: leverancierId,
                 nieuwe_leverancier: nieuweLeverancier || undefined,
                 naam,
@@ -76,6 +78,7 @@ export default function Productbeheer() {
               setPrijs(undefined);
               setActief(true);
               setNieuweLeverancier("");
+              setProductId(null);
               if (leverancierId) {
                 mutate(`/api/producten?leverancier=${leverancierId}`);
               }
@@ -148,6 +151,7 @@ export default function Productbeheer() {
               <th className="text-left p-2">Eenh.</th>
               <th className="text-left p-2">Prijs</th>
               <th className="text-left p-2">Actief</th>
+              <th className="text-left p-2">Actie</th>
             </tr>
           </thead>
           <tbody>
@@ -157,12 +161,23 @@ export default function Productbeheer() {
                 <td className="p-2">{p.bestelnummer}</td>
                 <td className="p-2">{p.minimum_voorraad}</td>
                 <td className="p-2">{p.besteleenheid}</td>
-                <td className="p-2">
-                  {typeof p.huidige_prijs === "number"
-                    ? `€ ${p.huidige_prijs.toFixed(2)}`
-                    : "–"}
-                </td>
+                <td className="p-2">{typeof p.huidige_prijs === "number" ? `€ ${p.huidige_prijs.toFixed(2)}` : "–"}</td>
                 <td className="p-2">{p.actief ? "✅" : "❌"}</td>
+                <td className="p-2">
+                  <button
+                    onClick={() => {
+                      setProductId(p.id);
+                      setNaam(p.naam);
+                      setBestelnummer(p.bestelnummer ?? "");
+                      setMinimumVoorraad(p.minimum_voorraad);
+                      setBesteleenheid(p.besteleenheid ?? 1);
+                      setPrijs(p.huidige_prijs);
+                      setActief(p.actief);
+                      setNieuweLeverancier("");
+                    }}
+                    className="text-blue-600 hover:underline mr-2"
+                  >✏️</button>
+                </td>
               </tr>
             ))}
           </tbody>
