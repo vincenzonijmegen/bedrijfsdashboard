@@ -1,54 +1,16 @@
-//src/app/admin/page.tsx
-
-"use client";
-
-import Link from "next/link";
-
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <section className="mb-8">
-    <h2 className="text-xl font-semibold mb-4">{title}</h2>
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-      {children}
-    </div>
-  </section>
-);
-
-const LinkCard = ({ href, label, color }: { href: string; label: string; color: string }) => (
-  <Link
-    href={href}
-    className={`rounded-lg px-4 py-3 text-white text-center font-medium shadow hover:brightness-110 bg-${color}-600`}
-  >
-    {label}
-  </Link>
-);
-
-export default function AdminDashboard() {
+export default function AdminTest() {
   return (
-    <main className="max-w-6xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8">🗂️ Management Portaal</h1>
+    <div className="p-8 space-y-4">
+      <h1 className="text-3xl font-bold text-blue-600">Test: Tailwind werkt</h1>
 
-      <Section title="👥 Personeel">
-        <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" />
-        <LinkCard href="/admin/instructies" label="Instructies beheren" color="pink" />
-        <LinkCard href="/admin/resultaten" label="toetsresultaten" color="purple" />
-        <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" />
-        <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="red" />
-        <LinkCard href="/admin/skills" label="Skills Overzicht" color="green" />
-      </Section>
-
-      <Section title="📅 Planning">
-        <LinkCard href="/open-shifts" label="Open Shifts PDF" color="green" />
-        <LinkCard href="/shift-acties" label="Shiftacties & Statistieken" color="pink" />
-      </Section>
-
-      <Section title="📦 Voorraadbeheer">
-        <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="green" />
-        <LinkCard href="/admin/voorraad/bestellen" label="Bestel-app" color="pink" />
-      </Section>
-
-      <Section title="📊 Rapportages (binnenkort)">
-        <LinkCard href="/admin/rapportages" label="Omzet & voorraad" color="green" />
-      </Section>
-    </main>
+      <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <p className="text-gray-700 mb-4">
+          Dit is een testcomponent om te controleren of Tailwind opmaak zichtbaar is in je project.
+        </p>
+        <button className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+          Klik mij
+        </button>
+      </div>
+    </div>
   );
 }
