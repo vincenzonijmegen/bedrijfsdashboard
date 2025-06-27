@@ -1,40 +1,41 @@
-// pages/open-shifts.jsx
+'use client';
 
-import React, { useState } from "react";
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import dayjs from "dayjs";
-import isoWeek from "dayjs/plugin/isoWeek";
-import Link from "next/link";
+import React, { useState } from 'react';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import dayjs from 'dayjs';
+import isoWeek from 'dayjs/plugin/isoWeek';
+import Link from 'next/link';
 
 dayjs.extend(isoWeek);
 
-export default function OpenShiftsApp() {
-  const [data, setData] = useState([]);
+export default function OpenShiftsPage() {
+  const [data, setData] = useState<any[]>([]);
 
-  const handleExcelUpload = (e) => {
-    const file = e.target.files[0];
+  const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     const reader = new FileReader();
     reader.onload = (evt) => {
-      const workbook = XLSX.read(evt.target.result, { type: "binary" });
+      const workbook = XLSX.read(evt.target?.result, { type: 'binary' });
       const sheetName = workbook.SheetNames[0];
       const sheet = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
 
-      const filtered = sheet.map((row) => {
-        const datum = dayjs(row["Datum"]);
+      const filtered = sheet.map((row: any) => {
+        const datum = dayjs(row['Datum']);
         return {
-          Datum: datum.format("DD-MM-YYYY"),
-          Dag: row["Dag"],
-          Starttijd: row["Starttijd"],
-          Eindtijd: row["Eindtijd"],
-          Dienst: row["Dienst"],
+          Datum: datum.format('DD-MM-YYYY'),
+          Dag: row['Dag'],
+          Starttijd: row['Starttijd'],
+          Eindtijd: row['Eindtijd'],
+          Dienst: row['Dienst'],
           Week: datum.isoWeek(),
         };
       });
 
       filtered.sort((a, b) =>
-        dayjs(a.Datum, "DD-MM-YYYY").diff(dayjs(b.Datum, "DD-MM-YYYY"))
+        dayjs(a.Datum, 'DD-MM-YYYY').diff(dayjs(b.Datum, 'DD-MM-YYYY'))
       );
       setData(filtered);
     };
@@ -44,20 +45,20 @@ export default function OpenShiftsApp() {
   const generatePDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(16);
-    doc.text("Open Shifts", 14, 18);
+    doc.text('Open Shifts', 14, 18);
     let currentY = 28;
 
-    const grouped = data.reduce((acc, row) => {
+    const grouped = data.reduce((acc: any, row) => {
       acc[row.Week] = acc[row.Week] || [];
       acc[row.Week].push(row);
       return acc;
     }, {});
 
     Object.entries(grouped)
-      .sort(([a], [b]) => a - b)
-      .forEach(([week, rows]) => {
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .forEach(([week, rows]: [string, any[]]) => {
         rows.sort((a, b) =>
-          dayjs(a.Datum, "DD-MM-YYYY").diff(dayjs(b.Datum, "DD-MM-YYYY"))
+          dayjs(a.Datum, 'DD-MM-YYYY').diff(dayjs(b.Datum, 'DD-MM-YYYY'))
         );
 
         if (currentY + rows.length * 6 + 20 > doc.internal.pageSize.height) {
@@ -72,7 +73,7 @@ export default function OpenShiftsApp() {
 
         autoTable(doc, {
           startY: currentY,
-          head: [["Datum", "Dag", "Starttijd", "Eindtijd", "Dienst"]],
+          head: [['Datum', 'Dag', 'Starttijd', 'Eindtijd', 'Dienst']],
           body: rows.map((r) => [
             r.Datum,
             r.Dag,
@@ -80,7 +81,7 @@ export default function OpenShiftsApp() {
             r.Eindtijd,
             r.Dienst,
           ]),
-          theme: "grid",
+          theme: 'grid',
           margin: { left: 14, right: 14 },
           styles: { fontSize: 9, cellPadding: 1.5 },
           headStyles: {
@@ -96,10 +97,10 @@ export default function OpenShiftsApp() {
           },
         });
 
-        currentY = doc.lastAutoTable.finalY + 3;
+        currentY = (doc as any).lastAutoTable.finalY + 3;
       });
 
-    doc.save("OpenShifts.pdf");
+    doc.save('OpenShifts.pdf');
   };
 
   return (
@@ -111,9 +112,8 @@ export default function OpenShiftsApp() {
       <input type="file" accept=".xlsx,.xls" onChange={handleExcelUpload} />
       {data.length > 0 && (
         <button
-          style={{ marginTop: "1rem", padding: "0.5rem 1rem" }}
           onClick={generatePDF}
-          className="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700"
+          className="bg-blue-600 text-white rounded px-4 py-2 mt-4 hover:bg-blue-700"
         >
           Genereer PDF
         </button>

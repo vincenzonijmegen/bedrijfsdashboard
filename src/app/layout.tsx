@@ -1,17 +1,21 @@
-import "../styles/globals.css";
+// app/layout.tsx (or layout.jsx/tsx in your app/ folder)
+import "./globals.css";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "IJssalon Vincenzo",
   description: "Managementportaal en werkinstructies",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
     <html lang="nl">
-      <body className="bg-white text-gray-900 min-h-screen antialiased">
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

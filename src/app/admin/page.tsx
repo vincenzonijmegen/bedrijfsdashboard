@@ -1,9 +1,66 @@
+'use client';
 
+import Link from "next/link";
 
-export default function Page() {
-  return (
-    <div className="p-6 bg-blue-100 rounded-lg">
-      <h1 className="text-3xl font-bold text-blue-700">Tailwind werkt</h1>
+const Section = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) => (
+  <section className="mb-8">
+    <h2 className="text-xl font-semibold mb-4">{title}</h2>
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      {children}
     </div>
+  </section>
+);
+
+const LinkCard = ({
+  href,
+  label,
+  color,
+}: {
+  href: string;
+  label: string;
+  color: string;
+}) => (
+  <Link
+    href={href}
+    className={`rounded-lg px-4 py-3 text-white text-center font-medium shadow hover:brightness-110 bg-${color}-600`}
+  >
+    {label}
+  </Link>
+);
+
+export default function Dashboard() {
+  return (
+    <main className="max-w-6xl mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-8">🗂️ Management Portaal</h1>
+
+      <Section title="👥 Personeel">
+        <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" />
+        <LinkCard href="/admin/instructies" label="Instructies beheren" color="pink" />
+        <LinkCard href="/admin/resultaten" label="toetsresultaten" color="purple" />
+        <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" />
+        <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="red" />
+        <LinkCard href="/admin/skills" label="Skills Overzicht" color="green" />
+      </Section>
+
+      <Section title="📅 Planning">
+        <LinkCard href="/openshifts" label="Open Shifts PDF" color="green" />
+        <LinkCard href="/shift-acties" label="Shiftacties & Statistieken" color="pink" />
+      </Section>
+
+      <Section title="📦 Voorraadbeheer">
+        <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="green" />
+        <LinkCard href="/admin/voorraad/bestellen" label="Bestel-app" color="pink" />
+      </Section>
+
+      <Section title="📊 Rapportages (binnenkort)">
+        <LinkCard href="/admin/rapportages" label="Omzet & voorraad" color="green" />
+      </Section>
+    </main>
   );
 }
