@@ -1,6 +1,7 @@
 'use client';
 
-import Link from "next/link";
+import Link from 'next/link';
+import { clsx } from 'clsx';
 
 const Section = ({
   title,
@@ -9,15 +10,13 @@ const Section = ({
   title: string;
   children: React.ReactNode;
 }) => (
-  <section className="mb-8">
+  <section className="mb-10">
     <h2 className="text-xl font-semibold mb-4">{title}</h2>
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
       {children}
     </div>
   </section>
 );
-
-import { clsx } from "clsx";
 
 const LinkCard = ({
   href,
@@ -26,22 +25,25 @@ const LinkCard = ({
 }: {
   href: string;
   label: string;
-  color: 'green' | 'pink' | 'blue' | 'purple' | 'red';
+  color: 'blue' | 'green' | 'slate' | 'cyan' | 'fuchsia' | 'yellow' | 'red' | 'pink';
 }) => {
-  const colorClass = {
-    green: 'bg-green-600 hover:bg-green-700',
-    pink: 'bg-pink-600 hover:bg-pink-700',
-    blue: 'bg-blue-600 hover:bg-blue-700',
-    purple: 'bg-purple-600 hover:bg-purple-700',
+  const colorClasses: Record<string, string> = {
+    blue: 'bg-blue-500 hover:bg-blue-600',
+    green: 'bg-green-500 hover:bg-green-600',
+    slate: 'bg-slate-700 hover:bg-slate-800',
+    cyan: 'bg-cyan-600 hover:bg-cyan-700',
+    fuchsia: 'bg-fuchsia-600 hover:bg-fuchsia-700',
+    yellow: 'bg-yellow-400 hover:bg-yellow-500',
     red: 'bg-red-600 hover:bg-red-700',
-  }[color];
+    pink: 'bg-pink-500 hover:bg-pink-600',
+  };
 
   return (
     <Link
       href={href}
       className={clsx(
-        'rounded-lg px-4 py-3 text-white text-center font-medium shadow',
-        colorClass
+        'rounded-lg px-6 py-4 text-white text-center font-semibold text-sm shadow transition duration-200',
+        colorClasses[color]
       )}
     >
       {label}
@@ -49,23 +51,24 @@ const LinkCard = ({
   );
 };
 
-
-export default function Dashboard() {
+export default function AdminDashboard() {
   return (
-    <main className="max-w-6xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8">🗂️ Management Portaal</h1>
+    <main className="max-w-5xl mx-auto p-6 space-y-12">
+      <h1 className="text-3xl font-bold mb-4 flex items-center gap-2">
+        🗂️ Management Portaal
+      </h1>
 
       <Section title="👥 Personeel">
+        <LinkCard href="/admin/instructies" label="Instructies beheren" color="blue" />
         <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" />
-        <LinkCard href="/admin/instructies" label="Instructies beheren" color="pink" />
-        <LinkCard href="/admin/resultaten" label="toetsresultaten" color="purple" />
-        <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" />
+        <LinkCard href="/instructies" label="Instructies voor medewerkers" color="slate" />
+        <LinkCard href="/admin/resultaten" label="Toetsresultaten" color="fuchsia" />
         <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="red" />
-        <LinkCard href="/admin/skills" label="Skills Overzicht" color="green" />
+        <LinkCard href="/admin/skills" label="Skills Overzicht" color="yellow" />
       </Section>
 
       <Section title="📅 Planning">
-        <LinkCard href="/openshifts" label="Open Shifts PDF" color="green" />
+        <LinkCard href="/openshifts" label="Open Shifts PDF" color="cyan" />
         <LinkCard href="/shift-acties" label="Shiftacties & Statistieken" color="pink" />
       </Section>
 
@@ -75,7 +78,7 @@ export default function Dashboard() {
       </Section>
 
       <Section title="📊 Rapportages (binnenkort)">
-        <LinkCard href="/admin/rapportages" label="Omzet & voorraad" color="green" />
+        <LinkCard href="/admin/rapportages" label="Omzet & voorraad" color="blue" />
       </Section>
     </main>
   );
