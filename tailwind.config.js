@@ -1,11 +1,8 @@
-/** @type {import('tailwindcss').Config} */
+// tailwind.config.js
 module.exports = {
-content: [
-  "./src/**/*.{js,ts,jsx,tsx}",
-  "./node_modules/@tiptap/**/*.{js,ts,jsx,tsx}" // ✅ toevoegen
-]
+  content: ["./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {},
   },
-  plugins: [require("@tailwindcss/typography")], // optioneel maar aanbevolen voor `.prose`
+  plugins: [],
 };
