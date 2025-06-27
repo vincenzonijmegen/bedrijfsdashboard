@@ -173,6 +173,7 @@ export default function Productbeheer() {
                 <td className="p-2">
                   <button
                     onClick={() => {
+                      window.scrollTo({ top: 0, behavior: "smooth" });
                       setProductId(p.id);
                       setNaam(p.naam);
                       setBestelnummer(p.bestelnummer ?? "");
