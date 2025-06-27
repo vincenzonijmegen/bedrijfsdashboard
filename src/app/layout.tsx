@@ -1,5 +1,5 @@
-// src/app/layout.tsx
-import "@/styles/globals.css"; // niet "./globals.css" of "styles.css"
+// ✅ src/app/layout.tsx
+import "@/styles/globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {

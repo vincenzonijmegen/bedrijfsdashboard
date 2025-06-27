@@ -1,8 +1,8 @@
+// ✅ src/styles/globals.css
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Custom global styles */
 @layer base {
   body {
     @apply bg-gray-50 text-gray-900 antialiased;
@@ -16,4 +16,3 @@
     @apply focus:outline-none;
   }
 }
-
