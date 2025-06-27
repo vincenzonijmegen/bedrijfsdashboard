@@ -10,19 +10,29 @@ import Link from 'next/link';
 
 dayjs.extend(isoWeek);
 
+type Shift = {
+  Datum: string;
+  Dag: string;
+  Starttijd: string;
+  Eindtijd: string;
+  Dienst: string;
+  Week: number;
+};
+
 export default function OpenShiftsPage() {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<Shift[]>([]);
 
   const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = (evt) => {
       const workbook = XLSX.read(evt.target?.result, { type: 'binary' });
       const sheetName = workbook.SheetNames[0];
-      const sheet = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+      const rawRows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]) as Record<string, string>[];
 
-      const filtered = sheet.map((row: any) => {
+      const filtered: Shift[] = rawRows.map((row) => {
         const datum = dayjs(row['Datum']);
         return {
           Datum: datum.format('DD-MM-YYYY'),
@@ -37,8 +47,10 @@ export default function OpenShiftsPage() {
       filtered.sort((a, b) =>
         dayjs(a.Datum, 'DD-MM-YYYY').diff(dayjs(b.Datum, 'DD-MM-YYYY'))
       );
+
       setData(filtered);
     };
+
     reader.readAsBinaryString(file);
   };
 
@@ -48,15 +60,15 @@ export default function OpenShiftsPage() {
     doc.text('Open Shifts', 14, 18);
     let currentY = 28;
 
-    const grouped = data.reduce((acc: any, row) => {
+    const grouped: Record<number, Shift[]> = data.reduce((acc, row) => {
       acc[row.Week] = acc[row.Week] || [];
       acc[row.Week].push(row);
       return acc;
-    }, {});
+    }, {} as Record<number, Shift[]>);
 
     Object.entries(grouped)
       .sort(([a], [b]) => Number(a) - Number(b))
-      .forEach(([week, rows]: [string, any[]]) => {
+      .forEach(([week, rows]) => {
         rows.sort((a, b) =>
           dayjs(a.Datum, 'DD-MM-YYYY').diff(dayjs(b.Datum, 'DD-MM-YYYY'))
         );
