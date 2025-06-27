@@ -17,6 +17,8 @@ const Section = ({
   </section>
 );
 
+import { clsx } from "clsx";
+
 const LinkCard = ({
   href,
   label,
@@ -24,15 +26,29 @@ const LinkCard = ({
 }: {
   href: string;
   label: string;
-  color: string;
-}) => (
-  <Link
-    href={href}
-    className={`rounded-lg px-4 py-3 text-white text-center font-medium shadow hover:brightness-110 bg-${color}-600`}
-  >
-    {label}
-  </Link>
-);
+  color: 'green' | 'pink' | 'blue' | 'purple' | 'red';
+}) => {
+  const colorClass = {
+    green: 'bg-green-600 hover:bg-green-700',
+    pink: 'bg-pink-600 hover:bg-pink-700',
+    blue: 'bg-blue-600 hover:bg-blue-700',
+    purple: 'bg-purple-600 hover:bg-purple-700',
+    red: 'bg-red-600 hover:bg-red-700',
+  }[color];
+
+  return (
+    <Link
+      href={href}
+      className={clsx(
+        'rounded-lg px-4 py-3 text-white text-center font-medium shadow',
+        colorClass
+      )}
+    >
+      {label}
+    </Link>
+  );
+};
+
 
 export default function Dashboard() {
   return (
