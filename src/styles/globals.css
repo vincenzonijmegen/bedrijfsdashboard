@@ -4,13 +4,11 @@
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply bg-white text-gray-900 antialiased;
   }
-
   a {
     @apply underline-offset-2;
   }
-
   button {
     @apply focus:outline-none;
   }

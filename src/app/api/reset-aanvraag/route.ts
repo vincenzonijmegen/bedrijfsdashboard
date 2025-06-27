@@ -1,15 +1,17 @@
+export const dynamic = "force-dynamic";
+
 import { db } from "@/lib/db";
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
   const { email } = await req.json();
   if (!email) {
     return NextResponse.json({ success: false }, { status: 400 });
   }
+
+  const resend = new Resend(process.env.RESEND_API_KEY ?? "");
 
   try {
     const result = await db.query(`SELECT 1 FROM medewerkers WHERE email = $1`, [email]);
