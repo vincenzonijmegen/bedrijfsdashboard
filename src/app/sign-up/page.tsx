@@ -1,3 +1,4 @@
+// src/app/sign-up/page.tsx
 "use client";
 
 export const dynamic = "force-dynamic";
