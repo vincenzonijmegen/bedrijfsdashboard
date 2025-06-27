@@ -1,5 +1,10 @@
 'use client';
 
+interface AutoTableDoc extends jsPDF {
+  lastAutoTable: { finalY: number };
+}
+
+
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -109,7 +114,7 @@ export default function OpenShiftsPage() {
           },
         });
 
-        currentY = (doc as any).lastAutoTable.finalY + 3;
+       currentY = (doc as AutoTableDoc).lastAutoTable.finalY + 3;
       });
 
     doc.save('OpenShifts.pdf');
