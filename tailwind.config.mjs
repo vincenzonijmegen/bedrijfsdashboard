@@ -1,9 +1,6 @@
-// ✅ tailwind.config.mjs
-export default {
-  content: ["./src/**/*.{js,ts,jsx,tsx}"],
-  theme: {
-    extend: {},
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
   },
-  plugins: [],
 };
-
