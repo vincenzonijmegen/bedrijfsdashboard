@@ -29,25 +29,25 @@ export default function AdminDashboard() {
 
       <Section title="👥 Personeel">
         <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" />
-        <LinkCard href="/admin/instructies" label="Instructies beheren" color="blue" />
+        <LinkCard href="/admin/instructies" label="Instructies beheren" color="pink" />
         <LinkCard href="/admin/toetsresultaten" label="Toetsresultaten" color="purple" />
-        <LinkCard href="/instructies" label="Instructies voor medewerkers" color="gray" />
+        <LinkCard href="/instructies" label="Instructies voor medewerkers" color="brown" />
         <LinkCard href="/admin/sollicitaties" label="Sollicitatiemails" color="red" />
         <LinkCard href="/admin/skills" label="Skills Overzicht" color="yellow" />
       </Section>
 
       <Section title="📅 Planning">
-        <LinkCard href="/admin/planning/open-shifts" label="Open Shifts PDF" color="cyan" />
+        <LinkCard href="/admin/planning/open-shifts" label="Open Shifts PDF" color="green" />
         <LinkCard href="/admin/planning/shiftacties" label="Shiftacties & Statistieken" color="pink" />
       </Section>
 
       <Section title="📦 Voorraadbeheer">
-        <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="orange" />
-        <LinkCard href="/admin/voorraad/bestellen" label="Bestel-app" color="amber" />
+        <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="green" />
+        <LinkCard href="/admin/voorraad/bestellen" label="Bestel-app" color="pink" />
       </Section>
 
       <Section title="📊 Rapportages (binnenkort)">
-        <LinkCard href="/admin/rapportages" label="Omzet & voorraad" color="zinc" />
+        <LinkCard href="/admin/rapportages" label="Omzet & voorraad" color="green" />
       </Section>
     </main>
   );
