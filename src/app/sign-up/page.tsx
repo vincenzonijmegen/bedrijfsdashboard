@@ -1,9 +1,12 @@
 // src/app/sign-up/page.tsx
 "use client";
 
-export const dynamic = "force-dynamic";
+import dynamic from "next/dynamic";
 
-import { SignUp } from "@clerk/nextjs";
+const SignUp = dynamic(() =>
+  import("@clerk/nextjs").then(mod => mod.SignUp),
+  { ssr: false }
+);
 
 export default function SignUpPage() {
   return (
