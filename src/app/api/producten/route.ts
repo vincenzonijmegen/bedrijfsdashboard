@@ -3,6 +3,23 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
+export async function DELETE(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+
+  if (!id) {
+    return NextResponse.json({ error: "id ontbreekt" }, { status: 400 });
+  }
+
+  try {
+    await db.query(`DELETE FROM producten WHERE id = $1`, [id]);
+    return NextResponse.json({ status: "verwijderd" });
+  } catch (err) {
+    console.error("Fout bij verwijderen product:", err);
+    return NextResponse.json({ error: "Serverfout" }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const data = await req.json();

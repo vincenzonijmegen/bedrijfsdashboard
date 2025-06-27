@@ -157,7 +157,8 @@ export default function Productbeheer() {
               <th className="text-left p-2">Prijs</th>
               <th className="text-left p-2">Volgorde</th>
               <th className="text-left p-2">Actief</th>
-              <th className="text-left p-2">Actie</th>
+              $1
+              <th className="text-left p-2">Verwijderen</th>
             </tr>
           </thead>
           <tbody>
@@ -169,23 +170,19 @@ export default function Productbeheer() {
                 <td className="p-2">{p.besteleenheid}</td>
                 <td className="p-2">{p.huidige_prijs != null ? `€ ${Number(p.huidige_prijs).toFixed(2)}` : "–"}</td>
                 <td className="p-2">{p.volgorde ?? "–"}</td>
-                <td className="p-2">{p.actief ? "✅" : "❌"}</td>
-                <td className="p-2">
-                  <button
-                    onClick={() => {
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                      setProductId(p.id);
-                      setNaam(p.naam);
-                      setBestelnummer(p.bestelnummer ?? "");
-                      setMinimumVoorraad(p.minimum_voorraad);
-                      setBesteleenheid(p.besteleenheid ?? 1);
-                      setPrijs(p.huidige_prijs);
-                      setVolgorde(p.volgorde);
-                      setActief(p.actief);
-                      setNieuweLeverancier("");
-                    }}
-                    className="text-blue-600 hover:underline mr-2"
-                  >✏️</button>
+                $1
+                <button
+                  onClick={async () => {
+                    if (!confirm(`Weet je zeker dat je ${p.naam} wilt verwijderen?`)) return;
+                    await fetch(`/api/producten?id=${p.id}`, {
+                      method: "DELETE",
+                    });
+                    if (leverancierId) {
+                      mutate(`/api/producten?leverancier=${leverancierId}`);
+                    }
+                  }}
+                  className="text-red-600 hover:underline"
+                >🗑️</button>
                 </td>
               </tr>
             ))}
