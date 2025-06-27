@@ -1,40 +1,54 @@
+//src/app/admin/page.tsx
+
 "use client";
+
 import Link from "next/link";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+
+const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <section className="mb-8">
+    <h2 className="text-xl font-semibold mb-4">{title}</h2>
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+      {children}
+    </div>
+  </section>
+);
+
+const LinkCard = ({ href, label, color }: { href: string; label: string; color: string }) => (
+  <Link
+    href={href}
+    className={`rounded-lg px-4 py-3 text-white text-center font-medium shadow hover:opacity-90 bg-${color}-600`}
+  >
+    {label}
+  </Link>
+);
 
 export default function AdminDashboard() {
-  const router = useRouter();
-
-  useEffect(() => {
-    const gebruiker = localStorage.getItem("gebruiker");
-    if (!gebruiker) router.push("/sign-in");
-  }, []);
-
   return (
-    <div className="p-6 space-y-6 max-w-xl mx-auto">
-      <h1 className="text-3xl font-bold">Beheerscherm</h1>
+    <main className="max-w-6xl mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-8">🗂️ Management Portaal</h1>
 
-      <div className="grid gap-4">
-        <Link href="/admin/instructies" className="block bg-blue-600 text-white p-4 rounded shadow">
-          Instructies beheren
-        </Link>
-        <Link href="/admin/medewerkers" className="block bg-green-600 text-white p-4 rounded shadow">
-          Medewerkers beheren
-        </Link>
-        <Link href="/admin/resultaten" className="block bg-purple-600 text-white p-4 rounded shadow">
-          Testresultaten inzien
-        </Link>
-        <Link href="/admin/skills" className="block bg-yellow-500 text-white p-4 rounded shadow">
-          Skills beheren
-        </Link>
-        <Link href="/instructies" className="block bg-gray-500 text-white p-4 rounded shadow">
-          Bekijk instructies als medewerker
-        </Link>
-        <Link href="/open-shifts" className="block bg-cyan-600 text-white p-4 rounded shadow">
-          Open Shifts PDF
-        </Link>
-      </div>
-    </div>
+      <Section title="👥 Personeel">
+        <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" />
+        <LinkCard href="/admin/instructies" label="Instructies beheren" color="blue" />
+        <LinkCard href="/admin/toetsresultaten" label="Toetsresultaten" color="purple" />
+        <LinkCard href="/instructies" label="Instructies voor medewerkers" color="gray" />
+        <LinkCard href="/admin/sollicitaties" label="Sollicitatiemails" color="red" />
+        <LinkCard href="/admin/skills" label="Skills Overzicht" color="yellow" />
+      </Section>
+
+      <Section title="📅 Planning">
+        <LinkCard href="/admin/planning/open-shifts" label="Open Shifts PDF" color="cyan" />
+        <LinkCard href="/admin/planning/shiftacties" label="Shiftacties & Statistieken" color="pink" />
+      </Section>
+
+      <Section title="📦 Voorraadbeheer">
+        <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="orange" />
+        <LinkCard href="/admin/voorraad/bestellen" label="Bestel-app" color="amber" />
+      </Section>
+
+      <Section title="📊 Rapportages (binnenkort)">
+        <LinkCard href="/admin/rapportages" label="Omzet & voorraad" color="zinc" />
+      </Section>
+    </main>
   );
 }
