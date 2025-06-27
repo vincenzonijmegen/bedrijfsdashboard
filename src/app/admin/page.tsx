@@ -16,7 +16,7 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
 const LinkCard = ({ href, label, color }: { href: string; label: string; color: string }) => (
   <Link
     href={href}
-    className={`rounded-lg px-4 py-3 text-white text-center font-medium shadow hover:opacity-90 bg-${color}-600`}
+    className={`rounded-lg px-4 py-3 text-white text-center font-medium shadow hover:brightness-110 bg-${color}-500`}
   >
     {label}
   </Link>
