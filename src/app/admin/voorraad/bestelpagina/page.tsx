@@ -94,8 +94,6 @@ Referentie: ${referentie}
 Opmerkingen: ${opmerking}`;
     return tekst;
   };
-  };
-
   if (!leveranciers) return <p>Laden...</p>;
 
   return (
