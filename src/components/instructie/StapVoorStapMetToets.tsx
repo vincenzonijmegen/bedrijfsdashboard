@@ -65,8 +65,8 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
     const stepSegments = parts.slice(0, -1).map((s) => (typeof s === "string" ? s.trim() : "")).filter(Boolean);
     const vraagDeel = parts.slice(-1)[0] || "";
     const vragenHTML = vraagDeel.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
-    const questionPattern = /Vraag[:.]\s*(.*?)\s*A\.[\s\S]*?B\.(.*?)C\.(.*?)Antwoord:\s*([ABC])/gi;
-    const vraagMatches = Array.from(vragenHTML.matchAll(questionPattern)).map((m) => ({
+    const questionPattern = /Vraag[:.]\s*([\s\S]*?)\s*A\.\s*([\s\S]*?)\s*B\.\s*([\s\S]*?)\s*C\.\s*([\s\S]*?)\s*Antwoord:\s*([ABC])/gi;
+   const vraagMatches = Array.from(vragenHTML.matchAll(questionPattern)).map((m) => ({
   vraag: m[1]?.trim() ?? "",
   opties: [
     m[2]?.trim() ?? "",
