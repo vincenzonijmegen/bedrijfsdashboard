@@ -8,6 +8,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-blue-600 text-white hover:bg-blue-700",
+        destructive: "bg-red-600 text-white hover:bg-red-700",
       },
       size: {
         default: "h-10 px-4",
@@ -33,7 +34,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button";
     return (
       <Comp
-        className={buttonVariants({ variant, size }) + " " + (props.className || "")}
+        className={buttonVariants({ variant, size }) + " " + (className || "")}
         ref={ref}
         {...props}
       />
