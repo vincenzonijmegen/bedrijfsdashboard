@@ -1,10 +1,15 @@
 // src/app/api/voorraad/artikelen/route.ts
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { Pool } from "pg";
+
+const pool = new Pool({
+  connectionString: process.env.POSTGRES_URL,
+  ssl: true,
+});
 
 export async function GET() {
   try {
-    const rows = await sql/*sql*/ `
+    const result = await pool.query(`
       SELECT
         p.id,
         p.naam,
@@ -16,12 +21,12 @@ export async function GET() {
       FROM producten p
       JOIN leveranciers l ON p.leverancier_id = l.id
       WHERE p.actief = true
-      ORDER BY l.naam, p.volgorde;
-    `;
+      ORDER BY l.naam, p.volgorde
+    `);
 
-    return NextResponse.json(rows);
+    return NextResponse.json(result.rows);
   } catch (err) {
-    console.error("Fout bij ophalen producten:", err);
+    console.error("Fout bij ophalen artikelen:", err);
     return new NextResponse("Databasefout", { status: 500 });
   }
 }
