@@ -45,7 +45,7 @@ export default function BestelPagina() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          leverancierId: leverancierId,
+          leverancier_id: leverancierId,
           data: invoer,
           referentie: new Date().toISOString().slice(0, 10),
         }),
