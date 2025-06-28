@@ -8,23 +8,22 @@ export async function POST(req: NextRequest) {
   if (!leverancier_id || !data || !referentie) {
     return NextResponse.json({ error: "Leverancier, data en referentie zijn verplicht." }, { status: 400 });
   }
-console.log("⏺️ Opslaan in bestellingen:", {
-  leverancier_id,
-  referentie,
-  opmerking,
-  data,
-});
 
-  await pool.query(
-    
-    `INSERT INTO bestellingen (leverancier_id, data, referentie, opmerkingen, besteld_op, kanaal)
-     VALUES ($1, $2, $3, $4, now(), 'mail')`,
-    [leverancier_id, data, referentie, opmerking]
-  );
+  console.log("⬇️ Bestelling ontvangen:", { leverancier_id, referentie, data });
 
-  return NextResponse.json({ success: true });
+  try {
+    await pool.query(
+      `INSERT INTO bestellingen (leverancier_id, data, referentie, opmerkingen, besteld_op, kanaal)
+       VALUES ($1, $2, $3, $4, now(), 'mail')`,
+      [leverancier_id, data, referentie, opmerking]
+    );
+    console.log("✅ Bestelling succesvol opgeslagen");
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("❌ Fout bij opslaan bestelling:", err);
+    return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
+  }
 }
-console.log("✅ Bestelling opgeslagen");
 
 export async function GET(req: NextRequest) {
   const leverancier = req.nextUrl.searchParams.get("leverancier");
