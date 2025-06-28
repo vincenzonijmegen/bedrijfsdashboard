@@ -129,66 +129,62 @@ export default function BestelPagina() {
 
       {/* Producttabel + historie */}
       {producten && (
-        <table className="w-full text-sm border mt-4">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="text-left p-2">Product</th>
-              <th className="text-left p-2">Eenheid</th>
-              <th className="text-left p-2">Prijs</th>
-              <th className="text-left p-2">Aantal</th>
-              <th className="text-left p-2">Actie</th>
-              {/* max 6 historie */}
-              {(historie ?? [])
-                .slice(0, 6)
-                .map((b, i) => (
-                  <th
-                    key={i}
-                    className="text-center p-2 font-semibold"
-                    title={`Besteld op ${new Date(b.besteld_op).toLocaleDateString('nl-NL')}`}
-                  >
-                    {i + 1}
-                  </th>
-                ))}
-            </tr>
-          </thead>
-          <tbody>
-            {[...producten]
-              .sort((a, b) => (a.volgorde ?? 999) - (b.volgorde ?? 999))
-              .map((p) => (
-                <tr key={p.id} className="border-t">
-                  <td className="p-2">{p.naam}</td>
-                  <td className="p-2">{p.besteleenheid ?? 1}</td>
-                  <td className="p-2">
-                    {p.huidige_prijs != null ? `€ ${Number(p.huidige_prijs).toFixed(2)}` : '–'}
-                  </td>
-                  <td className="p-2">{invoer[p.id] ?? 0}</td>
-                  <td className="p-2 space-x-2">
-                    <button
-                      onClick={() => wijzigAantal(p.id, -1)}
-                      className="px-2 py-1 bg-gray-200 rounded"
+          <div className="hidden md:block">
+            <table className="w-full text-sm border mt-4">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="text-left p-2">Product</th>
+                  <th className="text-left p-2">Eenheid</th>
+                  <th className="text-left p-2">Prijs</th>
+                  <th className="text-left p-2">Aantal</th>
+                  <th className="text-left p-2">Actie</th>
+                  {(historie ?? []).slice(0, 6).map((b, i) => (
+                    <th
+                      key={i}
+                      className="text-center p-2 font-semibold"
+                      title={`Besteld op ${new Date(b.besteld_op).toLocaleDateString('nl-NL')}`}
                     >
-                      –
-                    </button>
-                    <button
-                      onClick={() => wijzigAantal(p.id, 1)}
-                      className="px-2 py-1 bg-blue-600 text-white rounded"
-                    >
-                      +
-                    </button>
-                  </td>
-                  {/* historie aantallen */}
-                  {(historie ?? [])
-                    .slice(0, 6)
-                    .map((b, i) => (
-                      <td key={i} className="p-2 text-center font-bold">
-                        {b.data?.[p.id] ?? '-'}
-                      </td>
-                    ))}
+                      {i + 1}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-          </tbody>
-        </table>
-      )}
+              </thead>
+              <tbody>
+                {[...producten]
+                  .sort((a, b) => (a.volgorde ?? 999) - (b.volgorde ?? 999))
+                  .map((p) => (
+                    <tr key={p.id} className="border-t">
+                      <td className="p-2">{p.naam}</td>
+                      <td className="p-2">{p.besteleenheid ?? 1}</td>
+                      <td className="p-2">
+                        {p.huidige_prijs != null ? `€ ${Number(p.huidige_prijs).toFixed(2)}` : '–'}
+                      </td>
+                      <td className="p-2">{invoer[p.id] ?? 0}</td>
+                      <td className="p-2 space-x-2">
+                        <button
+                          onClick={() => wijzigAantal(p.id, -1)}
+                          className="px-2 py-1 bg-gray-200 rounded"
+                        >
+                          –
+                        </button>
+                        <button
+                          onClick={() => wijzigAantal(p.id, 1)}
+                          className="px-2 py-1 bg-blue-600 text-white rounded"
+                        >
+                          +
+                        </button>
+                      </td>
+                      {(historie ?? []).slice(0, 6).map((b, i) => (
+                        <td key={i} className="p-2 text-center font-bold">
+                          {b.data?.[p.id] ?? '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
 
       {/* Desktop Mail + Reset */}
       {leverancierId && (
