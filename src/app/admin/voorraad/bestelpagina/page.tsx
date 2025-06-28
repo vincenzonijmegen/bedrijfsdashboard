@@ -171,9 +171,26 @@ export default function BestelPagina() {
             <div className="flex gap-4">
               <button
                 className="bg-blue-600 text-white px-4 py-2 rounded"
-                onClick={() => {
+                onClick={async () => {
                   const tekst = genereerTekst(producten, invoer, referentie, leveranciers, leverancierId, opmerking);
-                  window.location.href = `mailto:?subject=Bestelling ${referentie}&body=${encodeURIComponent(tekst)}`;
+                  const naar = prompt("Naar welk e-mailadres moet de bestelling?");
+                  if (!naar) return;
+
+                  const res = await fetch("/api/mail/bestelling", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      naar,
+                      onderwerp: `Bestelling ${referentie}`,
+                      tekst,
+                    }),
+                  });
+
+                  if (res.ok) {
+                    alert("Bestelling is verzonden!");
+                  } else {
+                    alert("Verzenden mislukt.");
+                  }
                 }}
               >
                 📧 Mail bestelling
