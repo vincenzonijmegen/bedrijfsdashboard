@@ -7,4 +7,6 @@ const pool = new Pool({
 export const db = {
   query: (text: string, params: unknown[] = []) => pool.query(text, params),
 };
-export { pool }; // onderaan het bestand
+export const pool = new Pool({
+  connectionString: process.env.POSTGRES_URL,
+});
