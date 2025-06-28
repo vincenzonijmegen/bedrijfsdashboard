@@ -1,5 +1,5 @@
 'use client';
-
+import Image from '@tiptap/extension-image';
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { EditorContent, useEditor } from '@tiptap/react';
