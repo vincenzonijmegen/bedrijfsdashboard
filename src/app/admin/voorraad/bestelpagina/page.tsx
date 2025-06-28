@@ -151,8 +151,8 @@ Opmerkingen: ${opmerking.trim()}`;
               <th className="text-left p-2">Eenheid</th>
               <th className="text-left p-2">Prijs</th>
               <th className="text-left p-2">Aantal</th>
-              <th className=\"text-left p-2\">Actie</th>
-              <th className=\"text-left p-2\">Historie</th>
+              <th className="text-left p-2">Actie</th>
+              <th className="text-left p-2">Historie</th>
             </tr>
           </thead>
           <tbody>
