@@ -6,7 +6,8 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Button } from "@/components/ui/button";
-import { r2ClientUpload as uploadAfbeelding } from "@/utils/r2ClientUpload";
+import { uploadAfbeelding } from "@/utils/r2ClientUpload";
+
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     export default function InstructieBewerkPagina({ params }: any) {
