@@ -110,7 +110,7 @@ export default function BestelPagina() {
       {leverancierId && (
         <div className="hidden md:block">
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-            <label className="text-sm font-semibold">Referentie:</label>
+            <label className="text-sm font-semibold">Referentie:<\/label>
             <input
               type="text"
               value={referentieSuffix}
@@ -118,7 +118,21 @@ export default function BestelPagina() {
               className="border px-2 py-1 rounded w-full md:w-60"
               placeholder="bijv. vrijdag"
             />
-          </div>
+          <\/div>
+          <div className="text-sm text-gray-700 mt-2 font-semibold">
+            Totaal: € {producten
+              ?.reduce((sum, p) => sum + (invoer[p.id] ?? 0) * Number(p.huidige_prijs ?? 0), 0)
+              .toFixed(2)}
+          <\/div>
+          {/* Opmerking veld toegevoegd */}
+          <textarea
+            className="w-full border px-3 py-2 rounded mt-2"
+            placeholder="Opmerkingen (optioneel)"
+            rows={3}
+            value={opmerking}
+            onChange={(e) => setOpmerking(e.target.value)}
+          />
+        </div>
           <div className="text-sm text-gray-700 mt-2 font-semibold">
             Totaal: € {producten
               ?.reduce((sum, p) => sum + (invoer[p.id] ?? 0) * Number(p.huidige_prijs ?? 0), 0)
