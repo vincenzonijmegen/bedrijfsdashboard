@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+interface Product {
+  id: string;
+  naam: string;
+  prijs: number;
+  eenheid: string;
+  bestelnummer: string;
+}
 
 export default function BestelPagina() {
   const [aantallen, setAantallen] = useState<{ [key: string]: number }>({});
+  const [producten, setProducten] = useState<Product[]>([]);
 
-  const producten = [
-    { id: "A1", naam: "Chocolade", prijs: 3.5, eenheid: "kg", bestelnummer: "CH-001" },
-    { id: "A2", naam: "Vanille", prijs: 3.0, eenheid: "kg", bestelnummer: "VA-002" },
-    { id: "A3", naam: "Aardbei", prijs: 2.8, eenheid: "kg", bestelnummer: "AA-003" },
-  ];
+  useEffect(() => {
+    fetch("/api/voorraad/artikelen")
+      .then((res) => res.json())
+      .then((data) => setProducten(data));
+  }, []);
 
   const wijzigAantal = (id: string, delta: number) => {
     setAantallen((prev) => ({
@@ -41,8 +50,7 @@ export default function BestelPagina() {
               <td className="p-2">{p.naam}</td>
               <td className="p-2 text-xs text-gray-500">{p.bestelnummer}</td>
               <td className="p-2">{p.eenheid}</td>
-              <td className="p-2">€ {p.prijs.toFixed(2).replace(".", ",")}
-              </td>
+              <td className="p-2">€ {p.prijs.toFixed(2).replace(".", ",")}</td>
               <td className="p-2 text-center font-semibold">
                 {aantallen[p.id] || 0}
               </td>
