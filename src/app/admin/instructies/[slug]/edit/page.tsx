@@ -6,7 +6,8 @@ import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Button } from '@/components/ui/button';
-import { uploadAfbeelding } from '@/lib/upload';
+import { r2ClientUpload as uploadAfbeelding } from "@/utils/r2ClientUpload";
+
 
 export default function InstructieBewerken() {
   const router = useRouter();
