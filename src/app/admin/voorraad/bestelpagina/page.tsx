@@ -152,7 +152,9 @@ Opmerkingen: ${opmerking.trim()}`;
               <th className="text-left p-2">Prijs</th>
               <th className="text-left p-2">Aantal</th>
               <th className="text-left p-2">Actie</th>
-              ${historie?.map((b, i) => `<th key=${i} className=\"text-left p-2\">${b.referentie ?? 'B' + (i + 1)}</th>`).join('')}
+              {(historie?.slice(0, 6) ?? []).map((b, i) => (
+                <th key={i} className="text-left p-2" title={`Besteld op ${new Date(b.besteld_op).toLocaleDateString('nl-NL')}`}>{b.referentie ?? `B${i + 1}`}</th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -166,7 +168,11 @@ Opmerkingen: ${opmerking.trim()}`;
                   <button onClick={() => wijzigAantal(p.id, -1)} className="px-2 py-1 bg-gray-200 rounded">–</button>
                   <button onClick={() => wijzigAantal(p.id, 1)} className="px-2 py-1 bg-blue-600 text-white rounded">+</button>
                 </td>
-                ${historie?.map((b, i) => `<td key=${i} className=\"p-2 text-xs text-gray-500\">${b.data?.[p.id] ?? '-'}</td>`).join('')}
+                {(historie?.slice(0, 6) ?? []).map((b, i) => (
+                  <td key={i} className="p-2 text-xs text-gray-500">
+                    {b.data?.[p.id] ?? '-'}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
