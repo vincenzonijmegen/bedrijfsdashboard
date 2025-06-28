@@ -192,13 +192,29 @@ export default function BestelPagina() {
           <button
             className="bg-blue-600 text-white px-4 py-2 rounded"
             onClick={async () => {
-              const tekst = encodeURIComponent(genereerTekst());
-              const naar = prompt("WhatsApp-nummer (incl. landcode):");
+              const tekst = genereerTekst();
+              const naar = prompt("Naar welk e-mailadres moet de bestelling?", "info@ijssalonvincenzo.nl");
               if (!naar) return;
-              window.open(`https://wa.me/${naar}?text=${tekst}`);
+              const res = await fetch("/api/mail/bestelling", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ naar, onderwerp: `Bestelling ${referentie}`, tekst }),
+              });
+              if (res.ok) {
+                await fetch(`/api/bestelling/historie`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ leverancier_id: leverancierId, data: invoer, referentie, opmerking }),
+                });
+                await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, { method: 'DELETE' });
+                setInvoer({});
+                alert("Bestelling is verzonden!");
+              } else {
+                alert("Verzenden mislukt.");
+              }
             }}
           >
-            📱 WhatsApp bestelling
+            📧 Mail bestelling
           </button>
           <button
             className="bg-red-500 text-white px-4 py-2 rounded"
@@ -213,6 +229,7 @@ export default function BestelPagina() {
           </button>
         </div>
       )}
+      )
 
       {/* Mobile iPhone Interface */}
       {leverancierId && (
