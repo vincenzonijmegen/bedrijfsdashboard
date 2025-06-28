@@ -104,21 +104,21 @@ export default function BestelPagina() {
           </tbody>
         </table>
       )}
-      {leverancierId && (
-  <button
+
+    {leverancierId && (
+    <button
     className="mt-4 bg-red-500 text-white px-4 py-2 rounded"
     onClick={async () => {
-      const res = await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`);
-      const data = await res.json();
-      if (data?.id) {
-        await fetch(`/api/bestelling/onderhanden?id=${data.id}`, { method: "DELETE" });
-      }
+      await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, {
+        method: "DELETE",
+      });
       setInvoer({});
     }}
   >
     Reset bestelling
   </button>
-)}
+  )}
+
 
     </main>
   );

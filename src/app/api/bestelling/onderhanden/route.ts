@@ -34,8 +34,17 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "id is verplicht" }, { status: 400 });
+  const leverancier = req.nextUrl.searchParams.get("leverancier");
 
-  await pool.query(`DELETE FROM onderhanden_bestellingen WHERE id = $1`, [id]);
+  if (!id && !leverancier) {
+    return NextResponse.json({ error: "id of leverancier vereist" }, { status: 400 });
+  }
+
+  if (id) {
+    await pool.query(`DELETE FROM onderhanden_bestellingen WHERE id = $1`, [id]);
+  } else if (leverancier) {
+    await pool.query(`DELETE FROM onderhanden_bestellingen WHERE leverancier_id = $1`, [leverancier]);
+  }
+
   return NextResponse.json({ success: true });
 }
