@@ -59,6 +59,11 @@ export default function BestelPagina() {
     fetcher
   );
 
+  const { data: historie } = useSWR<any[]>(
+    leverancierId ? `/api/bestelling/historie?leverancier=${leverancierId}` : null,
+    fetcher
+  );
+
   function wijzigAantal(productId: number, delta: number) {
     setInvoer((huidige) => {
       const nieuw = { ...huidige };
@@ -146,7 +151,8 @@ Opmerkingen: ${opmerking.trim()}`;
               <th className="text-left p-2">Eenheid</th>
               <th className="text-left p-2">Prijs</th>
               <th className="text-left p-2">Aantal</th>
-              <th className="text-left p-2">Actie</th>
+              <th className=\"text-left p-2\">Actie</th>
+              <th className=\"text-left p-2\">Historie</th>
             </tr>
           </thead>
           <tbody>
@@ -159,6 +165,13 @@ Opmerkingen: ${opmerking.trim()}`;
                 <td className="p-2 space-x-2">
                   <button onClick={() => wijzigAantal(p.id, -1)} className="px-2 py-1 bg-gray-200 rounded">–</button>
                   <button onClick={() => wijzigAantal(p.id, 1)} className="px-2 py-1 bg-blue-600 text-white rounded">+</button>
+                </td>
+                <td className="p-2 text-xs text-gray-500">
+                  {(historie && Array.isArray(historie)) ? historie
+                    .map((b) => b.data?.[p.id])
+                    .filter((aantal) => aantal !== undefined)
+                    .slice(0, 3)
+                    .join(" • ") : "–"}
                 </td>
               </tr>
             ))}
