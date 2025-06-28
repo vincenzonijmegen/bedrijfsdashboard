@@ -11,6 +11,7 @@ interface Leverancier {
 interface Product {
   id: number;
   naam: string;
+  bestelnummer?: string;
   besteleenheid?: number;
   huidige_prijs?: number;
   volgorde?: number;
@@ -181,7 +182,7 @@ Opmerkingen: ${opmerking.trim()}`;
                 className="bg-blue-600 text-white px-4 py-2 rounded"
                 onClick={async () => {
                   const tekst = genereerTekst(producten, invoer, referentie, leveranciers, leverancierId, opmerking);
-                  const naar = prompt("Naar welk e-mailadres moet de bestelling?");
+                  let naar = prompt("Naar welk e-mailadres moet de bestelling?", "info@ijssalonvincenzo.nl");
                   if (!naar) return;
 
                   const res = await fetch("/api/mail/bestelling", {
