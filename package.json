@@ -6,11 +6,16 @@
     "build": "next build"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.23.1",
+    "@radix-ui/react-slot": "^1.2.3",
     "@tiptap/extension-image": "^2.23.0",
     "@tiptap/extension-placeholder": "^2.23.0",
     "@tiptap/react": "^2.23.0",
     "@tiptap/starter-kit": "^2.23.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "dayjs": "^1.11.13",
+    "html-entities": "^2.6.0",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
     "next": "15.3.3",
