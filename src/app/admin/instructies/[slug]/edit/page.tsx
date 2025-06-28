@@ -1,43 +1,39 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { EditorContent, useEditor } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import Placeholder from "@tiptap/extension-placeholder";
-import { Button } from "@/components/ui/button";
-import { uploadAfbeelding } from "@/lib/upload";
-import Image from "@tiptap/extension-image";
-
-
+import { useEffect, useState } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { EditorContent, useEditor } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Placeholder from '@tiptap/extension-placeholder';
+import { Button } from '@/components/ui/button';
+import { uploadAfbeelding } from '@/lib/upload';
 
 export default function InstructieBewerken() {
   const router = useRouter();
   const params = useParams();
-  const slug = params?.slug as string;
+  const slug = typeof params?.slug === 'string' ? params.slug : Array.isArray(params?.slug) ? params?.slug[0] : '';
 
-  const [titel, setTitel] = useState("");
-  const [nummer, setNummer] = useState("");
+  const [titel, setTitel] = useState('');
+  const [nummer, setNummer] = useState('');
   const [functies, setFuncties] = useState<string[]>([]);
   const [geladen, setGeladen] = useState(false);
 
   const functiekeuzes = [
-    "scheppers overdag",
-    "scheppers overdag + avond",
-    "ijsvoorbereiders",
-    "keukenmedewerkers",
+    'scheppers overdag',
+    'scheppers overdag + avond',
+    'ijsvoorbereiders',
+    'keukenmedewerkers',
   ];
 
-const editor = useEditor({
-  extensions: [
-    StarterKit,
-    Image,
-    Placeholder.configure({
-      placeholder: "Typ hier de instructie...",
-    }),
-  ],
-});
-
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Placeholder.configure({
+        placeholder: 'Typ hier de instructie...',
+      }),
+    ],
+    content: '', // Initieel leeg
+  });
 
   useEffect(() => {
     if (!slug || !editor || geladen) return;
@@ -45,20 +41,19 @@ const editor = useEditor({
       .then((res) => res.json())
       .then((data) => {
         setTitel(data.titel);
-        setNummer(data.nummer || "");
+        setNummer(data.nummer || '');
         setFuncties(() => {
-  try {
-    return Array.isArray(data.functies)
-      ? data.functies
-      : typeof data.functies === "string"
-      ? JSON.parse(data.functies)
-      : [];
-  } catch {
-    return [];
-  }
-});
-
-        editor.commands.setContent(data.inhoud);
+          try {
+            return Array.isArray(data.functies)
+              ? data.functies
+              : typeof data.functies === 'string'
+              ? JSON.parse(data.functies)
+              : [];
+          } catch {
+            return [];
+          }
+        });
+        editor.commands.setContent(data.inhoud || '');
         setGeladen(true);
       });
   }, [slug, editor, geladen]);
@@ -67,12 +62,12 @@ const editor = useEditor({
     if (!editor) return;
     const inhoud = editor.getHTML();
     const res = await fetch(`/api/instructies/${slug}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ titel, inhoud, nummer, functies }),
     });
-    if (res.ok) router.push("/admin/instructies");
-    else alert("Opslaan mislukt");
+    if (res.ok) router.push('/admin/instructies');
+    else alert('Opslaan mislukt');
   };
 
   return (
@@ -118,30 +113,26 @@ const editor = useEditor({
       {editor && (
         <div className="mb-2">
           <Button
-  type="button"
-  size="sm"
-  onClick={async () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (file && editor) {
-        const url = await uploadAfbeelding(file);
-editor.commands.insertContent(
-  `<img src="${url}" style="width: 75%; display: block; margin: 0 auto;" />`
-);
-
-
-
-      }
-    };
-    input.click();
-  }}
->
-  📷 Afbeelding toevoegen
-</Button>
-
+            type="button"
+            size="sm"
+            onClick={async () => {
+              const input = document.createElement('input');
+              input.type = 'file';
+              input.accept = 'image/*';
+              input.onchange = async () => {
+                const file = input.files?.[0];
+                if (file && editor) {
+                  const url = await uploadAfbeelding(file);
+                  editor.commands.insertContent(
+                    `<img src="${url}" style="width: 75%; display: block; margin: 0 auto;" />`
+                  );
+                }
+              };
+              input.click();
+            }}
+          >
+            📷 Afbeelding toevoegen
+          </Button>
         </div>
       )}
 
