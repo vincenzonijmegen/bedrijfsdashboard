@@ -176,7 +176,7 @@ Opmerkingen: ${opmerking.trim()}`;
                   <button onClick={() => wijzigAantal(p.id, 1)} className="px-2 py-1 bg-blue-600 text-white rounded">+</button>
                 </td>
                 {(historie?.slice(0, 6) ?? []).map((b, i) => (
-                  <td key={i} className="p-2 text-xs text-gray-500">
+                  <td key={i} className="p-2 text-xs text-gray-500 font-bold text-center">
                     {b.data?.[p.id] ?? '-'}
                   </td>
                 ))}
