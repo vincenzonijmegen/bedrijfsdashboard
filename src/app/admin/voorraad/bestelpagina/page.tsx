@@ -77,13 +77,23 @@ export default function BestelPagina() {
 
   const genereerTekst = () => {
     const naam = leveranciers?.find(l => l.id === leverancierId)?.naam ?? "Onbekend";
-    let tekst = `Bestelling IJssalon Vincenzo – ${naam}\nReferentie: ${referentie}\n\n`;
+    let tekst = `Bestelling IJssalon Vincenzo – ${naam}
+Referentie: ${referentie}
+
+`;
+    tekst += `ID	Product	Aantal
+`;  // header row with tabs
     producten?.forEach(p => {
       const aantal = invoer[p.id] ?? 0;
-      if (aantal > 0) tekst += `- [${p.bestelnummer ?? p.id}] ${p.naam} : ${aantal} x\n`;
+      if (aantal > 0) {
+        tekst += `${p.bestelnummer ?? p.id}	${p.naam}	${aantal}
+`;
+      }
     });
-    if (opmerking.trim()) tekst += `\nOpmerkingen: ${opmerking}`;
+    if (opmerking.trim()) tekst += `
+Opmerkingen: ${opmerking}`;
     return tekst;
+  };
   };
 
   if (!leveranciers) return <p>Laden...</p>;
