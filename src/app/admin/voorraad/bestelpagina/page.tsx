@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import useSWR from "swr";
 
 interface Leverancier {
@@ -19,51 +19,62 @@ interface Product {
 
 type Invoer = Record<number, number>;
 
-default export function BestelPagina() {
+export default function BestelPagina() {
   const [leverancierId, setLeverancierId] = useState<number | null>(null);
   const [invoer, setInvoer] = useState<Invoer>({});
   const [referentieSuffix, setReferentieSuffix] = useState("");
   const [opmerking, setOpmerking] = useState("");
 
-  const datumPrefix = new Date().toISOString().slice(0,10).replace(/-/g, "");
+  const datumPrefix = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const referentie = `${datumPrefix}-${referentieSuffix}`;
 
-  // Ophalen en opslaan onderhanden bestelling
-  useEffect(() => {
-    if (!leverancierId) return;
-    fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`)
-      .then(res => res.json())
-      .then(data => setInvoer(data?.data ?? {}));
-  }, [leverancierId]);
+  // Fetcher
+  const fetcher = (url: string) => fetch(url).then(res => { if (!res.ok) throw new Error("Fout bij ophalen"); return res.json(); });
 
-  useEffect(() => {
-    if (leverancierId == null) return;
-    fetch("/api/bestelling/onderhanden", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        leverancier_id: leverancierId,
-        data: invoer,
-        referentie: referentie,
-      }),
-    });
-  }, [invoer, leverancierId, referentie]);
-
+  // Load leveranciers
   const { data: leveranciers } = useSWR<Leverancier[]>("/api/leveranciers", fetcher);
+  // Load products
   const { data: producten } = useSWR<Product[]>(
     leverancierId ? `/api/producten?leverancier=${leverancierId}` : null,
     fetcher
   );
+  // Load historie (last 6)
   const { data: historie } = useSWR<any[]>(
     leverancierId ? `/api/bestelling/historie?leverancier=${leverancierId}` : null,
     fetcher
   );
 
+  // Load ongoing order
+  useEffect(() => {
+    if (!leverancierId) return;
+    fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`)
+      .then(res => res.json())
+      .then(data => setInvoer(data.data ?? {}));
+  }, [leverancierId]);
+
+  // Save ongoing order
+  useEffect(() => {
+    if (leverancierId == null) return;
+    fetch("/api/bestelling/onderhanden", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ leverancier_id: leverancierId, data: invoer, referentie }),
+    });
+  }, [invoer, leverancierId, referentie]);
+
   const wijzigAantal = (id: number, delta: number) => {
-    setInvoer(prev => ({
-      ...prev,
-      [id]: Math.max(0, (prev[id] ?? 0) + delta)
-    }));
+    setInvoer(prev => ({ ...prev, [id]: Math.max(0, (prev[id] ?? 0) + delta) }));
+  };
+
+  const genereerTekst = () => {
+    const naam = leveranciers?.find(l => l.id === leverancierId)?.naam ?? "Onbekend";
+    let tekst = `Bestelling IJssalon Vincenzo – ${naam}\nReferentie: ${referentie}\n\n`;
+    producten?.forEach(p => {
+      const aantal = invoer[p.id] ?? 0;
+      if (aantal > 0) tekst += `- [${p.bestelnummer ?? p.id}] ${p.naam} : ${aantal} x\n`;
+    });
+    if (opmerking.trim()) tekst += `\nOpmerkingen: ${opmerking}`;
+    return tekst;
   };
 
   if (!leveranciers) return <p>Laden...</p>;
@@ -71,6 +82,7 @@ default export function BestelPagina() {
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">📦 Bestellen</h1>
+
       <select
         className="border rounded px-3 py-2"
         value={leverancierId ?? ""}
@@ -82,7 +94,7 @@ default export function BestelPagina() {
         ))}
       </select>
 
-      {/* Desktop UI */}
+      {/* Desktop */}
       {leverancierId && (
         <div className="hidden md:block space-y-4">
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
@@ -95,7 +107,9 @@ default export function BestelPagina() {
               placeholder="bijv. vrijdag"
             />
           </div>
-          <div className="text-sm font-semibold">Totaal: € {producten?.reduce((sum, p) => sum + (invoer[p.id] ?? 0) * Number(p.huidige_prijs ?? 0), 0).toFixed(2)}</div>
+          <div className="text-sm font-semibold">
+            Totaal: € {producten?.reduce((sum, p) => sum + (invoer[p.id] ?? 0) * (p.huidige_prijs ?? 0), 0).toFixed(2)}
+          </div>
           <textarea
             className="w-full border px-3 py-2 rounded"
             rows={3}
@@ -103,30 +117,28 @@ default export function BestelPagina() {
             value={opmerking}
             onChange={e => setOpmerking(e.target.value)}
           />
-          <button
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-            onClick={async () => {
-              const tekst = generateMailText();
-              const naar = prompt("Naar welk e-mailadres moet de bestelling?", "info@ijssalonvincenzo.nl");
-              if (!naar) return;
-              await fetch("/api/mail/bestelling", { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({naar, onderwerp: `Bestelling ${referentie}`, tekst}) });
-              await fetch(`/api/bestelling/historie`, { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({leverancier_id: leverancierId, data: invoer, referentie, opmerking}) });
-              await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, { method: 'DELETE' });
-              setInvoer({});
-              alert('Bestelling is verzonden!');
-            }}
-          >📧 Mail bestelling</button>
-          <button
-            className="bg-red-500 text-white px-4 py-2 rounded"
-            onClick={async () => {
-              await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, { method: 'DELETE' });
-              setInvoer({});
-            }}
-          >Reset bestelling</button>
+          <div className="flex gap-4">
+            <button
+              className="bg-blue-600 text-white px-4 py-2 rounded"
+              onClick={async () => {
+                const naar = prompt("Naar welk e-mailadres?", "info@ijssalonvincenzo.nl");
+                if (!naar) return;
+                await fetch("/api/mail/bestelling", { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ naar, onderwerp: `Bestelling ${referentie}`, tekst: genereerTekst() }) });
+                await fetch(`/api/bestelling/historie`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ leverancier_id: leverancierId, data: invoer, referentie, opmerking }) });
+                await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, { method: 'DELETE' });
+                setInvoer({});
+                alert('Bestelling is verzonden!');
+              }}
+            >📧 Mail bestelling</button>
+            <button
+              className="bg-red-500 text-white px-4 py-2 rounded"
+              onClick={async () => { await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, { method: 'DELETE' }); setInvoer({}); }}
+            >Reset bestelling</button>
+          </div>
         </div>
       )}
 
-      {/* Product tabel */}
+      {/* Table */}
       {leverancierId && (
         <div className="hidden md:block overflow-auto">
           <table className="w-full text-sm border mt-4">
@@ -143,17 +155,17 @@ default export function BestelPagina() {
               </tr>
             </thead>
             <tbody>
-              {[...producten!].sort((a,b) => (a.volgorde??999)-(b.volgorde??999)).map(p => (
+              {producten?.sort((a,b) => (a.volgorde ?? 999) - (b.volgorde ?? 999)).map(p => (
                 <tr key={p.id} className="border-t">
                   <td className="p-2">{p.naam}</td>
                   <td className="p-2">{p.besteleenheid ?? 1}</td>
-                  <td className="p-2">{p.huidige_prijs!=null?`€ ${Number(p.huidige_prijs).toFixed(2)}`:'–'}</td>
+                  <td className="p-2">{p.huidige_prijs != null ? `€ ${p.huidige_prijs.toFixed(2)}` : '–'}</td>
                   <td className="p-2">{invoer[p.id] ?? 0}</td>
                   <td className="p-2 space-x-2">
-                    <button onClick={()=>wijzigAantal(p.id,-1)} className="px-2 py-1 bg-gray-200 rounded">–</button>
-                    <button onClick={()=>wijzigAantal(p.id,1)}  className="px-2 py-1 bg-blue-600 text-white rounded">+</button>
+                    <button onClick={() => wijzigAantal(p.id, -1)} className="px-2 py-1 bg-gray-200 rounded">–</button>
+                    <button onClick={() => wijzigAantal(p.id, 1)} className="px-2 py-1 bg-blue-600 text-white rounded">+</button>
                   </td>
-                  {(historie ?? []).slice(0,6).map((b,i)=>(
+                  {(historie ?? []).slice(0,6).map((b,i) => (
                     <td key={i} className="p-2 text-center font-bold">{b.data?.[p.id] ?? '-'}</td>
                   ))}
                 </tr>
@@ -163,34 +175,25 @@ default export function BestelPagina() {
         </div>
       )}
 
-      {/* Mobile Interface */}
+      {/* Mobile */}
       {leverancierId && (
         <div className="md:hidden space-y-4">
           {producten?.map(p => (
-            <div key={p.id} className="flex justify-between items-center border-b py-2">
+            <div key={p.id} className="flex items-center justify-between border-b py-2">
               <span>{p.naam}</span>
               <div className="flex items-center space-x-2">
-                <button onClick={()=>wijzigAantal(p.id,-1)} className="px-2 py-1 bg-gray-200 rounded">–</button>
-                <span className="w-6 text-center">{invoer[p.id] ?? 0}</span>
-                <button onClick={()=>wijzigAantal(p.id,1)} className="px-2 py-1 bg-blue-600 text-white rounded">+</button>
+                <button onClick={() => wijzigAantal(p.id, -1)} className="px-2 py-1 bg-gray-200 rounded">–</button>
+                <span className="w-6 text-center font-bold">{invoer[p.id] ?? 0}</span>
+                <button onClick={() => wijzigAantal(p.id, 1)} className="px-2 py-1 bg-blue-600 text-white rounded">+</button>
               </div>
             </div>
           ))}
           <div className="flex space-x-2">
-            <button className="flex-1 bg-green-500 text-white px-4 py-2 rounded" onClick={()=>window.open(`https://wa.me/?text=${encodeURIComponent(generateMailText())}`)}>📱 WhatsApp bestellen</button>
-            <button className="flex-1 bg-red-500 text-white px-4 py-2 rounded" onClick={async()=>{await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`,{method:'DELETE'});setInvoer({});}}>Reset bestelling</button>
+            <button className="flex-1 bg-green-500 text-white px-4 py-2 rounded" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(genereerTekst())}`)}>📱 WhatsApp bestellen</button>
+            <button className="flex-1 bg-red-500 text-white px-4 py-2 rounded" onClick={async () => { await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, { method: 'DELETE' }); setInvoer({}); }}>Reset bestelling</button>
           </div>
         </div>
       )}
     </main>
   );
-}
-
-function fetcher(url: string) {
-  return fetch(url).then(res=>{if(!res.ok)throw new Error('Fout');return res.json()});
-}
-
-function generateMailText(): string {
-  // replicate genereerTekst inside
-  return '';
 }
