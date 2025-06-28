@@ -221,26 +221,38 @@ export default function BestelPagina() {
       {/* Mobile iPhone Interface */}
       {leverancierId && (
         <div className="md:hidden space-y-4">
-          <button
-            className="w-full bg-green-500 text-white px-4 py-2 rounded"
-            onClick={() => {
-              const tekst = encodeURIComponent(genereerTekst());
-              window.open(`https://wa.me/?text=${tekst}`);
-            }}
-          >
-            📱 WhatsApp bestellen
-          </button>
-          <button
-            className="w-full bg-red-500 text-white px-4 py-2 rounded"
-            onClick={async () => {
-              await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, {
-                method: 'DELETE',
-              });
-              setInvoer({});
-            }}
-          >
-            Reset bestelling
-          </button>
+          {/* Mobiele interface: alles op één regel */}
+          {producten?.map((p) => (
+            <div key={p.id} className="flex items-center justify-between border-b py-2">
+              <span className="flex-1">{p.naam}</span>
+              <div className="flex items-center space-x-2">
+                <button onClick={() => wijzigAantal(p.id, -1)} className="px-2 py-1 bg-gray-200 rounded">–</button>
+                <span className="w-6 text-center">{invoer[p.id] ?? 0}</span>
+                <button onClick={() => wijzigAantal(p.id, 1)} className="px-2 py-1 bg-blue-600 text-white rounded">+</button>
+              </div>
+            </div>
+          ))}
+          {/* Mobiele knoppen onderaan */}
+          <div className="flex flex-col space-y-2">
+            <button
+              className="w-full bg-green-500 text-white px-4 py-2 rounded"
+              onClick={() => {
+                const tekst = encodeURIComponent(genereerTekst());
+                window.open(`https://wa.me/?text=${tekst}`);
+              }}
+            >
+              📱 WhatsApp bestellen
+            </button>
+            <button
+              className="w-full bg-red-500 text-white px-4 py-2 rounded"
+              onClick={async () => {
+                await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, { method: 'DELETE' });
+                setInvoer({});
+              }}
+            >
+              Reset bestelling
+            </button>
+          </div>
         </div>
       )}
     </main>
