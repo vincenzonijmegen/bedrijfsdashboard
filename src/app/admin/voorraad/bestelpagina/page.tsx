@@ -21,6 +21,30 @@ type Invoer = Record<number, number>;
 export default function BestelPagina() {
   const [leverancierId, setLeverancierId] = useState<number | null>(null);
   const [invoer, setInvoer] = useState<Invoer>({});
+// ✅ Onderhanden bestelling ophalen bij laden
+  useEffect(() => {
+    if (!leverancierId) return;
+    fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.data) setInvoer(data.data);
+      });
+  }, [leverancierId]);
+
+  // ✅ Onderhanden bestelling automatisch opslaan bij wijziging
+  useEffect(() => {
+    if (leverancierId != null) {
+      fetch("/api/bestelling/onderhanden", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leverancier_id: leverancierId,
+          data: invoer,
+          referentie: new Date().toISOString().slice(0, 10),
+        }),
+      });
+    }
+  }, [invoer, leverancierId]);
 
   const { data: leveranciers } = useSWR<Leverancier[]>("/api/leveranciers", fetcher);
   const { data: producten } = useSWR<Product[]>(
@@ -80,6 +104,22 @@ export default function BestelPagina() {
           </tbody>
         </table>
       )}
+      {leverancierId && (
+  <button
+    className="mt-4 bg-red-500 text-white px-4 py-2 rounded"
+    onClick={async () => {
+      const res = await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`);
+      const data = await res.json();
+      if (data?.id) {
+        await fetch(`/api/bestelling/onderhanden?id=${data.id}`, { method: "DELETE" });
+      }
+      setInvoer({});
+    }}
+  >
+    Reset bestelling
+  </button>
+)}
+
     </main>
   );
 }
