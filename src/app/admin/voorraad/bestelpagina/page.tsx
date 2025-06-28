@@ -152,8 +152,15 @@ Opmerkingen: ${opmerking.trim()}`;
               <th className="text-left p-2">Prijs</th>
               <th className="text-left p-2">Aantal</th>
               <th className="text-left p-2">Actie</th>
+              {/* Historie kolommen: laatste 6 bestellingen */}
               {(historie?.slice(0, 6) ?? []).map((b, i) => (
-                <th key={i} className="text-left p-2" title={`Besteld op ${new Date(b.besteld_op).toLocaleDateString('nl-NL')}`}>{b.referentie ?? `B${i + 1}`}</th>
+                <th
+                  key={i}
+                  className="text-center p-2 font-semibold"
+                  title={`Besteld op ${new Date(b.besteld_op).toLocaleDateString('nl-NL')}`}
+                >
+                  {i + 1}
+                </th>
               ))}
             </tr>
           </thead>
