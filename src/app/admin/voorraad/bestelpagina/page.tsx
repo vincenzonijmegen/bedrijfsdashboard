@@ -45,7 +45,7 @@ export default function BestelPagina() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          leverancier_id: leverancierId,
+          leverancierId: leverancierId,
           data: invoer,
           referentie: new Date().toISOString().slice(0, 10),
         }),
@@ -196,7 +196,32 @@ Opmerkingen: ${opmerking.trim()}`;
                   });
 
                   if (res.ok) {
-                    alert("Bestelling is verzonden!");
+  try {
+    const resHistorie = await fetch("/api/bestelling/historie", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        leverancier_id: leverancierId,
+        data: invoer,
+        referentie,
+        opmerking,
+      }),
+    });
+
+    if (!resHistorie.ok) {
+      const fout = await resHistorie.json();
+      console.error("❌ Historie-fout:", fout);
+    } else {
+      await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, {
+        method: "DELETE",
+      });
+      setInvoer({});
+    }
+  } catch (err) {
+    console.error("❌ Fout bij opslaan/verwijderen na mail:", err);
+  }
+
+  alert("Bestelling is verzonden!");
                   } else {
                     alert("Verzenden mislukt.");
                   }
