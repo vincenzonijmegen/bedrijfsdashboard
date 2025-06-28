@@ -1,81 +1,75 @@
-// admin/bestelpagina/page.tsx (client component)
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-interface Product {
-  id: string;
-  naam: string;
-  leverancier: string;
-  minVoorraad: number;
-  bestelnummer: string;
-  eenheid: string;
-  prijs: number;
-}
+export default function BestelPagina() {
+  const [aantallen, setAantallen] = useState<{ [key: string]: number }>({});
 
-export default function BestelApp() {
-  const [producten, setProducten] = useState<Product[]>([]);
-  const [invoer, setInvoer] = useState<Record<string, number>>({});
+  const producten = [
+    { id: "A1", naam: "Chocolade", prijs: 3.5, eenheid: "kg", bestelnummer: "CH-001" },
+    { id: "A2", naam: "Vanille", prijs: 3.0, eenheid: "kg", bestelnummer: "VA-002" },
+    { id: "A3", naam: "Aardbei", prijs: 2.8, eenheid: "kg", bestelnummer: "AA-003" },
+  ];
 
-  useEffect(() => {
-    fetch("/api/voorraad/artikelen")
-      .then((res) => res.json())
-      .then((data) => setProducten(data));
-  }, []);
-
-  const handleVerhogen = (id: string) => {
-    setInvoer((prev) => ({ ...prev, [id]: (prev[id] || 0) + 1 }));
+  const wijzigAantal = (id: string, delta: number) => {
+    setAantallen((prev) => ({
+      ...prev,
+      [id]: Math.max(0, (prev[id] || 0) + delta),
+    }));
   };
 
-  const handleVerlagen = (id: string) => {
-    setInvoer((prev) => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) - 1) }));
-  };
-
-  const handleWissen = () => {
-    setInvoer({});
-  };
+  const wisAlles = () => setAantallen({});
 
   return (
-    <main className="max-w-4xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6 text-slate-800">📦 Bestellijst</h1>
+    <main className="max-w-3xl mx-auto p-6">
+      <h1 className="text-xl font-semibold mb-6">🧾 Besteloverzicht</h1>
 
-      {producten.map((product) => (
-        <div
-          key={product.id}
-          className="flex items-center justify-between border rounded px-4 py-2 mb-2"
-        >
-          <div>
-            <div className="font-medium text-slate-800">{product.naam}</div>
-            <div className="text-xs text-slate-500">
-              #{product.bestelnummer} - {product.eenheid} - €{product.prijs.toFixed(2)}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleVerlagen(product.id)}
-              className="bg-slate-200 hover:bg-slate-300 text-slate-800 px-2 py-1 rounded"
-            >
-              −
-            </button>
-            <span className="min-w-[24px] text-center">
-              {invoer[product.id] || 0}
-            </span>
-            <button
-              onClick={() => handleVerhogen(product.id)}
-              className="bg-slate-200 hover:bg-slate-300 text-slate-800 px-2 py-1 rounded"
-            >
-              +
-            </button>
-          </div>
-        </div>
-      ))}
+      <table className="w-full border border-gray-300 text-sm mb-4">
+        <thead>
+          <tr className="bg-gray-100">
+            <th className="text-left p-2">Artikel</th>
+            <th className="text-left p-2">Bestelnummer</th>
+            <th className="text-left p-2">Eenheid</th>
+            <th className="text-left p-2">Prijs</th>
+            <th className="text-center p-2">Aantal</th>
+            <th className="text-center p-2"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {producten.map((p) => (
+            <tr key={p.id} className="border-t">
+              <td className="p-2">{p.naam}</td>
+              <td className="p-2 text-xs text-gray-500">{p.bestelnummer}</td>
+              <td className="p-2">{p.eenheid}</td>
+              <td className="p-2">€ {p.prijs.toFixed(2).replace(".", ",")}
+              </td>
+              <td className="p-2 text-center font-semibold">
+                {aantallen[p.id] || 0}
+              </td>
+              <td className="p-2 text-center">
+                <button
+                  className="px-2 py-0.5 rounded bg-sky-100 hover:bg-sky-200 text-sky-900 mr-1"
+                  onClick={() => wijzigAantal(p.id, -1)}
+                >
+                  -
+                </button>
+                <button
+                  className="px-2 py-0.5 rounded bg-sky-100 hover:bg-sky-200 text-sky-900"
+                  onClick={() => wijzigAantal(p.id, 1)}
+                >
+                  +
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
       <button
-        onClick={handleWissen}
-        className="mt-6 bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded"
+        className="bg-rose-100 hover:bg-rose-200 text-rose-900 px-4 py-2 rounded"
+        onClick={wisAlles}
       >
-        🧹 Wissen
+        Wissen
       </button>
     </main>
   );
