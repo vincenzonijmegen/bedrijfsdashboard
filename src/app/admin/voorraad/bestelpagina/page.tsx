@@ -169,21 +169,15 @@ export default function BestelPagina() {
 
           {typeof window !== "undefined" && window.innerWidth > 600 && (
             <div className="flex gap-4">
-              <a
-                href={`mailto:?subject=Bestelling ${referentie}&body=${encodeURIComponent(genereerTekst(producten, invoer, referentie, leveranciers, leverancierId, opmerking))}`}
+              <button
                 className="bg-blue-600 text-white px-4 py-2 rounded"
+                onClick={() => {
+                  const tekst = genereerTekst(producten, invoer, referentie, leveranciers, leverancierId, opmerking);
+                  window.location.href = `mailto:?subject=Bestelling ${referentie}&body=${encodeURIComponent(tekst)}`;
+                }}
               >
                 📧 Mail bestelling
-              </a>
-
-              <a
-                href={`https://wa.me/?text=${encodeURIComponent(genereerTekst(producten, invoer, referentie, leveranciers, leverancierId, opmerking))}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-green-600 text-white px-4 py-2 rounded"
-              >
-                📱 WhatsApp bestelling
-              </a>
+              </button>
             </div>
           )}
         </div>
