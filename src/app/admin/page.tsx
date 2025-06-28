@@ -11,10 +11,19 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
   </section>
 );
 
+const bgColorMap: Record<string, string> = {
+  green: "bg-green-600 hover:bg-green-700",
+  pink: "bg-pink-600 hover:bg-pink-700",
+  purple: "bg-purple-600 hover:bg-purple-700",
+  blue: "bg-blue-600 hover:bg-blue-700",
+  red: "bg-red-600 hover:bg-red-700",
+  slate: "bg-slate-600 hover:bg-slate-700",
+};
+
 const LinkCard = ({ href, label, color }: { href: string; label: string; color: string }) => (
   <Link
     href={href}
-    className={`block rounded-lg px-4 py-3 text-white text-center font-medium shadow hover:brightness-110 bg-${color}-600`}
+    className={`block rounded-lg px-4 py-3 text-white text-center font-medium shadow transition ${bgColorMap[color] || "bg-gray-500"}`}
   >
     {label}
   </Link>
