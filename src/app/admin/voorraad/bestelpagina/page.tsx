@@ -152,7 +152,7 @@ Opmerkingen: ${opmerking.trim()}`;
               <th className="text-left p-2">Prijs</th>
               <th className="text-left p-2">Aantal</th>
               <th className="text-left p-2">Actie</th>
-              <th className="text-left p-2">Historie</th>
+              ${historie?.map((b, i) => `<th key=${i} className=\"text-left p-2\">${b.referentie ?? 'B' + (i + 1)}</th>`).join('')}
             </tr>
           </thead>
           <tbody>
@@ -166,13 +166,7 @@ Opmerkingen: ${opmerking.trim()}`;
                   <button onClick={() => wijzigAantal(p.id, -1)} className="px-2 py-1 bg-gray-200 rounded">–</button>
                   <button onClick={() => wijzigAantal(p.id, 1)} className="px-2 py-1 bg-blue-600 text-white rounded">+</button>
                 </td>
-                <td className="p-2 text-xs text-gray-500">
-                  {(historie && Array.isArray(historie)) ? historie
-                    .map((b) => b.data?.[p.id])
-                    .filter((aantal) => aantal !== undefined)
-                    .slice(0, 3)
-                    .join(" • ") : "–"}
-                </td>
+                ${historie?.map((b, i) => `<td key=${i} className=\"p-2 text-xs text-gray-500\">${b.data?.[p.id] ?? '-'}</td>`).join('')}
               </tr>
             ))}
           </tbody>
