@@ -31,7 +31,7 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/resultaten" label="toetsresultaten" color="purple" />
         <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" />
         <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="red" />
-        <LinkCard href="/admin/skills" label="Skills Overzicht" color="green" />
+        <LinkCard href="/admin/skills" label="Skills Overzicht" color="slate" />
       </Section>
 
       <Section title="📅 Planning">
