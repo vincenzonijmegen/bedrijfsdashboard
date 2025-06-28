@@ -3,8 +3,10 @@
 import Link from "next/link";
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <section className="mb-8">
-    <h2 className="text-xl font-semibold mb-4">{title}</h2>
+  <section className="mb-12">
+    <div className="bg-gray-100 rounded-xl px-6 py-4 mb-6 shadow-inner">
+      <h2 className="text-2xl font-bold text-gray-800 tracking-tight">{title}</h2>
+    </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
       {children}
     </div>
@@ -32,7 +34,7 @@ const LinkCard = ({ href, label, color }: { href: string; label: string; color: 
 export default function AdminDashboard() {
   return (
     <main className="max-w-6xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-8">🗂️ Management Portaal</h1>
+      <h1 className="text-3xl font-bold mb-10 text-slate-800">🗂️ Management Portaal</h1>
 
       <Section title="👥 Personeel">
         <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" />
