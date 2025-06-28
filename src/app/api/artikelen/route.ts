@@ -1,32 +1,28 @@
 // src/app/api/voorraad/artikelen/route.ts
-import { NextResponse } from "next/server";
-import { Pool } from "pg";
+import { NextRequest, NextResponse } from "next/server";
+import { pool } from "@/lib/db";
 
-const pool = new Pool({
-  connectionString: process.env.POSTGRES_URL,
-  ssl: true,
-});
+export async function GET(req: NextRequest) {
+  const leverancierParam = req.nextUrl.searchParams.get("leverancier");
 
-export async function GET() {
   try {
-    const result = await pool.query(`
-      SELECT
-        p.id,
-        p.naam,
-        p.bestelnummer,
-        p.minimum_voorraad,
-        p.besteleenheid,
-        p.huidige_prijs,
-        l.naam AS leverancier
-      FROM producten p
-      JOIN leveranciers l ON p.leverancier_id = l.id
-      WHERE p.actief = true
-      ORDER BY l.naam, p.volgorde
-    `);
+    const result = await pool.query(
+      `
+      SELECT id, naam, bestelnummer, besteleenheid AS eenheid, huidige_prijs AS prijs
+      FROM producten
+      WHERE actief = true
+      ${leverancierParam ? "AND leverancier_id = $1" : ""}
+      ORDER BY volgorde
+    `,
+      leverancierParam ? [parseInt(leverancierParam)] : []
+    );
 
     return NextResponse.json(result.rows);
-  } catch (err) {
-    console.error("Fout bij ophalen artikelen:", err);
-    return new NextResponse("Databasefout", { status: 500 });
+  } catch (error) {
+    console.error("Fout bij ophalen producten:", error);
+    return NextResponse.json(
+      { error: "Fout bij ophalen producten" },
+      { status: 500 }
+    );
   }
 }
