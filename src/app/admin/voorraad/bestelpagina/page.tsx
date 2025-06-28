@@ -21,7 +21,12 @@ type Invoer = Record<number, number>;
 export default function BestelPagina() {
   const [leverancierId, setLeverancierId] = useState<number | null>(null);
   const [invoer, setInvoer] = useState<Invoer>({});
-// ✅ Onderhanden bestelling ophalen bij laden
+  const [referentie, setReferentie] = useState(() => {
+    const vandaag = new Date();
+    return `${vandaag.getFullYear()}${(vandaag.getMonth() + 1).toString().padStart(2, "0")}${vandaag.getDate().toString().padStart(2, "0")}`;
+  });
+  const [opmerking, setOpmerking] = useState("");
+
   useEffect(() => {
     if (!leverancierId) return;
     fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`)
@@ -31,7 +36,6 @@ export default function BestelPagina() {
       });
   }, [leverancierId]);
 
-  // ✅ Onderhanden bestelling automatisch opslaan bij wijziging
   useEffect(() => {
     if (leverancierId != null) {
       fetch("/api/bestelling/onderhanden", {
@@ -60,6 +64,31 @@ export default function BestelPagina() {
     });
   }
 
+  function genereerTekst(
+    producten: Product[],
+    invoer: Invoer,
+    referentie: string,
+    leveranciers: Leverancier[] | undefined,
+    leverancierId: number | null,
+    opmerking: string
+  ) {
+    const leverancierNaam = leveranciers?.find((l) => l.id === leverancierId)?.naam ?? "Onbekend";
+    let tekst = `Bestelling IJssalon Vincenzo – ${leverancierNaam}\nReferentie: ${referentie}\n\n`;
+
+    producten.forEach((p) => {
+      const aantal = invoer[p.id] ?? 0;
+      if (aantal > 0) {
+        tekst += `- [${p.id}] ${p.naam} : ${aantal} x\n`;
+      }
+    });
+
+    if (opmerking.trim()) {
+      tekst += `\nOpmerkingen: ${opmerking.trim()}`;
+    }
+
+    return tekst;
+  }
+
   if (!leveranciers) return <p>Laden...</p>;
 
   return (
@@ -76,6 +105,29 @@ export default function BestelPagina() {
           <option key={l.id} value={l.id}>{l.naam}</option>
         ))}
       </select>
+
+      {leverancierId && (
+        <>
+          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+            <label className="text-sm font-semibold">Referentie:</label>
+            <input
+              type="text"
+              value={referentie}
+              onChange={(e) => setReferentie(e.target.value)}
+              className="border px-2 py-1 rounded w-full md:w-60"
+            />
+          </div>
+
+          <div className="text-sm text-gray-700 mt-2 font-semibold">
+            Totaal: €{" "}
+            {producten?.reduce((totaal, p) => {
+              const aantal = invoer[p.id] ?? 0;
+              const prijs = Number(p.huidige_prijs ?? 0);
+              return totaal + aantal * prijs;
+            }, 0).toFixed(2)}
+          </div>
+        </>
+      )}
 
       {producten && (
         <table className="w-full text-sm border mt-4">
@@ -105,21 +157,51 @@ export default function BestelPagina() {
         </table>
       )}
 
-    {leverancierId && (
-    <button
-    className="mt-4 bg-red-500 text-white px-4 py-2 rounded"
-    onClick={async () => {
-      await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, {
-        method: "DELETE",
-      });
-      setInvoer({});
-    }}
-  >
-    Reset bestelling
-  </button>
-  )}
+      {leverancierId && producten && (
+        <div className="space-y-4 mt-6">
+          <textarea
+            className="w-full border px-3 py-2 rounded"
+            placeholder="Opmerkingen (optioneel)"
+            rows={3}
+            value={opmerking}
+            onChange={(e) => setOpmerking(e.target.value)}
+          />
 
+          {typeof window !== "undefined" && window.innerWidth > 600 && (
+            <div className="flex gap-4">
+              <a
+                href={`mailto:?subject=Bestelling ${referentie}&body=${encodeURIComponent(genereerTekst(producten, invoer, referentie, leveranciers, leverancierId, opmerking))}`}
+                className="bg-blue-600 text-white px-4 py-2 rounded"
+              >
+                📧 Mail bestelling
+              </a>
 
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent(genereerTekst(producten, invoer, referentie, leveranciers, leverancierId, opmerking))}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-green-600 text-white px-4 py-2 rounded"
+              >
+                📱 WhatsApp bestelling
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+
+      {leverancierId && (
+        <button
+          className="mt-4 bg-red-500 text-white px-4 py-2 rounded"
+          onClick={async () => {
+            await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, {
+              method: "DELETE",
+            });
+            setInvoer({});
+          }}
+        >
+          Reset bestelling
+        </button>
+      )}
     </main>
   );
 }
