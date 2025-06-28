@@ -50,6 +50,15 @@ export default function BestelPagina() {
     fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`)
       .then(res => res.json())
       .then(data => setInvoer(data.data ?? {}));
+
+    // Refetch when window gains focus (e.g., after mobile update)
+    const onFocus = () => {
+      fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`)
+        .then(res => res.json())
+        .then(data => setInvoer(data.data ?? {}));
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, [leverancierId]);
 
   // Save ongoing order
