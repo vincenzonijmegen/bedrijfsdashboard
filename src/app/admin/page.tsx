@@ -3,11 +3,11 @@
 import Link from "next/link";
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <section className="mb-12">
-    <div className="bg-gray-100 rounded-xl px-6 py-4 mb-6 shadow-inner">
-      <h2 className="text-2xl font-bold text-gray-800 tracking-tight">{title}</h2>
+  <section className="mb-10">
+    <div className="bg-gray-100 rounded-xl px-6 py-3 mb-4 shadow-inner">
+      <h2 className="text-xl font-semibold text-gray-800 tracking-tight">{title}</h2>
     </div>
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
       {children}
     </div>
   </section>
@@ -25,7 +25,7 @@ const bgColorMap: Record<string, string> = {
 const LinkCard = ({ href, label, color }: { href: string; label: string; color: string }) => (
   <Link
     href={href}
-    className={`block rounded-lg px-4 py-3 text-center font-medium shadow transition ${bgColorMap[color] || "bg-gray-200 text-gray-900"}`}
+    className={`block rounded-lg px-3 py-2 text-center text-sm font-medium shadow transition ${bgColorMap[color] || "bg-gray-200 text-gray-900"}`}
   >
     {label}
   </Link>
@@ -34,7 +34,7 @@ const LinkCard = ({ href, label, color }: { href: string; label: string; color: 
 export default function AdminDashboard() {
   return (
     <main className="max-w-6xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-10 text-slate-800">🗂️ Management Portaal</h1>
+      <h1 className="text-2xl font-bold mb-8 text-slate-800">🗂️ Management Portaal</h1>
 
       <Section title="👥 Personeel">
         <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" />
