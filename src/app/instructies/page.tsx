@@ -110,41 +110,45 @@ export default function InstructieOverzicht() {
   };
 
   return (
-    <main className="max-w-4xl mx-auto p-4">
-      <div className="flex justify-between items-center mb-4">
-        {isAdmin && (
-          <Link
-            href="/"
-            className="bg-gray-200 text-sm text-gray-800 px-3 py-1 rounded hover:bg-gray-300"
-          >
-            ← Terug naar startpagina
-          </Link>
-        )}
-        <button
-          onClick={() => {
-            localStorage.removeItem("gebruiker");
-            window.location.href = "/sign-in";
-          }}
-          className="text-sm text-red-600 hover:underline"
-        >
-          Uitloggen
-        </button>
+  <main className="max-w-5xl mx-auto p-4">
+    <div className="flex justify-between items-center mb-6">
+      <div className="flex items-center gap-4">
+        <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
+        <h1 className="text-3xl font-bold text-slate-800">Werkinstructies</h1>
       </div>
+      <button
+        onClick={() => {
+          localStorage.removeItem("gebruiker");
+          window.location.href = "/sign-in";
+        }}
+        className="text-sm text-red-600 hover:underline"
+      >
+        Uitloggen
+      </button>
+    </div>
 
-      <h1 className="text-2xl font-bold mb-4">📘 Werkinstructies</h1>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {gesorteerd.map((i, index) => {
+        const kleuren = ["bg-pink-200", "bg-purple-200", "bg-green-200", "bg-yellow-200", "bg-blue-200"];
+        const kleur = kleuren[index % kleuren.length];
 
-      <ul className="space-y-4">
-        {gesorteerd.map((i) => (
-          <li key={i.id} className="border p-4 rounded shadow bg-white">
+        return (
+          <Link
+            key={i.id}
+            href={`/instructies/${i.slug}`}
+            className={`rounded-lg shadow px-4 py-3 hover:shadow-md transition border ${kleur}`}
+          >
             <div className="flex justify-between items-center">
-              <Link href={`/instructies/${i.slug}`} className="text-blue-600 font-semibold">
-                {i.nummer ? `${i.nummer}. ` : ""}{i.titel}
-              </Link>
+              <div className="font-semibold text-slate-800">
+                {i.nummer ? `${i.nummer}. ` : ""}
+                {i.titel}
+              </div>
               <div className="text-sm">{getStatus(i.slug)}</div>
             </div>
-          </li>
-        ))}
-      </ul>
-    </main>
-  );
+          </Link>
+        );
+      })}
+    </div>
+  </main>
+);
 }
