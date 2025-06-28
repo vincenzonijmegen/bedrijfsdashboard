@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 
 export default async function AdminHome() {
   const session = await getServerSession(authOptions);
-  if (!session) redirect("/login");
+  if (!session) redirect("/sign-in");
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-6">
@@ -37,7 +37,7 @@ export default async function AdminHome() {
           </Button>
         </Link>
         <Link href="/admin/instructies">
-          <Button className="bg-sky-100 text-sky-900 hover:bg-sky-200">
+          <Button className="bg-pink-100 text-pink-900 hover:bg-pink-200">
             Instructies medewerkers
           </Button>
         </Link>
@@ -58,12 +58,12 @@ export default async function AdminHome() {
       </h2>
       <div className="flex flex-wrap gap-4 mb-6">
         <Link href="/openshifts">
-          <Button className="bg-teal-100 text-teal-900 hover:bg-teal-200">
+          <Button className="bg-sky-100 text-sky-900 hover:bg-sky-200">
             Open Shifts PDF
           </Button>
         </Link>
         <Link href="/admin/shiftacties">
-          <Button className="bg-teal-100 text-teal-900 hover:bg-teal-200">
+          <Button className="bg-sky-100 text-sky-900 hover:bg-sky-200">
             Shiftacties & Statistieken
           </Button>
         </Link>
