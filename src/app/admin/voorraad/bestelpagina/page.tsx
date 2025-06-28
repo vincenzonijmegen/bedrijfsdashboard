@@ -21,10 +21,12 @@ type Invoer = Record<number, number>;
 export default function BestelPagina() {
   const [leverancierId, setLeverancierId] = useState<number | null>(null);
   const [invoer, setInvoer] = useState<Invoer>({});
-  const [referentie, setReferentie] = useState(() => {
+  const [datumPrefix] = useState(() => {
     const vandaag = new Date();
     return `${vandaag.getFullYear()}${(vandaag.getMonth() + 1).toString().padStart(2, "0")}${vandaag.getDate().toString().padStart(2, "0")}`;
   });
+  const [referentieSuffix, setReferentieSuffix] = useState("");
+  const referentie = `${datumPrefix}-${referentieSuffix}`;
   const [opmerking, setOpmerking] = useState("");
 
   useEffect(() => {
@@ -73,17 +75,22 @@ export default function BestelPagina() {
     opmerking: string
   ) {
     const leverancierNaam = leveranciers?.find((l) => l.id === leverancierId)?.naam ?? "Onbekend";
-    let tekst = `Bestelling IJssalon Vincenzo – ${leverancierNaam}\nReferentie: ${referentie}\n\n`;
+    let tekst = `Bestelling IJssalon Vincenzo – ${leverancierNaam}
+Referentie: ${referentie}
+
+`;
 
     producten.forEach((p) => {
       const aantal = invoer[p.id] ?? 0;
       if (aantal > 0) {
-        tekst += `- [${p.id}] ${p.naam} : ${aantal} x\n`;
+        tekst += `- [${p.bestelnummer ?? p.id}] ${p.naam} : ${aantal} x
+`;
       }
     });
 
     if (opmerking.trim()) {
-      tekst += `\nOpmerkingen: ${opmerking.trim()}`;
+      tekst += `
+Opmerkingen: ${opmerking.trim()}`;
     }
 
     return tekst;
@@ -112,9 +119,10 @@ export default function BestelPagina() {
             <label className="text-sm font-semibold">Referentie:</label>
             <input
               type="text"
-              value={referentie}
-              onChange={(e) => setReferentie(e.target.value)}
+              value={referentieSuffix}
+              onChange={(e) => setReferentieSuffix(e.target.value)}
               className="border px-2 py-1 rounded w-full md:w-60"
+              placeholder="bijv. vrijdag"
             />
           </div>
 
