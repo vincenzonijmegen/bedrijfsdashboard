@@ -69,7 +69,7 @@ export default function BestelPagina() {
               <tr key={p.id} className="border-t">
                 <td className="p-2">{p.naam}</td>
                 <td className="p-2">{p.besteleenheid ?? 1}</td>
-                <td className="p-2">{p.huidige_prijs != null ? `€ ${p.huidige_prijs.toFixed(2)}` : "–"}</td>
+                <td className="p-2">{p.huidige_prijs != null ? `€ ${Number(p.huidige_prijs).toFixed(2)}` : "–"}</td>
                 <td className="p-2">{invoer[p.id] ?? 0}</td>
                 <td className="p-2 space-x-2">
                   <button onClick={() => wijzigAantal(p.id, -1)} className="px-2 py-1 bg-gray-200 rounded">–</button>
