@@ -52,7 +52,7 @@ export default function AdminDashboard() {
 
       <Section title="📦 Voorraadbeheer">
         <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="green" />
-        <LinkCard href="/admin/voorraad/bestellen" label="Bestel-app" color="pink" />
+        <LinkCard href="/admin/bestelpagina" label="Bestel-app" color="pink" />
       </Section>
 
       <Section title="📊 Rapportages (binnenkort)">
