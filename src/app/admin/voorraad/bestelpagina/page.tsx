@@ -89,7 +89,9 @@ export default function BestelPagina() {
 Referentie: ${referentie}
 
 `;
-    tekst += `Bestelnummer	Product	Aantal
+        tekst += `Bestelnummer	Product	Aantal
+`;
+    tekst += `-----------	-------	------
 `;
     tekst += `-----------	-------	------
 `;
