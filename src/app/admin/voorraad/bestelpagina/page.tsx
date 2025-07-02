@@ -84,16 +84,17 @@ export default function BestelPagina() {
         rows.push({ bestelnummer: p.bestelnummer ?? p.id.toString(), naam: p.naam, aantal });
       }
     });
+    // Compose tab-separated lines for monospaced alignment
     let tekst = `Bestelling IJssalon Vincenzo – ${naam}
 Referentie: ${referentie}
 
 `;
-    tekst += `| Bestelnummer | Product | Aantal |
+    tekst += `Bestelnummer	Product	Aantal
 `;
-    tekst += `| ------------ | ------- | ------ |
+    tekst += `-----------	-------	------
 `;
     rows.forEach(r => {
-      tekst += `| ${r.bestelnummer} | ${r.naam} | ${r.aantal} |
+      tekst += `${r.bestelnummer}	${r.naam}	${r.aantal}
 `;
     });
     if (opmerking.trim()) {
