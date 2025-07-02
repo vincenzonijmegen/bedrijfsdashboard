@@ -86,17 +86,18 @@ export default function BestelPagina() {
     });
     // Compose tab-separated lines for monospaced alignment
     let tekst = `Bestelling IJssalon Vincenzo – ${naam}
-Referentie: ${referentie}
+`;
+    tekst += `Referentie: ${referentie}
 
 `;
-        tekst += `Bestelnummer	Product	Aantal
+    // Header: Aantal first
+    tekst += `Aantal	Bestelnummer	Product
 `;
-    tekst += `-----------	-------	------
+    tekst += `------	-----------	-------
 `;
-    tekst += `-----------	-------	------
-`;
+    // Rows
     rows.forEach(r => {
-      tekst += `${r.bestelnummer}	${r.naam}	${r.aantal}
+      tekst += `${r.aantal}	${r.bestelnummer}	${r.naam}
 `;
     });
     if (opmerking.trim()) {
@@ -104,6 +105,7 @@ Referentie: ${referentie}
 Opmerkingen: ${opmerking.trim()}`;
     }
     return tekst;
+  };
   };
   if (!leveranciers) return <p>Laden...</p>;
 
