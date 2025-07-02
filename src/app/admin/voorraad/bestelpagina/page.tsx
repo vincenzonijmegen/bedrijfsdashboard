@@ -77,43 +77,23 @@ export default function BestelPagina() {
 
   const genereerTekst = () => {
     const naam = leveranciers?.find(l => l.id === leverancierId)?.naam ?? "Onbekend";
-    // Prepare rows
-    const rows: { bestelnummer: string; naam: string; aantal: string }[] = [];
+    const rows: { bestelnummer: string; naam: string; aantal: number }[] = [];
     producten?.forEach(p => {
       const aantal = invoer[p.id] ?? 0;
       if (aantal > 0) {
-        rows.push({
-          bestelnummer: p.bestelnummer ?? p.id.toString(),
-          naam: p.naam,
-          aantal: aantal.toString(),
-        });
+        rows.push({ bestelnummer: p.bestelnummer ?? p.id.toString(), naam: p.naam, aantal });
       }
     });
-    // Determine column widths
-    const bestelnummerWidth = Math.max(
-      'Bestelnummer'.length,
-      ...rows.map(r => r.bestelnummer.length)
-    );
-    const naamWidth = Math.max(
-      'Product'.length,
-      ...rows.map(r => r.naam.length)
-    );
-    const aantalWidth = Math.max(
-      'Aantal'.length,
-      ...rows.map(r => r.aantal.length)
-    );
-    // Header and separator
     let tekst = `Bestelling IJssalon Vincenzo – ${naam}
 Referentie: ${referentie}
 
 `;
-    tekst += `${'Bestelnummer'.padEnd(bestelnummerWidth)} ${'Product'.padEnd(naamWidth)} ${'Aantal'.padEnd(aantalWidth)}
+    tekst += `| Bestelnummer | Product | Aantal |
 `;
-    tekst += `${'-'.repeat(bestelnummerWidth)} ${'-'.repeat(naamWidth)} ${'-'.repeat(aantalWidth)}
+    tekst += `| ------------ | ------- | ------ |
 `;
-    // Rows
     rows.forEach(r => {
-      tekst += `${r.bestelnummer.padEnd(bestelnummerWidth)} ${r.naam.padEnd(naamWidth)} ${r.aantal.padEnd(aantalWidth)}
+      tekst += `| ${r.bestelnummer} | ${r.naam} | ${r.aantal} |
 `;
     });
     if (opmerking.trim()) {
