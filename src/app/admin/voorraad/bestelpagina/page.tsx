@@ -78,29 +78,42 @@ export default function BestelPagina() {
   const genereerTekst = () => {
     const naam = leveranciers?.find(l => l.id === leverancierId)?.naam ?? "Onbekend";
     // Prepare rows
-    const rows: { id: string; naam: string; aantal: string }[] = [];
+    const rows: { bestelnummer: string; naam: string; aantal: string }[] = [];
     producten?.forEach(p => {
       const aantal = invoer[p.id] ?? 0;
       if (aantal > 0) {
-        rows.push({ id: p.bestelnummer ?? p.id.toString(), naam: p.naam, aantal: aantal.toString() });
+        rows.push({
+          bestelnummer: p.bestelnummer ?? p.id.toString(),
+          naam: p.naam,
+          aantal: aantal.toString(),
+        });
       }
     });
     // Determine column widths
-    const idWidth = Math.max(...rows.map(r => r.id.length), 2);
-    const naamWidth = Math.max(...rows.map(r => r.naam.length), 7);
-    const aantalWidth = Math.max(...rows.map(r => r.aantal.length), 6);
-    // Header
+    const bestelnummerWidth = Math.max(
+      'Bestelnummer'.length,
+      ...rows.map(r => r.bestelnummer.length)
+    );
+    const naamWidth = Math.max(
+      'Product'.length,
+      ...rows.map(r => r.naam.length)
+    );
+    const aantalWidth = Math.max(
+      'Aantal'.length,
+      ...rows.map(r => r.aantal.length)
+    );
+    // Header and separator
     let tekst = `Bestelling IJssalon Vincenzo – ${naam}
 Referentie: ${referentie}
 
 `;
-    tekst += `${'ID'.padEnd(idWidth)}	${'Product'.padEnd(naamWidth)}	${'Aantal'.padEnd(aantalWidth)}
+    tekst += `${'Bestelnummer'.padEnd(bestelnummerWidth)} ${'Product'.padEnd(naamWidth)} ${'Aantal'.padEnd(aantalWidth)}
 `;
-    tekst += `${'-'.repeat(idWidth)}	${'-'.repeat(naamWidth)}	${'-'.repeat(aantalWidth)}
+    tekst += `${'-'.repeat(bestelnummerWidth)} ${'-'.repeat(naamWidth)} ${'-'.repeat(aantalWidth)}
 `;
     // Rows
     rows.forEach(r => {
-      tekst += `${r.id.padEnd(idWidth)}	${r.naam.padEnd(naamWidth)}	${r.aantal.padEnd(aantalWidth)}
+      tekst += `${r.bestelnummer.padEnd(bestelnummerWidth)} ${r.naam.padEnd(naamWidth)} ${r.aantal.padEnd(aantalWidth)}
 `;
     });
     if (opmerking.trim()) {
