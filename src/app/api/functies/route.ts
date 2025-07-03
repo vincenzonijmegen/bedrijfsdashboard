@@ -30,3 +30,25 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ success: true });
 }
+
+export async function DELETE(req: NextRequest) {
+  const id = req.nextUrl.searchParams.get("id");
+  if (!id) {
+    return NextResponse.json({ error: "Geen id meegegeven" }, { status: 400 });
+  }
+
+  const gebruikt = await pool.query(
+    `SELECT 1 FROM medewerkers WHERE functie_id = $1
+     UNION
+     SELECT 1 FROM instructies WHERE functie_id = $1
+     LIMIT 1`,
+    [id]
+  );
+
+  if (gebruikt.rowCount > 0) {
+    return NextResponse.json({ error: "Functie is nog in gebruik en kan niet worden verwijderd." }, { status: 400 });
+  }
+
+  await pool.query("DELETE FROM functies WHERE id = $1", [id]);
+  return NextResponse.json({ success: true });
+}
