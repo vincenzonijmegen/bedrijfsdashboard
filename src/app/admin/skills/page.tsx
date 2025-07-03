@@ -1,154 +1,128 @@
 // src/app/admin/skills/page.tsx
-
 "use client";
 
 import { useEffect, useState } from "react";
-import useSWR from "swr";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-
-interface Medewerker {
-  id: number;
-  naam: string;
-}
 
 interface Skill {
   id: string;
   naam: string;
   categorie: string;
-}
-
-interface ToegewezenSkill {
-  skill_id: string;
-  deadline_dagen: number;
+  beschrijving: string;
+  actief: boolean;
 }
 
 export default function SkillBeheer() {
-  const { data: medewerkersAPI } = useSWR<Medewerker[]>("/api/medewerkers", fetcher);
-  const { data: skills } = useSWR<Skill[]>("/api/skills?type=skills", fetcher);
-  const [geselecteerd, setGeselecteerd] = useState<number | null>(null);
-  const [toewijzingen, setToewijzingen] = useState<Record<string, { actief: boolean; deadline: number }>>({});
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [nieuw, setNieuw] = useState({ naam: "", categorie: "" });
+  const [succes, setSucces] = useState(false);
 
   useEffect(() => {
-    if (geselecteerd !== null) {
-      fetch(`/api/skills/toegewezen?medewerker_id=${geselecteerd}`)
-        .then(res => res.json())
-        .then((data: ToegewezenSkill[]) => {
-          const ingevuld = Object.fromEntries(
-            data.map((s) => [s.skill_id, { actief: true, deadline: Number(s.deadline_dagen) || 10 }])
-          );
-          setToewijzingen(ingevuld);
-        });
-    }
-  }, [geselecteerd]);
+    fetch("/api/skills")
+      .then((res) => res.json())
+      .then((data) => setSkills(data));
+  }, [succes]);
 
-  const toggle = (skill_id: string) => {
-    setToewijzingen((prev) => ({
-      ...prev,
-      [skill_id]: prev[skill_id]
-        ? { ...prev[skill_id], actief: !prev[skill_id].actief }
-        : { actief: true, deadline: 10 },
-    }));
+  const gegroepeerd = skills.reduce((acc, skill) => {
+    if (!acc[skill.categorie]) acc[skill.categorie] = [];
+    acc[skill.categorie].push(skill);
+    return acc;
+  }, {} as Record<string, Skill[]>);
+
+  const update = (id: string, veld: keyof Skill, waarde: string | boolean) => {
+    setSkills((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, [veld]: waarde } : s))
+    );
   };
 
-  const opslaan = async () => {
-    if (!geselecteerd) return;
-    const body = Object.entries(toewijzingen)
-      .filter(([, val]) => val.actief)
-      .map(([skill_id, val]) => ({ medewerker_id: geselecteerd, skill_id, deadline_dagen: val.deadline || 10 }));
-    await fetch("/api/skills/toewijzen", {
+  const opslaan = async (skill: Skill) => {
+    const res = await fetch("/api/skills", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(skill),
+    });
+    if (res.ok) setSucces(true);
+  };
+
+  const toevoegen = async () => {
+    if (!nieuw.naam || !nieuw.categorie) return;
+    const res = await fetch("/api/skills", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify(nieuw),
     });
-    alert("Opgeslagen!");
+    if (res.ok) {
+      setNieuw({ naam: "", categorie: "" });
+      setSucces(true);
+    }
   };
-
-  if (!medewerkersAPI || !skills) return <div>Laden...</div>;
-
-  const skillsPerCategorie = skills.reduce((acc: Record<string, Skill[]>, skill) => {
-    const categorie = skill.categorie ?? "Onbekend";
-    if (!acc[categorie]) acc[categorie] = [];
-    acc[categorie].push(skill);
-    return acc;
-  }, {});
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold">🧠 Skillbeheer</h1>
+      <h1 className="text-2xl font-bold">🧩 Skillbeheer</h1>
 
-      <div className="flex gap-4 items-center">
-        <span>Kies medewerker:</span>
-        <select
-          className="border rounded px-2 py-1"
-          value={geselecteerd !== null ? String(geselecteerd) : ""}
-          onChange={(e) => {
-            const val: string | undefined = e.target?.value;
-            if (!val) {
-              setGeselecteerd(null);
-              return;
-            }
-            const parsed = Number(val);
-            if (!isNaN(parsed)) {
-              setGeselecteerd(parsed);
-            } else {
-              setGeselecteerd(null);
-            }
-          }}
-        >
-          <option value="">-- Selecteer --</option>
-          {medewerkersAPI.map((m) => (
-            <option key={m.id ?? m.naam} value={m.id ? String(m.id) : ""}>{m.naam ?? "(onbekend)"}</option>
-          ))}
-        </select>
+      <div className="bg-slate-50 p-4 rounded border">
+        <h2 className="font-semibold mb-2">➕ Nieuwe skill toevoegen</h2>
+        <div className="flex gap-4 mb-2">
+          <input
+            value={nieuw.naam}
+            onChange={(e) => setNieuw({ ...nieuw, naam: e.target.value })}
+            placeholder="Skillnaam"
+            className="border px-2 py-1 rounded w-1/3"
+          />
+          <input
+            value={nieuw.categorie}
+            onChange={(e) => setNieuw({ ...nieuw, categorie: e.target.value })}
+            placeholder="Categorie"
+            className="border px-2 py-1 rounded w-1/3"
+          />
+          <button onClick={toevoegen} className="bg-green-600 text-white px-4 rounded">
+            Toevoegen
+          </button>
+        </div>
       </div>
 
-      {geselecteerd !== null && (
-        <div className="space-y-4">
-          {Object.entries(skillsPerCategorie).map(([categorie, lijst]) => (
-            <Card key={categorie} className="p-4">
-              <h2 className="font-semibold mb-2">{categorie}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {lijst.map((s) => (
-                  <label key={s.id} className="flex items-center gap-2">
+      {Object.entries(gegroepeerd).map(([cat, lijst]) => (
+        <div key={cat} className="space-y-2">
+          <h3 className="text-lg font-semibold mt-6">📁 {cat}</h3>
+          <table className="w-full text-sm border">
+            <thead>
+              <tr className="bg-slate-100">
+                <th className="border p-2 text-left">Naam</th>
+                <th className="border p-2 text-left">Beschrijving</th>
+                <th className="border p-2 text-center">Actie</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lijst.map((s) => (
+                <tr key={s.id}>
+                  <td className="border p-2">
                     <input
-                      type="checkbox"
-                      checked={toewijzingen[s.id]?.actief || false}
-                      onChange={() => toggle(s.id)}
+                      value={s.naam}
+                      onChange={(e) => update(s.id, "naam", e.target.value)}
+                      className="w-full border rounded px-2 py-1"
                     />
-                    <span>{s.naam}</span>
-                    {toewijzingen[s.id]?.actief && (
-                      <input
-                        type="number"
-                        className="w-20 border px-2 py-1 rounded"
-                        value={(toewijzingen[s.id]?.deadline ?? 10).toString()}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value);
-                          setToewijzingen((prev) => ({
-                            ...prev,
-                            [s.id]: {
-                              ...prev[s.id],
-                              deadline: isNaN(value) ? 10 : value,
-                            },
-                          }));
-                        }}
-                      />
-                    )}
-                  </label>
-                ))}
-              </div>
-            </Card>
-          ))}
-
-          <Button onClick={opslaan}>Opslaan</Button>
+                  </td>
+                  <td className="border p-2">
+                    <textarea
+                      value={s.beschrijving || ""}
+                      onChange={(e) => update(s.id, "beschrijving", e.target.value)}
+                      className="w-full border rounded px-2 py-1 h-24"
+                    />
+                  </td>
+                  <td className="border p-2 text-center">
+                    <button
+                      onClick={() => opslaan(s)}
+                      className="bg-blue-600 text-white px-3 py-1 rounded"
+                    >
+                      Opslaan
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
+      ))}
     </div>
   );
-}
-
-async function fetcher(url: string) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Fout bij ophalen");
-  return res.json();
 }
