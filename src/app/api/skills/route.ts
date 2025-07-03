@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(req: NextRequest) {
   try {
     const result = await db.query(
-      `SELECT s.id, s.naam, s.categorie_id, s.beschrijving, s.actief
+      `SELECT s.id, s.naam, s.categorie_id, s.actief
        FROM skills s
        ORDER BY s.categorie_id, s.naam`
     );
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const { id, naam, categorie_id, beschrijving, actief } = await req.json();
+    const { id, naam, categorie_id, actief } = await req.json();
     if (!id || !naam || !categorie_id) {
       return NextResponse.json({ error: "ID, naam en categorie zijn verplicht" }, { status: 400 });
     }
@@ -43,10 +43,9 @@ export async function PUT(req: NextRequest) {
       `UPDATE skills
        SET naam = $1,
            categorie_id = $2,
-           beschrijving = $3,
-           actief = $4
+           actief = $3
        WHERE id = $5`,
-      [naam, categorie_id, beschrijving || "", actief ?? true, id]
+      [naam, categorie_id, actief ?? true, id]
     );
     return NextResponse.json({ success: true });
   } catch (err) {
