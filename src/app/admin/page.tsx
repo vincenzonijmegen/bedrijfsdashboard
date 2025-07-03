@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+const Section = ({ title, children, color }: { title: string; children: React.ReactNode; color?: string }) => (
   <section className="mb-10">
-    <div className="bg-gray-100 rounded-xl px-6 py-3 mb-4 shadow-inner">
+    <div className="${color ? `rounded-xl px-6 py-3 mb-4 shadow-inner ${bgColorMap[color] || 'bg-gray-100 text-gray-900 hover:bg-gray-200'}` : 'bg-gray-100 rounded-xl px-6 py-3 mb-4 shadow-inner'}">
       <h2 className="text-xl font-semibold text-gray-800 tracking-tight">{title}</h2>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -36,34 +36,34 @@ export default function AdminDashboard() {
     <main className="max-w-6xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-8 text-slate-800">🗂️ Management Portaal</h1>
 
-      <Section title="👥 Medewerkers">
+      <Section title="👥 Medewerkers" color="green">
         <LinkCard href="/admin/medewerkers" label="👤 Medewerkers beheren" color="green" />
         <LinkCard href="/sollicitatie/pdf" label="📥 Sollicitatiemails" color="green" />
         <LinkCard href="/admin/functies" label="🏷️ Functies" color="green" />
       </Section>
 
-      <Section title="📘 Instructies">
+      <Section title="📘 Instructies" color="blue">
         <LinkCard href="/admin/instructies" label="📝 Instructies beheren" color="blue" />
         <LinkCard href="/instructies" label="👓 Instructies medewerkers" color="blue" />
         <LinkCard href="/admin/resultaten" label="📊 Toetsresultaten" color="blue" />
       </Section>
 
-      <Section title="🧠 Skills">
+      <Section title="🧠 Skills" color="purple">
         <LinkCard href="/admin/skills" label="🧩 Skills beheer" color="purple" />
         <LinkCard href="/admin/skills" label="👥 Skills medewerkers" color="purple" />
       </Section>
 
-      <Section title="📅 Planning">
+      <Section title="📅 Planning" color="slate">
         <LinkCard href="/openshifts" label="📄 Open Shifts PDF" color="orange" />
         <LinkCard href="/shift-acties" label="📈 Shiftacties & Statistieken" color="orange" />
       </Section>
 
-      <Section title="📦 Voorraadbeheer">
+      <Section title="📦 Voorraadbeheer" color="pink">
         <LinkCard href="/admin/voorraad/artikelen" label="📋 Artikelen beheren" color="pink" />
         <LinkCard href="/admin/voorraad/bestelpagina" label="🛒 Bestel-app" color="pink" />
       </Section>
 
-      <Section title="📊 Rapportages (binnenkort)">
+      <Section title="📊 Rapportages (binnenkort)" color="slate">
         <LinkCard href="/admin/rapportages" label="📈 Omzet & voorraad" color="gray" />
       </Section>
     </main>

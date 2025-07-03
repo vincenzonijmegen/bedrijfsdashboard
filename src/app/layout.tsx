@@ -14,14 +14,13 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="nl">
-      <head>
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-      </head>
-      <body>{children}</body>
-    </html>
-  );
+  <html lang="nl">
+    <head>
+      <link rel="icon" href="/favicon.ico" />
+      <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+      <meta name="theme-color" content="#ffffff" />
+    </head>
+    <body>{children}</body>
+  </html>
+);
 }
-
