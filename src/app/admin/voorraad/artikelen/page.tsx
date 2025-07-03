@@ -1,12 +1,23 @@
 "use client";
 
 import useSWR, { mutate } from "swr";
-import type { Leverancier, Product } from "@/types/db";
 import { useEffect, useState } from "react";
 
+interface Leverancier {
+  id: number;
+  naam: string;
+}
 
-
-
+interface Product {
+  id: number;
+  naam: string;
+  bestelnummer?: string;
+  minimum_voorraad?: number;
+  besteleenheid?: number;
+  huidige_prijs?: number;
+  actief: boolean;
+  volgorde?: number;
+}
 
 export default function Productbeheer() {
   const [leverancierId, setLeverancierId] = useState<number | null>(null);
@@ -171,7 +182,7 @@ export default function Productbeheer() {
                       setBesteleenheid(p.besteleenheid ?? 1);
                       setPrijs(p.huidige_prijs);
                       setVolgorde(p.volgorde);
-                      setActief(p.actief ?? true); // of false als je dat liever als default hebt
+                      setActief(p.actief);
                       setNieuweLeverancier("");
                     }}
                     className="text-blue-600 hover:underline mr-2"

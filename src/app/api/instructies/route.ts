@@ -1,69 +1,52 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import slugify from "slugify";
 
-export async function POST(req: NextRequest) {
+
+
+export async function POST(req: Request) {
   try {
+    
     const { titel, inhoud, nummer, functies } = await req.json();
     const slug = slugify(titel, { lower: true, strict: true });
-    const createdAt = new Date().toISOString();
+    const created_at = new Date().toISOString();
 
-    // Zorg dat functies een array is
-    let functiesArray: string[] = [];
-    if (Array.isArray(functies)) {
-      functiesArray = functies;
-    } else if (typeof functies === 'string') {
+    const functiesGeparsed = Array.isArray(functies)
+  ? functies
+  : typeof functies === "string"
+  ? (() => {
       try {
-        functiesArray = JSON.parse(functies);
+        return JSON.parse(functies);
       } catch {
-        console.warn('Kon functies niet parsen, verwacht JSON-array string');
+        return [];
       }
-    }
+    })()
+  : [];
 
-    await db.query(
-      `INSERT INTO instructies (titel, inhoud, slug, status, created_at, nummer, functies)
-       VALUES ($1, $2, $3, 'concept', $4, $5, $6)`,
-      [titel, inhoud, slug, createdAt, nummer, JSON.stringify(functiesArray)]
+await db.query(
+  `INSERT INTO instructies (titel, inhoud, slug, status, created_at, nummer, functies)
+   VALUES ($1, $2, $3, 'concept', $4, $5, $6)`,
+  [titel, inhoud, slug, created_at, nummer, JSON.stringify(functiesGeparsed)]
     );
 
-    return NextResponse.json({ slug });
+    return new NextResponse(JSON.stringify({ slug }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (err) {
-    console.error("🛑 Fout bij POST /api/instructies:", err);
-    return NextResponse.json({ error: "Fout bij opslaan instructie" }, { status: 500 });
+    console.error("🛑 Fout bij POST:", err);
+    return NextResponse.json({ error: "Fout bij opslaan" }, { status: 500 });
   }
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const email = req.nextUrl.searchParams.get('email');
-    if (!email) {
-      // Geen email, geef lege lijst
-      return NextResponse.json([]);
-    }
-
-    // Haal functie op van deze medewerker
-    const functieRes = await db.query(
-      `SELECT functie FROM medewerkers WHERE email = $1 LIMIT 1`,
-      [email]
-    );
-    const functie = functieRes.rows[0]?.functie;
-    if (!functie) {
-      return NextResponse.json([]);
-    }
-
-    // Haal actieve instructies voor deze functie
     const result = await db.query(
-      `SELECT id, titel, slug, nummer, functies
-       FROM instructies
-       WHERE status = 'actief'
-         AND functies @> $1::jsonb
-       ORDER BY created_at DESC`,
-      [JSON.stringify([functie])]
+      "SELECT id, titel, slug, nummer, functies FROM instructies ORDER BY created_at DESC"
     );
-
-    return NextResponse.json(result.rows);
+    return NextResponse.json(result.rows, { status: 200 });
   } catch (err) {
-    console.error("🛑 Fout bij GET /api/instructies:", err);
-    return NextResponse.json({ error: "Fout bij ophalen instructies" }, { status: 500 });
+    console.error("🛑 Fout bij ophalen instructies:", err);
+    return NextResponse.json({ error: "Fout bij ophalen" }, { status: 500 });
   }
 }
