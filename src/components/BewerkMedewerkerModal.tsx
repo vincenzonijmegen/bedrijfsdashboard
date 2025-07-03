@@ -35,8 +35,7 @@ export default function BewerkMedewerkerModal({ open, onClose, medewerker, funct
 
   return (
     <Dialog open={open} onClose={onClose} className="fixed z-50 inset-0 flex items-center justify-center">
-      <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
-
+      
       <div className="relative bg-white rounded-lg p-6 w-full max-w-md z-50 shadow-lg">
         <Dialog.Title className="text-lg font-semibold mb-4">Bewerk medewerker</Dialog.Title>
 
