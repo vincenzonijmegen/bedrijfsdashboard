@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dialog } from "@headlessui/react";
 import { Functie, Medewerker } from "@/types/types";
@@ -14,7 +13,7 @@ interface Props {
 export default function BewerkMedewerkerModal({ open, onClose, medewerker, functies, onSave }: Props) {
   const [naam, setNaam] = useState("");
   const [email, setEmail] = useState("");
-  const [functieId, setFunctieId] = useState<number | string>("");
+  const [functieId, setFunctieId] = useState<string>("");
 
   useEffect(() => {
     if (medewerker) {
@@ -29,7 +28,7 @@ export default function BewerkMedewerkerModal({ open, onClose, medewerker, funct
       ...medewerker,
       naam,
       email,
-      functie: functieId,
+      functie: functieId.toString(),
     });
     onClose();
   };
@@ -66,7 +65,7 @@ export default function BewerkMedewerkerModal({ open, onClose, medewerker, funct
             <label className="block text-sm font-medium">Functie</label>
             <select
               value={functieId}
-              onChange={(e) => setFunctieId(Number(e.target.value))}
+              onChange={(e) => setFunctieId(e.target.value)}
               className="border rounded px-3 py-2 w-full"
             >
               <option value="">Kies een functie</option>
