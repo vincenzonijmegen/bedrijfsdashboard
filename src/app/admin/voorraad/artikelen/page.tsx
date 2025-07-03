@@ -171,7 +171,7 @@ export default function Productbeheer() {
                       setBesteleenheid(p.besteleenheid ?? 1);
                       setPrijs(p.huidige_prijs);
                       setVolgorde(p.volgorde);
-                      setActief(p.actief);
+                      setActief(p.actief ?? true); // of false als je dat liever als default hebt
                       setNieuweLeverancier("");
                     }}
                     className="text-blue-600 hover:underline mr-2"
