@@ -67,4 +67,3 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Fout bij verwijderen" }, { status: 500 });
   }
 }
-}
