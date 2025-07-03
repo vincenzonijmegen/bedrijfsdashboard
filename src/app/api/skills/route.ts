@@ -44,7 +44,7 @@ export async function PUT(req: NextRequest) {
        SET naam = $1,
            categorie_id = $2,
            actief = $3
-       WHERE id = $5`,
+       WHERE id = $4`,
       [naam, categorie_id, actief ?? true, id]
     );
     return NextResponse.json({ success: true });
