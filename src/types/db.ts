@@ -23,4 +23,5 @@ export interface Medewerker {
   naam: string;
   email: string;
   functie_id: number;
+  functie?: string;
 }
