@@ -1,0 +1,47 @@
+// src/app/api/skills/categorieen/route.ts
+import { db } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server";
+
+export async function GET() {
+  try {
+    const res = await db.query("SELECT * FROM skill_categorieen ORDER BY naam");
+    return NextResponse.json(res.rows);
+  } catch (err) {
+    console.error("GET categorieen error", err);
+    return NextResponse.json({ error: "Fout bij ophalen" }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const { naam, kleur } = await req.json();
+    if (!naam) return NextResponse.json({ error: "Naam is verplicht" }, { status: 400 });
+
+    await db.query(
+      "INSERT INTO skill_categorieen (naam, kleur) VALUES ($1, $2)",
+      [naam, kleur || null]
+    );
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("POST categorie error", err);
+    return NextResponse.json({ error: "Fout bij toevoegen" }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const { id, naam, kleur } = await req.json();
+    if (!id || !naam) return NextResponse.json({ error: "ID en naam verplicht" }, { status: 400 });
+
+    await db.query(
+      "UPDATE skill_categorieen SET naam = $1, kleur = $2 WHERE id = $3",
+      [naam, kleur || null, id]
+    );
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("PUT categorie error", err);
+    return NextResponse.json({ error: "Fout bij bijwerken" }, { status: 500 });
+  }
+}
