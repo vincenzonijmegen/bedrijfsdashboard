@@ -17,14 +17,7 @@ export async function GET(req: NextRequest) {
   }
 
   const result = await db.query(
-    `SELECT m.id,
-            m.naam,
-            m.email,
-            m.functie AS functie_id,
-            f.naam AS functie_naam
-       FROM medewerkers m
-  LEFT JOIN functies f ON m.functie = f.id
-      ORDER BY m.naam`
+    `SELECT id, naam, email, functie AS functie_id FROM medewerkers ORDER BY naam`
   );
 
   return NextResponse.json(result.rows);
@@ -42,17 +35,17 @@ export async function POST(req: NextRequest) {
   }
 
   // check op bestaand e-mailadres
- const check = await db.query(
-  "SELECT 1 FROM medewerkers WHERE email = $1",
-  [email]
-);
-// gebruik null-coalesce om null uit te sluiten
-if ((check.rowCount ?? 0) > 0) {
-  return NextResponse.json(
-    { success: false, error: "E-mailadres bestaat al" },
-    { status: 400 }
+  const check = await db.query(
+    "SELECT 1 FROM medewerkers WHERE email = $1",
+    [email]
   );
-}
+  // gebruik null-coalesce om null uit te sluiten
+  if ((check.rowCount ?? 0) > 0) {
+    return NextResponse.json(
+      { success: false, error: "E-mailadres bestaat al" },
+      { status: 400 }
+    );
+  }
 
   // genereer tijdelijk wachtwoord en hash
   const tijdelijkWachtwoord = Math.random().toString(36).slice(-8);
