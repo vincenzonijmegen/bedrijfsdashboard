@@ -43,10 +43,12 @@ export async function DELETE(req: NextRequest) {
 
     // Controleer of de functie in gebruik is bij medewerkers of instructies
     const gebruikt = await pool.query(
-      `SELECT 1 FROM medewerkers WHERE functie_id = $1
+      `SELECT 1 FROM medewerkers WHERE functie = $1
        UNION
        SELECT 1 FROM instructies WHERE functie_id = $1
        LIMIT 1`,
+      [id]
+    ),
       [id]
     );
 
