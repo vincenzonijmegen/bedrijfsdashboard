@@ -3,11 +3,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 
+// GET /api/functies
 export async function GET() {
   const result = await pool.query("SELECT * FROM functies ORDER BY naam");
   return NextResponse.json(result.rows);
 }
 
+// POST /api/functies
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { id, naam, omschrijving } = body;
@@ -31,6 +33,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ success: true });
 }
 
+// DELETE /api/functies?id=123
 export async function DELETE(req: NextRequest) {
   try {
     const id = req.nextUrl.searchParams.get("id");
@@ -38,6 +41,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Geen id meegegeven" }, { status: 400 });
     }
 
+    // Controleer of de functie in gebruik is bij medewerkers of instructies
     const gebruikt = await pool.query(
       `SELECT 1 FROM medewerkers WHERE functie_id = $1
        UNION
@@ -47,7 +51,10 @@ export async function DELETE(req: NextRequest) {
     );
 
     if ((gebruikt?.rowCount ?? 0) > 0) {
-      return NextResponse.json({ error: "Functie is nog in gebruik en kan niet worden verwijderd." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Functie is nog in gebruik en kan niet worden verwijderd." },
+        { status: 400 }
+      );
     }
 
     await pool.query("DELETE FROM functies WHERE id = $1", [id]);
@@ -56,21 +63,4 @@ export async function DELETE(req: NextRequest) {
     console.error("❌ Fout bij verwijderen functie:", err);
     return NextResponse.json({ error: "Interne fout bij verwijderen" }, { status: 500 });
   }
-}, { status: 400 });
-  }
-
-  const gebruikt = await pool.query(
-    `SELECT 1 FROM medewerkers WHERE functie_id = $1
-     UNION
-     SELECT 1 FROM instructies WHERE functie_id = $1
-     LIMIT 1`,
-    [id]
-  );
-
-  if ((gebruikt?.rowCount ?? 0) > 0) {
-    return NextResponse.json({ error: "Functie is nog in gebruik en kan niet worden verwijderd." }, { status: 400 });
-  }
-
-  await pool.query("DELETE FROM functies WHERE id = $1", [id]);
-  return NextResponse.json({ success: true });
 }
