@@ -6,7 +6,7 @@ const pool = new Pool({
 });
 
 export const db = {
-  query: (text: string, params?: any[]) => pool.query(text, params),
+  query: (text: string, params?: unknown[]) => pool.query(text, params),
 };
 
 export { pool }; // ← voeg deze regel toe
