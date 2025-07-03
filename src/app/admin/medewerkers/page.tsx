@@ -4,13 +4,9 @@
 
 
 import { useEffect, useState } from "react";
+import type { Medewerker } from "@/types/db";
 
-interface Medewerker {
-  id: number;
-  naam: string;
-  email: string;
-  functie: string;
-}
+
 
 interface FunctieOptie {
   id: number;

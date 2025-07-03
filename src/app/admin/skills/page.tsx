@@ -3,14 +3,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { Medewerker } from "@/types/db";
 import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-interface Medewerker {
-  id: number;
-  naam: string;
-}
+
 
 interface Skill {
   id: string;

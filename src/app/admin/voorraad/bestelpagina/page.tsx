@@ -1,21 +1,12 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import type { Leverancier, Product } from "@/types/db";
 import useSWR from "swr";
 
-interface Leverancier {
-  id: number;
-  naam: string;
-}
 
-interface Product {
-  id: number;
-  naam: string;
-  bestelnummer?: string;
-  besteleenheid?: number;
-  huidige_prijs?: number;
-  volgorde?: number;
-}
+
+
 
 type Invoer = Record<number, number>;
 
