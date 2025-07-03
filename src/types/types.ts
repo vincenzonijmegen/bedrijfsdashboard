@@ -15,7 +15,9 @@ export interface Product {
 export interface Functie {
   id: number;
   naam: string;
+  omschrijving?: string; // ← dit veld toevoegen
 }
+
 
 export interface Medewerker {
   id: number;
