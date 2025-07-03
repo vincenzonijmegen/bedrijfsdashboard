@@ -136,14 +136,26 @@ export default function SkillBeheer() {
                       ))}
                     </select>
                   </td>
-                  <td className="border p-2 text-center">
-                    <button
-                      onClick={() => opslaan(s)}
-                      className="bg-blue-600 text-white px-3 py-1 rounded"
-                    >
-                      Opslaan
-                    </button>
-                  </td>
+                  <td className="border p-2 text-center space-x-2">
+  <button
+    onClick={() => opslaan(s)}
+    className="bg-blue-600 text-white px-3 py-1 rounded"
+  >
+    Opslaan
+  </button>
+  <button
+    onClick={async () => {
+      if (!confirm("Weet je zeker dat je deze skill wilt verwijderen?")) return;
+      const res = await fetch(`/api/skills?id=${s.id}`, { method: "DELETE" });
+      if (res.ok) setSucces(true);
+      else alert("Kan niet verwijderen: skill is nog gekoppeld.");
+    }}
+    className="bg-red-600 text-white px-3 py-1 rounded"
+  >
+    ❌
+  </button>
+</td>
+
                 </tr>
               ))}
             </tbody>
