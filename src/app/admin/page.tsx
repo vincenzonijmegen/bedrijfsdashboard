@@ -36,15 +36,24 @@ export default function AdminDashboard() {
     <main className="max-w-6xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-8 text-slate-800">🗂️ Management Portaal</h1>
 
-      <Section title="👥 Personeel">
+      <Section title="👥 Medewerkers">
         <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" />
-        <LinkCard href="/admin/instructies" label="Instructies beheren" color="pink" />
-        <LinkCard href="/admin/resultaten" label="toetsresultaten" color="purple" />
-        <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" />
         <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="red" />
-        <LinkCard href="/admin/skills" label="Skills Overzicht" color="slate" />
         <LinkCard href="/admin/functies" label="Functies" color="pink" />
       </Section>
+
+        <Section title="👥 Instructies">
+        <LinkCard href="/admin/instructies" label="Instructies beheren" color="pink" />
+        <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" />
+        <LinkCard href="/admin/resultaten" label="Toetsresultaten" color="purple" />
+        </Section>
+
+        <Section title="👥 Skills">
+        <LinkCard href="/admin/skills" label="Skills beheer" color="slate" />
+        <LinkCard href="/admin/skills" label="Skills medewerkers" color="pink" />
+      </Section>
+
+
 
       <Section title="📅 Planning">
         <LinkCard href="/openshifts" label="Open Shifts PDF" color="green" />

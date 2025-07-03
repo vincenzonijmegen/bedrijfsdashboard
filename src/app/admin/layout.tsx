@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ReactNode } from "react";
 
-
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [naam, setNaam] = useState("");
@@ -19,6 +18,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
     try {
       const parsed = JSON.parse(gebruiker);
+      if (parsed.functie !== "beheerder") {
+        router.push("/instructies");
+        return;
+      }
       setNaam(parsed.naam || "");
     } catch {
       localStorage.removeItem("gebruiker");
@@ -30,7 +33,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     <div className="p-6 max-w-5xl mx-auto space-y-4">
       <div className="flex justify-between items-center">
         <Link href="/admin" className="text-sm text-blue-600 hover:underline">
-        ← Terug naar startpagina
+          ← Terug naar startpagina
         </Link>
 
         <button
