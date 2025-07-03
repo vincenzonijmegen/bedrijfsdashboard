@@ -37,37 +37,36 @@ export default function AdminDashboard() {
       <h1 className="text-2xl font-bold mb-8 text-slate-800">🗂️ Management Portaal</h1>
 
       <Section title="👥 Medewerkers">
-        <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" />
-        <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="red" />
-        <LinkCard href="/admin/functies" label="Functies" color="pink" />
+        <LinkCard href="/admin/medewerkers" label="👤 Medewerkers beheren" color="green" />
+        <LinkCard href="/sollicitatie/pdf" label="📥 Sollicitatiemails" color="green" />
+        <LinkCard href="/admin/functies" label="🏷️ Functies" color="green" />
       </Section>
 
-        <Section title="👥 Instructies">
-        <LinkCard href="/admin/instructies" label="Instructies beheren" color="pink" />
-        <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" />
-        <LinkCard href="/admin/resultaten" label="Toetsresultaten" color="purple" />
-        </Section>
-
-        <Section title="👥 Skills">
-        <LinkCard href="/admin/skills" label="Skills beheer" color="slate" />
-        <LinkCard href="/admin/skills" label="Skills medewerkers" color="pink" />
+      <Section title="📘 Instructies">
+        <LinkCard href="/admin/instructies" label="📝 Instructies beheren" color="blue" />
+        <LinkCard href="/instructies" label="👓 Instructies medewerkers" color="blue" />
+        <LinkCard href="/admin/resultaten" label="📊 Toetsresultaten" color="blue" />
       </Section>
 
-
+      <Section title="🧠 Skills">
+        <LinkCard href="/admin/skills" label="🧩 Skills beheer" color="purple" />
+        <LinkCard href="/admin/skills" label="👥 Skills medewerkers" color="purple" />
+      </Section>
 
       <Section title="📅 Planning">
-        <LinkCard href="/openshifts" label="Open Shifts PDF" color="green" />
-        <LinkCard href="/shift-acties" label="Shiftacties & Statistieken" color="pink" />
+        <LinkCard href="/openshifts" label="📄 Open Shifts PDF" color="orange" />
+        <LinkCard href="/shift-acties" label="📈 Shiftacties & Statistieken" color="orange" />
       </Section>
 
       <Section title="📦 Voorraadbeheer">
-        <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="green" />
-        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" />
+        <LinkCard href="/admin/voorraad/artikelen" label="📋 Artikelen beheren" color="pink" />
+        <LinkCard href="/admin/voorraad/bestelpagina" label="🛒 Bestel-app" color="pink" />
       </Section>
 
       <Section title="📊 Rapportages (binnenkort)">
-        <LinkCard href="/admin/rapportages" label="Omzet & voorraad" color="green" />
+        <LinkCard href="/admin/rapportages" label="📈 Omzet & voorraad" color="gray" />
       </Section>
     </main>
   );
 }
+
