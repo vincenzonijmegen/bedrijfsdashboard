@@ -98,14 +98,25 @@ export default function SkillCategorieen() {
                   className="w-full border rounded px-2 py-1"
                 />
               </td>
-              <td className="border p-2">
-                <button
-                  onClick={() => opslaan(cat)}
-                  className="bg-blue-600 text-white px-3 py-1 rounded"
-                >
-                  Opslaan
-                </button>
-              </td>
+              <td className="border p-2 space-x-2">
+  <button
+    onClick={() => opslaan(cat)}
+    className="bg-blue-600 text-white px-3 py-1 rounded"
+  >
+    Opslaan
+  </button>
+  <button
+    onClick={async () => {
+      if (!confirm("Weet je zeker dat je deze categorie wilt verwijderen?")) return;
+      const res = await fetch(`/api/skills/categorieen?id=${cat.id}`, { method: "DELETE" });
+      if (res.ok) setSucces(true);
+      else alert("Kan niet verwijderen: categorie wordt nog gebruikt.");
+    }}
+    className="bg-red-600 text-white px-3 py-1 rounded"
+  >
+    ❌
+  </button>
+</td>
             </tr>
           ))}
         </tbody>

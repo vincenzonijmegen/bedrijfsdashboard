@@ -45,3 +45,26 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ error: "Fout bij bijwerken" }, { status: 500 });
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (!id) return NextResponse.json({ error: "ID ontbreekt" }, { status: 400 });
+
+    const check = await db.query("SELECT COUNT(*) FROM skills WHERE categorie_id = $1", [id]);
+    const count = Number(check.rows[0].count);
+
+    if (count > 0) {
+      return NextResponse.json({ error: "Categorie wordt nog gebruikt in skills" }, { status: 400 });
+    }
+
+    await db.query("DELETE FROM skill_categorieen WHERE id = $1", [id]);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("DELETE categorie error", err);
+    return NextResponse.json({ error: "Fout bij verwijderen" }, { status: 500 });
+  }
+}
+}
