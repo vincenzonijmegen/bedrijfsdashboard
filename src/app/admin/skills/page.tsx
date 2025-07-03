@@ -1,4 +1,4 @@
-// src/app/admin/skills/page.tsx
+// aangepaste versie van /admin/skills/page.tsx die gebruik maakt van categorie_id
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,27 +6,31 @@ import { useEffect, useState } from "react";
 interface Skill {
   id: string;
   naam: string;
-  categorie: string;
+  categorie_id: string;
   beschrijving: string;
   actief: boolean;
 }
 
+interface Categorie {
+  id: string;
+  naam: string;
+}
+
 export default function SkillBeheer() {
   const [skills, setSkills] = useState<Skill[]>([]);
-  const [nieuw, setNieuw] = useState({ naam: "", categorie: "" });
+  const [categorieen, setCategorieen] = useState<Categorie[]>([]);
+  const [nieuw, setNieuw] = useState({ naam: "", categorie_id: "" });
   const [succes, setSucces] = useState(false);
 
   useEffect(() => {
     fetch("/api/skills")
       .then((res) => res.json())
       .then((data) => setSkills(data));
-  }, [succes]);
 
-  const gegroepeerd = skills.reduce((acc, skill) => {
-    if (!acc[skill.categorie]) acc[skill.categorie] = [];
-    acc[skill.categorie].push(skill);
-    return acc;
-  }, {} as Record<string, Skill[]>);
+    fetch("/api/skills/categorieen")
+      .then((res) => res.json())
+      .then((data) => setCategorieen(data));
+  }, [succes]);
 
   const update = (id: string, veld: keyof Skill, waarde: string | boolean) => {
     setSkills((prev) =>
@@ -44,17 +48,24 @@ export default function SkillBeheer() {
   };
 
   const toevoegen = async () => {
-    if (!nieuw.naam || !nieuw.categorie) return;
+    if (!nieuw.naam || !nieuw.categorie_id) return;
     const res = await fetch("/api/skills", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(nieuw),
     });
     if (res.ok) {
-      setNieuw({ naam: "", categorie: "" });
+      setNieuw({ naam: "", categorie_id: "" });
       setSucces(true);
     }
   };
+
+  const gegroepeerd: Record<string, Skill[]> = {};
+  skills.forEach((s) => {
+    const cat = categorieen.find((c) => c.id === s.categorie_id)?.naam || "Onbekend";
+    if (!gegroepeerd[cat]) gegroepeerd[cat] = [];
+    gegroepeerd[cat].push(s);
+  });
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
@@ -69,12 +80,16 @@ export default function SkillBeheer() {
             placeholder="Skillnaam"
             className="border px-2 py-1 rounded w-1/3"
           />
-          <input
-            value={nieuw.categorie}
-            onChange={(e) => setNieuw({ ...nieuw, categorie: e.target.value })}
-            placeholder="Categorie"
+          <select
+            value={nieuw.categorie_id}
+            onChange={(e) => setNieuw({ ...nieuw, categorie_id: e.target.value })}
             className="border px-2 py-1 rounded w-1/3"
-          />
+          >
+            <option value="">Selecteer categorie</option>
+            {categorieen.map((c) => (
+              <option key={c.id} value={c.id}>{c.naam}</option>
+            ))}
+          </select>
           <button onClick={toevoegen} className="bg-green-600 text-white px-4 rounded">
             Toevoegen
           </button>
@@ -89,6 +104,7 @@ export default function SkillBeheer() {
               <tr className="bg-slate-100">
                 <th className="border p-2 text-left">Naam</th>
                 <th className="border p-2 text-left">Beschrijving</th>
+                <th className="border p-2 text-left">Categorie</th>
                 <th className="border p-2 text-center">Actie</th>
               </tr>
             </thead>
@@ -108,6 +124,17 @@ export default function SkillBeheer() {
                       onChange={(e) => update(s.id, "beschrijving", e.target.value)}
                       className="w-full border rounded px-2 py-1 h-24"
                     />
+                  </td>
+                  <td className="border p-2">
+                    <select
+                      value={s.categorie_id}
+                      onChange={(e) => update(s.id, "categorie_id", e.target.value)}
+                      className="w-full border rounded px-2 py-1"
+                    >
+                      {categorieen.map((c) => (
+                        <option key={c.id} value={c.id}>{c.naam}</option>
+                      ))}
+                    </select>
                   </td>
                   <td className="border p-2 text-center">
                     <button
