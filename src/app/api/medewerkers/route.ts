@@ -71,9 +71,9 @@ export async function DELETE(req: Request) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, naam, email, functie } = body;
+    const { id, naam, email, functie: functieId } = body;
 
-    if (!id || !naam || !email || !functie) {
+    if (!id || !naam || !email || !functieId) {
       return NextResponse.json({ error: "Vul alle velden in." }, { status: 400 });
     }
 
@@ -83,7 +83,7 @@ export async function PUT(req: NextRequest) {
            email = $2,
            functie = $3
        WHERE id = $4`,
-      [naam, email, functie, id]
+      [naam, email, functieId, id]
     );
 
     return NextResponse.json({ success: true });

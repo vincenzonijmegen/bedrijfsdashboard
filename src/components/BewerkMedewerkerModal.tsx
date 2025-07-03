@@ -24,11 +24,12 @@ export default function BewerkMedewerkerModal({ open, onClose, medewerker, funct
   }, [medewerker]);
 
   const handleOpslaan = () => {
+    const functienaam = functies.find(f => f.id.toString() === functieId)?.naam || "";
     onSave({
       ...medewerker,
       naam,
       email,
-      functie: functieId.toString(),
+      functie: functienaam,
     });
     onClose();
   };
