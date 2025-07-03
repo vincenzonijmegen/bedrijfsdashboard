@@ -8,7 +8,7 @@ import type { Functie } from "@/types/db";
 
 
 export default function FunctieBeheerPagina() {
-  const { data: functies, error } = useSWR<Functie[]>("/api/functies", (url) => fetch(url).then(r => r.json()));
+  const { data: functies, error } = useSWR<Functie[]>("/api/functies", (url: string) => fetch(url).then(r => r.json()));
 
   const [nieuweFunctie, setNieuweFunctie] = useState("");
   const [nieuweOmschrijving, setNieuweOmschrijving] = useState("");
