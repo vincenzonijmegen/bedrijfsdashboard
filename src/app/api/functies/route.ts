@@ -48,8 +48,6 @@ export async function DELETE(req: NextRequest) {
        SELECT 1 FROM instructies WHERE functie_id = $1
        LIMIT 1`,
       [id]
-    ),
-      [id]
     );
 
     if ((gebruikt?.rowCount ?? 0) > 0) {
