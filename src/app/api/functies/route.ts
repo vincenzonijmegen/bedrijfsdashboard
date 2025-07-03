@@ -6,7 +6,7 @@ export async function GET() {
   try {
     const result = await db.query("SELECT * FROM functies ORDER BY naam");
     return NextResponse.json(result.rows);
-  } } catch (error) {
+  } catch (error) {
     console.error("Fout bij ophalen functies:", error);
     return NextResponse.json({ error: "Fout bij ophalen" }, { status: 500 });
   }
