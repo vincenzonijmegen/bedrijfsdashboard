@@ -15,7 +15,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="nl">
+      <head>
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+      </head>
       <body>{children}</body>
     </html>
   );
 }
+
