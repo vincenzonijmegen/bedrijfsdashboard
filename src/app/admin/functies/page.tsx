@@ -3,15 +3,20 @@
 "use client";
 
 import useSWR, { mutate } from "swr";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Functie } from "@/types/db";
-
 
 export default function FunctieBeheerPagina() {
   const { data: functies, error } = useSWR<Functie[]>("/api/functies", (url: string) => fetch(url).then(r => r.json()));
 
   const [nieuweFunctie, setNieuweFunctie] = useState("");
   const [nieuweOmschrijving, setNieuweOmschrijving] = useState("");
+  const [functiesState, setFunctiesState] = useState<Functie[]>([]);
+
+  // Synchroniseer lokale staat met SWR-data zodra beschikbaar
+  useEffect(() => {
+    if (functies) setFunctiesState(functies);
+  }, [functies]);
 
   const handleSave = async (functie: Functie) => {
     await fetch("/api/functies", {
@@ -32,6 +37,12 @@ export default function FunctieBeheerPagina() {
     setNieuweFunctie("");
     setNieuweOmschrijving("");
     mutate("/api/functies");
+  };
+
+  const updateFunctie = (index: number, key: keyof Functie, value: string) => {
+    const updated = [...functiesState];
+    updated[index] = { ...updated[index], [key]: value };
+    setFunctiesState(updated);
   };
 
   return (
@@ -70,14 +81,14 @@ export default function FunctieBeheerPagina() {
           </tr>
         </thead>
         <tbody>
-          {functies?.map((f) => (
+          {functiesState.map((f, i) => (
             <tr key={f.id} className="border-t">
               <td className="p-2">
                 <input
                   type="text"
                   className="border rounded px-2 py-1 w-full"
                   value={f.naam}
-                  onChange={(e) => (f.naam = e.target.value)}
+                  onChange={(e) => updateFunctie(i, "naam", e.target.value)}
                 />
               </td>
               <td className="p-2">
@@ -85,7 +96,7 @@ export default function FunctieBeheerPagina() {
                   className="border rounded px-2 py-1 w-full"
                   rows={2}
                   value={f.omschrijving ?? ""}
-                  onChange={(e) => (f.omschrijving = e.target.value)}
+                  onChange={(e) => updateFunctie(i, "omschrijving", e.target.value)}
                 />
               </td>
               <td className="p-2">
