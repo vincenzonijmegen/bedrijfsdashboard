@@ -2,6 +2,7 @@ import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { sendUitnodiging } from "@/lib/mail";
+import { NextRequest } from "next/server";
 
 
 export async function GET(req: Request) {
@@ -64,5 +65,30 @@ export async function DELETE(req: Request) {
   } catch (err) {
     console.error("Fout bij verwijderen medewerker:", err);
     return NextResponse.json({ success: false, error: "Verwijderen mislukt" }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, naam, email, functie } = body;
+
+    if (!id || !naam || !email || !functie) {
+      return NextResponse.json({ error: "Vul alle velden in." }, { status: 400 });
+    }
+
+    await db.query(
+      `UPDATE medewerkers
+       SET naam = $1,
+           email = $2,
+           functie = $3
+       WHERE id = $4`,
+      [naam, email, functie, id]
+    );
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Fout bij bijwerken medewerker:", error);
+    return NextResponse.json({ error: "Interne serverfout" }, { status: 500 });
   }
 }
