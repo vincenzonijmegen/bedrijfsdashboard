@@ -13,7 +13,8 @@ module.exports = {
   "bg-cyan-600", "hover:bg-cyan-700",
   "bg-pink-500", "hover:bg-pink-600",
   "bg-purple-600", "hover:bg-purple-700",
-  "bg-amber-500", "hover:bg-amber-600",
+
+  // voeg expliciet ook bg-pink-600 toe
   "bg-pink-600", "hover:bg-pink-700",
   "bg-slate-600", "hover:bg-slate-700",
   "text-white", "rounded-lg", "shadow"
