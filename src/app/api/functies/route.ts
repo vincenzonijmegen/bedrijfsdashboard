@@ -1,63 +1,34 @@
 // src/app/api/functies/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
-import { pool } from "@/lib/db";
+import { db } from "@/lib/db";
 
-// GET /api/functies
 export async function GET() {
-  const result = await pool.query("SELECT * FROM functies ORDER BY naam");
-  return NextResponse.json(result.rows);
-}
-
-// POST /api/functies
-export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { id, naam, omschrijving } = body;
-
-  if (!naam) {
-    return NextResponse.json({ error: "Naam is verplicht" }, { status: 400 });
-  }
-
-  if (id) {
-    await pool.query(
-      "UPDATE functies SET naam = $1, omschrijving = $2 WHERE id = $3",
-      [naam, omschrijving ?? null, id]
-    );
-  } else {
-    await pool.query(
-      "INSERT INTO functies (naam, omschrijving) VALUES ($1, $2)",
-      [naam, omschrijving ?? null]
-    );
-  }
-
-  return NextResponse.json({ success: true });
-}
-
-// DELETE /api/functies?id=123
-export async function DELETE(req: NextRequest) {
   try {
-    const id = req.nextUrl.searchParams.get("id");
+    const result = await db.query("SELECT * FROM functies ORDER BY naam");
+    return NextResponse.json(result.rows);
+  } catch (error) {
+    console.error("Fout bij ophalen functies:", error);
+    return NextResponse.json({ error: "Fout bij ophalen" }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, omschrijving } = body;
+
     if (!id) {
-      return NextResponse.json({ error: "Geen id meegegeven" }, { status: 400 });
+      return NextResponse.json({ error: "ID ontbreekt" }, { status: 400 });
     }
 
-    // Controleer of de functie in gebruik is bij medewerkers of instructies
-    const gebruikt = await pool.query(
-      `SELECT 1 FROM medewerkers WHERE functie = $1 LIMIT 1`,
-      [id]
+    await db.query(
+      "UPDATE functies SET omschrijving = $1 WHERE id = $2",
+      [omschrijving || "", id]
     );
 
-    if ((gebruikt?.rowCount ?? 0) > 0) {
-      return NextResponse.json(
-        { error: "Functie is nog in gebruik en kan niet worden verwijderd." },
-        { status: 400 }
-      );
-    }
-
-    await pool.query("DELETE FROM functies WHERE id = $1", [id]);
     return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error("❌ Fout bij verwijderen functie:", err);
-    return NextResponse.json({ error: "Interne fout bij verwijderen" }, { status: 500 });
+  } catch (error) {
+    console.error("Fout bij bijwerken functie:", error);
+    return NextResponse.json({ error: "Fout bij bijwerken" }, { status: 500 });
   }
 }
