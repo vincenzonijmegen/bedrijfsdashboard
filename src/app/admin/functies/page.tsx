@@ -13,7 +13,6 @@ export default function FunctieBeheerPagina() {
   const [nieuweOmschrijving, setNieuweOmschrijving] = useState("");
   const [functiesState, setFunctiesState] = useState<Functie[]>([]);
 
-  // Synchroniseer lokale staat met SWR-data zodra beschikbaar
   useEffect(() => {
     if (functies) setFunctiesState(functies);
   }, [functies]);
@@ -25,6 +24,17 @@ export default function FunctieBeheerPagina() {
       body: JSON.stringify(functie),
     });
     mutate("/api/functies");
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Weet je zeker dat je deze functie wilt verwijderen?")) return;
+    const res = await fetch(`/api/functies?id=${id}`, { method: "DELETE" });
+    const json = await res.json();
+    if (json.error) {
+      alert("Kan niet verwijderen: " + json.error);
+    } else {
+      mutate("/api/functies");
+    }
   };
 
   const handleAdd = async () => {
@@ -78,6 +88,7 @@ export default function FunctieBeheerPagina() {
             <th className="p-2 text-left">Functie</th>
             <th className="p-2 text-left">Omschrijving</th>
             <th className="p-2 text-left">Opslaan</th>
+            <th className="p-2 text-left">Verwijderen</th>
           </tr>
         </thead>
         <tbody>
@@ -105,6 +116,14 @@ export default function FunctieBeheerPagina() {
                   className="bg-green-600 text-white px-3 py-1 rounded"
                 >
                   Opslaan
+                </button>
+              </td>
+              <td className="p-2">
+                <button
+                  onClick={() => handleDelete(f.id)}
+                  className="bg-red-600 text-white px-3 py-1 rounded"
+                >
+                  Verwijder
                 </button>
               </td>
             </tr>
