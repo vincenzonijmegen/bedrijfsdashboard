@@ -4,26 +4,22 @@ export interface Leverancier {
 }
 
 export interface Product {
-  actief?: boolean;
-  minimum_voorraad?: number;
   id: number;
   naam: string;
-  bestelnummer?: string;
-  besteleenheid?: number;
-  huidige_prijs?: number;
-  volgorde?: number;
+  eenheid: string;
+  prijs: number;
+  voorraadMinimum: number;
+  leveranciersProductnummer?: string;
 }
 
 export interface Functie {
   id: number;
   naam: string;
-  omschrijving?: string;
 }
 
 export interface Medewerker {
   id: number;
   naam: string;
   email: string;
-  functie_id: number;
-  functie?: string;
+  functie: string;
 }

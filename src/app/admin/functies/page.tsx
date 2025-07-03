@@ -3,7 +3,7 @@
 import useSWR, { mutate } from "swr";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import type { Functie } from "@/types/db";
+import type { Functie } from "@/types/types";
 
 export default function FunctieBeheerPagina() {
   const { data: functies } = useSWR<Functie[]>(
