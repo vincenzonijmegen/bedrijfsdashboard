@@ -1,9 +1,7 @@
 "use client";
 
-
-
-
 import { useEffect, useState } from "react";
+import BewerkMedewerkerModal from "@/components/BewerkMedewerkerModal";
 
 interface Medewerker {
   id: number;
@@ -23,6 +21,8 @@ export default function MedewerkersBeheer() {
   const [form, setForm] = useState({ naam: "", email: "", functie: "", wachtwoord: "" });
   const [fout, setFout] = useState<string | null>(null);
   const [succes, setSucces] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [geselecteerde, setGeselecteerde] = useState<Medewerker | null>(null);
 
   useEffect(() => {
     fetch("/api/medewerkers")
@@ -131,7 +131,16 @@ export default function MedewerkersBeheer() {
                 <td className="border p-2">{m.naam}</td>
                 <td className="border p-2">{m.email}</td>
                 <td className="border p-2">{m.functie}</td>
-                <td className="border p-2 text-center">
+                <td className="border p-2 text-center space-x-2">
+                  <button
+                    onClick={() => {
+                      setGeselecteerde(m);
+                      setModalOpen(true);
+                    }}
+                    className="text-blue-600 underline text-sm"
+                  >
+                    Bewerken
+                  </button>
                   <button
                     onClick={() => handleDelete(m.email)}
                     className="text-red-600 underline text-sm"
@@ -144,6 +153,26 @@ export default function MedewerkersBeheer() {
           </tbody>
         </table>
       </div>
+
+      {geselecteerde && (
+        <BewerkMedewerkerModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          medewerker={geselecteerde}
+          functies={functies}
+          onSave={async (gewijzigd) => {
+            const res = await fetch("/api/medewerkers", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(gewijzigd),
+            });
+
+            if (res.ok) {
+              setSucces(true);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
