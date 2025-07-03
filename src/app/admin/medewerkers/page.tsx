@@ -132,22 +132,25 @@ export default function MedewerkersBeheer() {
                 <td className="border p-2">{m.email}</td>
                 <td className="border p-2">{m.functie}</td>
                 <td className="border p-2 text-center space-x-2">
-                  <button
-                    onClick={() => {
-                      setGeselecteerde(m);
-                      setModalOpen(true);
-                    }}
-                    className="text-blue-600 underline text-sm"
-                  >
-                    Bewerken
-                  </button>
-                  <button
-                    onClick={() => handleDelete(m.email)}
-                    className="text-red-600 underline text-sm"
-                  >
-                    Verwijderen
-                  </button>
-                </td>
+  <button
+    onClick={() => {
+      setGeselecteerde(m);
+      setModalOpen(true);
+    }}
+    className="text-blue-600 hover:text-blue-800"
+    title="Bewerken"
+  >
+    ✏️
+  </button>
+  <button
+    onClick={() => handleDelete(m.email)}
+    className="text-red-600 hover:text-red-800"
+    title="Verwijderen"
+  >
+    ❌
+  </button>
+</td>
+
               </tr>
             ))}
           </tbody>
