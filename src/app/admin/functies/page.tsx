@@ -1,13 +1,15 @@
-//src/app/admin/functies
-
 "use client";
 
 import useSWR, { mutate } from "swr";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { Functie } from "@/types/db";
 
 export default function FunctieBeheerPagina() {
-  const { data: functies, error } = useSWR<Functie[]>("/api/functies", (url: string) => fetch(url).then(r => r.json()));
+  const { data: functies } = useSWR<Functie[]>(
+    "/api/functies",
+    (url: string) => fetch(url).then((r) => r.json())
+  );
 
   const [nieuweFunctie, setNieuweFunctie] = useState("");
   const [nieuweOmschrijving, setNieuweOmschrijving] = useState("");
@@ -59,7 +61,7 @@ export default function FunctieBeheerPagina() {
     <main className="max-w-2xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">🧾 Functiebeheer</h1>
 
-      <div className="space-y-2">
+      <div className="space-y-4">
         <input
           type="text"
           placeholder="Nieuwe functienaam"
@@ -69,14 +71,14 @@ export default function FunctieBeheerPagina() {
         />
         <textarea
           placeholder="Omschrijving (optioneel)"
-          className="border px-3 py-2 rounded w-full"
-          rows={2}
+          className="border px-3 py-2 rounded w-full h-32"
+          rows={6}
           value={nieuweOmschrijving}
           onChange={(e) => setNieuweOmschrijving(e.target.value)}
         />
         <button
           onClick={handleAdd}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
+          className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded"
         >
           ➕ Toevoegen
         </button>
@@ -104,8 +106,8 @@ export default function FunctieBeheerPagina() {
               </td>
               <td className="p-2">
                 <textarea
-                  className="border rounded px-2 py-1 w-full"
-                  rows={2}
+                  className="border rounded px-2 py-1 w-full h-32"
+                  rows={6}
                   value={f.omschrijving ?? ""}
                   onChange={(e) => updateFunctie(i, "omschrijving", e.target.value)}
                 />
