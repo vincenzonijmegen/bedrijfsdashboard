@@ -4,6 +4,7 @@ export interface Leverancier {
 }
 
 export interface Product {
+  minimum_voorraad?: number;
   id: number;
   naam: string;
   bestelnummer?: string;
