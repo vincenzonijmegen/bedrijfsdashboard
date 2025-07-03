@@ -4,7 +4,7 @@ import Link from "next/link";
 
 const Section = ({ title, children, color }: { title: string; children: React.ReactNode; color?: string }) => (
   <section className="mb-10">
-    <div className="${color ? `rounded-xl px-6 py-3 mb-4 shadow-inner ${bgColorMap[color] || 'bg-gray-100 text-gray-900 hover:bg-gray-200'}` : 'bg-gray-100 rounded-xl px-6 py-3 mb-4 shadow-inner'}">
+    <div className={`rounded-xl px-6 py-3 mb-4 shadow-inner ${bgColorMap[color || ''] || 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}>
       <h2 className="text-xl font-semibold text-gray-800 tracking-tight">{title}</h2>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
