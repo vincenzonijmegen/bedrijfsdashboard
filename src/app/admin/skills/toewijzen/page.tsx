@@ -1,5 +1,4 @@
-// src/app/admin/skills/page.tsx
-
+// aangepaste versie van /admin/skills/toewijzen/page.tsx met categoriegroepering via categorie_naam
 "use client";
 
 import { useEffect, useState } from "react";
@@ -15,7 +14,8 @@ interface Medewerker {
 interface Skill {
   id: string;
   naam: string;
-  categorie: string;
+  categorie_id: string;
+  categorie_naam: string;
 }
 
 interface ToegewezenSkill {
@@ -23,11 +23,12 @@ interface ToegewezenSkill {
   deadline_dagen: number;
 }
 
-export default function SkillBeheer() {
+export default function SkillToewijzen() {
   const { data: medewerkersAPI } = useSWR<Medewerker[]>("/api/medewerkers", fetcher);
   const { data: skills } = useSWR<Skill[]>("/api/skills?type=skills", fetcher);
   const [geselecteerd, setGeselecteerd] = useState<number | null>(null);
   const [toewijzingen, setToewijzingen] = useState<Record<string, { actief: boolean; deadline: number }>>({});
+  const [mailen, setMailen] = useState(true);
 
   useEffect(() => {
     if (geselecteerd !== null) {
@@ -53,9 +54,12 @@ export default function SkillBeheer() {
 
   const opslaan = async () => {
     if (!geselecteerd) return;
-    const body = Object.entries(toewijzingen)
-      .filter(([, val]) => val.actief)
-      .map(([skill_id, val]) => ({ medewerker_id: geselecteerd, skill_id, deadline_dagen: val.deadline || 10 }));
+    const body = {
+      sendEmail: mailen,
+      items: Object.entries(toewijzingen)
+        .filter(([, val]) => val.actief)
+        .map(([skill_id, val]) => ({ medewerker_id: geselecteerd, skill_id, deadline_dagen: val.deadline || 10 }))
+    };
     await fetch("/api/skills/toewijzen", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -67,7 +71,7 @@ export default function SkillBeheer() {
   if (!medewerkersAPI || !skills) return <div>Laden...</div>;
 
   const skillsPerCategorie = skills.reduce((acc: Record<string, Skill[]>, skill) => {
-    const categorie = skill.categorie ?? "Onbekend";
+    const categorie = skill.categorie_naam ?? "Onbekend";
     if (!acc[categorie]) acc[categorie] = [];
     acc[categorie].push(skill);
     return acc;
@@ -84,21 +88,12 @@ export default function SkillBeheer() {
           value={geselecteerd !== null ? String(geselecteerd) : ""}
           onChange={(e) => {
             const val: string | undefined = e.target?.value;
-            if (!val) {
-              setGeselecteerd(null);
-              return;
-            }
-            const parsed = Number(val);
-            if (!isNaN(parsed)) {
-              setGeselecteerd(parsed);
-            } else {
-              setGeselecteerd(null);
-            }
+            setGeselecteerd(val ? Number(val) : null);
           }}
         >
           <option value="">-- Selecteer --</option>
           {medewerkersAPI.map((m) => (
-            <option key={m.id ?? m.naam} value={m.id ? String(m.id) : ""}>{m.naam ?? "(onbekend)"}</option>
+            <option key={m.id} value={m.id}>{m.naam}</option>
           ))}
         </select>
       </div>
@@ -140,6 +135,14 @@ export default function SkillBeheer() {
             </Card>
           ))}
 
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={mailen}
+              onChange={(e) => setMailen(e.target.checked)}
+            />
+            <span>Stuur e-mail bij toewijzing</span>
+          </label>
           <Button onClick={opslaan}>Opslaan</Button>
         </div>
       )}
