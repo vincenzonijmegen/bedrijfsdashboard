@@ -20,14 +20,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { naam, categorie_id } = await req.json();
+    const { naam, categorie_id, beschrijving } = await req.json();
     if (!naam || !categorie_id) {
       return NextResponse.json({ error: "Naam en categorie zijn verplicht" }, { status: 400 });
     }
     const res = await db.query(
-      `INSERT INTO skills (naam, categorie_id, actief) VALUES ($1, $2, true) RETURNING *`,
-      [naam, categorie_id]
-    );
+  `INSERT INTO skills (naam, categorie_id, beschrijving, actief) VALUES ($1, $2, $3, true)`,
+  [naam, categorie_id, beschrijving || ""]
+);
     return NextResponse.json({ success: true, skill: res.rows[0] });
   } catch (err) {
     console.error("POST skills error", err);
@@ -37,18 +37,19 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const { id, naam, categorie_id, actief } = await req.json();
+   const { id, naam, categorie_id, beschrijving, actief } = await req.json();
     if (!id || !naam || !categorie_id) {
       return NextResponse.json({ error: "ID, naam en categorie zijn verplicht" }, { status: 400 });
     }
     await db.query(
-      `UPDATE skills
-       SET naam = $1,
-           categorie_id = $2,
-           actief = $3
-       WHERE id = $4`,
-      [naam, categorie_id, actief ?? true, id]
-    );
+  `UPDATE skills
+   SET naam = $1,
+       categorie_id = $2,
+       beschrijving = $3,
+       actief = $4
+   WHERE id = $5`,
+  [naam, categorie_id, beschrijving || "", actief ?? true, id]
+);
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("PUT skills error", err);

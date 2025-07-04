@@ -71,12 +71,19 @@ export default function SkillToewijzen() {
 
   if (!medewerkersAPI || !skills) return <div>Laden...</div>;
 
-   const skillsPerCategorie = skills.reduce((acc: Record<string, Skill[]>, skill) => {
-   const categorie = skill.categorie_naam ?? "Onbekend";
-    if (!acc[categorie]) acc[categorie] = [];
-    acc[categorie].push(skill);
-    return acc;
-  }, {});
+   const categorieMap: Record<string, { naam: string; volgorde: number; skills: Skill[] }> = {};
+
+skills.forEach((skill) => {
+  const { categorie_id, categorie_naam, categorie_volgorde } = skill as any;
+  if (!categorieMap[categorie_id]) {
+    categorieMap[categorie_id] = {
+      naam: categorie_naam ?? "Onbekend",
+      volgorde: categorie_volgorde ?? 999,
+      skills: []
+    };
+  }
+  categorieMap[categorie_id].skills.push(skill);
+});
 
    return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
@@ -101,12 +108,13 @@ export default function SkillToewijzen() {
 
       {geselecteerd !== null && (
         <div className="space-y-4">
-          {Object.entries(skillsPerCategorie)
-            .map(([categorie, lijst]) => (
-            <Card key={categorie} className="p-4">
-              <h2 className="font-semibold mb-2">{categorie}</h2>
+          {Object.entries(categorieMap)
+            .sort(([, a], [, b]) => a.volgorde - b.volgorde)
+            .map(([, cat]) => (
+            <Card key={cat.naam} className="p-4">
+              <h2 className="font-semibold mb-2">{cat.naam}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {lijst.map((s) => (
+                {cat.skills.map((s) => (
                   <label key={s.id} className="flex items-center gap-2">
                     <input
                       type="checkbox"
