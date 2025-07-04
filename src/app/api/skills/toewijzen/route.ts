@@ -1,7 +1,7 @@
 // src/app/api/skills/toewijzen/route.ts
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-import { mailVersturen as sendMail } from "@/lib/mail"; // bestaande resend-routine
+import { sendUitnodiging as sendMail } from "@/lib/mail"; // bestaande resend-routine
 
 export async function POST(req: NextRequest) {
   try {
