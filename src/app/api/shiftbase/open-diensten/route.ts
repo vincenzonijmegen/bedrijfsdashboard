@@ -1,23 +1,36 @@
+// src/app/api/shiftbase/open-diensten/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-// Alleen lokaal gebruiken: SSL-verificatie uitschakelen
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-
+// Alleen lokaal tijdens dev: SSL-check uitzetten
+if (process.env.NODE_ENV === "development") {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+}
 
 export async function GET(req: NextRequest) {
-  const apiKey = process.env.SHIFTBASE_API_KEY;
-  const url = new URL("https://api.shiftbase.com/api/open_shifts");
+  // 1) Haal en trim je key
+  const rawKey = process.env.SHIFTBASE_API_KEY;
+  const apiKey = rawKey?.trim() || "";
+  console.log("🔑 RAW key:", JSON.stringify(rawKey));
+  console.log("🔑 TRIMMED key:", JSON.stringify(apiKey));
 
-  // optionele queryparams zoals ?min_date=2025-07-04
-  const { searchParams } = req.nextUrl;
-  for (const [key, value] of searchParams) {
+  // 2) Bouw je auth-header
+  const authHeader = `API ${apiKey}`;
+  console.log("🔐 Authorization header:", authHeader);
+
+  // 3) Definieer de URL wél (was nog weggevallen)
+  const url = new URL("https://api.shiftbase.com/api/open_shifts");
+  // (optioneel) query-parameters meegeven
+  req.nextUrl.searchParams.forEach((value, key) => {
     url.searchParams.set(key, value);
-  }
+  });
+  console.log("🌐 Requesting URL:", url.toString());
 
   try {
+    // 4) Doe de fetch
     const res = await fetch(url.toString(), {
+      method: "GET",
       headers: {
-        Authorization: `${apiKey}`,
+        Authorization: authHeader,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
@@ -25,15 +38,21 @@ export async function GET(req: NextRequest) {
     });
 
     if (!res.ok) {
-      const tekst = await res.text();
-      console.error("Shiftbase API error:", tekst);
-      return NextResponse.json({ error: "Fout bij ophalen open diensten", details: tekst }, { status: res.status });
+      const details = await res.text();
+      console.error("Shiftbase API error:", details);
+      return NextResponse.json(
+        { error: "Fout bij ophalen open diensten", details },
+        { status: res.status }
+      );
     }
 
     const data = await res.json();
     return NextResponse.json(data);
   } catch (err) {
     console.error("Fout in open-diensten route:", err);
-    return NextResponse.json({ error: "Serverfout", details: String(err) }, { status: 500 });
+    return NextResponse.json(
+      { error: "Serverfout", details: String(err) },
+      { status: 500 }
+    );
   }
 }

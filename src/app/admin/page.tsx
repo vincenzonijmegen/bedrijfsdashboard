@@ -55,7 +55,7 @@ export default function AdminDashboard() {
       </Section>
 
       <Section title="📅 Planning" color="slate">
-        <LinkCard href="/openshifts" label="📄 Open Shifts PDF" color="orange" />
+        <LinkCard href="/open-diensten" label="📄 Open Shifts" color="orange" />
         <LinkCard href="/shift-acties" label="📈 Shiftacties & Statistieken" color="orange" />
       </Section>
 
