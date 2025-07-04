@@ -14,12 +14,12 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { naam, kleur } = await req.json();
+    const { naam, volgorde } = await req.json();
     if (!naam) return NextResponse.json({ error: "Naam is verplicht" }, { status: 400 });
 
     await db.query(
-      "INSERT INTO skill_categorieen (naam, kleur) VALUES ($1, $2)",
-      [naam, kleur || null]
+      "INSERT INTO skill_categorieen (naam, volgorde) VALUES ($1, $2)",
+      [naam, volgorde || null]
     );
 
     return NextResponse.json({ success: true });
@@ -35,7 +35,7 @@ export async function PUT(req: NextRequest) {
     if (!id || !naam) return NextResponse.json({ error: "ID en naam verplicht" }, { status: 400 });
 
     await db.query(
-      "UPDATE skill_categorieen SET naam = $1, kleur = $2 WHERE id = $3",
+      "UPDATE skill_categorieen SET naam = $1, volgorde = $2 WHERE id = $3",
       [naam, kleur || null, id]
     );
 

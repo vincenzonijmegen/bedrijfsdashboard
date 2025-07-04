@@ -6,12 +6,12 @@ import { useEffect, useState } from "react";
 interface Categorie {
   id: string;
   naam: string;
-  kleur?: string;
+  volgorde?: number;
 }
 
 export default function SkillCategorieen() {
   const [categorieen, setCategorieen] = useState<Categorie[]>([]);
-  const [nieuw, setNieuw] = useState({ naam: "", kleur: "" });
+  const [nieuw, setNieuw] = useState({ naam: "", volgorde: "" });
   const [succes, setSucces] = useState(false);
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function SkillCategorieen() {
       body: JSON.stringify(nieuw),
     });
     if (res.ok) {
-      setNieuw({ naam: "", kleur: "" });
+      setNieuw({ naam: "", volgorde: "" });
       setSucces(true);
     }
   };
@@ -62,9 +62,9 @@ export default function SkillCategorieen() {
             className="border px-2 py-1 rounded w-1/2"
           />
           <input
-            value={nieuw.kleur}
-            onChange={(e) => setNieuw({ ...nieuw, kleur: e.target.value })}
-            placeholder="Kleur (optioneel)"
+            value={nieuw.volgorde}
+            onChange={(e) => setNieuw({ ...nieuw, volgorde: e.target.value })}
+            placeholder="Volgorde (optioneel)"
             className="border px-2 py-1 rounded w-1/2"
           />
           <button onClick={toevoegen} className="bg-green-600 text-white px-4 rounded">
@@ -77,7 +77,7 @@ export default function SkillCategorieen() {
         <thead>
           <tr className="bg-slate-100">
             <th className="border p-2 text-left">Naam</th>
-            <th className="border p-2 text-left">Kleur</th>
+            <th className="border p-2 text-left">Volgorde</th>
             <th className="border p-2"></th>
           </tr>
         </thead>
@@ -93,8 +93,8 @@ export default function SkillCategorieen() {
               </td>
               <td className="border p-2">
                 <input
-                  value={cat.kleur || ""}
-                  onChange={(e) => update(i, "kleur", e.target.value)}
+                  value={cat.volgorde || ""}
+                  onChange={(e) => update(i, "volgorde", e.target.value)}
                   className="w-full border rounded px-2 py-1"
                 />
               </td>
