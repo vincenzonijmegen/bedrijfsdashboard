@@ -1,9 +1,7 @@
 // src/app/api/skills/toewijzen/route.ts
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-// import verwijderd omdat sendUitnodiging niet wordt geëxporteerd
-// voeg hier je daadwerkelijke mailfunctie toe, bijv:
-// import { mailVersturen as sendMail } from "@/lib/mail"; // bestaande resend-routine
+import { sendUitnodiging as sendMail } from "@/lib/mail";
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,14 +38,11 @@ export async function POST(req: NextRequest) {
 
         const gegevens = result.rows?.[0];
         if (gegevens?.email) {
-          await sendMail({
-            to: gegevens.email,
-            subject: `Nieuwe skill: ${gegevens.skill_naam}`,
-            tekst: `${gegevens.naam},
-
-Je hebt een nieuwe skill toegewezen gekregen: ${gegevens.skill_naam}.
-Leer deze binnen ${deadline_dagen || 10} dagen.`
-          });
+          await sendMail(
+            gegevens.email,
+            gegevens.naam,
+            `Je hebt een nieuwe skill toegewezen gekregen: ${gegevens.skill_naam}. Leer deze binnen ${deadline_dagen || 10} dagen.`
+          );
         }
       }
     }
