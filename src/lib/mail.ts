@@ -1,26 +1,58 @@
-import { Resend } from "resend";
+// src/app/api/skills/toewijzen/route.ts
+import { db } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server";
+import { sendUitnodiging as sendMail } from "@/lib/mail"; // bestaande resend-routine
 
-export async function sendUitnodiging(email: string, naam: string, wachtwoord: string) {
-  console.log("📧 Verstuur uitnodiging naar:", email, "met wachtwoord:", wachtwoord);
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { items, sendEmail } = body; // items: array van toewijzingen
 
-  const subject = "Je werkinstructie-account bij IJssalon Vincenzo";
-  const body = `
-    <p>Hallo ${naam},</p>
-    <p>Je bent toegevoegd aan het werkinstructiesysteem van IJssalon Vincenzo.</p>
-    <p><strong>Loginpagina:</strong> <a href="https://werkinstructies-app.vercel.app/sign-in">klik hier om in te loggen</a></p>
-    <p><strong>Tijdelijk wachtwoord:</strong> ${wachtwoord}</p>
-    <p>Wijzig dit wachtwoord na je eerste login.</p>
-    <p>Met vriendelijke groet,<br/>IJssalon Vincenzo</p>
-  `;
+    if (!Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: "Geen toewijzingen ontvangen" }, { status: 400 });
+    }
 
-  const resend = new Resend(process.env.RESEND_API_KEY);
+    for (const item of items) {
+      const { medewerker_id, skill_id, deadline_dagen } = item;
 
-  const result = await resend.emails.send({
-    from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
-    to: email,
-    subject,
-    html: body,
-  });
+      if (!medewerker_id || !skill_id) continue;
 
-  console.log("✅ Resend result:", result);
+      // Upsert de toewijzing met deadline in dagen
+      await db.query(
+        `INSERT INTO skill_toegewezen (medewerker_id, skill_id, deadline_dagen)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (medewerker_id, skill_id) DO UPDATE
+         SET deadline_dagen = EXCLUDED.deadline_dagen`,
+        [medewerker_id, skill_id, deadline_dagen || 10]
+      );
+
+      // Mail indien aangevinkt
+      if (sendEmail) {
+        const result = await db.query(
+          `SELECT m.naam, m.email, s.naam as skill_naam
+           FROM medewerkers m
+           JOIN skills s ON s.id = $1
+           WHERE m.id = $2`,
+          [skill_id, medewerker_id]
+        );
+
+        const gegevens = result.rows?.[0];
+        if (gegevens?.email) {
+          await sendMail({
+            to: gegevens.email,
+            subject: `Nieuwe skill: ${gegevens.skill_naam}`,
+            tekst: `${gegevens.naam},
+
+Je hebt een nieuwe skill toegewezen gekregen: ${gegevens.skill_naam}.
+Leer deze binnen ${deadline_dagen || 10} dagen.`
+          });
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Fout bij toewijzen skills:", err);
+    return NextResponse.json({ error: "Fout bij verwerken" }, { status: 500 });
+  }
 }
