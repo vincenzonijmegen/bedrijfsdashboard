@@ -52,7 +52,8 @@ export default function SkillToewijzen() {
     }));
   };
 
-  const opslaan = async () => {
+
+ const opslaan = async () => {
     if (!geselecteerd) return;
     const body = {
       sendEmail: mailen,
@@ -70,14 +71,14 @@ export default function SkillToewijzen() {
 
   if (!medewerkersAPI || !skills) return <div>Laden...</div>;
 
-  const skillsPerCategorie = skills.reduce((acc: Record<string, Skill[]>, skill) => {
-    const categorie = skill.categorie_naam ?? "Onbekend";
+   const skillsPerCategorie = skills.reduce((acc: Record<string, Skill[]>, skill) => {
+   const categorie = skill.categorie_naam ?? "Onbekend";
     if (!acc[categorie]) acc[categorie] = [];
     acc[categorie].push(skill);
     return acc;
   }, {});
 
-  return (
+   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">🧠 Skillbeheer</h1>
 
@@ -100,7 +101,9 @@ export default function SkillToewijzen() {
 
       {geselecteerd !== null && (
         <div className="space-y-4">
-          {Object.entries(skillsPerCategorie).map(([categorie, lijst]) => (
+          {Object.entries(skillsPerCategorie)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([categorie, lijst]) => (
             <Card key={categorie} className="p-4">
               <h2 className="font-semibold mb-2">{categorie}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
