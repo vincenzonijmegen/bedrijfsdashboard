@@ -1,7 +1,9 @@
 // src/app/api/skills/toewijzen/route.ts
 import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-import { sendUitnodiging as sendMail } from "@/lib/mail"; // bestaande resend-routine
+// import verwijderd omdat sendUitnodiging niet wordt geëxporteerd
+// voeg hier je daadwerkelijke mailfunctie toe, bijv:
+// import { mailVersturen as sendMail } from "@/lib/mail"; // bestaande resend-routine
 
 export async function POST(req: NextRequest) {
   try {
