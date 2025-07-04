@@ -30,7 +30,7 @@ export default function SkillCategorieen() {
     const res = await fetch("/api/skills/categorieen", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cat),
+      body: JSON.stringify({ ...cat, volgorde: Number(cat.volgorde) || 0 }),
     });
     if (res.ok) setSucces(true);
   };
@@ -40,7 +40,7 @@ export default function SkillCategorieen() {
     const res = await fetch("/api/skills/categorieen", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(nieuw),
+      body: JSON.stringify({ ...nieuw, volgorde: Number(nieuw.volgorde) || 0 }),
     });
     if (res.ok) {
       setNieuw({ naam: "", volgorde: "" });
