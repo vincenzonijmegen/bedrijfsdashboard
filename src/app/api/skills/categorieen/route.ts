@@ -31,13 +31,13 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const { id, naam, kleur } = await req.json();
+    const { id, naam, volgorde } = await req.json();
     if (!id || !naam) return NextResponse.json({ error: "ID en naam verplicht" }, { status: 400 });
 
     await db.query(
-      "UPDATE skill_categorieen SET naam = $1, volgorde = $2 WHERE id = $3",
-      [naam, kleur || null, id]
-    );
+  "UPDATE skill_categorieen SET naam = $1, volgorde = $2 WHERE id = $3",
+  [naam, volgorde ?? 0, id]
+);
 
     return NextResponse.json({ success: true });
   } catch (err) {
