@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET() {
   try {
-    const res = await db.query("SELECT * FROM skill_categorieen ORDER BY naam");
+    const res = await db.query("SELECT * FROM skill_categorieen ORDER BY volgorde");
     return NextResponse.json(res.rows);
   } catch (err) {
     console.error("GET categorieen error", err);
