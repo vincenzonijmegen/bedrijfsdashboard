@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(req: NextRequest) {
   try {
     const result = await db.query(`
-      SELECT s.id, s.naam, s.categorie_id, c.naam AS categorie_naam
+      SELECT s.id, s.naam, s.categorie_id, s.beschrijving, c.naam AS categorie_naam
       FROM skills s
       LEFT JOIN skill_categorieen c ON s.categorie_id = c.id
       ORDER BY c.naam, s.naam
