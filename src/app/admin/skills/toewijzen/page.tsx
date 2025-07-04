@@ -102,7 +102,6 @@ export default function SkillToewijzen() {
       {geselecteerd !== null && (
         <div className="space-y-4">
           {Object.entries(skillsPerCategorie)
-            .sort(([a], [b]) => a.localeCompare(b))
             .map(([categorie, lijst]) => (
             <Card key={categorie} className="p-4">
               <h2 className="font-semibold mb-2">{categorie}</h2>
