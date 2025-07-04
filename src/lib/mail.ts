@@ -1,58 +1,47 @@
-// src/app/api/skills/toewijzen/route.ts
-import { db } from "@/lib/db";
-import { NextRequest, NextResponse } from "next/server";
-import { sendUitnodiging as sendMail } from "@/lib/mail"; // bestaande resend-routine
+import { Resend } from "resend";
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const { items, sendEmail } = body; // items: array van toewijzingen
+export async function sendUitnodiging(email: string, naam: string, wachtwoord: string) {
+  console.log("📧 Verstuur uitnodiging naar:", email, "met wachtwoord:", wachtwoord);
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return NextResponse.json({ error: "Geen toewijzingen ontvangen" }, { status: 400 });
-    }
+  const subject = "Je werkinstructie-account bij IJssalon Vincenzo";
+  const body = `
+    <p>Hallo ${naam},</p>
+    <p>Je bent toegevoegd aan het werkinstructiesysteem van IJssalon Vincenzo.</p>
+    <p><strong>Loginpagina:</strong> <a href="https://werkinstructies-app.vercel.app/sign-in">klik hier om in te loggen</a></p>
+    <p><strong>Tijdelijk wachtwoord:</strong> ${wachtwoord}</p>
+    <p>Wijzig dit wachtwoord na je eerste login.</p>
+    <p>Met vriendelijke groet,<br/>IJssalon Vincenzo</p>
+  `;
 
-    for (const item of items) {
-      const { medewerker_id, skill_id, deadline_dagen } = item;
+  const resend = new Resend(process.env.RESEND_API_KEY);
 
-      if (!medewerker_id || !skill_id) continue;
+  const result = await resend.emails.send({
+    from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
+    to: email,
+    subject,
+    html: body,
+  });
 
-      // Upsert de toewijzing met deadline in dagen
-      await db.query(
-        `INSERT INTO skill_toegewezen (medewerker_id, skill_id, deadline_dagen)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (medewerker_id, skill_id) DO UPDATE
-         SET deadline_dagen = EXCLUDED.deadline_dagen`,
-        [medewerker_id, skill_id, deadline_dagen || 10]
-      );
+  console.log("✅ Resend result:", result);
+}
 
-      // Mail indien aangevinkt
-      if (sendEmail) {
-        const result = await db.query(
-          `SELECT m.naam, m.email, s.naam as skill_naam
-           FROM medewerkers m
-           JOIN skills s ON s.id = $1
-           WHERE m.id = $2`,
-          [skill_id, medewerker_id]
-        );
+export async function sendSkillMail(email: string, naam: string, skillnaam: string, deadline: number) {
+  const subject = `📘 Nieuwe skill: ${skillnaam}`;
+  const body = `
+    <p>Hallo ${naam},</p>
+    <p>Je hebt een nieuwe skill toegewezen gekregen: <strong>${skillnaam}</strong>.</p>
+    <p>Deze moet je binnen <strong>${deadline}</strong> dagen leren.</p>
+    <p>Bekijk je skills via het werkinstructieportaal.</p>
+    <p>Met vriendelijke groet,<br/>IJssalon Vincenzo</p>
+  `;
 
-        const gegevens = result.rows?.[0];
-        if (gegevens?.email) {
-          await sendMail({
-            to: gegevens.email,
-            subject: `Nieuwe skill: ${gegevens.skill_naam}`,
-            tekst: `${gegevens.naam},
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const result = await resend.emails.send({
+    from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
+    to: email,
+    subject,
+    html: body,
+  });
 
-Je hebt een nieuwe skill toegewezen gekregen: ${gegevens.skill_naam}.
-Leer deze binnen ${deadline_dagen || 10} dagen.`
-          });
-        }
-      }
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error("Fout bij toewijzen skills:", err);
-    return NextResponse.json({ error: "Fout bij verwerken" }, { status: 500 });
-  }
+  console.log("✅ Skillmail verzonden:", result);
 }
