@@ -36,7 +36,7 @@ export default function SkillToewijzen() {
         .then(res => res.json())
         .then((data: ToegewezenSkill[]) => {
           const ingevuld = Object.fromEntries(
-            data.map((s) => [s.skill_id, { actief: true, deadline: Number(s.deadline_dagen) || 10 }])
+            data.map((s) => [String(s.skill_id), { actief: true, deadline: Number(s.deadline_dagen) || 10 }])
           );
           setToewijzingen(ingevuld);
         });
