@@ -1,29 +1,58 @@
-// src/app/api/gelezen/route.ts
+// src/app/api/skills/toewijzen/route.ts
+import { db } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server";
+import { sendMail } from "@/lib/mail"; // bestaande resend-routine
 
-// Deze oude route gebruikt waarschijnlijk nog postgres() of een sql-client die je niet meer gebruikt.
-// Verwijder alle verwijzingen naar 'postgres' en gebruik alleen je eigen 'db.query'.
-
-import { NextResponse } from "next/server";
-import { db } from "@/lib/db"; // jouw pg Pool
-
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const { items, sendEmail } = body; // items: array van toewijzingen
 
-    if (!body || !body.email || !body.instructie_id) {
-      return NextResponse.json({ error: "Ongeldige invoer" }, { status: 400 });
+    if (!Array.isArray(items) || items.length === 0) {
+      return NextResponse.json({ error: "Geen toewijzingen ontvangen" }, { status: 400 });
     }
 
-    await db.query(
-      `INSERT INTO gelezen_instructies (email, instructie_id, gelezen_op)
-       VALUES ($1, $2, NOW())
-       ON CONFLICT (email, instructie_id) DO NOTHING`,
-      [body.email, body.instructie_id]
-    );
+    for (const item of items) {
+      const { medewerker_id, skill_id, deadline_dagen } = item;
 
-    return NextResponse.json({ status: "ok" });
+      if (!medewerker_id || !skill_id) continue;
+
+      // Upsert de toewijzing met deadline in dagen
+      await db.query(
+        `INSERT INTO skill_toegewezen (medewerker_id, skill_id, deadline_dagen)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (medewerker_id, skill_id) DO UPDATE
+         SET deadline_dagen = EXCLUDED.deadline_dagen`,
+        [medewerker_id, skill_id, deadline_dagen || 10]
+      );
+
+      // Mail indien aangevinkt
+      if (sendEmail) {
+        const result = await db.query(
+          `SELECT m.naam, m.email, s.naam as skill_naam
+           FROM medewerkers m
+           JOIN skills s ON s.id = $1
+           WHERE m.id = $2`,
+          [skill_id, medewerker_id]
+        );
+
+        const gegevens = result.rows?.[0];
+        if (gegevens?.email) {
+          await sendMail({
+            to: gegevens.email,
+            subject: `Nieuwe skill: ${gegevens.skill_naam}`,
+            tekst: `${gegevens.naam},
+
+Je hebt een nieuwe skill toegewezen gekregen: ${gegevens.skill_naam}.
+Leer deze binnen ${deadline_dagen || 10} dagen.`
+          });
+        }
+      }
+    }
+
+    return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("❌ Fout in /api/gelezen:", err);
-    return NextResponse.json({ error: "Serverfout" }, { status: 500 });
+    console.error("Fout bij toewijzen skills:", err);
+    return NextResponse.json({ error: "Fout bij verwerken" }, { status: 500 });
   }
 }
