@@ -4,17 +4,19 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   try {
-    const result = await db.query(
-      `SELECT s.id, s.naam, s.categorie_id, s.actief
-       FROM skills s
-       ORDER BY s.categorie_id, s.naam`
-    );
+    const result = await db.query(`
+      SELECT s.id, s.naam, s.categorie_id, c.naam AS categorie_naam
+      FROM skills s
+      LEFT JOIN skill_categorieen c ON s.categorie_id = c.id
+      ORDER BY c.naam, s.naam
+    `);
     return NextResponse.json(result.rows);
   } catch (err) {
     console.error("GET skills error", err);
     return NextResponse.json({ error: "Fout bij ophalen" }, { status: 500 });
   }
 }
+
 
 export async function POST(req: NextRequest) {
   try {
