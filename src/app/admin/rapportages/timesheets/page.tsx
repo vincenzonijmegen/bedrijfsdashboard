@@ -39,7 +39,7 @@ export default function NietGoedgekeurdeUren() {
 
       const regels = timesheetsRes.data
         .map((item: any) => item.Timesheet)
-        .filter((r: any) => r.status !== "Approved")
+        .filter((r: any) => r.status !== "Approved" && r.status !== "Declined")
         .map((r: any) => ({
           id: r.id,
           date: r.date,
