@@ -27,14 +27,13 @@ export async function POST(req: NextRequest) {
       );
 
 // Voeg toe aan skill_status (status = 'open'), maar alleen als nog niet aanwezig
+console.log("➕ Toevoegen aan skill_status:", medewerker_id, skill_id);
     await db.query(`
-      INSERT INTO skill_status (medewerker_id, skill_id, status)
-      SELECT $1, $2, 'open'
-      WHERE NOT EXISTS (
-        SELECT 1 FROM skill_status
-        WHERE medewerker_id = $1 AND skill_id = $2
-      )
-    `, [medewerker_id, skill_id]);
+  INSERT INTO skill_status (medewerker_id, skill_id, status)
+  VALUES ($1, $2, 'open')
+  ON CONFLICT (medewerker_id, skill_id) DO NOTHING
+`, [medewerker_id, skill_id]);
+
 
       // Mail indien aangevinkt
       if (sendEmail) {
