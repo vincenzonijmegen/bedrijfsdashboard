@@ -24,3 +24,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Interne fout", details: String(err) }, { status: 500 });
   }
 }
+//
