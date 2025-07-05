@@ -36,8 +36,6 @@ export default function MijnSkillsPagina() {
       .then((data) => setSkills(data.skills || []));
   }, [gebruiker]);
 
-  const kleuren = ["bg-pink-200", "bg-blue-200", "bg-green-200", "bg-yellow-200", "bg-purple-200"];
-
   const markeerAlsGeleerd = async (skill_id: string) => {
     await fetch("/api/skills/status", {
       method: "POST",
@@ -52,15 +50,32 @@ export default function MijnSkillsPagina() {
     );
   };
 
+  // ✅ Dynamische kleur op basis van status en deadline
+  const getKaartKleur = (skill: Skill) => {
+    if (skill.status === "geleerd") return "bg-gray-200";
+
+    if (skill.deadline) {
+      const deadline = new Date(skill.deadline);
+      const vandaag = new Date();
+      const verschil = Math.ceil(
+        (deadline.getTime() - vandaag.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      if (verschil < 0) return "bg-red-200";      // deadline verlopen
+      if (verschil <= 3) return "bg-yellow-200";  // deadline nadert
+    }
+
+    return "bg-green-200"; // standaard: nieuw
+  };
+
   return (
     <main className="max-w-5xl mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
           <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
           <h1 className="text-3xl font-bold text-slate-800">
-          Skilllijst – {gebruiker?.naam || "..."}
-            </h1>
-
+            Skilllijst – {gebruiker?.naam || "..."}
+          </h1>
         </div>
         <button
           onClick={async () => {
@@ -78,8 +93,7 @@ export default function MijnSkillsPagina() {
         {skills.length === 0 ? (
           <p className="text-gray-600 col-span-2">Geen skills gevonden.</p>
         ) : (
-          skills.map((skill, index) => {
-            const kleur = kleuren[index % kleuren.length];
+          skills.map((skill) => {
             const statusKleur =
               skill.status === "geleerd"
                 ? "text-green-700 font-semibold"
@@ -90,7 +104,7 @@ export default function MijnSkillsPagina() {
             return (
               <div
                 key={skill.skill_id}
-                className={`rounded-lg shadow px-4 py-3 border ${kleur} group relative`}
+                className={`rounded-lg shadow px-4 py-3 border ${getKaartKleur(skill)} group relative`}
                 title={skill.omschrijving || ""}
               >
                 <div className="font-semibold text-slate-800 mb-1">
