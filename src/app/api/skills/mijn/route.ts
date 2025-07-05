@@ -12,12 +12,12 @@ export async function GET(req: NextRequest) {
   try {
     const result = await db.query(`
       SELECT
-        s.id AS skill_id,
-        s.naam AS skill_naam,
-        s.omschrijving,
-        c.naam AS categorie,
-        ss.status,
-        st.deadline
+      s.id AS skill_id,
+      s.naam AS skill_naam,
+      s.beschrijving AS omschrijving,         -- ✅ alias naar 'omschrijving'
+      c.naam AS categorie,
+      ss.status,
+      CURRENT_DATE + (st.deadline_dagen || ' days')::interval AS deadline  -- ✅ berekende echte datum
       FROM skill_status ss
       JOIN medewerkers m ON m.id = ss.medewerker_id
       JOIN skills s ON s.id = ss.skill_id
