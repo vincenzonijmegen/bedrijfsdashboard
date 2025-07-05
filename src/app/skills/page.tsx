@@ -34,14 +34,22 @@ export default function MijnSkillsPagina() {
           </tr>
         </thead>
         <tbody>
-          {skills.map((s, i) => (
-            <tr key={s.skill_id}>
-              <td className="border p-2">{i + 1}</td>
-              <td className="border p-2">{s.categorie}</td>
-              <td className="border p-2">{s.skill_naam}</td>
-              <td className="border p-2">{s.status}</td>
+          {Array.isArray(skills) && skills.length > 0 ? (
+            skills.map((s, i) => (
+              <tr key={s.skill_id || i}>
+                <td className="border p-2">{i + 1}</td>
+                <td className="border p-2">{s.categorie || '-'}</td>
+                <td className="border p-2">{s.skill_naam || '-'}</td>
+                <td className="border p-2">{s.status || '-'}</td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td className="border p-2 text-center" colSpan={4}>
+                Geen skills gevonden.
+              </td>
             </tr>
-          ))}
+          )}
         </tbody>
       </table>
     </div>
