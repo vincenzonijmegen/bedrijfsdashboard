@@ -1,6 +1,4 @@
-export const runtime = "nodejs";
-export const preferredRegion = "home";
-export const schedule = "0 8 * * *"; // dagelijks om 08:00
+export const runtime = "nodejs"; // Gebruik Node.js i.p.v. Edge (vereist voor pg)
 
 import { db } from "@/lib/db";
 import { sendReminderMail } from "@/lib/mail";
