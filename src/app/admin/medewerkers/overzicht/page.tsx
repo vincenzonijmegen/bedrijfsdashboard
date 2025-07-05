@@ -6,6 +6,7 @@ import Link from "next/link";
 interface Medewerker {
   id: string;
   first_name: string;
+  prefix?: string;
   last_name: string;
   email: string;
   phone_nr?: string;
@@ -55,7 +56,7 @@ export default function MedewerkersOverzicht() {
             <tr key={m.id}>
               <td className="border px-3 py-2">{index + 1}</td>
               <td className="border px-3 py-2">
-                {m.first_name} {m.last_name}
+                {m.first_name} {m.prefix ? m.prefix + " " : ""}{m.last_name}
               </td>
               <td className="border px-3 py-2">
                 {formatDateNL(m.birthdate)}
