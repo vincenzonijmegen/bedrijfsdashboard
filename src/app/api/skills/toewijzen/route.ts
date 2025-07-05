@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 console.log("➕ Toevoegen aan skill_status:", medewerker_id, skill_id);
     await db.query(`
   INSERT INTO skill_status (medewerker_id, skill_id, status)
-  VALUES ($1, $2, 'open')
+  VALUES ($1, $2, 'niet_geleerd')
   ON CONFLICT (medewerker_id, skill_id) DO NOTHING
 `, [medewerker_id, skill_id]);
 
