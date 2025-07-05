@@ -1,6 +1,6 @@
 export const runtime = "edge";
 export const preferredRegion = "home";
-export const schedule = "0 8 * * *"; // elke dag om 08:00
+export const schedule = "0 8 * * *"; // dagelijks om 08:00
 
 import { db } from "@/lib/db";
 import { sendReminderMail } from "@/lib/mail";
