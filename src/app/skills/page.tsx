@@ -1,33 +1,44 @@
-// /skills/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
+
+type Gebruiker = {
+  naam: string;
+  email: string;
+};
 
 export default function MijnSkillsPagina() {
-  const session = useSession();
-  const email = session?.data?.user?.email;
+  const [gebruiker, setGebruiker] = useState<Gebruiker | null>(null);
   const [skills, setSkills] = useState<any[]>([]);
 
+  // Stap 1: haal ingelogde gebruiker op
   useEffect(() => {
-    if (!email) return;
+    fetch("/api/user")
+      .then((res) => res.json())
+      .then((data) => setGebruiker(data));
+  }, []);
+
+  // Stap 2: haal skills op voor die gebruiker
+  useEffect(() => {
+    if (!gebruiker?.email) return;
 
     fetch("/api/skills/mijn", {
       headers: {
-        "x-user-email": email,
+        "x-user-email": gebruiker.email,
       },
     })
       .then((res) => res.json())
       .then((data) => setSkills(data.skills || []));
-  }, [email]);
+  }, [gebruiker]);
 
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-1">Mijn Skills</h1>
-<p className="text-sm text-gray-600 mb-4">
-  Ingelogd als: <strong>{session?.data?.user?.name}</strong> (
-  <code>{email}</code>)
-</p>
+      <p className="text-sm text-gray-600 mb-4">
+        Ingelogd als: <strong>{gebruiker?.naam || "?"}</strong>{" "}
+        (<code>{gebruiker?.email || "?"}</code>)
+      </p>
+
       <table className="table-auto w-full border">
         <thead>
           <tr>
@@ -42,9 +53,9 @@ export default function MijnSkillsPagina() {
             skills.map((s, i) => (
               <tr key={s.skill_id || i}>
                 <td className="border p-2">{i + 1}</td>
-                <td className="border p-2">{s.categorie || '-'}</td>
-                <td className="border p-2">{s.skill_naam || '-'}</td>
-                <td className="border p-2">{s.status || '-'}</td>
+                <td className="border p-2">{s.categorie || "-"}</td>
+                <td className="border p-2">{s.skill_naam || "-"}</td>
+                <td className="border p-2">{s.status || "-"}</td>
               </tr>
             ))
           ) : (
