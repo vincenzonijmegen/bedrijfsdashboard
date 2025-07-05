@@ -21,6 +21,7 @@
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "html-entities": "^2.6.0",
+    "html2pdf.js": "^0.10.3",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",
     "next": "15.3.3",
