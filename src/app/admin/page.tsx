@@ -52,7 +52,7 @@ export default function AdminDashboard() {
       <Section title="🧠 Skills" color="purple">
         <LinkCard href="/admin/skills/categorieen" label="👥 Beheer categorieën" color="purple" />
         <LinkCard href="/admin/skills" label="🧩 Skills beheer" color="purple" />
-        <LinkCard href="/admin/skills/toewijzen" label="👥 Skills medewerkers" color="purple" />
+        <LinkCard href="/admin/skills/toewijzen" label="👥 Skills toewijzen" color="purple" />
         <LinkCard href="/skills" label="🧩 Skills medewerkers" color="purple" />
       </Section>
 

@@ -115,7 +115,10 @@ export default function InstructieOverzicht() {
     <div className="flex justify-between items-center mb-6">
       <div className="flex items-center gap-4">
         <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
-        <h1 className="text-3xl font-bold text-slate-800">Werkinstructies</h1>
+        <h1 className="text-3xl font-bold text-slate-800">
+        Werkinstructies – {gebruiker?.naam || "..."}
+        </h1>
+
       </div>
 
 
