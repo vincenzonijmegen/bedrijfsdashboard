@@ -19,6 +19,18 @@ function formatDateNL(dateString?: string): string {
   return date.toLocaleDateString("nl-NL");
 }
 
+function calculateAge(dateString?: string): string {
+  if (!dateString) return "-";
+  const birthDate = new Date(dateString);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age.toString();
+}
+
 export default function MedewerkersOverzicht() {
   const [data, setData] = useState<Medewerker[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +59,7 @@ export default function MedewerkersOverzicht() {
             <th className="border px-3 py-2 text-left">#</th>
             <th className="border px-3 py-2 text-left">Naam</th>
             <th className="border px-3 py-2 text-left">Geboortedatum</th>
+            <th className="border px-3 py-2 text-left">Leeftijd</th>
             <th className="border px-3 py-2 text-left">Telefoonnummer</th>
             <th className="border px-3 py-2 text-left">E-mailadres</th>
           </tr>
@@ -60,6 +73,9 @@ export default function MedewerkersOverzicht() {
               </td>
               <td className="border px-3 py-2">
                 {formatDateNL(m.birthdate)}
+              </td>
+              <td className="border px-3 py-2">
+                {calculateAge(m.birthdate)}
               </td>
               <td className="border px-3 py-2">
                 {m.phone_nr || "-"}
