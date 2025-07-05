@@ -21,17 +21,17 @@ export async function POST(req: Request) {
     }
 
     // ⬇️ Zet cookies
-    const cookieStore = cookies();
-    cookieStore.set("email", medewerker.email, {
-      httpOnly: false, // Je kunt dit true maken als frontend geen toegang nodig heeft
-      sameSite: "lax",
-      path: "/",
-    });
-    cookieStore.set("naam", medewerker.naam, {
-      httpOnly: false,
-      sameSite: "lax",
-      path: "/",
-    });
+const cookieStore = await cookies();
+cookieStore.set("email", medewerker.email, {
+  httpOnly: false,
+  sameSite: "lax",
+  path: "/",
+});
+cookieStore.set("naam", medewerker.naam, {
+  httpOnly: false,
+  sameSite: "lax",
+  path: "/",
+});
 
     return NextResponse.json({
       success: true,
