@@ -33,7 +33,7 @@ export default function NietGoedgekeurdeUren() {
         ? Object.fromEntries(
             medewerkersRes.data
               .filter((m: any) => m.status === "ACTIVE")
-              .map((m: any) => [m.id, `${m.first_name} ${m.last_name}`.trim()])
+              .map((m: any) => [String(m.id), `${m.first_name} ${m.last_name}`.trim()])
           )
         : {};
 
