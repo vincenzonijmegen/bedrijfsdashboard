@@ -27,11 +27,13 @@ export default function NietGoedgekeurdeUren() {
 
     Promise.all([
       fetch(`/api/shiftbase/timesheets?min_date=${minDate}`).then((res) => res.json()),
-      fetch(`/api/shiftbase/medewerkers`).then((res) => res.json()),
+      fetch(`/api/shiftbase/medewerkers`).then((res) => res.ok ? res.json() : Promise.resolve({ data: [] })),
     ]).then(([timesheetsRes, medewerkersRes]) => {
-      const medewerkers = Object.fromEntries(
-        medewerkersRes.data.map((m: any) => [m.Employee.id, m.Employee.name])
-      );
+      const medewerkers = Array.isArray(medewerkersRes?.data)
+        ? Object.fromEntries(
+            medewerkersRes.data.map((m: any) => [m.Employee.id, m.Employee.name])
+          )
+        : {};
 
       const regels = timesheetsRes.data
         .map((item: any) => item.Timesheet)
