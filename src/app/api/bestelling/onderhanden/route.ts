@@ -33,19 +33,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const id = req.nextUrl.searchParams.get("id");
   const leverancier = req.nextUrl.searchParams.get("leverancier");
+if (!leverancier) return NextResponse.json({ error: "Leverancier vereist" }, { status: 400 });
 
-  if (!id && !leverancier) {
-    return NextResponse.json({ error: "id of leverancier vereist" }, { status: 400 });
-  }
-
-  if (id) {
-    await pool.query(`DELETE FROM onderhanden_bestellingen WHERE id = $1`, [id]);
-  } else if (leverancier) {
-    await pool.query(`DELETE FROM onderhanden_bestellingen WHERE leverancier_id = $1`, [leverancier]);
-  }
-
+await pool.query(`DELETE FROM onderhanden_bestellingen WHERE leverancier_id = $1`, [leverancier]);
   return NextResponse.json({ success: true });
 }
-
