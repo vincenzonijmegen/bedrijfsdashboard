@@ -41,24 +41,23 @@ export default function OpenDienstenPerWeek() {
       });
   }, []);
 
-const exportToPDF = async () => {
+ const exportToPDF = async () => {
   // @ts-expect-error: html2pdf.js heeft geen types
-  const html2pdf = (await import("html2pdf.js")).default;
-  const element = document.getElementById("pdf-content");
-  if (!element) return;
+    const html2pdf = (await import("html2pdf.js")).default;
+    const element = document.getElementById("pdf-content");
+    if (!element) return;
 
-  html2pdf()
-    .set({
-      margin: 0.5,
-      filename: "OpenDiensten.pdf",
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-    })
-    .from(element)
-    .save();
-};
-
+    html2pdf()
+      .set({
+        margin: 0.5,
+        filename: "OpenDiensten.pdf",
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+      })
+      .from(element)
+      .save();
+  };
 
   if (loading) return <p className="p-4">Laden…</p>;
 
@@ -118,7 +117,7 @@ const exportToPDF = async () => {
                         <td className="border px-3 py-2">{d.endtime}</td>
                         <td className="border px-3 py-2">
                           <span
-                            className="inline-block px-2 py-0.5 rounded text-white text-xs font-medium"
+                            className="inline-block px-2 py-1 rounded text-white text-xs font-medium whitespace-nowrap"
                             style={{
                               backgroundColor: d.shift?.color || "#999",
                             }}
