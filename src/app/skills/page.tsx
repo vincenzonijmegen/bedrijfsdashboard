@@ -16,13 +16,14 @@ export default function MijnSkills() {
   const { data: session } = useSession();
 
   useEffect(() => {
-    if (!session?.user?.id) return;
+    if (!session?.user?.email) return;
 
-    fetch("/api/skills/mijn", {
-      headers: {
-        "x-user-id": session.user.id,
-      },
-    })
+fetch("/api/skills/mijn", {
+  headers: {
+    "x-user-email": session.user.email,
+  },
+})
+
       .then((res) => res.json())
       .then((json) => {
         setSkills(json.skills || []);
