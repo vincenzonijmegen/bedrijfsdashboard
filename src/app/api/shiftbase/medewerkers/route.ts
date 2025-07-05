@@ -1,9 +1,7 @@
-// src/app/api/shiftbase/medewerkers/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   const apiKey = process.env.SHIFTBASE_API_KEY;
-
   const url = "https://api.shiftbase.com/api/employees?include_inactive=false";
 
   try {
