@@ -42,6 +42,7 @@ export default function OpenDienstenPerWeek() {
   }, []);
 
 const exportToPDF = async () => {
+  // @ts-expect-error: html2pdf.js heeft geen types
   const html2pdf = (await import("html2pdf.js")).default;
   const element = document.getElementById("pdf-content");
   if (!element) return;
