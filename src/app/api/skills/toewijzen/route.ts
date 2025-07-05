@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function sendSkillUpdateMail(email: string, naam: string, aantal: number) {
+async function sendSkillUpdateMail(email: string, naam: string, aantal: number) {
   const subject = `📘 Er zijn ${aantal} nieuwe skills aan jou toegewezen`;
   const body = `
     <p>Hallo ${naam},</p>
