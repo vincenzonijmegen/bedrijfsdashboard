@@ -59,12 +59,7 @@ export default function NietGoedgekeurdeUren() {
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
-      <Link
-        href="/"
-        className="inline-block mb-6 text-blue-600 hover:underline font-medium"
-      >
-        ← Terug naar startpagina
-      </Link>
+
 
       <h1 className="text-2xl font-bold mb-6">Niet-goedgekeurde uren</h1>
 
