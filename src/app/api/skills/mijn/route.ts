@@ -6,8 +6,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
-  const rawEmail = req.headers.get("x-user-email");
-  const userEmail = rawEmail?.toLowerCase().trim();
+const userEmail = "herman@ijssalonvincenzo.nl";
+
 
   if (!userEmail) {
     return NextResponse.json({ skills: [], warning: "Geen e-mail meegegeven" }, { status: 200 });
