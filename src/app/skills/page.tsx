@@ -14,7 +14,12 @@ export default function MijnSkills() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/skills/mijn")
+    const userId = sessionStorage.getItem("userId"); // of haal dit uit context/session
+    fetch("/api/skills/mijn", {
+      headers: {
+        "x-user-id": userId || "",
+      },
+    })
       .then((res) => res.json())
       .then((json) => {
         setSkills(json.skills || []);
