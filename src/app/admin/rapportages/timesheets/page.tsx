@@ -46,7 +46,7 @@ export default function NietGoedgekeurdeUren() {
           starttime: r.starttime,
           endtime: r.endtime,
           user_id: r.user_id,
-          user_name: medewerkers[r.user_id] || r.user_id,
+          user_name: medewerkers[String(r.user_id)] || r.user_id,
           status: r.status,
           total: r.total,
         }));
@@ -59,12 +59,7 @@ export default function NietGoedgekeurdeUren() {
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
-      <Link
-        href="/"
-        className="inline-block mb-6 text-blue-600 hover:underline font-medium"
-      >
-        ← Terug naar startpagina
-      </Link>
+
 
       <h1 className="text-2xl font-bold mb-6">Niet-goedgekeurde uren</h1>
 
@@ -94,4 +89,13 @@ export default function NietGoedgekeurdeUren() {
       </table>
     </div>
   );
+}
+
+function getWeekNumber(isoDate: string): string {
+  const date = parseISO(isoDate);
+  const jan1 = new Date(date.getFullYear(), 0, 1);
+  const days = Math.floor(
+    (date.getTime() - jan1.getTime()) / (24 * 60 * 60 * 1000)
+  );
+  return String(Math.ceil((days + jan1.getDay() + 1) / 7));
 }
