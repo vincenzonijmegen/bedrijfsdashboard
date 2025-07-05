@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ReactNode } from "react";
+import { handleLogout } from "@/utils/auth";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -36,15 +37,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           ← Terug naar startpagina
         </Link>
 
-        <button
-          onClick={() => {
-            localStorage.removeItem("gebruiker");
-            router.push("/sign-in");
-          }}
-          className="text-sm text-red-600 underline"
-        >
-          Uitloggen
-        </button>
+import { handleLogout } from "@/utils/auth";
+
+<button
+  onClick={handleLogout}
+  className="text-sm text-red-600 underline"
+>
+  Uitloggen
+</button>
+
       </div>
 
       <p className="text-sm text-gray-600">Welkom {naam ? naam : "..."}</p>

@@ -3,6 +3,7 @@
 
 import useSWR from "swr";
 import Link from "next/link";
+import { handleLogout } from "@/utils/auth";
 
 interface Instructie {
   id: string;
@@ -116,15 +117,15 @@ export default function InstructieOverzicht() {
         <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
         <h1 className="text-3xl font-bold text-slate-800">Werkinstructies</h1>
       </div>
-      <button
-        onClick={() => {
-          localStorage.removeItem("gebruiker");
-          window.location.href = "/sign-in";
-        }}
-        className="text-sm text-red-600 hover:underline"
-      >
-        Uitloggen
-      </button>
+      import { handleLogout } from "@/utils/auth";
+
+<button
+  onClick={handleLogout}
+  className="text-sm text-red-600 underline"
+>
+  Uitloggen
+</button>
+
     </div>
 
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
