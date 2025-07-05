@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { leverancier_id, data, referentie } = body;
 
-  if (!leverancier_id || !data) {
+  if (!leverancier_id || !data || Object.keys(data).length === 0) {
     return NextResponse.json({ error: "leverancier_id en data zijn verplicht" }, { status: 400 });
   }
 
