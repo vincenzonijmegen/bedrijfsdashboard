@@ -1,8 +1,28 @@
 export const runtime = "nodejs"; // Gebruik Node.js i.p.v. Edge (vereist voor pg)
 
 import { db } from "@/lib/db";
-import { sendSkillUpdateMail } from "@/lib/mail";
+import { Resend } from "resend";
 import { NextRequest, NextResponse } from "next/server";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+export async function sendSkillUpdateMail(email: string, naam: string, aantal: number) {
+  const subject = `📘 Er zijn ${aantal} nieuwe skills aan jou toegewezen`;
+  const body = `
+    <p>Hallo ${naam},</p>
+    <p>Er ${aantal === 1 ? 'is' : 'zijn'} ${aantal} skill${aantal > 1 ? 's' : ''} aan jou toegewezen.</p>
+    <p>Bekijk je skilllijst via het werkinstructieportaal:</p>
+    <p><a href="https://werkinstructies-app.vercel.app/skills">Ga naar je dashboard</a></p>
+    <p>Met vriendelijke groet,<br/>IJssalon Vincenzo</p>
+  `;
+
+  await resend.emails.send({
+    from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
+    to: email,
+    subject,
+    html: body,
+  });
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
