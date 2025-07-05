@@ -6,7 +6,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
-  const userEmail = req.headers.get("x-user-email");
+  const rawEmail = req.headers.get("x-user-email");
+  const userEmail = rawEmail?.toLowerCase().trim();
+
   if (!userEmail) {
     return NextResponse.json({ skills: [], warning: "Geen e-mail meegegeven" }, { status: 200 });
   }
@@ -22,7 +24,7 @@ export async function GET(req: NextRequest) {
       JOIN medewerkers m ON m.id = ss.medewerker_id
       JOIN skills s ON s.id = ss.skill_id
       LEFT JOIN skill_categorieen c ON c.id = s.categorie_id
-      WHERE m.email = $1
+      WHERE LOWER(m.email) = $1
       ORDER BY c.naam, s.naam
     `, [userEmail]);
 
@@ -31,3 +33,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ skills: [], warning: "Databasefout", details: String(err) }, { status: 200 });
   }
 }
+
