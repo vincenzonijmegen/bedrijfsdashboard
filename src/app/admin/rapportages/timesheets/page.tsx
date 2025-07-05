@@ -31,9 +31,10 @@ export default function NietGoedgekeurdeUren() {
     ]).then(([timesheetsRes, medewerkersRes]) => {
       const medewerkers = Array.isArray(medewerkersRes?.data)
         ? Object.fromEntries(
-            medewerkersRes.data
-              .filter((m: any) => m.status === "ACTIVE")
-              .map((m: any) => [String(m.id), `${m.first_name} ${m.last_name}`.trim()])
+            medewerkersRes.data.map((m: any) => [
+              String(m.id),
+              `${m.first_name || ""} ${m.last_name || ""}`.trim() || m.email || m.id
+            ])
           )
         : {};
 
@@ -59,7 +60,12 @@ export default function NietGoedgekeurdeUren() {
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
-
+      <Link
+        href="/"
+        className="inline-block mb-6 text-blue-600 hover:underline font-medium"
+      >
+        ← Terug naar startpagina
+      </Link>
 
       <h1 className="text-2xl font-bold mb-6">Niet-goedgekeurde uren</h1>
 
