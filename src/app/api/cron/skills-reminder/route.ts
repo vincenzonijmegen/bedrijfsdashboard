@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     const deadline = new Date(row.deadline);
     const verschil = Math.ceil((deadline.getTime() - vandaag.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (verschil >= 0) // tijdelijk voor testmail {
+    if (verschil >= 0) { // tijdelijk voor testmail
       await sendReminderMail(row.medewerker_email, row.medewerker_naam, row.skill_naam, deadline);
       aantalMails++;
     }
