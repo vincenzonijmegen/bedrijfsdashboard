@@ -11,6 +11,7 @@ type Tijdregel = {
   starttime: string;
   endtime: string;
   user_id: string;
+  user_name?: string;
   status: string;
   total: string;
 };
@@ -24,24 +25,30 @@ export default function NietGoedgekeurdeUren() {
     min.setDate(min.getDate() - 30);
     const minDate = min.toISOString().slice(0, 10);
 
-    fetch(`/api/shiftbase/timesheets?min_date=${minDate}`)
-      .then((res) => res.json())
-      .then((json) => {
-        const regels = json.data
-          .map((item: any) => item.Timesheet)
-          .filter((r: any) => r.status !== "Approved")
-          .map((r: any) => ({
-            id: r.id,
-            date: r.date,
-            starttime: r.starttime,
-            endtime: r.endtime,
-            user_id: r.user_id,
-            status: r.status,
-            total: r.total,
-          }));
-        setData(regels);
-        setLoading(false);
-      });
+    Promise.all([
+      fetch(`/api/shiftbase/timesheets?min_date=${minDate}`).then((res) => res.json()),
+      fetch(`/api/shiftbase/medewerkers`).then((res) => res.json()),
+    ]).then(([timesheetsRes, medewerkersRes]) => {
+      const medewerkers = Object.fromEntries(
+        medewerkersRes.data.map((m: any) => [m.Employee.id, m.Employee.name])
+      );
+
+      const regels = timesheetsRes.data
+        .map((item: any) => item.Timesheet)
+        .filter((r: any) => r.status !== "Approved")
+        .map((r: any) => ({
+          id: r.id,
+          date: r.date,
+          starttime: r.starttime,
+          endtime: r.endtime,
+          user_id: r.user_id,
+          user_name: medewerkers[r.user_id] || r.user_id,
+          status: r.status,
+          total: r.total,
+        }));
+      setData(regels);
+      setLoading(false);
+    });
   }, []);
 
   if (loading) return <p className="p-4">Laden…</p>;
@@ -72,7 +79,7 @@ export default function NietGoedgekeurdeUren() {
           {data.map((r) => (
             <tr key={r.id}>
               <td className="border px-3 py-2">{format(parseISO(r.date), "dd-MM-yyyy")}</td>
-              <td className="border px-3 py-2">{r.user_id}</td>
+              <td className="border px-3 py-2">{r.user_name}</td>
               <td className="border px-3 py-2">{r.starttime}</td>
               <td className="border px-3 py-2">{r.endtime}</td>
               <td className="border px-3 py-2">{r.total} uur</td>
