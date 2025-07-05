@@ -41,22 +41,23 @@ export default function OpenDienstenPerWeek() {
       });
   }, []);
 
-  const exportToPDF = async () => {
-    const html2pdf = (await import("html2pdf.js")).default;
-    const element = document.getElementById("pdf-content");
-    if (!element) return;
+const exportToPDF = async () => {
+  const html2pdf = (await import("html2pdf.js")).default;
+  const element = document.getElementById("pdf-content");
+  if (!element) return;
 
-    html2pdf()
-      .set({
-        margin: 0.5,
-        filename: "OpenDiensten.pdf",
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
-      })
-      .from(element)
-      .save();
-  };
+  html2pdf()
+    .set({
+      margin: 0.5,
+      filename: "OpenDiensten.pdf",
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+    })
+    .from(element)
+    .save();
+};
+
 
   if (loading) return <p className="p-4">Laden…</p>;
 
