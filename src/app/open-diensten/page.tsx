@@ -41,6 +41,23 @@ export default function OpenDienstenPerWeek() {
       });
   }, []);
 
+  const exportToPDF = async () => {
+    const html2pdf = (await import("html2pdf.js")).default;
+    const element = document.getElementById("pdf-content");
+    if (!element) return;
+
+    html2pdf()
+      .set({
+        margin: 0.5,
+        filename: "OpenDiensten.pdf",
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: "in", format: "a4", orientation: "portrait" },
+      })
+      .from(element)
+      .save();
+  };
+
   if (loading) return <p className="p-4">Laden…</p>;
 
   const dienstenPerWeek: Record<string, Dienst[]> = {};
@@ -51,60 +68,69 @@ export default function OpenDienstenPerWeek() {
   });
 
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-      <Link
-        href="/"
-        className="inline-block mb-6 text-blue-600 hover:underline font-medium"
-      >
-        ← Terug naar startpagina
-      </Link>
+    <div className="p-4 max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <Link
+          href="/"
+          className="text-blue-600 hover:underline font-medium"
+        >
+          ← Terug naar startpagina
+        </Link>
+        <button
+          onClick={exportToPDF}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
+        >
+          📄 Download als PDF
+        </button>
+      </div>
 
-      <h1 className="text-2xl font-bold mb-6">Open diensten per week</h1>
-
-      {Object.entries(dienstenPerWeek)
-        .sort(([a], [b]) => Number(a) - Number(b))
-        .map(([weekNr, diensten]) => (
-          <div key={weekNr} className="mb-8">
-            <h2 className="text-xl font-semibold mb-2">Week {weekNr}</h2>
-            <table className="w-full border border-gray-300 text-sm table-fixed">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="border px-3 py-2 text-left w-[20%]">Datum</th>
-                  <th className="border px-3 py-2 text-left w-[10%]">Dag</th>
-                  <th className="border px-3 py-2 text-left w-[20%]">Starttijd</th>
-                  <th className="border px-3 py-2 text-left w-[20%]">Eindtijd</th>
-                  <th className="border px-3 py-2 text-left w-[30%]">Dienst</th>
-                </tr>
-              </thead>
-              <tbody>
-                {diensten
-                  .sort((a, b) => a.date.localeCompare(b.date))
-                  .map((d) => (
-                    <tr key={d.id} className="align-top">
-                      <td className="border px-3 py-2">
-                        {format(parseISO(d.date), "dd-MM-yyyy")}
-                      </td>
-                      <td className="border px-3 py-2">
-                        {format(parseISO(d.date), "eee", { locale: nl })}
-                      </td>
-                      <td className="border px-3 py-2">{d.starttime}</td>
-                      <td className="border px-3 py-2">{d.endtime}</td>
-                      <td className="border px-3 py-2">
-                        <span
-                          className="inline-block px-2 py-0.5 rounded text-white text-xs font-medium"
-                          style={{
-                            backgroundColor: d.shift?.color || "#999",
-                          }}
-                        >
-                          {d.description || d.shift?.long_name}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        ))}
+      <div id="pdf-content">
+        <h1 className="text-2xl font-bold mb-6">Open diensten per week</h1>
+        {Object.entries(dienstenPerWeek)
+          .sort(([a], [b]) => Number(a) - Number(b))
+          .map(([weekNr, diensten]) => (
+            <div key={weekNr} className="mb-8">
+              <h2 className="text-xl font-semibold mb-2">Week {weekNr}</h2>
+              <table className="w-full border border-gray-300 text-sm table-fixed">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="border px-3 py-2 text-left w-[20%]">Datum</th>
+                    <th className="border px-3 py-2 text-left w-[10%]">Dag</th>
+                    <th className="border px-3 py-2 text-left w-[20%]">Starttijd</th>
+                    <th className="border px-3 py-2 text-left w-[20%]">Eindtijd</th>
+                    <th className="border px-3 py-2 text-left w-[30%]">Dienst</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {diensten
+                    .sort((a, b) => a.date.localeCompare(b.date))
+                    .map((d) => (
+                      <tr key={d.id} className="align-top">
+                        <td className="border px-3 py-2">
+                          {format(parseISO(d.date), "dd-MM-yyyy")}
+                        </td>
+                        <td className="border px-3 py-2">
+                          {format(parseISO(d.date), "eee", { locale: nl })}
+                        </td>
+                        <td className="border px-3 py-2">{d.starttime}</td>
+                        <td className="border px-3 py-2">{d.endtime}</td>
+                        <td className="border px-3 py-2">
+                          <span
+                            className="inline-block px-2 py-0.5 rounded text-white text-xs font-medium"
+                            style={{
+                              backgroundColor: d.shift?.color || "#999",
+                            }}
+                          >
+                            {d.description || d.shift?.long_name}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+      </div>
     </div>
   );
 }
