@@ -1,57 +1,33 @@
-// /skills/page.tsx
-"use client";
+// /api/skills/mijn
 
-import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 
-export default function MijnSkillsPagina() {
-  const session = useSession();
-  const email = session?.data?.user?.email;
-  const [skills, setSkills] = useState<any[]>([]);
 
-  useEffect(() => {
-    if (!email) return;
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
 
-    fetch("/api/skills/mijn", {
-      headers: {
-        "x-user-email": email,
-      },
-    })
-      .then((res) => res.json())
-      .then((data) => setSkills(data.skills || []));
-  }, [email]);
+export async function GET(req: NextRequest) {
+  const userEmail = req.headers.get("x-user-email");
+  if (!userEmail) {
+    return NextResponse.json({ skills: [], warning: "Geen e-mail meegegeven" }, { status: 200 });
+  }
 
-  return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Mijn Skills</h1>
-      <table className="table-auto w-full border">
-        <thead>
-          <tr>
-            <th className="border p-2">#</th>
-            <th className="border p-2">Categorie</th>
-            <th className="border p-2">Skill</th>
-            <th className="border p-2">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Array.isArray(skills) && skills.length > 0 ? (
-            skills.map((s, i) => (
-              <tr key={s.skill_id || i}>
-                <td className="border p-2">{i + 1}</td>
-                <td className="border p-2">{s.categorie || '-'}</td>
-                <td className="border p-2">{s.skill_naam || '-'}</td>
-                <td className="border p-2">{s.status || '-'}</td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td className="border p-2 text-center" colSpan={4}>
-                Geen skills gevonden.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
+  try {
+    const result = await db.query(`
+      SELECT
+        s.id AS skill_id,
+        s.naam AS skill_naam,
+        c.naam AS categorie,
+        ss.status
+      FROM skill_status ss
+      JOIN medewerkers m ON m.id = ss.medewerker_id
+      JOIN skills s ON s.id = ss.skill_id
+      LEFT JOIN skill_categorieen c ON c.id = s.categorie_id
+      WHERE m.email = $1
+      ORDER BY c.naam, s.naam
+    `, [userEmail]);
+
+    return NextResponse.json({ skills: result.rows });
+  } catch (err) {
+    return NextResponse.json({ skills: [], warning: "Databasefout", details: String(err) }, { status: 200 });
+  }
 }
