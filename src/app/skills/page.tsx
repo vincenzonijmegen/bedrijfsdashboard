@@ -7,6 +7,8 @@ interface Skill {
   skill_naam: string;
   categorie: string;
   status: "geleerd" | "niet_geleerd";
+  omschrijving?: string;
+  deadline?: string; // ISO datumstring
 }
 
 interface Gebruiker {
@@ -35,6 +37,20 @@ export default function MijnSkillsPagina() {
   }, [gebruiker]);
 
   const kleuren = ["bg-pink-200", "bg-blue-200", "bg-green-200", "bg-yellow-200", "bg-purple-200"];
+
+  const markeerAlsGeleerd = async (skill_id: string) => {
+    await fetch("/api/skills/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ skill_id, status: "geleerd" }),
+    });
+
+    setSkills((prev) =>
+      prev.map((s) =>
+        s.skill_id === skill_id ? { ...s, status: "geleerd" } : s
+      )
+    );
+  };
 
   return (
     <main className="max-w-5xl mx-auto p-4">
@@ -65,14 +81,14 @@ export default function MijnSkillsPagina() {
               skill.status === "geleerd"
                 ? "text-green-700 font-semibold"
                 : "text-gray-500 italic";
-
             const statusLabel =
               skill.status === "geleerd" ? "✅ Geleerd" : "🕐 Nog niet geleerd";
 
             return (
               <div
                 key={skill.skill_id}
-                className={`rounded-lg shadow px-4 py-3 border ${kleur}`}
+                className={`rounded-lg shadow px-4 py-3 border ${kleur} group relative`}
+                title={skill.omschrijving || ""}
               >
                 <div className="font-semibold text-slate-800 mb-1">
                   {skill.skill_naam}
@@ -80,7 +96,28 @@ export default function MijnSkillsPagina() {
                 <div className="text-sm text-slate-700 mb-1 italic">
                   Categorie: {skill.categorie || "–"}
                 </div>
+
+                {skill.deadline && (
+                  <div className="text-sm text-orange-700 mb-1">
+                    🗓 Deadline:{" "}
+                    {new Date(skill.deadline).toLocaleDateString("nl-NL", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })}
+                  </div>
+                )}
+
                 <div className={`text-sm ${statusKleur}`}>{statusLabel}</div>
+
+                {skill.status === "niet_geleerd" && (
+                  <button
+                    onClick={() => markeerAlsGeleerd(skill.skill_id)}
+                    className="mt-2 text-sm text-blue-600 underline"
+                  >
+                    Markeer als geleerd
+                  </button>
+                )}
               </div>
             );
           })
