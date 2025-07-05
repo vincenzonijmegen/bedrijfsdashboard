@@ -150,9 +150,13 @@ if (!response.ok) {
                             }
                           }}
                         />
-                        <span className={isDisabled ? "text-gray-400 italic" : ""}>
-                          {s.naam} {status === "geleerd" && <span className="text-green-600 ml-1">🧠</span>}
+                        <span className={`flex items-center gap-1 ${isDisabled ? "text-gray-400 italic" : ""}`}>
+                         {s.naam}
+                          {status === "geleerd" && (
+                          <span className="text-green-600 text-sm" title="Geleerd">🧠</span>
+                          )}
                         </span>
+
                         {isActief && !isDisabled && (
                           <input
                             type="number"
