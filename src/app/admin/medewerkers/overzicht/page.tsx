@@ -17,7 +17,7 @@ export default function MedewerkersOverzicht() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/shiftbase/medewerkers")
+    fetch("/api/shiftbase/naw")
       .then((res) => res.json())
       .then((json) => {
         setData(json.data || []);
