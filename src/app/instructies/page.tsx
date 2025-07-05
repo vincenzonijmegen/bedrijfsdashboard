@@ -117,7 +117,7 @@ export default function InstructieOverzicht() {
         <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
         <h1 className="text-3xl font-bold text-slate-800">Werkinstructies</h1>
       </div>
-      import { handleLogout } from "@/utils/auth";
+
 
 <button
   onClick={handleLogout}
