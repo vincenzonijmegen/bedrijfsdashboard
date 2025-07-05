@@ -26,6 +26,16 @@ export async function POST(req: NextRequest) {
         [medewerker_id, skill_id, deadline_dagen || 10]
       );
 
+// Voeg toe aan skill_status (status = 'open'), maar alleen als nog niet aanwezig
+    await db.query(`
+      INSERT INTO skill_status (medewerker_id, skill_id, status)
+      SELECT $1, $2, 'open'
+      WHERE NOT EXISTS (
+        SELECT 1 FROM skill_status
+        WHERE medewerker_id = $1 AND skill_id = $2
+      )
+    `, [medewerker_id, skill_id]);
+
       // Mail indien aangevinkt
       if (sendEmail) {
         const result = await db.query(
