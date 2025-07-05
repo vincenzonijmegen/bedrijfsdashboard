@@ -1,4 +1,4 @@
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const preferredRegion = "home";
 export const schedule = "0 8 * * *"; // dagelijks om 08:00
 
