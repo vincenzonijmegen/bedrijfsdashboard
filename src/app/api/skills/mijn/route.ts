@@ -1,43 +1,57 @@
-// /src/app/api/skills/mijn/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+// /skills/page.tsx
+"use client";
 
-export async function GET(req: NextRequest) {
-  const email = req.headers.get("x-user-email");
-  if (!email) {
-    return NextResponse.json({ skills: [], warning: "Geen e-mail meegegeven" }, { status: 400 });
-  }
+import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
-  try {
-    // Zoek medewerker_id op basis van e-mailadres
-    const medewerker = await db.medewerkers.findUnique({
-      where: { email },
-    });
+export default function MijnSkillsPagina() {
+  const session = useSession();
+  const email = session?.data?.user?.email;
+  const [skills, setSkills] = useState<any[]>([]);
 
-    if (!medewerker) {
-      return NextResponse.json({ skills: [], warning: "Medewerker niet gevonden" }, { status: 404 });
-    }
+  useEffect(() => {
+    if (!email) return;
 
-    // Haal gekoppelde skills op via skill_status
-    const result = await db.skill_status.findMany({
-      where: { medewerker_id: medewerker.id },
-      include: {
-        skill: {
-          include: { categorie: true },
-        },
+    fetch("/api/skills/mijn", {
+      headers: {
+        "x-user-email": email,
       },
-    });
+    })
+      .then((res) => res.json())
+      .then((data) => setSkills(data.skills || []));
+  }, [email]);
 
-    // Vorm response
-    const skills = result.map((s) => ({
-      skill_id: s.skill_id,
-      status: s.status,
-      skill_naam: s.skill?.naam || "-",
-      categorie: s.skill?.categorie?.naam || "-",
-    }));
-
-    return NextResponse.json({ skills });
-  } catch (err) {
-    return NextResponse.json({ skills: [], warning: "Databasefout", details: String(err) }, { status: 200 });
-  }
+  return (
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Mijn Skills</h1>
+      <table className="table-auto w-full border">
+        <thead>
+          <tr>
+            <th className="border p-2">#</th>
+            <th className="border p-2">Categorie</th>
+            <th className="border p-2">Skill</th>
+            <th className="border p-2">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Array.isArray(skills) && skills.length > 0 ? (
+            skills.map((s, i) => (
+              <tr key={s.skill_id || i}>
+                <td className="border p-2">{i + 1}</td>
+                <td className="border p-2">{s.categorie || '-'}</td>
+                <td className="border p-2">{s.skill_naam || '-'}</td>
+                <td className="border p-2">{s.status || '-'}</td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td className="border p-2 text-center" colSpan={4}>
+                Geen skills gevonden.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
 }
