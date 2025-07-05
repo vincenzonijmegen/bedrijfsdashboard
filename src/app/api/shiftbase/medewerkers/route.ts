@@ -7,13 +7,11 @@ if (process.env.NODE_ENV === "development") {
 
 export async function GET(req: NextRequest) {
   const rawKey = process.env.SHIFTBASE_API_KEY;
-  const apiKey = rawKey?.trim() || "";
+  const apiKey = rawKey?.trim();
   const authHeader = `API ${apiKey}`;
 
-  const url = "https://api.shiftbase.com/api/users";
-
   try {
-    const res = await fetch(url, {
+    const res = await fetch("https://api.shiftbase.com/api/users", {
       method: "GET",
       headers: {
         Authorization: authHeader,
@@ -31,7 +29,6 @@ export async function GET(req: NextRequest) {
     const data = await res.json();
     return NextResponse.json(data);
   } catch (err) {
-    console.error("Fout in /api/shiftbase/medewerkers:", err);
-    return NextResponse.json({ error: "Serverfout", details: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "Interne fout", details: String(err) }, { status: 500 });
   }
 }
