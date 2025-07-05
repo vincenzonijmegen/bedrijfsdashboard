@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSession } from "next-auth/react";
 
 interface SkillStatus {
   skill_id: number;
@@ -12,12 +13,14 @@ interface SkillStatus {
 export default function MijnSkills() {
   const [skills, setSkills] = useState<SkillStatus[]>([]);
   const [loading, setLoading] = useState(true);
+  const { data: session } = useSession();
 
   useEffect(() => {
-    const userId = sessionStorage.getItem("userId"); // of haal dit uit context/session
+    if (!session?.user?.id) return;
+
     fetch("/api/skills/mijn", {
       headers: {
-        "x-user-id": userId || "",
+        "x-user-id": session.user.id,
       },
     })
       .then((res) => res.json())
@@ -25,7 +28,7 @@ export default function MijnSkills() {
         setSkills(json.skills || []);
         setLoading(false);
       });
-  }, []);
+  }, [session]);
 
   if (loading) return <p className="p-4">Laden…</p>;
 

@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   // Huidige gebruiker ophalen via header (bijv. x-user-id)
   const userId = req.headers.get("x-user-id");
   if (!userId) {
-    return NextResponse.json({ error: "Geen gebruiker meegegeven" }, { status: 400 });
+    return NextResponse.json({ skills: [], warning: "Geen gebruiker meegegeven" }, { status: 200 });
   }
 
   url.searchParams.set("user_id", userId);
@@ -25,12 +25,12 @@ export async function GET(req: NextRequest) {
 
     if (!res.ok) {
       const msg = await res.text();
-      return NextResponse.json({ error: "Shiftbase fout", details: msg }, { status: res.status });
+      return NextResponse.json({ skills: [], warning: "Shiftbase fout", details: msg }, { status: 200 });
     }
 
     const data = await res.json();
-    return NextResponse.json(data);
+    return NextResponse.json({ skills: data.data || [] });
   } catch (err) {
-    return NextResponse.json({ error: "Interne fout", details: String(err) }, { status: 500 });
+    return NextResponse.json({ skills: [], warning: "Interne fout", details: String(err) }, { status: 200 });
   }
 }
