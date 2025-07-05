@@ -31,7 +31,10 @@ export default function NietGoedgekeurdeUren() {
     ]).then(([timesheetsRes, medewerkersRes]) => {
       const medewerkers = Array.isArray(medewerkersRes?.data)
         ? Object.fromEntries(
-            medewerkersRes.data.map((m: any) => [m.Employee.id, m.Employee.name])
+            medewerkersRes.data.map((m: any) => {
+  console.log("✅ Ruwe medewerker:", m);
+  return [m?.Employee?.id ?? "onbekend", m?.Employee?.name ?? "Onbekend"];
+})
           )
         : {};
 
