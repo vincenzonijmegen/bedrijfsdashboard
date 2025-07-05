@@ -1,7 +1,6 @@
 // src/app/api/shiftbase/medewerkers/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
-// Alleen lokaal tijdens dev: SSL-check uitzetten
 if (process.env.NODE_ENV === "development") {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 }
@@ -11,36 +10,50 @@ export async function GET(req: NextRequest) {
   const apiKey = rawKey?.trim() || "";
   const authHeader = `API ${apiKey}`;
 
-  const url = new URL("https://api.shiftbase.com/api/employees?include_inactive=false");
-  console.log("🌐 Requesting URL:", url.toString());
+  const depUrl = "https://api.shiftbase.com/api/departments";
 
   try {
-    const res = await fetch(url.toString(), {
-      method: "GET",
+    // 1. Haal alle afdelingen op
+    const depRes = await fetch(depUrl, {
       headers: {
         Authorization: authHeader,
-        "Content-Type": "application/json",
         Accept: "application/json",
       },
-      cache: "no-store",
     });
 
-    if (!res.ok) {
-      const details = await res.text();
-      console.error("Shiftbase API error:", details);
-      return NextResponse.json(
-        { error: "Fout bij ophalen medewerkers", details },
-        { status: res.status }
-      );
+    if (!depRes.ok) {
+      const msg = await depRes.text();
+      return NextResponse.json({ error: "Fout bij ophalen afdelingen", details: msg }, { status: depRes.status });
     }
 
-    const data = await res.json();
-    return NextResponse.json(data);
+    const depData = await depRes.json();
+    const departments = depData.data || [];
+
+    // 2. Haal per afdeling de medewerkers op
+    const alleMedewerkers = [];
+
+    for (const dep of departments) {
+      const id = dep.Department?.id;
+      const naam = dep.Department?.name || "?";
+      if (!id) continue;
+
+      const empRes = await fetch(`https://api.shiftbase.com/api/hr/departments/${id}/employeeList`, {
+        headers: {
+          Authorization: authHeader,
+          Accept: "application/json",
+        },
+      });
+
+      if (empRes.ok) {
+        const empData = await empRes.json();
+        const metDept = (empData.data || []).map((e: any) => ({ ...e, department_name: naam }));
+        alleMedewerkers.push(...metDept);
+      }
+    }
+
+    return NextResponse.json({ data: alleMedewerkers });
   } catch (err) {
-    console.error("Fout in medewerkers route:", err);
-    return NextResponse.json(
-      { error: "Serverfout", details: String(err) },
-      { status: 500 }
-    );
+    console.error("Fout in gecombineerde medewerkersroute:", err);
+    return NextResponse.json({ error: "Serverfout", details: String(err) }, { status: 500 });
   }
 }
