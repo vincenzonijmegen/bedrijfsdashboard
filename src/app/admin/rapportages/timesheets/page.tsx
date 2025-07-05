@@ -33,7 +33,7 @@ export default function NietGoedgekeurdeUren() {
         ? Object.fromEntries(
             medewerkersRes.data.map((m: any) => [
               String(m.id),
-              `${m.first_name || ""} ${m.last_name || ""}`.trim() || m.email || m.id
+              m.full_name || `${m.first_name || ""} ${m.last_name || ""}`.trim() || m.email || m.id,
             ])
           )
         : {};
