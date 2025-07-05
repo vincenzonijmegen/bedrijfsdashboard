@@ -1,32 +1,42 @@
-// /api/skills/mijn
-
-
-
+// /src/app/api/skills/mijn/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
-  const userEmail = req.headers.get("x-user-email");
-  if (!userEmail) {
-    return NextResponse.json({ skills: [], warning: "Geen e-mail meegegeven" }, { status: 200 });
+  const email = req.headers.get("x-user-email");
+  if (!email) {
+    return NextResponse.json({ skills: [], warning: "Geen e-mail meegegeven" }, { status: 400 });
   }
 
   try {
-    const result = await db.query(`
-      SELECT
-        s.id AS skill_id,
-        s.naam AS skill_naam,
-        c.naam AS categorie,
-        ss.status
-      FROM skill_status ss
-      JOIN medewerkers m ON m.id = ss.medewerker_id
-      JOIN skills s ON s.id = ss.skill_id
-      LEFT JOIN skill_categorieen c ON c.id = s.categorie_id
-      WHERE m.email = $1
-      ORDER BY c.naam, s.naam
-    `, [userEmail]);
+    // Zoek medewerker_id op basis van e-mailadres
+    const medewerker = await db.medewerkers.findUnique({
+      where: { email },
+    });
 
-    return NextResponse.json({ skills: result.rows });
+    if (!medewerker) {
+      return NextResponse.json({ skills: [], warning: "Medewerker niet gevonden" }, { status: 404 });
+    }
+
+    // Haal gekoppelde skills op via skill_status
+    const result = await db.skill_status.findMany({
+      where: { medewerker_id: medewerker.id },
+      include: {
+        skill: {
+          include: { categorie: true },
+        },
+      },
+    });
+
+    // Vorm response
+    const skills = result.map((s) => ({
+      skill_id: s.skill_id,
+      status: s.status,
+      skill_naam: s.skill?.naam || "-",
+      categorie: s.skill?.categorie?.naam || "-",
+    }));
+
+    return NextResponse.json({ skills });
   } catch (err) {
     return NextResponse.json({ skills: [], warning: "Databasefout", details: String(err) }, { status: 200 });
   }
