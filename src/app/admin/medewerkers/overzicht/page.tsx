@@ -8,7 +8,7 @@ interface Medewerker {
   first_name: string;
   last_name: string;
   email: string;
-  phone?: string;
+  phone_nr?: string;
   birthdate?: string;
 }
 
@@ -20,7 +20,10 @@ export default function MedewerkersOverzicht() {
     fetch("/api/shiftbase/naw")
       .then((res) => res.json())
       .then((json) => {
-        setData(json.data || []);
+        const gebruikers = (json?.data || [])
+          .map((item: any) => item.User)
+          .filter((user: any) => user?.anonymized === false);
+        setData(gebruikers);
         setLoading(false);
       });
   }, []);
@@ -57,9 +60,9 @@ export default function MedewerkersOverzicht() {
                 {m.birthdate ? m.birthdate : "-"}
               </td>
               <td className="border px-3 py-2">
-                {m.phone || "-"}
+                {m.phone_nr || "-"}
               </td>
-              <td className="border px-3 py-2">{m.email}</td>
+              <td className="border px-3 py-2">{m.email || "-"}</td>
             </tr>
           ))}
         </tbody>
