@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers"; // ← toegevoegde import
 import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
@@ -18,6 +19,19 @@ export async function POST(req: Request) {
     if (!wachtwoordCorrect) {
       return NextResponse.json({ success: false, error: "Ongeldige inloggegevens" }, { status: 401 });
     }
+
+    // ⬇️ Zet cookies
+    const cookieStore = cookies();
+    cookieStore.set("email", medewerker.email, {
+      httpOnly: false, // Je kunt dit true maken als frontend geen toegang nodig heeft
+      sameSite: "lax",
+      path: "/",
+    });
+    cookieStore.set("naam", medewerker.naam, {
+      httpOnly: false,
+      sameSite: "lax",
+      path: "/",
+    });
 
     return NextResponse.json({
       success: true,
