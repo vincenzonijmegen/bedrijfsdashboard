@@ -127,11 +127,17 @@ export default function SkillToewijzen() {
                             if (isDisabled) return;
 
                             if (isActief) {
-                              await fetch("/api/skills/toegewezen", {
-                                method: "DELETE",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ medewerker_id: geselecteerd, skill_id: s.id }),
-                              });
+                              const response = await fetch("/api/skills/toegewezen", {
+  method: "DELETE",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ medewerker_id: geselecteerd, skill_id: s.id }),
+});
+
+if (!response.ok) {
+  const fout = await response.json();
+  alert(fout.error || "Verwijderen mislukt");
+  return;
+}
                               setToewijzingen((prev) => ({
                                 ...prev,
                                 [s.id]: { actief: false, deadline: 10, status },
@@ -144,7 +150,9 @@ export default function SkillToewijzen() {
                             }
                           }}
                         />
-                        <span className={isDisabled ? "text-gray-400 italic" : ""}>{s.naam}</span>
+                        <span className={isDisabled ? "text-gray-400 italic" : ""}>
+                          {s.naam} {status === "geleerd" && <span className="text-green-600 ml-1">🧠</span>}
+                        </span>
                         {isActief && !isDisabled && (
                           <input
                             type="number"
