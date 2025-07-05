@@ -1,7 +1,0 @@
-{
-  "functions": {
-    "api/cron/skills-reminder/route.ts": {
-      "schedule": "0 8 * * *"
-    }
-  }
-}
