@@ -21,13 +21,14 @@ interface Skill {
 interface ToegewezenSkill {
   skill_id: string;
   deadline_dagen: number;
+  status?: string;
 }
 
 export default function SkillToewijzen() {
   const { data: medewerkersAPI } = useSWR<Medewerker[]>("/api/medewerkers", fetcher);
   const { data: skills } = useSWR<Skill[]>("/api/skills?type=skills", fetcher);
   const [geselecteerd, setGeselecteerd] = useState<number | null>(null);
-  const [toewijzingen, setToewijzingen] = useState<Record<string, { actief: boolean; deadline: number }>>({});
+  const [toewijzingen, setToewijzingen] = useState<Record<string, { actief: boolean; deadline: number; status?: string }>>({});
   const [mailen, setMailen] = useState(true);
 
   useEffect(() => {
@@ -36,24 +37,21 @@ export default function SkillToewijzen() {
         .then(res => res.json())
         .then((data: ToegewezenSkill[]) => {
           const ingevuld = Object.fromEntries(
-            data.map((s) => [String(s.skill_id), { actief: true, deadline: Number(s.deadline_dagen) || 10 }])
+            data.map((s) => [
+              String(s.skill_id),
+              {
+                actief: true,
+                deadline: Number(s.deadline_dagen) || 10,
+                status: s.status || "niet_geleerd",
+              },
+            ])
           );
           setToewijzingen(ingevuld);
         });
     }
   }, [geselecteerd]);
 
-  const toggle = (skill_id: string) => {
-    setToewijzingen((prev) => ({
-      ...prev,
-      [skill_id]: prev[skill_id]
-        ? { ...prev[skill_id], actief: !prev[skill_id].actief }
-        : { actief: true, deadline: 10 },
-    }));
-  };
-
-
- const opslaan = async () => {
+  const opslaan = async () => {
     if (!geselecteerd) return;
     const body = {
       sendEmail: mailen,
@@ -71,21 +69,21 @@ export default function SkillToewijzen() {
 
   if (!medewerkersAPI || !skills) return <div>Laden...</div>;
 
-   const categorieMap: Record<string, { naam: string; volgorde: number; skills: Skill[] }> = {};
+  const categorieMap: Record<string, { naam: string; volgorde: number; skills: Skill[] }> = {};
 
-skills.forEach((skill) => {
-  const { categorie_id, categorie_naam, categorie_volgorde } = skill as any;
-  if (!categorieMap[categorie_id]) {
-    categorieMap[categorie_id] = {
-      naam: categorie_naam ?? "Onbekend",
-      volgorde: categorie_volgorde ?? 999,
-      skills: []
-    };
-  }
-  categorieMap[categorie_id].skills.push(skill);
-});
+  skills.forEach((skill) => {
+    const { categorie_id, categorie_naam, categorie_volgorde } = skill as any;
+    if (!categorieMap[categorie_id]) {
+      categorieMap[categorie_id] = {
+        naam: categorie_naam ?? "Onbekend",
+        volgorde: categorie_volgorde ?? 999,
+        skills: []
+      };
+    }
+    categorieMap[categorie_id].skills.push(skill);
+  });
 
-   return (
+  return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">🧠 Skillbeheer</h1>
 
@@ -111,39 +109,65 @@ skills.forEach((skill) => {
           {Object.entries(categorieMap)
             .sort(([, a], [, b]) => a.volgorde - b.volgorde)
             .map(([, cat]) => (
-            <Card key={cat.naam} className="p-4">
-              <h2 className="font-semibold mb-2">{cat.naam}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                {cat.skills.map((s) => (
-                  <label key={s.id} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={toewijzingen[s.id]?.actief || false}
-                      onChange={() => toggle(s.id)}
-                    />
-                    <span>{s.naam}</span>
-                    {toewijzingen[s.id]?.actief && (
-                      <input
-                        type="number"
-                        className="w-20 border px-2 py-1 rounded"
-                        value={(toewijzingen[s.id]?.deadline ?? 10).toString()}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value);
-                          setToewijzingen((prev) => ({
-                            ...prev,
-                            [s.id]: {
-                              ...prev[s.id],
-                              deadline: isNaN(value) ? 10 : value,
-                            },
-                          }));
-                        }}
-                      />
-                    )}
-                  </label>
-                ))}
-              </div>
-            </Card>
-          ))}
+              <Card key={cat.naam} className="p-4">
+                <h2 className="font-semibold mb-2">{cat.naam}</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                  {cat.skills.map((s) => {
+                    const status = toewijzingen[s.id]?.status;
+                    const isActief = toewijzingen[s.id]?.actief || false;
+                    const isDisabled = status === "geleerd";
+
+                    return (
+                      <label key={s.id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isActief}
+                          disabled={isDisabled}
+                          onChange={async () => {
+                            if (isDisabled) return;
+
+                            if (isActief) {
+                              await fetch("/api/skills/toegewezen", {
+                                method: "DELETE",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ medewerker_id: geselecteerd, skill_id: s.id }),
+                              });
+                              setToewijzingen((prev) => ({
+                                ...prev,
+                                [s.id]: { actief: false, deadline: 10, status },
+                              }));
+                            } else {
+                              setToewijzingen((prev) => ({
+                                ...prev,
+                                [s.id]: { actief: true, deadline: 10, status },
+                              }));
+                            }
+                          }}
+                        />
+                        <span className={isDisabled ? "text-gray-400 italic" : ""}>{s.naam}</span>
+                        {isActief && !isDisabled && (
+                          <input
+                            type="number"
+                            className="w-20 border px-2 py-1 rounded"
+                            value={(toewijzingen[s.id]?.deadline ?? 10).toString()}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value);
+                              setToewijzingen((prev) => ({
+                                ...prev,
+                                [s.id]: {
+                                  ...prev[s.id],
+                                  deadline: isNaN(value) ? 10 : value,
+                                },
+                              }));
+                            }}
+                          />
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              </Card>
+            ))}
 
           <label className="flex items-center gap-2">
             <input
