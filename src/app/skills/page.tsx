@@ -23,7 +23,11 @@ export default function MijnSkillsPagina() {
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Mijn Skills</h1>
+      <h1 className="text-2xl font-bold mb-1">Mijn Skills</h1>
+<p className="text-sm text-gray-600 mb-4">
+  Ingelogd als: <strong>{session?.data?.user?.name}</strong> (
+  <code>{email}</code>)
+</p>
       <table className="table-auto w-full border">
         <thead>
           <tr>
