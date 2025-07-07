@@ -27,15 +27,11 @@ export default function SkillBeheer() {
         fetch("/api/skills"),
         fetch("/api/skills/categorieen"),
       ]);
-      const [sData, cData] = await Promise.all([
-        sRes.json(),
-        cRes.json(),
-      ]);
+      const [sData, cData] = await Promise.all([sRes.json(), cRes.json()]);
       setSkills(sData);
       setCategorieen(cData);
       setSucces(false);
     };
-
     laden();
   }, [succes]);
 
@@ -86,7 +82,7 @@ export default function SkillBeheer() {
   });
 
   return (
-    <div className="max-w-5xl mx-auto p-6 space-y-6">
+    <div className="w-full px-6 py-6 space-y-6 overflow-x-auto">
       <h1 className="text-2xl font-bold">🧩 Skillbeheer</h1>
 
       <div className="bg-slate-50 p-4 rounded border">
@@ -120,69 +116,71 @@ export default function SkillBeheer() {
       {Object.entries(gegroepeerd).map(([cat, lijst]) => (
         <div key={cat} className="space-y-2">
           <h3 className="text-lg font-semibold mt-6">📁 {cat}</h3>
-          <table className="w-full text-sm border">
-            <thead>
-              <tr className="bg-slate-100">
-                <th className="border p-2 text-left">Naam</th>
-                <th className="border p-2 text-left">Beschrijving</th>
-                <th className="border p-2 text-left">Categorie</th>
-                <th className="border p-2 text-center">Actie</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lijst.map((s) => (
-                <tr key={s.id}>
-                  <td className="border p-2">
-                    <input
-                      value={s.naam}
-                      onChange={(e) => update(s.id, "naam", e.target.value)}
-                      className="w-full border rounded px-2 py-1"
-                    />
-                  </td>
-                  <td className="border p-2">
-                    <textarea
-                      value={s.beschrijving}
-                      onChange={(e) => update(s.id, "beschrijving", e.target.value)}
-                      className="border rounded px-3 py-2 min-h-[160px] resize-y w-[800px] max-w-full"
-                    />
-                  </td>
-                  <td className="border p-2">
-                    <select
-                      value={s.categorie_id}
-                      onChange={(e) => update(s.id, "categorie_id", e.target.value)}
-                      className="w-full border rounded px-2 py-1"
-                    >
-                      {categorieen.map((c) => (
-                        <option key={c.id} value={c.id}>{c.naam}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="border p-2 text-center space-x-2">
-                    <button
-                      onClick={() => opslaan(s)}
-                      className="bg-blue-600 text-white px-3 py-1 rounded"
-                    >
-                      Opslaan
-                    </button>
-                    <button
-                      onClick={async () => {
-                        if (!confirm("Weet je zeker dat je deze skill wilt verwijderen?")) return;
-                        const res = await fetch(`/api/skills?id=${s.id}`, { method: "DELETE" });
-                        if (res.ok) setSucces(true);
-                        else {
-                          const data = await res.json();
-                          alert(data.error || "Kan niet verwijderen: skill is nog gekoppeld.");
-                        }
-                      }}
-                      className="bg-red-600 text-white px-3 py-1 rounded"
-                    >
-                      ❌
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed text-sm border">
+              <thead>
+                <tr className="bg-slate-100">
+                  <th className="border p-2 text-left w-[200px]">Naam</th>
+                  <th className="border p-2 text-left w-[800px]">Beschrijving</th>
+                  <th className="border p-2 text-left w-[200px]">Categorie</th>
+                  <th className="border p-2 text-center w-[160px]">Actie</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {lijst.map((s) => (
+                  <tr key={s.id}>
+                    <td className="border p-2 align-top">
+                      <input
+                        value={s.naam}
+                        onChange={(e) => update(s.id, "naam", e.target.value)}
+                        className="w-full border rounded px-2 py-1"
+                      />
+                    </td>
+                    <td className="border p-2 align-top">
+                      <textarea
+                        value={s.beschrijving}
+                        onChange={(e) => update(s.id, "beschrijving", e.target.value)}
+                        className="border rounded px-3 py-2 min-h-[160px] resize-y w-full"
+                      />
+                    </td>
+                    <td className="border p-2 align-top">
+                      <select
+                        value={s.categorie_id}
+                        onChange={(e) => update(s.id, "categorie_id", e.target.value)}
+                        className="w-full border rounded px-2 py-1"
+                      >
+                        {categorieen.map((c) => (
+                          <option key={c.id} value={c.id}>{c.naam}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="border p-2 text-center space-x-2 align-top">
+                      <button
+                        onClick={() => opslaan(s)}
+                        className="bg-blue-600 text-white px-3 py-1 rounded"
+                      >
+                        Opslaan
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!confirm("Weet je zeker dat je deze skill wilt verwijderen?")) return;
+                          const res = await fetch(`/api/skills?id=${s.id}`, { method: "DELETE" });
+                          if (res.ok) setSucces(true);
+                          else {
+                            const data = await res.json();
+                            alert(data.error || "Kan niet verwijderen: skill is nog gekoppeld.");
+                          }
+                        }}
+                        className="bg-red-600 text-white px-3 py-1 rounded"
+                      >
+                        ❌
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ))}
     </div>
