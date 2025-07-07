@@ -143,7 +143,7 @@ export default function SkillBeheer() {
                     <textarea
                       value={s.beschrijving}
                       onChange={(e) => update(s.id, "beschrijving", e.target.value)}
-                      className="w-full border rounded px-3 py-2 min-h-[160px] resize-y"
+                      className="border rounded px-3 py-2 min-h-[160px] resize-y w-[800px] max-w-full"
                     />
                   </td>
                   <td className="border p-2">
