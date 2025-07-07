@@ -1,4 +1,3 @@
-// aangepaste versie van /admin/skills/page.tsx die gebruik maakt van categorie_id
 "use client";
 
 import { useEffect, useState } from "react";
@@ -23,13 +22,21 @@ export default function SkillBeheer() {
   const [succes, setSucces] = useState(false);
 
   useEffect(() => {
-    fetch("/api/skills")
-      .then((res) => res.json())
-      .then((data) => setSkills(data));
+    const laden = async () => {
+      const [sRes, cRes] = await Promise.all([
+        fetch("/api/skills"),
+        fetch("/api/skills/categorieen"),
+      ]);
+      const [sData, cData] = await Promise.all([
+        sRes.json(),
+        cRes.json(),
+      ]);
+      setSkills(sData);
+      setCategorieen(cData);
+      setSucces(false);
+    };
 
-    fetch("/api/skills/categorieen")
-      .then((res) => res.json())
-      .then((data) => setCategorieen(data));
+    laden();
   }, [succes]);
 
   const update = (id: string, veld: keyof Skill, waarde: string | boolean) => {
@@ -44,11 +51,19 @@ export default function SkillBeheer() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(skill),
     });
-    if (res.ok) setSucces(true);
+    if (res.ok) {
+      setSucces(true);
+    } else {
+      const data = await res.json();
+      alert(data.error || "Fout bij opslaan.");
+    }
   };
 
   const toevoegen = async () => {
-    if (!nieuw.naam || !nieuw.categorie_id) return;
+    if (!nieuw.naam || !nieuw.categorie_id) {
+      alert("Vul zowel naam als categorie in.");
+      return;
+    }
     const res = await fetch("/api/skills", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -57,6 +72,9 @@ export default function SkillBeheer() {
     if (res.ok) {
       setNieuw({ naam: "", categorie_id: "" });
       setSucces(true);
+    } else {
+      const data = await res.json();
+      alert(data.error || "Fout bij toevoegen.");
     }
   };
 
@@ -73,24 +91,27 @@ export default function SkillBeheer() {
 
       <div className="bg-slate-50 p-4 rounded border">
         <h2 className="font-semibold mb-2">➕ Nieuwe skill toevoegen</h2>
-        <div className="flex gap-4 mb-2">
+        <div className="flex flex-wrap gap-4 mb-2">
           <input
             value={nieuw.naam}
             onChange={(e) => setNieuw({ ...nieuw, naam: e.target.value })}
             placeholder="Skillnaam"
-            className="border px-2 py-1 rounded w-1/3"
+            className="border px-2 py-1 rounded w-full sm:w-1/3"
           />
           <select
             value={nieuw.categorie_id}
             onChange={(e) => setNieuw({ ...nieuw, categorie_id: e.target.value })}
-            className="border px-2 py-1 rounded w-1/3"
+            className="border px-2 py-1 rounded w-full sm:w-1/3"
           >
             <option value="">Selecteer categorie</option>
             {categorieen.map((c) => (
               <option key={c.id} value={c.id}>{c.naam}</option>
             ))}
           </select>
-          <button onClick={toevoegen} className="bg-green-600 text-white px-4 rounded">
+          <button
+            onClick={toevoegen}
+            className="bg-green-600 text-white px-4 rounded"
+          >
             Toevoegen
           </button>
         </div>
@@ -120,9 +141,9 @@ export default function SkillBeheer() {
                   </td>
                   <td className="border p-2">
                     <textarea
-                      value={s.beschrijving || ""}
+                      value={s.beschrijving}
                       onChange={(e) => update(s.id, "beschrijving", e.target.value)}
-                      className="w-full border rounded px-2 py-1 h-24"
+                      className="w-full border rounded px-3 py-2 min-h-[160px] resize-y"
                     />
                   </td>
                   <td className="border p-2">
@@ -137,25 +158,27 @@ export default function SkillBeheer() {
                     </select>
                   </td>
                   <td className="border p-2 text-center space-x-2">
-  <button
-    onClick={() => opslaan(s)}
-    className="bg-blue-600 text-white px-3 py-1 rounded"
-  >
-    Opslaan
-  </button>
-  <button
-    onClick={async () => {
-      if (!confirm("Weet je zeker dat je deze skill wilt verwijderen?")) return;
-      const res = await fetch(`/api/skills?id=${s.id}`, { method: "DELETE" });
-      if (res.ok) setSucces(true);
-      else alert("Kan niet verwijderen: skill is nog gekoppeld.");
-    }}
-    className="bg-red-600 text-white px-3 py-1 rounded"
-  >
-    ❌
-  </button>
-</td>
-
+                    <button
+                      onClick={() => opslaan(s)}
+                      className="bg-blue-600 text-white px-3 py-1 rounded"
+                    >
+                      Opslaan
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!confirm("Weet je zeker dat je deze skill wilt verwijderen?")) return;
+                        const res = await fetch(`/api/skills?id=${s.id}`, { method: "DELETE" });
+                        if (res.ok) setSucces(true);
+                        else {
+                          const data = await res.json();
+                          alert(data.error || "Kan niet verwijderen: skill is nog gekoppeld.");
+                        }
+                      }}
+                      className="bg-red-600 text-white px-3 py-1 rounded"
+                    >
+                      ❌
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
