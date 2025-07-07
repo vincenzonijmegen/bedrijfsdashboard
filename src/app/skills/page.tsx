@@ -94,50 +94,63 @@ export default function MijnSkillsPagina() {
           <p className="text-gray-600 col-span-2">Geen skills gevonden.</p>
         ) : (
           skills.map((skill) => {
-            const statusKleur =
-              skill.status === "geleerd"
-                ? "text-green-700 font-semibold"
-                : "text-gray-500 italic";
-            const statusLabel =
-              skill.status === "geleerd" ? "✅ Geleerd" : "🕐 Nog niet geleerd";
+  const statusKleur =
+    skill.status === "geleerd"
+      ? "text-green-700 font-semibold"
+      : "text-gray-500 italic";
+  const statusLabel =
+    skill.status === "geleerd" ? "✅ Geleerd" : "🕐 Nog niet geleerd";
 
-            return (
-              <div
-                key={skill.skill_id}
-                className={`rounded-lg shadow px-4 py-3 border ${getKaartKleur(skill)} group relative`}
-                title={skill.omschrijving || ""}
-              >
-                <div className="font-semibold text-slate-800 mb-1">
-                  {skill.skill_naam}
-                </div>
-                <div className="text-sm text-slate-700 mb-1 italic">
-                  Categorie: {skill.categorie || "–"}
-                </div>
+  return (
+    <div
+      key={skill.skill_id}
+      className={`rounded-lg shadow px-4 py-3 border ${getKaartKleur(skill)} relative`}
+      title={skill.omschrijving || ""}
+    >
+      <div className="font-semibold text-slate-800 mb-1">
+        {skill.skill_naam}
+      </div>
+      <div className="text-sm text-slate-700 mb-1 italic">
+        Categorie: {skill.categorie || "–"}
+      </div>
 
-                {skill.deadline && (
-                  <div className="text-sm text-orange-700 mb-1">
-                    🗓 Deadline:{" "}
-                    {new Date(skill.deadline).toLocaleDateString("nl-NL", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                    })}
-                  </div>
-                )}
+      {/* Alleen zichtbaar op mobiel */}
+      {skill.omschrijving && (
+        <details className="sm:hidden text-sm text-slate-600 mb-2">
+          <summary className="cursor-pointer text-blue-700 underline">
+            Toon uitleg
+          </summary>
+          <div className="mt-1 whitespace-pre-line">
+            {skill.omschrijving}
+          </div>
+        </details>
+      )}
 
-                <div className={`text-sm ${statusKleur}`}>{statusLabel}</div>
+      {skill.deadline && (
+        <div className="text-sm text-orange-700 mb-1">
+          🗓 Deadline:{" "}
+          {new Date(skill.deadline).toLocaleDateString("nl-NL", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+          })}
+        </div>
+      )}
 
-                {skill.status === "niet_geleerd" && (
-                  <button
-                    onClick={() => markeerAlsGeleerd(skill.skill_id)}
-                    className="mt-2 text-sm text-blue-600 underline"
-                  >
-                    Markeer als geleerd
-                  </button>
-                )}
-              </div>
-            );
-          })
+      <div className={`text-sm ${statusKleur}`}>{statusLabel}</div>
+
+      {skill.status === "niet_geleerd" && (
+        <button
+          onClick={() => markeerAlsGeleerd(skill.skill_id)}
+          className="mt-2 text-sm text-blue-600 underline"
+        >
+          Markeer als geleerd
+        </button>
+      )}
+    </div>
+  );
+})
+
         )}
       </div>
     </main>
