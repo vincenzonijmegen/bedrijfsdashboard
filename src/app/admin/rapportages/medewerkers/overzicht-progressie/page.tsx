@@ -1,91 +1,66 @@
-"use client";
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
 
-import useSWR from "swr";
-import Link from "next/link";
+export async function GET(req: NextRequest) {
+  try {
+    // 1) Haal alle medewerkers op
+    const { rows: medewerkers } = await db.query(
+      `SELECT email, naam, functie FROM medewerkers ORDER BY naam`
+    );
 
-interface Medewerker {
-  email: string;
-  naam: string;
-  functie: string;
-}
+    // 2) Instructie-status: gelezen per medewerker en totaal aantal instructies
+    const { rows: instr } = await db.query(
+      `SELECT u.email,
+              COALESCE(g.gelezen, 0) AS gelezen,
+              ti.totaal,
+              COALESCE(t.geslaagd, 0) AS geslaagd
+       FROM (
+         SELECT DISTINCT email FROM medewerkers
+       ) u
+       LEFT JOIN (
+         SELECT email, COUNT(DISTINCT instructie_id) AS gelezen
+         FROM gelezen_instructies
+         GROUP BY email
+       ) g ON g.email = u.email
+       CROSS JOIN (
+         SELECT COUNT(*) AS totaal FROM instructies
+       ) ti
+       LEFT JOIN (
+         SELECT email, COUNT(*) FILTER (WHERE score >= 80) AS geslaagd
+         FROM toetsresultaten
+         GROUP BY email
+       ) t ON t.email = u.email`
+    );
+    const instructiestatus = instr;
 
-interface InstructieStatusRecord {
-  email: string;
-  gelezen_op?: string;
-  score?: number;
-  juist?: number;
-  totaal?: number;
-}
+    // 3) Skill-status: geleerde skills en totaal per medewerker
+    const { rows: skillsstatus } = await db.query(
+      `SELECT u.email,
+              COALESCE(s.learned, 0) AS learned,
+              COALESCE(s.total, 0) AS total
+       FROM (
+         SELECT DISTINCT medewerker_id FROM skill_toegewezen
+       ) udb
+       JOIN medewerkers u ON udb.medewerker_id::text = u.email
+       LEFT JOIN (
+         SELECT st.medewerker_id::text AS email,
+                SUM(CASE WHEN st.status = 'geleerd' THEN 1 ELSE 0 END) AS learned,
+                COUNT(*) AS total
+         FROM skill_status st
+         GROUP BY st.medewerker_id
+       ) s ON s.email = u.email`
+    );
 
-interface SkillStatusRecord {
-  email: string;
-  learned: number;
-  total: number;
-}
-
-const fetcher = (url: string) => fetch(url).then(res => res.json());
-
-export default function RapportagePagina() {
-  const { data: medewerkers, error: mErr } = useSWR<Medewerker[]>('/api/admin/medewerkers', fetcher);
-  const { data: instrStatus, error: iErr } = useSWR<InstructieStatusRecord[]>('/api/admin/instructiestatus', fetcher);
-  const { data: skillsStatus, error: sErr } = useSWR<SkillStatusRecord[]>('/api/admin/skillsstatus', fetcher);
-
-  if (mErr || iErr || sErr) return <div>Fout bij laden rapportage</div>;
-  if (!medewerkers || !instrStatus || !skillsStatus) return <div>Laden rapportage...</div>;
-
-  // Groepeer instructiestatus per medewerker
-  const instrMap = instrStatus.reduce<Record<string, InstructieStatusRecord[]>>((acc, r) => {
-    (acc[r.email] = acc[r.email] || []).push(r);
-    return acc;
-  }, {});
-
-  // Zet skills status per medewerker in map
-  const skillsMap = skillsStatus.reduce<Record<string, SkillStatusRecord>>((acc, r) => {
-    acc[r.email] = r;
-    return acc;
-  }, {});
-
-  return (
-    <main className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Admin Rapportage</h1>
-      <div className="overflow-x-auto">
-        <table className="w-full table-auto border-collapse">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="border p-2">Medewerker</th>
-              <th className="border p-2">Instructies (Gelezen/Totaal)</th>
-              <th className="border p-2">Skills (Geleerd/Totaal)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {medewerkers.map((md) => {
-              const instr = instrMap[md.email] || [];
-              const gelezen = instr.filter(r => r.gelezen_op).length;
-              const totaalI = instr.length;
-
-              const skillRec = skillsMap[md.email] || { learned: 0, total: 0 };
-
-              return (
-                <tr key={md.email} className="hover:bg-gray-50">
-                  <td className="border p-2">
-                    <Link href={`/admin/medewerker/${md.email}`}>{md.naam}</Link>
-                  </td>
-                  <td className="border p-2 text-center">
-                    <Link href={`/admin/medewerker/${md.email}/instructies`} className="text-blue-600 underline">
-                      {gelezen}/{totaalI}
-                    </Link>
-                  </td>
-                  <td className="border p-2 text-center">
-                    <Link href={`/admin/medewerker/${md.email}/skills`} className="text-blue-600 underline">
-                      {skillRec.learned}/{skillRec.total}
-                    </Link>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </main>
-  );
+    return NextResponse.json({
+      medewerkers,
+      instructiestatus,
+      skillsstatus,
+    });
+  } catch (error: any) {
+    console.error("Fout bij opvragen rapportage data", error);
+    return NextResponse.json(
+      { error: error.message || "Kon rapportage niet laden" },
+      { status: 500 }
+    );
+  }
 }
