@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+// API: Haal gelezen instructies en toetsresultaten per medewerker-email
 export async function GET(
   req: Request,
-  context: any
+  { params }: { params: { email: string } }
 ) {
+  // Decodeer e-mail parameter
   const email = decodeURIComponent(params.email);
 
   try {
+    // Gelezen instructies
     const gelezen = await db.query(
       `SELECT gi.instructie_id,
               i.titel,
@@ -22,8 +25,13 @@ export async function GET(
       [email]
     );
 
+    // Toetsresultaten
     const toetsen = await db.query(
-      `SELECT instructie_id, score, juist, totaal, tijdstip
+      `SELECT instructie_id,
+              score,
+              juist,
+              totaal,
+              tijdstip
        FROM toetsresultaten
        WHERE email = $1
        ORDER BY tijdstip DESC`,
