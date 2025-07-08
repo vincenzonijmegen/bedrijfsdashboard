@@ -115,6 +115,10 @@ export default function InstructieOverzicht() {
       <div className="flex items-center gap-4">
         <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
         <h1 className="text-3xl font-bold text-slate-800">
+          <Link href="/medewerker" className="text-sm text-blue-600 underline mt-1">
+  ⬅ Terug naar dashboard
+</Link>
+
         Werkinstructies – {gebruiker?.naam || "..."}
         </h1>
 
