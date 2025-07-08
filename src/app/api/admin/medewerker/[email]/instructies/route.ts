@@ -1,8 +1,11 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server"; "next/server";
 import { db } from "@/lib/db";
 
 // API: Haal gelezen instructies en toetsresultaten per medewerker-email
 export async function GET(
+  req: NextRequest,
+  { params }: { params: { email: string } }
+) {
   req: Request,
   { params }: { params: { email: string } }
 ) {
