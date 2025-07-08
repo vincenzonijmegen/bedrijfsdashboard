@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import jwt from "jsonwebtoken";
 import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
-  const email = req.cookies.get("email")?.value;
+  const token = req.cookies.get("sessie_token")?.value;
 
-  if (!email) {
+  if (!token) {
     return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
   }
 
   try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as { email: string };
+
     const result = await db.query(
       `SELECT naam, email FROM medewerkers WHERE email = $1`,
-      [email]
+      [payload.email]
     );
 
     const gebruiker = result.rows[0];
@@ -21,7 +24,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(gebruiker);
   } catch (err) {
-    console.error("Fout in /api/user:", err);
-    return NextResponse.json({ error: "Interne fout" }, { status: 500 });
+    return NextResponse.json({ error: "Ongeldige sessie" }, { status: 401 });
   }
 }
