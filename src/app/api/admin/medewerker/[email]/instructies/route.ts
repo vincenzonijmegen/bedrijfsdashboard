@@ -4,13 +4,11 @@ import { db } from "@/lib/db";
 // API: Haal gelezen instructies en toetsresultaten per medewerker-email
 export async function GET(
   req: NextRequest,
-  { params }: { params: { email: string } }
+  context: { params: { email: string } }
 ) {
-  // Decodeer e-mail parameter
-  const email = decodeURIComponent(params.email);
+  const email = decodeURIComponent(context.params.email);
 
   try {
-    // Gelezen instructies
     const gelezen = await db.query(
       `SELECT gi.instructie_id,
               i.titel,
@@ -25,7 +23,6 @@ export async function GET(
       [email]
     );
 
-    // Toetsresultaten
     const toetsen = await db.query(
       `SELECT instructie_id,
               score,
