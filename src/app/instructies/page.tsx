@@ -1,9 +1,10 @@
-
 "use client";
 
 import useSWR from "swr";
 import Link from "next/link";
 import { handleLogout } from "@/utils/auth";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Instructie {
   id: string;
@@ -50,9 +51,22 @@ const fetcher = async (url: string): Promise<Instructie[]> => {
 };
 
 export default function InstructieOverzicht() {
-  const gebruiker = typeof window !== "undefined"
-    ? JSON.parse(localStorage.getItem("gebruiker") || "{}")
-    : {};
+  const [gebruiker, setGebruiker] = useState<any>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/user")
+      .then((res) => {
+        if (!res.ok) throw new Error("Niet ingelogd");
+        return res.json();
+      })
+      .then((data) => setGebruiker(data))
+      .catch(() => {
+        localStorage.removeItem("gebruiker");
+        router.push("/sign-in");
+      });
+  }, [router]);
+
   const isAdmin = gebruiker?.functie?.toLowerCase() === "beheerder";
   const email = gebruiker?.email || "";
 
@@ -63,8 +77,9 @@ export default function InstructieOverzicht() {
     (url: string) => fetch(url).then(res => res.json())
   );
 
+  if (!gebruiker) return <div>Laden gebruiker...</div>;
   if (error) return <div>Fout bij laden</div>;
-  if (!instructies) return <div>Laden...</div>;
+  if (!instructies) return <div>Laden instructies...</div>;
 
   const gesorteerd = [...instructies]
     .filter((i) => {
@@ -111,48 +126,42 @@ export default function InstructieOverzicht() {
   };
 
   return (
-  <main className="max-w-5xl mx-auto p-4">
-    <div className="flex justify-between items-center mb-6">
-      <div className="flex items-center gap-4">
-        <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
-        <h1 className="text-3xl font-bold text-slate-800">
-        Werkinstructies – {gebruiker?.naam || "..."}
-        </h1>
+    <main className="max-w-5xl mx-auto p-4">
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center gap-4">
+          <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
+          <h1 className="text-3xl font-bold text-slate-800">
+            Werkinstructies – {gebruiker?.naam || "..."}
+          </h1>
+        </div>
 
+        <button onClick={handleLogout} className="text-sm text-red-600 underline">
+          Uitloggen
+        </button>
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {gesorteerd.map((i, index) => {
+          const kleuren = ["bg-pink-200", "bg-purple-200", "bg-green-200", "bg-yellow-200", "bg-blue-200"];
+          const kleur = kleuren[index % kleuren.length];
 
-<button
-  onClick={handleLogout}
-  className="text-sm text-red-600 underline"
->
-  Uitloggen
-</button>
-
-    </div>
-
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {gesorteerd.map((i, index) => {
-        const kleuren = ["bg-pink-200", "bg-purple-200", "bg-green-200", "bg-yellow-200", "bg-blue-200"];
-        const kleur = kleuren[index % kleuren.length];
-
-        return (
-          <Link
-            key={i.id}
-            href={`/instructies/${i.slug}`}
-            className={`rounded-lg shadow px-4 py-3 hover:shadow-md transition border ${kleur}`}
-          >
-            <div className="flex justify-between items-center">
-              <div className="font-semibold text-slate-800">
-                {i.nummer ? `${i.nummer}. ` : ""}
-                {i.titel}
+          return (
+            <Link
+              key={i.id}
+              href={`/instructies/${i.slug}`}
+              className={`rounded-lg shadow px-4 py-3 hover:shadow-md transition border ${kleur}`}
+            >
+              <div className="flex justify-between items-center">
+                <div className="font-semibold text-slate-800">
+                  {i.nummer ? `${i.nummer}. ` : ""}
+                  {i.titel}
+                </div>
+                <div className="text-sm">{getStatus(i.slug)}</div>
               </div>
-              <div className="text-sm">{getStatus(i.slug)}</div>
-            </div>
-          </Link>
-        );
-      })}
-    </div>
-  </main>
-);
+            </Link>
+          );
+        })}
+      </div>
+    </main>
+  );
 }

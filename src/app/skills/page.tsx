@@ -1,6 +1,8 @@
+// Skills pagina met auth check
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Skill {
   skill_id: string;
@@ -19,16 +21,23 @@ interface Gebruiker {
 export default function MijnSkillsPagina() {
   const [gebruiker, setGebruiker] = useState<Gebruiker | null>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const router = useRouter();
 
   useEffect(() => {
     fetch("/api/user")
-      .then((res) => res.json())
-      .then(setGebruiker);
-  }, []);
+      .then((res) => {
+        if (!res.ok) throw new Error("Niet ingelogd");
+        return res.json();
+      })
+      .then((data) => setGebruiker(data))
+      .catch(() => {
+        localStorage.removeItem("gebruiker");
+        router.push("/sign-in");
+      });
+  }, [router]);
 
   useEffect(() => {
     if (!gebruiker?.email) return;
-
     fetch("/api/skills/mijn", {
       headers: { "x-user-email": gebruiker.email },
     })
@@ -50,23 +59,18 @@ export default function MijnSkillsPagina() {
     );
   };
 
-  // ✅ Dynamische kleur op basis van status en deadline
   const getKaartKleur = (skill: Skill) => {
     if (skill.status === "geleerd") return "bg-gray-200";
-
     if (skill.deadline) {
       const deadline = new Date(skill.deadline);
-      const vandaag = new Date();
-      const verschil = Math.ceil(
-        (deadline.getTime() - vandaag.getTime()) / (1000 * 60 * 60 * 24)
-      );
-
-      if (verschil < 0) return "bg-red-200";      // deadline verlopen
-      if (verschil <= 3) return "bg-yellow-200";  // deadline nadert
+      const verschil = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      if (verschil < 0) return "bg-red-200";
+      if (verschil <= 3) return "bg-yellow-200";
     }
-
-    return "bg-green-200"; // standaard: nieuw
+    return "bg-green-200";
   };
+
+  if (!gebruiker) return <main className="p-6">Laden gebruiker...</main>;
 
   return (
     <main className="max-w-5xl mx-auto p-4">
@@ -81,7 +85,7 @@ export default function MijnSkillsPagina() {
           onClick={async () => {
             localStorage.removeItem("gebruiker");
             await fetch("/api/logout", { method: "POST" });
-            window.location.href = "/sign-in";
+            router.push("/sign-in");
           }}
           className="text-sm text-red-600 hover:underline"
         >
@@ -94,63 +98,58 @@ export default function MijnSkillsPagina() {
           <p className="text-gray-600 col-span-2">Geen skills gevonden.</p>
         ) : (
           skills.map((skill) => {
-  const statusKleur =
-    skill.status === "geleerd"
-      ? "text-green-700 font-semibold"
-      : "text-gray-500 italic";
-  const statusLabel =
-    skill.status === "geleerd" ? "✅ Geleerd" : "🕐 Nog niet geleerd";
+            const statusKleur =
+              skill.status === "geleerd"
+                ? "text-green-700 font-semibold"
+                : "text-gray-500 italic";
+            const statusLabel =
+              skill.status === "geleerd"
+                ? "✅ Geleerd"
+                : "🕐 Nog niet geleerd";
 
-  return (
-    <div
-      key={skill.skill_id}
-      className={`rounded-lg shadow px-4 py-3 border ${getKaartKleur(skill)} relative`}
-      title={skill.omschrijving || ""}
-    >
-      <div className="font-semibold text-slate-800 mb-1">
-        {skill.skill_naam}
-      </div>
-      <div className="text-sm text-slate-700 mb-1 italic">
-        Categorie: {skill.categorie || "–"}
-      </div>
+            return (
+              <div
+                key={skill.skill_id}
+                className={`rounded-lg shadow px-4 py-3 border ${getKaartKleur(skill)} relative`}
+                title={skill.omschrijving || ""}
+              >
+                <div className="font-semibold text-slate-800 mb-1">
+                  {skill.skill_naam}
+                </div>
+                <div className="text-sm text-slate-700 mb-1 italic">
+                  Categorie: {skill.categorie || "–"}
+                </div>
 
-      {/* Alleen zichtbaar op mobiel */}
-      {skill.omschrijving && (
-        <details className="sm:hidden text-sm text-slate-600 mb-2">
-          <summary className="cursor-pointer text-blue-700 underline">
-            Toon uitleg
-          </summary>
-          <div className="mt-1 whitespace-pre-line">
-            {skill.omschrijving}
-          </div>
-        </details>
-      )}
+                {skill.omschrijving && (
+                  <details className="sm:hidden text-sm text-slate-600 mb-2">
+                    <summary className="cursor-pointer text-blue-700 underline">
+                      Toon uitleg
+                    </summary>
+                    <div className="mt-1 whitespace-pre-line">
+                      {skill.omschrijving}
+                    </div>
+                  </details>
+                )}
 
-      {skill.deadline && (
-        <div className="text-sm text-orange-700 mb-1">
-          🗓 Deadline:{" "}
-          {new Date(skill.deadline).toLocaleDateString("nl-NL", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })}
-        </div>
-      )}
+                {skill.deadline && (
+                  <div className="text-sm text-orange-700 mb-1">
+                    🗓 Deadline: {new Date(skill.deadline).toLocaleDateString("nl-NL")}
+                  </div>
+                )}
 
-      <div className={`text-sm ${statusKleur}`}>{statusLabel}</div>
+                <div className={`text-sm ${statusKleur}`}>{statusLabel}</div>
 
-      {skill.status === "niet_geleerd" && (
-        <button
-          onClick={() => markeerAlsGeleerd(skill.skill_id)}
-          className="mt-2 text-sm text-blue-600 underline"
-        >
-          Markeer als geleerd
-        </button>
-      )}
-    </div>
-  );
-})
-
+                {skill.status === "niet_geleerd" && (
+                  <button
+                    onClick={() => markeerAlsGeleerd(skill.skill_id)}
+                    className="mt-2 text-sm text-blue-600 underline"
+                  >
+                    Markeer als geleerd
+                  </button>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
     </main>
