@@ -1,8 +1,8 @@
-
 "use client";
 
 import useSWR, { mutate } from "swr";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Resultaat {
   id: string;
@@ -15,16 +15,34 @@ interface Resultaat {
   tijdstip: string;
 }
 
-const fetcher = async (url: string): Promise<Resultaat[]> => {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Fout bij ophalen resultaten");
-  return res.json();
-};
-
 export default function ResultatenOverzicht() {
-  const [filterEmail, setFilterEmail] = useState<string>("alle");
-  const { data, error } = useSWR("/api/resultaten", fetcher, { refreshInterval: 3000 });
+  const router = useRouter();
+  const [gebruiker, setGebruiker] = useState<{ naam: string; functie: string } | null>(null);
 
+  useEffect(() => {
+    fetch("/api/user")
+      .then((res) => {
+        if (!res.ok) throw new Error("Niet ingelogd");
+        return res.json();
+      })
+      .then((data) => {
+        if (data.functie?.toLowerCase() !== "beheerder") {
+          router.push("/");
+        } else {
+          setGebruiker(data);
+        }
+      })
+      .catch(() => router.push("/sign-in"));
+  }, [router]);
+
+  const [filterEmail, setFilterEmail] = useState<string>("alle");
+  const { data, error } = useSWR<Resultaat[]>("/api/resultaten", async (url) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Fout bij ophalen resultaten");
+    return res.json();
+  }, { refreshInterval: 3000 });
+
+  if (!gebruiker) return <main className="p-6">Bezig met controleren...</main>;
   if (error) return <div>Fout bij laden van resultaten.</div>;
   if (!data) return <div>Laden...</div>;
 
