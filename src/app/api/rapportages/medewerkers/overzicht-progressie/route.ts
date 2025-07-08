@@ -1,63 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-// Deze API route levert de voortgangsrapportage per medewerker:
 export async function GET(req: NextRequest) {
   try {
-    // 1) Haal alle medewerkers op
+    // Haal alle medewerkers op met hun e-mail, naam, functie
     const { rows: medewerkers } = await db.query(
-      `SELECT id AS medewerker_id, email, naam, functie
-       FROM medewerkers
-       ORDER BY naam`
+      `SELECT email, naam, functie FROM medewerkers`
     );
 
-    // 2) Bereken instructie-statistieken per medewerker
-    const { rows: instructiestatus } = await db.query(
-      `SELECT m.email,
-              COALESCE(g.gelezen, 0) AS gelezen,
-              ti.totaal,
-              COALESCE(t.geslaagd, 0) AS geslaagd
-       FROM medewerkers m
-       LEFT JOIN (
-         SELECT email, COUNT(DISTINCT instructie_id) AS gelezen
-         FROM gelezen_instructies
-         GROUP BY email
-       ) g ON g.email = m.email
-       CROSS JOIN (
-         SELECT COUNT(*) AS totaal FROM instructies
-       ) ti
-       LEFT JOIN (
-         SELECT email, COUNT(*) FILTER (WHERE score >= 80) AS geslaagd
-         FROM toetsresultaten
-         GROUP BY email
-       ) t ON t.email = m.email`
+    // Haal instructies met functiefilter op
+    const { rows: alleInstructies } = await db.query(
+      `SELECT id, functies FROM instructies WHERE status = 'actief'`
     );
 
-    // 3) Bereken skill-statistieken per medewerker
-    const { rows: skillsstatus } = await db.query(
-      `SELECT m.email,
-              COALESCE(s.learned, 0) AS learned,
-              COALESCE(s.total, 0) AS total
-       FROM medewerkers m
-       LEFT JOIN (
-         SELECT st.medewerker_id::text AS email,
-                SUM(CASE WHEN st.status = 'geleerd' THEN 1 ELSE 0 END) AS learned,
-                COUNT(*) AS total
-         FROM skill_status st
-         GROUP BY st.medewerker_id
-       ) s ON s.email = m.email`
+    // Haal gelezen instructies
+    const { rows: gelezen } = await db.query(
+      `SELECT email, instructie_id FROM gelezen_instructies`
     );
 
-    return NextResponse.json({
-      medewerkers,
-      instructiestatus,
-      skillsstatus,
+    // Haal toetsresultaten
+    const { rows: toetsen } = await db.query(
+      `SELECT email, score FROM toetsresultaten`
+    );
+
+    // Genereer instructiestatus per medewerker
+    const instructiestatus = medewerkers.map((m) => {
+      const relevante = alleInstructies.filter((i) => {
+        if (!i.functies) return true;
+        try {
+          const f = JSON.parse(i.functies);
+          return Array.isArray(f) && f.includes(m.functie);
+        } catch {
+          return false;
+        }
+      });
+
+      const totaal = relevante.length;
+      const gelezenAantal = gelezen.filter(
+        (g) => g.email === m.email && relevante.some((r) => r.id === g.instructie_id)
+      ).length;
+
+      const geslaagdAantal = toetsen.filter(
+        (t) => t.email === m.email && t.score >= 80
+      ).length;
+
+      return {
+        email: m.email,
+        totaal,
+        gelezen: gelezenAantal,
+        geslaagd: geslaagdAantal,
+      };
     });
+
+    return NextResponse.json(instructiestatus);
   } catch (err: any) {
-    console.error("Fout bij opvragen rapportage data:", err);
-    return NextResponse.json(
-      { error: err.message || "Kon rapportage niet laden" },
-      { status: 500 }
-    );
+    console.error("Fout in instructiestatus op basis van functie:", err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
