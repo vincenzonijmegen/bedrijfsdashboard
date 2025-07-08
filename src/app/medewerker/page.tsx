@@ -67,9 +67,20 @@ export default function DashboardPagina() {
 
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Welkom, {gebruiker.naam}</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Welkom, {gebruiker.naam}</h1>
+        <button
+          onClick={async () => {
+            await fetch("/api/logout", { method: "POST" });
+            router.push("/sign-in");
+          }}
+          className="text-sm text-red-600 underline"
+        >
+          Uitloggen
+        </button>
+      </div>
 
-      <section className="grid sm:grid-cols-2 gap-4">
+      <section className="space-y-4">
         <div className="p-4 border rounded bg-white shadow">
           <h2 className="font-semibold mb-2">👤 Persoonlijke gegevens</h2>
           <p><strong>Naam:</strong> {gebruiker.naam}</p>
