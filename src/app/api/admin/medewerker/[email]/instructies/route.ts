@@ -5,7 +5,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { email: string } }
 ) {
-  const email = decodeURIComponent(context.params.email);
+  const email = decodeURIComponent(params.email);
 
   try {
     const gelezen = await db.query(
