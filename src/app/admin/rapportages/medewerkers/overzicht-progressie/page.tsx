@@ -27,7 +27,7 @@ const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export default function RapportagePagina() {
   const { data: medewerkers, error: mErr } = useSWR<Medewerker[]>('/api/admin/medewerkers', fetcher);
-  const { data: instrStatus, error: iErr } = useSWR<InstructieStatusRecord[]>('/api/admin/instructiestatus', fetcher);
+  const { data: instrStatus, error: iErr } = useSWR<InstructieStatusRecord[]>('/api/rapportages/medewerkers/overzicht-progressie', fetcher);
   const { data: skillsStatus, error: sErr } = useSWR<SkillStatusRecord[]>('/api/admin/skillsstatus', fetcher);
 
   if (mErr || iErr || sErr) return <div>Fout bij laden rapportage</div>;
