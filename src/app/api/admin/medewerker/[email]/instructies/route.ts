@@ -3,9 +3,11 @@ import { db } from "@/lib/db";
 
 export async function GET(
   req: NextRequest,
+  context: { params: Record<string, string> }
+  req: NextRequest,
   { params }: { params: { email: string } }
 ) {
-  const email = decodeURIComponent(params.email);
+  const email = decodeURIComponent(context.params.email);
 
   try {
     const gelezen = await db.query(
