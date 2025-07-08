@@ -3,35 +3,43 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
+// JWT-secret ophalen (en crashen als die ontbreekt)
+const JWT_SECRET = process.env.JWT_SECRET!;
+if (!JWT_SECRET) throw new Error("JWT_SECRET ontbreekt in omgeving");
+
 export async function POST(req: Request) {
-  const { email, wachtwoord } = await req.json();
-
   try {
-    const result = await db.query(`SELECT * FROM medewerkers WHERE email = $1`, [email]);
+    const { email, wachtwoord } = await req.json();
 
-    if (result.rowCount !== 1) {
-      return NextResponse.json({ success: false, error: "Ongeldige inloggegevens" }, { status: 401 });
-    }
+    // Stap 1: Medewerker ophalen
+    const result = await db.query(
+      `SELECT naam, email, wachtwoord, functie, moet_wachtwoord_wijzigen FROM medewerkers WHERE email = $1`,
+      [email]
+    );
 
     const medewerker = result.rows[0];
-    const wachtwoordCorrect = await bcrypt.compare(wachtwoord, medewerker.wachtwoord);
-
-    if (!wachtwoordCorrect) {
-      return NextResponse.json({ success: false, error: "Ongeldige inloggegevens" }, { status: 401 });
+    if (!medewerker) {
+      return fout("Ongeldige inloggegevens");
     }
 
-    // ✅ JWT aanmaken
+    // Stap 2: Wachtwoord controleren
+    const wachtwoordCorrect = await bcrypt.compare(wachtwoord, medewerker.wachtwoord);
+    if (!wachtwoordCorrect) {
+      return fout("Ongeldige inloggegevens");
+    }
+
+    // Stap 3: JWT aanmaken
     const token = jwt.sign(
       {
         email: medewerker.email,
         naam: medewerker.naam,
         functie: medewerker.functie,
       },
-      process.env.JWT_SECRET!,
-      { expiresIn: "7d" } // sessie blijft 7 dagen geldig
+      JWT_SECRET,
+      { expiresIn: "7d" }
     );
 
-    // ✅ JWT opslaan in HttpOnly-cookie
+    // Stap 4: JWT als HttpOnly-cookie meesturen
     const res = NextResponse.json({
       success: true,
       naam: medewerker.naam,
@@ -45,12 +53,17 @@ export async function POST(req: Request) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       path: "/",
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: 60 * 60 * 24 * 7, // 7 dagen
     });
 
     return res;
   } catch (err) {
     console.error("Fout bij inloggen:", err);
-    return NextResponse.json({ success: false, error: "Serverfout" }, { status: 500 });
+    return fout("Serverfout", 500);
   }
+}
+
+// 🔧 Herbruikbare foutfunctie
+function fout(boodschap: string, status = 401) {
+  return NextResponse.json({ success: false, error: boodschap }, { status });
 }

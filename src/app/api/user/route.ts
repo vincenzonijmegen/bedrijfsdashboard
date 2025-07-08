@@ -1,20 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import jwt from "jsonwebtoken";
+import { verifyJWT } from "@/lib/auth";
 import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
-  const token = req.cookies.get("sessie_token")?.value;
-
-  if (!token) {
-    return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
-  }
-
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as { email: string };
+    const gebruikerJWT = verifyJWT(req); // ✅ werkt nu correct
 
     const result = await db.query(
-      `SELECT naam, email FROM medewerkers WHERE email = $1`,
-      [payload.email]
+      `SELECT naam, email, functie FROM medewerkers WHERE email = $1`,
+      [gebruikerJWT.email]
     );
 
     const gebruiker = result.rows[0];
@@ -22,8 +16,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Gebruiker niet gevonden" }, { status: 404 });
     }
 
-    return NextResponse.json(gebruiker);
+    return NextResponse.json({
+      naam: gebruiker.naam,
+      email: gebruiker.email,
+      functie: gebruiker.functie,
+    });
   } catch (err) {
-    return NextResponse.json({ error: "Ongeldige sessie" }, { status: 401 });
+    return NextResponse.json({ error: "Niet ingelogd of sessie ongeldig" }, { status: 401 });
   }
 }
