@@ -28,10 +28,10 @@ export default function SignInPage() {
         if (data.moetWachtwoordWijzigen) {
           router.push(`/wachtwoord-wijzigen?email=${encodeURIComponent(email)}`);
         } else if (data.functie === "beheerder") {
-          router.push("/");
-        } else {
-          router.push("/instructies");
-        }
+          router.push("/"); // eventueel /admin
+          } else {
+          router.push("/medewerker");
+          }
       } else {
         setFout(data.error || "Inloggen mislukt");
       }

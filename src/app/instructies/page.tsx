@@ -1,57 +1,27 @@
+// Skills pagina met auth check
 "use client";
 
-import useSWR from "swr";
-import Link from "next/link";
-import { handleLogout } from "@/utils/auth";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
-interface Instructie {
-  id: string;
-  titel: string;
-  nummer?: string;
-  functies?: string[];
-  slug: string;
+interface Skill {
+  skill_id: string;
+  skill_naam: string;
+  categorie: string;
+  status: "geleerd" | "niet_geleerd";
+  omschrijving?: string;
+  deadline?: string; // ISO datumstring
 }
 
-interface RawInstructie {
-  id: string;
-  titel: string;
-  nummer?: string;
-  functies?: string | string[];
-  slug: string;
+interface Gebruiker {
+  naam: string;
+  email: string;
 }
 
-interface Status {
-  slug: string;
-  score?: number;
-  totaal?: number;
-  juist?: number;
-  gelezen_op?: string;
-}
-
-const fetcher = async (url: string): Promise<Instructie[]> => {
-  const res = await fetch(url);
-  const data: RawInstructie[] = await res.json();
-  return data.map((i) => ({
-    ...i,
-    functies: Array.isArray(i.functies)
-      ? i.functies
-      : typeof i.functies === "string"
-      ? (() => {
-          try {
-            const parsed = JSON.parse(i.functies);
-            return Array.isArray(parsed) ? parsed : [];
-          } catch {
-            return [];
-          }
-        })()
-      : [],
-  }));
-};
-
-export default function InstructieOverzicht() {
-  const [gebruiker, setGebruiker] = useState<any>(null);
+export default function MijnSkillsPagina() {
+  const [gebruiker, setGebruiker] = useState<Gebruiker | null>(null);
+  const [skills, setSkills] = useState<Skill[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -67,100 +37,129 @@ export default function InstructieOverzicht() {
       });
   }, [router]);
 
-  const isAdmin = gebruiker?.functie?.toLowerCase() === "beheerder";
-  const email = gebruiker?.email || "";
-
-  const { data: instructies, error } = useSWR<Instructie[]>("/api/instructies", fetcher);
-
-  const { data: status } = useSWR<Status[]>(
-    email ? `/api/instructiestatus?email=${email}` : null,
-    (url: string) => fetch(url).then(res => res.json())
-  );
-
-  if (!gebruiker) return <div>Laden gebruiker...</div>;
-  if (error) return <div>Fout bij laden</div>;
-  if (!instructies) return <div>Laden instructies...</div>;
-
-  const gesorteerd = [...instructies]
-    .filter((i) => {
-      if (!i.functies || i.functies.length === 0) return true;
-      return isAdmin || !gebruiker?.functie || i.functies.map(f => f.toLowerCase()).includes(gebruiker.functie.toLowerCase());
+  useEffect(() => {
+    if (!gebruiker?.email) return;
+    fetch("/api/skills/mijn", {
+      headers: { "x-user-email": gebruiker.email },
     })
-    .sort((a, b) => {
-      const na = a.nummer || "";
-      const nb = b.nummer || "";
-      return na.localeCompare(nb);
+      .then((res) => res.json())
+      .then((data) => setSkills(data.skills || []));
+  }, [gebruiker]);
+
+  const markeerAlsGeleerd = async (skill_id: string) => {
+    await fetch("/api/skills/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ skill_id, status: "geleerd" }),
     });
 
-  const getStatus = (slug: string) => {
-    const s = status?.find((x) => x.slug === slug);
-    if (!s) return <span className="text-gray-400">⏳ Nog niet gelezen</span>;
-
-    if (s.score != null && s.totaal != null && s.juist != null) {
-      const kleur = s.score < 100 ? "text-red-600" : "text-green-600";
-      const datum = s.gelezen_op
-        ? new Date(s.gelezen_op).toLocaleDateString("nl-NL", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-        : null;
-      return (
-        <span className={kleur}>
-          🧠 {s.juist}/{s.totaal}
-          {datum && <span className="ml-2 text-blue-600">👁 {datum}</span>}
-        </span>
-      );
-    }
-
-    if (s.gelezen_op) {
-      const datum = new Date(s.gelezen_op).toLocaleDateString("nl-NL", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-      return <span className="text-blue-600">👁 {datum}</span>;
-    }
-
-    return <span className="text-blue-600">👁 Gelezen</span>;
+    setSkills((prev) =>
+      prev.map((s) =>
+        s.skill_id === skill_id ? { ...s, status: "geleerd" } : s
+      )
+    );
   };
+
+  const getKaartKleur = (skill: Skill) => {
+    if (skill.status === "geleerd") return "bg-gray-200";
+    if (skill.deadline) {
+      const deadline = new Date(skill.deadline);
+      const verschil = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      if (verschil < 0) return "bg-red-200";
+      if (verschil <= 3) return "bg-yellow-200";
+    }
+    return "bg-green-200";
+  };
+
+  if (!gebruiker) return <main className="p-6">Laden gebruiker...</main>;
 
   return (
     <main className="max-w-5xl mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center gap-4">
+          <Link href="/medewerker" className="text-sm text-blue-600 underline">
+            ⬅ Terug naar dashboard
+          </Link>
           <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
           <h1 className="text-3xl font-bold text-slate-800">
             Werkinstructies – {gebruiker?.naam || "..."}
           </h1>
         </div>
-
-        <button onClick={handleLogout} className="text-sm text-red-600 underline">
-          Uitloggen
-        </button>
+        <div className="flex gap-4">
+          <Link href="/medewerker" className="text-sm text-blue-600 underline">
+            ⬅ Terug naar dashboard
+          </Link>
+          <button
+            onClick={async () => {
+              localStorage.removeItem("gebruiker");
+              await fetch("/api/logout", { method: "POST" });
+              router.push("/sign-in");
+            }}
+            className="text-sm text-red-600 underline"
+          >
+            Uitloggen
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {gesorteerd.map((i, index) => {
-          const kleuren = ["bg-pink-200", "bg-purple-200", "bg-green-200", "bg-yellow-200", "bg-blue-200"];
-          const kleur = kleuren[index % kleuren.length];
+        {skills.length === 0 ? (
+          <p className="text-gray-600 col-span-2">Geen skills gevonden.</p>
+        ) : (
+          skills.map((skill) => {
+            const statusKleur =
+              skill.status === "geleerd"
+                ? "text-green-700 font-semibold"
+                : "text-gray-500 italic";
+            const statusLabel =
+              skill.status === "geleerd"
+                ? "✅ Geleerd"
+                : "🕐 Nog niet geleerd";
 
-          return (
-            <Link
-              key={i.id}
-              href={`/instructies/${i.slug}`}
-              className={`rounded-lg shadow px-4 py-3 hover:shadow-md transition border ${kleur}`}
-            >
-              <div className="flex justify-between items-center">
-                <div className="font-semibold text-slate-800">
-                  {i.nummer ? `${i.nummer}. ` : ""}
-                  {i.titel}
+            return (
+              <div
+                key={skill.skill_id}
+                className={`rounded-lg shadow px-4 py-3 border ${getKaartKleur(skill)} relative`}
+                title={skill.omschrijving || ""}
+              >
+                <div className="font-semibold text-slate-800 mb-1">
+                  {skill.skill_naam}
                 </div>
-                <div className="text-sm">{getStatus(i.slug)}</div>
+                <div className="text-sm text-slate-700 mb-1 italic">
+                  Categorie: {skill.categorie || "–"}
+                </div>
+
+                {skill.omschrijving && (
+                  <details className="sm:hidden text-sm text-slate-600 mb-2">
+                    <summary className="cursor-pointer text-blue-700 underline">
+                      Toon uitleg
+                    </summary>
+                    <div className="mt-1 whitespace-pre-line">
+                      {skill.omschrijving}
+                    </div>
+                  </details>
+                )}
+
+                {skill.deadline && (
+                  <div className="text-sm text-orange-700 mb-1">
+                    🗓 Deadline: {new Date(skill.deadline).toLocaleDateString("nl-NL")}
+                  </div>
+                )}
+
+                <div className={`text-sm ${statusKleur}`}>{statusLabel}</div>
+
+                {skill.status === "niet_geleerd" && (
+                  <button
+                    onClick={() => markeerAlsGeleerd(skill.skill_id)}
+                    className="mt-2 text-sm text-blue-600 underline"
+                  >
+                    Markeer als geleerd
+                  </button>
+                )}
               </div>
-            </Link>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </main>
   );

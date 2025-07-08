@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface Skill {
   skill_id: string;
@@ -81,16 +82,21 @@ export default function MijnSkillsPagina() {
             Skilllijst – {gebruiker?.naam || "..."}
           </h1>
         </div>
-        <button
-          onClick={async () => {
-            localStorage.removeItem("gebruiker");
-            await fetch("/api/logout", { method: "POST" });
-            router.push("/sign-in");
-          }}
-          className="text-sm text-red-600 hover:underline"
-        >
-          Uitloggen
-        </button>
+        <div className="flex gap-4">
+          <Link href="/medewerker" className="text-sm text-blue-600 underline">
+            ⬅ Terug naar dashboard
+          </Link>
+          <button
+            onClick={async () => {
+              localStorage.removeItem("gebruiker");
+              await fetch("/api/logout", { method: "POST" });
+              router.push("/sign-in");
+            }}
+            className="text-sm text-red-600 underline"
+          >
+            Uitloggen
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
