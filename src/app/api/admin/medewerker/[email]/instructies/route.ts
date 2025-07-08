@@ -3,11 +3,10 @@ import { db } from "@/lib/db";
 
 export async function GET(
   req: NextRequest,
-  context: { params: { email: string | string[] } }
+  { params }: { params: { email: string } }
 ) {
-  const email = Array.isArray(context.params.email)
-    ? decodeURIComponent(context.params.email[0])
-    : decodeURIComponent(context.params.email);
+  const email = decodeURIComponent(params.email);
+
 
   try {
     const gelezen = await db.query(
