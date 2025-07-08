@@ -7,7 +7,6 @@ export async function GET(
 ) {
   const email = decodeURIComponent(params.email);
 
-
   try {
     const gelezen = await db.query(
       `SELECT gi.instructie_id,
