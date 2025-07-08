@@ -5,7 +5,8 @@ import { useParams } from "next/navigation";
 
 export default function MedewerkerDetailPage() {
   const params = useParams();
-  const email = decodeURIComponent(params?.email ?? "");
+const email = decodeURIComponent(params.email as string);
+
   const [data, setData] = useState<any | null>(null);
   const [fout, setFout] = useState<string | null>(null);
 
