@@ -25,29 +25,32 @@ export default function DashboardPagina() {
   const router = useRouter();
   const [gebruiker, setGebruiker] = useState<Gebruiker | null>(null);
   const [instructieStatus, setInstructieStatus] = useState<Status | null>(null);
+  const [instructies, setInstructies] = useState<any[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
-
-  useEffect(() => {
-    fetch("/api/user")
-      .then((res) => {
-        if (!res.ok) throw new Error("Niet ingelogd");
-        return res.json();
-      })
-      .then(setGebruiker)
-      .catch(() => router.push("/sign-in"));
-  }, [router]);
 
   useEffect(() => {
     if (!gebruiker?.email) return;
 
-    fetch(`/api/instructiestatus?email=${gebruiker.email}`)
+    fetch("/api/instructies")
       .then(res => res.json())
-      .then((data) => {
-        const gelezen = data.filter((d: any) => d.gelezen_op).length;
-        const totaal = data.length;
-        const geslaagd = data.filter((d: any) => d.score >= 80).length;
-        setInstructieStatus({ gelezen, totaal, geslaagd });
+      .then((all) => {
+        setInstructies(all);
+
+        fetch(`/api/instructiestatus?email=${gebruiker.email}`)
+          .then(res => res.json())
+          .then((data) => {
+            const gelezen = data.filter((d: any) => d.gelezen_op).length;
+            const geslaagd = data.filter((d: any) => d.score >= 80).length;
+            setInstructieStatus({ gelezen, totaal: all.length, geslaagd });
+          });
+
+        fetch("/api/skills/mijn", {
+          headers: { "x-user-email": gebruiker.email },
+        })
+          .then(res => res.json())
+          .then((data) => setSkills(data.skills || []));
       });
+  }, [gebruiker]);
 
     fetch("/api/skills/mijn", {
       headers: { "x-user-email": gebruiker.email },
@@ -67,9 +70,12 @@ export default function DashboardPagina() {
 
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="text-sm">
+        <Link href="/medewerker" className="text-blue-600 underline">⬅ Terug naar dashboard</Link>
+      </div>
       <h1 className="text-2xl font-bold">Welkom, {gebruiker.naam}</h1>
 
-      <section className="grid sm:grid-cols-2 gap-4">
+      <section className="space-y-4 flex flex-col">
         <div className="p-4 border rounded bg-white shadow">
           <h2 className="font-semibold mb-2">👤 Persoonlijke gegevens</h2>
           <p><strong>Naam:</strong> {gebruiker.naam}</p>
