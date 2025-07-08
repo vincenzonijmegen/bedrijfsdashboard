@@ -1,66 +1,93 @@
-import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+"use client";
 
-export async function GET(req: NextRequest) {
-  try {
-    // 1) Haal alle medewerkers op
-    const { rows: medewerkers } = await db.query(
-      `SELECT email, naam, functie FROM medewerkers ORDER BY naam`
-    );
+import useSWR from "swr";
+import Link from "next/link";
 
-    // 2) Instructie-status: gelezen per medewerker en totaal aantal instructies
-    const { rows: instr } = await db.query(
-      `SELECT u.email,
-              COALESCE(g.gelezen, 0) AS gelezen,
-              ti.totaal,
-              COALESCE(t.geslaagd, 0) AS geslaagd
-       FROM (
-         SELECT DISTINCT email FROM medewerkers
-       ) u
-       LEFT JOIN (
-         SELECT email, COUNT(DISTINCT instructie_id) AS gelezen
-         FROM gelezen_instructies
-         GROUP BY email
-       ) g ON g.email = u.email
-       CROSS JOIN (
-         SELECT COUNT(*) AS totaal FROM instructies
-       ) ti
-       LEFT JOIN (
-         SELECT email, COUNT(*) FILTER (WHERE score >= 80) AS geslaagd
-         FROM toetsresultaten
-         GROUP BY email
-       ) t ON t.email = u.email`
-    );
-    const instructiestatus = instr;
+interface Medewerker {
+  email: string;
+  naam: string;
+  functie: string;
+}
 
-    // 3) Skill-status: geleerde skills en totaal per medewerker
-    const { rows: skillsstatus } = await db.query(
-      `SELECT u.email,
-              COALESCE(s.learned, 0) AS learned,
-              COALESCE(s.total, 0) AS total
-       FROM (
-         SELECT DISTINCT medewerker_id FROM skill_toegewezen
-       ) udb
-       JOIN medewerkers u ON udb.medewerker_id::text = u.email
-       LEFT JOIN (
-         SELECT st.medewerker_id::text AS email,
-                SUM(CASE WHEN st.status = 'geleerd' THEN 1 ELSE 0 END) AS learned,
-                COUNT(*) AS total
-         FROM skill_status st
-         GROUP BY st.medewerker_id
-       ) s ON s.email = u.email`
-    );
+interface Instructiestatus {
+  email: string;
+  gelezen: number;
+  totaal: number;
+  geslaagd: number;
+}
 
-    return NextResponse.json({
-      medewerkers,
-      instructiestatus,
-      skillsstatus,
-    });
-  } catch (error: any) {
-    console.error("Fout bij opvragen rapportage data", error);
-    return NextResponse.json(
-      { error: error.message || "Kon rapportage niet laden" },
-      { status: 500 }
-    );
-  }
+interface Skillstatus {
+  email: string;
+  learned: number;
+  total: number;
+}
+
+interface Data {
+  medewerkers: Medewerker[];
+  instructiestatus: Instructiestatus[];
+  skillsstatus: Skillstatus[];
+}
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+export default function OverzichtProgressiePagina() {
+  const { data, error } = useSWR<Data>(
+    "/api/rapportages/medewerkers/overzicht-progressie",
+    fetcher
+  );
+
+  if (error) return <div className="p-4">Fout bij laden rapportage</div>;
+  if (!data) return <div className="p-4">Laden...</div>;
+
+  const instrMap = Object.fromEntries(
+    data.instructiestatus.map((r) => [r.email, r])
+  );
+  const skillsMap = Object.fromEntries(
+    data.skillsstatus.map((r) => [r.email, r])
+  );
+
+  return (
+    <main className="p-6">
+      <h1 className="text-2xl font-bold mb-4">📊 Overzicht voortgang medewerkers</h1>
+      <div className="overflow-x-auto">
+        <table className="w-full table-auto border-collapse">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="border p-2 text-left">Naam</th>
+              <th className="border p-2 text-left">Functie</th>
+              <th className="border p-2 text-center">Instructies</th>
+              <th className="border p-2 text-center">Geslaagd</th>
+              <th className="border p-2 text-center">Skills</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.medewerkers.map((m) => {
+              const i = instrMap[m.email] || { gelezen: 0, totaal: 0, geslaagd: 0 };
+              const s = skillsMap[m.email] || { learned: 0, total: 0 };
+              return (
+                <tr key={m.email} className="hover:bg-gray-50">
+                  <td className="border p-2">
+                    <Link
+                      href={`/admin/medewerker/${m.email}`}
+                      className="text-blue-600 underline"
+                    >
+                      {m.naam}
+                    </Link>
+                  </td>
+                  <td className="border p-2">{m.functie}</td>
+                  <td className="border p-2 text-center">
+                    {i.gelezen} / {i.totaal}
+                  </td>
+                  <td className="border p-2 text-center">{i.geslaagd}</td>
+                  <td className="border p-2 text-center">
+                    {s.learned} / {s.total}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </main>
+  );
 }
