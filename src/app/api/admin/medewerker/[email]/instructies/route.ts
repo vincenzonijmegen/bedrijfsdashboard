@@ -3,8 +3,6 @@ import { db } from "@/lib/db";
 
 export async function GET(
   req: NextRequest,
-  context: { params: Record<string, string> }
-  req: NextRequest,
   { params }: { params: { email: string } }
 ) {
   const email = decodeURIComponent(context.params.email);
