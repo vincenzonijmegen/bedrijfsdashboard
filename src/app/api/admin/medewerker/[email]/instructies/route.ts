@@ -4,9 +4,9 @@ import { db } from "@/lib/db";
 // API: Haal gelezen instructies en toetsresultaten per medewerker-email
 export async function GET(
   req: NextRequest,
-  { params }: { params: Record<string, string> }
+  context: { params: { email: string } }
 ) {
-  const email = decodeURIComponent(params.email);
+  const email = decodeURIComponent(context.params.email);
 
   try {
     const gelezen = await db.query(
