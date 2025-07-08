@@ -81,7 +81,7 @@ export default function DashboardPagina() {
     return diff >= 0 && diff <= 3;
   }).length;
 
-  if (!gebruiker || !instructieStatus) return <main className="p-6">Laden...</main>;
+  if (!gebruiker || !instructieStatus) return <div className="p-6">Laden...</div>;
 
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-6">
@@ -116,4 +116,15 @@ export default function DashboardPagina() {
         </div>
 
         <div className="p-4 border rounded bg-white shadow">
-          <h2 className="font-semibold mb-2">🧠 Skills</n
+          <h2 className="font-semibold mb-2">🧠 Skills</h2>
+          <p><strong>Geleerd:</strong> {skills.length - nogTeLeren} / {skills.length}</p>
+          <p><strong>Nog te doen:</strong> {nogTeLeren}</p>
+          <p><strong>Met deadline &lt; 3 dagen:</strong> {deadlinesBinnen3Dagen}</p>
+          <Link href="/skills" className="inline-block mt-2 text-blue-600 underline">
+            ➤ Bekijk skills
+          </Link>
+        </div>
+      </section>
+    </main>
+  );
+}
