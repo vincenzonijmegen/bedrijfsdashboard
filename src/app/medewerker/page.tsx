@@ -28,36 +28,29 @@ export default function DashboardPagina() {
   const [instructies, setInstructies] = useState<any[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
 
-  useEffect(() => {
-    if (!gebruiker?.email) return;
+ useEffect(() => {
+  if (!gebruiker?.email) return;
 
-    fetch("/api/instructies")
-      .then(res => res.json())
-      .then((all) => {
-        setInstructies(all);
+  fetch("/api/instructies")
+    .then(res => res.json())
+    .then((all) => {
+      setInstructies(all);
 
-        fetch(`/api/instructiestatus?email=${gebruiker.email}`)
-          .then(res => res.json())
-          .then((data) => {
-            const gelezen = data.filter((d: any) => d.gelezen_op).length;
-            const geslaagd = data.filter((d: any) => d.score >= 80).length;
-            setInstructieStatus({ gelezen, totaal: all.length, geslaagd });
-          });
+      fetch(`/api/instructiestatus?email=${gebruiker.email}`)
+        .then(res => res.json())
+        .then((data) => {
+          const gelezen = data.filter((d: any) => d.gelezen_op).length;
+          const geslaagd = data.filter((d: any) => d.score >= 80).length;
+          setInstructieStatus({ gelezen, totaal: all.length, geslaagd });
+        });
 
-        fetch("/api/skills/mijn", {
-          headers: { "x-user-email": gebruiker.email },
-        })
-          .then(res => res.json())
-          .then((data) => setSkills(data.skills || []));
-      });
-  }, [gebruiker]);
-
-    fetch("/api/skills/mijn", {
-      headers: { "x-user-email": gebruiker.email },
-    })
-      .then(res => res.json())
-      .then((data) => setSkills(data.skills || []));
-  }, [gebruiker]);
+      fetch("/api/skills/mijn", {
+        headers: { "x-user-email": gebruiker.email },
+      })
+        .then(res => res.json())
+        .then((data) => setSkills(data.skills || []));
+    });
+}, [gebruiker]);
 
   const nogTeLeren = skills.filter(s => s.status === "niet_geleerd").length;
   const deadlinesBinnen3Dagen = skills.filter(s => {
