@@ -10,6 +10,14 @@ interface Gebruiker {
   functie: string;
 }
 
+interface StatusRecord {
+  slug: string;
+  gelezen_op?: string;
+  score?: number;
+  totaal?: number;
+  juist?: number;
+}
+
 interface Status {
   gelezen: number;
   totaal: number;
@@ -24,9 +32,11 @@ interface Skill {
 export default function DashboardPagina() {
   const router = useRouter();
   const [gebruiker, setGebruiker] = useState<Gebruiker | null>(null);
+  const [instructies, setInstructies] = useState<any[]>([]);
   const [instructieStatus, setInstructieStatus] = useState<Status | null>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
 
+  // Haal ingelogde gebruiker op
   useEffect(() => {
     fetch("/api/user")
       .then((res) => {
@@ -37,33 +47,41 @@ export default function DashboardPagina() {
       .catch(() => router.push("/sign-in"));
   }, [router]);
 
+  // Haal instructies, status en skills op zodra gebruiker bekend is
   useEffect(() => {
     if (!gebruiker?.email) return;
 
-    fetch(`/api/instructiestatus?email=${gebruiker.email}`)
-      .then(res => res.json())
-      .then((data) => {
-        const gelezen = data.filter((d: any) => d.gelezen_op).length;
-        const totaal = data.length;
-        const geslaagd = data.filter((d: any) => d.score >= 80).length;
-        setInstructieStatus({ gelezen, totaal, geslaagd });
+    // 1) alle instructies
+    fetch("/api/instructies")
+      .then((res) => res.json())
+      .then((all) => {
+        setInstructies(all);
+        const totaal = all.length;
+
+        // 2) statusrecords voor deze gebruiker
+        fetch(`/api/instructiestatus?email=${gebruiker.email}`)
+          .then((res) => res.json())
+          .then((data: StatusRecord[]) => {
+            const gelezen = data.filter((r) => r.gelezen_op).length;
+            const geslaagd = data.filter((r) => r.score !== undefined && r.juist !== undefined && r.score === 100).length;
+            setInstructieStatus({ gelezen, totaal, geslaagd });
+          });
       });
 
-    fetch("/api/skills/mijn", {
-      headers: { "x-user-email": gebruiker.email },
-    })
-      .then(res => res.json())
+    // 3) skills
+    fetch("/api/skills/mijn", { headers: { "x-user-email": gebruiker.email } })
+      .then((res) => res.json())
       .then((data) => setSkills(data.skills || []));
   }, [gebruiker]);
 
-  const nogTeLeren = skills.filter(s => s.status === "niet_geleerd").length;
-  const deadlinesBinnen3Dagen = skills.filter(s => {
+  const nogTeLeren = skills.filter((s) => s.status === "niet_geleerd").length;
+  const deadlinesBinnen3Dagen = skills.filter((s) => {
     if (!s.deadline) return false;
     const diff = (new Date(s.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
     return diff >= 0 && diff <= 3;
   }).length;
 
-  if (!gebruiker) return <main className="p-6">Laden gebruiker...</main>;
+  if (!gebruiker || !instructieStatus) return <main className="p-6">Laden...</main>;
 
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-6">
@@ -90,27 +108,12 @@ export default function DashboardPagina() {
 
         <div className="p-4 border rounded bg-white shadow">
           <h2 className="font-semibold mb-2">📚 Werkinstructies</h2>
-          {instructieStatus ? (
-            <>
-              <p><strong>Gelezen:</strong> {instructieStatus.gelezen} / {instructieStatus.totaal}</p>
-              <p><strong>Geslaagd:</strong> {instructieStatus.geslaagd}</p>
-              <Link href="/instructies" className="inline-block mt-2 text-blue-600 underline">
-                ➤ Bekijk instructies
-              </Link>
-            </>
-          ) : <p>Laden...</p>}
+          <p><strong>Gelezen:</strong> {instructieStatus.gelezen} / {instructieStatus.totaal}</p>
+          <p><strong>Geslaagd:</strong> {instructieStatus.geslaagd}</p>
+          <Link href="/instructies" className="inline-block mt-2 text-blue-600 underline">
+            ➤ Bekijk instructies
+          </Link>
         </div>
 
         <div className="p-4 border rounded bg-white shadow">
-          <h2 className="font-semibold mb-2">🧠 Skills</h2>
-          <p><strong>Geleerd:</strong> {skills.length - nogTeLeren} / {skills.length}</p>
-          <p><strong>Nog te doen:</strong> {nogTeLeren}</p>
-          <p><strong>Met deadline &lt; 3 dagen:</strong> {deadlinesBinnen3Dagen}</p>
-          <Link href="/skills" className="inline-block mt-2 text-blue-600 underline">
-            ➤ Bekijk skills
-          </Link>
-        </div>
-      </section>
-    </main>
-  );
-}
+          <h2 className="font-semibold mb-2">🧠 Skills</n
