@@ -67,18 +67,14 @@ export default function MijnSkillsPagina() {
         )
       );
     }
-(prev) =>
-      prev.map((s) =>
-        s.skill_id === skill_id ? { ...s, status: "geleerd" } : s
-      )
-    );
   };
 
   const getKaartKleur = (skill: Skill) => {
     if (skill.status === "geleerd") return "bg-gray-200";
     if (skill.deadline) {
       const deadline = new Date(skill.deadline);
-      const verschil = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      const verschil =
+        Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
       if (verschil < 0) return "bg-red-200";
       if (verschil <= 3) return "bg-yellow-200";
     }
