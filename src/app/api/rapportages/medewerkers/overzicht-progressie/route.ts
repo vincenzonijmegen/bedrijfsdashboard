@@ -58,14 +58,15 @@ export async function GET(req: NextRequest) {
     // 7) Instructiestatus per medewerker
     const instructiestatus = medewerkers.map((m) => {
       const relevant = alleInstructies.filter((i) => {
-        if (!i.functies) return true;
-        try {
-          const f = JSON.parse(i.functies);
-          return Array.isArray(f) && f.includes(m.functie);
-        } catch {
-          return false;
-        }
-      });
+  if (!i.functies) return true;
+  try {
+    const f = JSON.parse(i.functies);
+    return Array.isArray(f) && f.includes(m.functie); // ← dit is goed bij exact
+  } catch {
+    return false;
+  }
+});
+
       const totaal = relevant.length;
       const gelezenAantal = gelezen.filter(
         (g) =>
