@@ -47,13 +47,22 @@ export default function MijnSkillsPagina() {
   }, [gebruiker]);
 
   const markeerAlsGeleerd = async (skill_id: string) => {
-    await fetch("/api/skills/status", {
+    if (!gebruiker?.email) return;
+
+    const res = await fetch("/api/skills/status", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ skill_id, status: "geleerd" }),
+      body: JSON.stringify({
+        skill_id,
+        status: "geleerd",
+        email: gebruiker.email,
+      }),
     });
 
-    setSkills((prev) =>
+    if (res.ok) {
+      alert("✓ Opgeslagen als geleerd");
+    }
+(prev) =>
       prev.map((s) =>
         s.skill_id === skill_id ? { ...s, status: "geleerd" } : s
       )
