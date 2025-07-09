@@ -7,11 +7,21 @@ import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+interface Medewerker {
+  email: string;
+  naam: string;
+}
+
 export default function DossierOverzicht() {
   const [email, setEmail] = useState("");
   const [tekst, setTekst] = useState("");
   const [success, setSuccess] = useState(false);
-  const { data, mutate } = useSWR(email ? `/api/dossier/opmerkingen?email=${email}` : null, fetcher);
+
+  const { data: opmerkingen, mutate } = useSWR(
+    email ? `/api/dossier/opmerkingen?email=${email}` : null,
+    fetcher
+  );
+  const { data: medewerkers } = useSWR<Medewerker[]>("/api/admin/medewerkers", fetcher);
 
   const voegToe = async () => {
     if (!email || !tekst.trim()) return;
@@ -36,13 +46,18 @@ export default function DossierOverzicht() {
     <main className="max-w-3xl mx-auto p-6 space-y-4">
       <h1 className="text-2xl font-bold mb-4">📁 Personeelsdossier</h1>
 
-      <input
-        type="text"
-        placeholder="E-mailadres medewerker"
+      <select
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         className="border px-2 py-1 w-full"
-      />
+      >
+        <option value="">Selecteer medewerker</option>
+        {medewerkers?.map((m) => (
+          <option key={m.email} value={m.email}>
+            {m.naam}
+          </option>
+        ))}
+      </select>
 
       <textarea
         placeholder="Nieuwe opmerking"
@@ -65,7 +80,7 @@ export default function DossierOverzicht() {
 
       <h2 className="font-semibold mt-6">🕒 Tijdlijn</h2>
       <ul className="space-y-2">
-        {data?.map((r: { tekst: string; datum: string }, i: number) => (
+        {opmerkingen?.map((r: { tekst: string; datum: string }, i: number) => (
           <li key={i} className="border p-2 rounded bg-gray-50">
             <div className="text-sm text-gray-600">{new Date(r.datum).toLocaleDateString("nl-NL")}</div>
             <div>{r.tekst}</div>
