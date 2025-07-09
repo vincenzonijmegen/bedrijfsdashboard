@@ -1,117 +1,95 @@
 "use client";
 
-import useSWR, { mutate } from "swr";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import useSWR from "swr";
+// Link import verwijderd
 
-interface Resultaat {
-  id: string;
+interface Medewerker {
+  id: number;
   email: string;
   naam: string;
-  score: number;
-  juist: number;
-  totaal: number;
-  titel: string;
-  tijdstip: string;
+  functie: string;
 }
 
-export default function ResultatenOverzicht() {
-  const router = useRouter();
-  const [gebruiker, setGebruiker] = useState<{ naam: string; functie: string } | null>(null);
+interface Instructiestatus {
+  email: string;
+  gelezen: number;
+  totaal: number;
+  geslaagd: number;
+}
 
-  useEffect(() => {
-    fetch("/api/user")
-      .then((res) => {
-        if (!res.ok) throw new Error("Niet ingelogd");
-        return res.json();
-      })
-      .then((data) => {
-        if (data.functie?.toLowerCase() !== "beheerder") {
-          router.push("/");
-        } else {
-          setGebruiker(data);
-        }
-      })
-      .catch(() => router.push("/sign-in"));
-  }, [router]);
+interface Skillstatus {
+  email: string;
+  learned: number;
+  total: number;
+}
 
-  const [filterEmail, setFilterEmail] = useState<string>("alle");
-  const { data, error } = useSWR<Resultaat[]>("/api/resultaten", async (url) => {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("Fout bij ophalen resultaten");
-    return res.json();
-  }, { refreshInterval: 3000 });
+interface Data {
+  medewerkers: Medewerker[];
+  instructiestatus: Instructiestatus[];
+  skillsstatus: Skillstatus[];
+}
 
-  if (!gebruiker) return <main className="p-6">Bezig met controleren...</main>;
-  if (error) return <div>Fout bij laden van resultaten.</div>;
-  if (!data) return <div>Laden...</div>;
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-  const uniekeEmails = Array.from(new Set(data.map((r) => r.email))).sort();
-  const gefilterd = filterEmail === "alle"
-    ? data
-    : data.filter((r) => r.email === filterEmail);
+export default function OverzichtProgressiePagina() {
+  const { data, error } = useSWR<Data>(
+    "/api/rapportages/medewerkers/overzicht-progressie",
+    fetcher
+  );
+
+  if (error) return <div className="p-4">Fout bij laden rapportage</div>;
+  if (!data) return <div className="p-4">Laden...</div>;
+
+  const instrMap = Object.fromEntries(
+    data.instructiestatus.map((r) => [r.email, r])
+  );
+  const skillsMap = Object.fromEntries(
+    data.skillsstatus.map((r) => [r.email, r])
+  );
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-4">
-      <h1 className="text-2xl font-bold flex items-center gap-2">📊 Toetsresultaten</h1>
-
-      <div className="mb-4">
-        <label className="mr-2 font-medium">Filter op medewerker:</label>
-        <select
-          value={filterEmail}
-          onChange={(e) => setFilterEmail(e.target.value)}
-          className="border rounded px-2 py-1"
-        >
-          <option value="alle">Alle medewerkers</option>
-          {uniekeEmails.map((email) => (
-            <option key={email} value={email}>
-              {email}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <table className="w-full text-sm border-collapse border">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border p-2 text-left">E-mail</th>
-            <th className="border p-2 text-left">Naam</th>
-            <th className="border p-2 text-center">Score</th>
-            <th className="border p-2 text-center">Goed / Totaal</th>
-            <th className="border p-2 text-center">Titel</th>
-            <th className="border p-2 text-center">Tijdstip</th>
-            <th className="border p-2 text-center">Actie</th>
-          </tr>
-        </thead>
-        <tbody>
-          {gefilterd.map((r, i) => (
-            <tr key={i}>
-              <td className="border p-2">{r.email}</td>
-              <td className="border p-2">{r.naam}</td>
-              <td className="border p-2 text-center">{r.score}%</td>
-              <td className="border p-2 text-center">{r.juist} / {r.totaal}</td>
-              <td className="border p-2 text-center">{r.titel}</td>
-              <td className="border p-2 text-center">{new Date(r.tijdstip).toLocaleString()}</td>
-              <td className="border p-2 text-center">
-                <button
-                  onClick={async () => {
-                    if (confirm(`Verwijder resultaat van ${r.naam}?`)) {
-                      await fetch(
-                        `/api/resultaten?email=${encodeURIComponent(r.email)}&titel=${encodeURIComponent(r.titel)}`,
-                        { method: "DELETE" }
-                      );
-                      mutate("/api/resultaten");
-                    }
-                  }}
-                  className="text-red-600 underline text-sm"
-                >
-                  Verwijderen
-                </button>
-              </td>
+    <main className="p-6">
+      <h1 className="text-2xl font-bold mb-4">
+        📊 Overzicht voortgang medewerkers
+      </h1>
+      <div className="overflow-x-auto">
+        <table className="w-full table-auto border-collapse">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="border p-2 text-left">Naam</th>
+              <th className="border p-2 text-left">Functie</th>
+              <th className="border p-2 text-center">Instructies</th>
+              <th className="border p-2 text-center">Geslaagd</th>
+              <th className="border p-2 text-center">Skills</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {data.medewerkers.map((m) => {
+              const i = instrMap[m.email] || {
+                gelezen: 0,
+                totaal: 0,
+                geslaagd: 0,
+              };
+              const s = skillsMap[m.email] || { learned: 0, total: 0 };
+              return (
+                <tr key={m.email} className="hover:bg-gray-50">
+                  <td className="border p-2">
+                    {m.naam}
+                  </td>
+                  <td className="border p-2">{m.functie}</td>
+                  <td className="border p-2 text-center">
+                    {i.gelezen} / {i.totaal}
+                  </td>
+                  <td className="border p-2 text-center">{i.geslaagd}</td>
+                  <td className="border p-2 text-center">
+                    {s.learned} / {s.total}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </main>
   );
 }
