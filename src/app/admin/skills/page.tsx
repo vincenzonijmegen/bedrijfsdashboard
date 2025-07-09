@@ -99,14 +99,14 @@ export default function SkillBeheer() {
       {Object.entries(gegroepeerd).map(([cat, lijst]) => (
         <div key={cat} className="space-y-2">
           <h3 className="text-lg font-semibold mt-6">📁 {cat}</h3>
-          <div className="overflow-auto">
-            <table className="min-w-[900px] w-full text-sm border">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-sm border table-fixed">
               <thead>
                 <tr className="bg-slate-100">
-                  <th className="border p-2 text-left w-1/4">Naam</th>
-                  <th className="border p-2 text-left w-1/2">Beschrijving</th>
-                  <th className="border p-2 text-left w-1/5">Categorie</th>
-                  <th className="border p-2 text-center w-[120px]">Actie</th>
+                  <th className="border p-2 text-left w-[20%]">Naam</th>
+                  <th className="border p-2 text-left w-[50%]">Beschrijving</th>
+                  <th className="border p-2 text-left w-[20%]">Categorie</th>
+                  <th className="border p-2 text-center w-[10%]">Actie</th>
                 </tr>
               </thead>
               <tbody>
