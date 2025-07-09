@@ -15,7 +15,7 @@ async function SkillsLijst({ email }) {
   if (!gebruiker) return notFound();
 
   const toegewezen = await db.query(
-    `SELECT s.naam, sc.naam AS categorie, st.deadline_dagen, st.toegewezen_op, s.id
+    `SELECT s.id, s.naam, sc.naam AS categorie, st.deadline_dagen, st.toegewezen_op
      FROM skill_toegewezen st
      JOIN skills s ON st.skill_id = s.id
      LEFT JOIN skill_categorieen sc ON s.categorie_id = sc.id
@@ -27,6 +27,7 @@ async function SkillsLijst({ email }) {
     `SELECT skill_id FROM skill_status WHERE medewerker_id = (SELECT id FROM medewerkers WHERE email = $1)`,
     [email]
   );
+
   const geleerdeIDs = new Set(status.rows.map((r) => r.skill_id));
 
   return (
