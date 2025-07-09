@@ -1,68 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+type MedewerkerRow = { id: number; email: string; naam: string; functie: string };
+type InstructieRow = { id: string; functies: string | null };
+type GelezenRow = { email: string; instructie_id: string };
+type ToetsRow = { email: string; score: number };
+type ToegewezenRow = { medewerker_id: number; skill_id: string };
+type StatusRow = { medewerker_id: number; skill_id: string };
+
 export async function GET(req: NextRequest) {
   try {
-    // 1) Medewerkers ophalen (incl. id voor skills-joins)
-    const { rows: medewerkers } = await db.query<{
-      id: number;
-      email: string;
-      naam: string;
-      functie: string;
-    }>(`
+    // 1) Medewerkers
+    const medResp = await db.query(`
       SELECT id, email, naam, functie
       FROM medewerkers
     `);
+    const medewerkers = medResp.rows as MedewerkerRow[];
 
-    // 2) Actieve instructies ophalen (met JSON-array in 'functies')
-    const { rows: alleInstructies } = await db.query<{
-      id: string;
-      functies: string | null;
-    }>(`
+    // 2) Actieve instructies
+    const instrResp = await db.query(`
       SELECT id, functies
       FROM instructies
       WHERE status = 'actief'
     `);
+    const alleInstructies = instrResp.rows as InstructieRow[];
 
-    // 3) Gelezen instructies per e-mail
-    const { rows: gelezen } = await db.query<{
-      email: string;
-      instructie_id: string;
-    }>(`
+    // 3) Gelezen instructies
+    const gelezenResp = await db.query(`
       SELECT email, instructie_id
       FROM gelezen_instructies
     `);
+    const gelezen = gelezenResp.rows as GelezenRow[];
 
-    // 4) Toetsresultaten per e-mail
-    const { rows: toetsen } = await db.query<{
-      email: string;
-      score: number;
-    }>(`
+    // 4) Toetsresultaten
+    const toetsResp = await db.query(`
       SELECT email, score
       FROM toetsresultaten
     `);
+    const toetsen = toetsResp.rows as ToetsRow[];
 
-    // 5) Toegewezen skills (actieve skills alleen)
-    const { rows: toegewezen } = await db.query<{
-      medewerker_id: number;
-      skill_id: string;
-    }>(`
+    // 5) Toegewezen actieve skills
+    const toegewezenResp = await db.query(`
       SELECT st.medewerker_id, st.skill_id
       FROM skill_toegewezen st
       JOIN skills s ON st.skill_id = s.id
       WHERE s.actief = true
     `);
+    const toegewezen = toegewezenResp.rows as ToegewezenRow[];
 
-    // 6) Voltooide skills (alle status-entries)
-    const { rows: statusRows } = await db.query<{
-      medewerker_id: number;
-      skill_id: string;
-    }>(`
+    // 6) Voltooide skills
+    const statusResp = await db.query(`
       SELECT medewerker_id, skill_id
       FROM skill_status
     `);
+    const statusRows = statusResp.rows as StatusRow[];
 
-    // 7) Bouw instructiestatus per medewerker
+    // 7) Instructiestatus per medewerker
     const instructiestatus = medewerkers.map((m) => {
       const relevant = alleInstructies.filter((i) => {
         if (!i.functies) return true;
@@ -83,19 +76,12 @@ export async function GET(req: NextRequest) {
         (t) => t.email === m.email && t.score >= 80
       ).length;
 
-      return {
-        email: m.email,
-        totaal,
-        gelezen: gelezenAantal,
-        geslaagd: geslaagdAantal,
-      };
+      return { email: m.email, totaal, gelezen: gelezenAantal, geslaagd: geslaagdAantal };
     });
 
-    // 8) Bouw skillsstatus per medewerker
+    // 8) Skillsstatus per medewerker
     const skillsstatus = medewerkers.map((m) => {
-      const mijnToegewezen = toegewezen.filter(
-        (t) => t.medewerker_id === m.id
-      );
+      const mijnToegewezen = toegewezen.filter((t) => t.medewerker_id === m.id);
       const totaalSkills = mijnToegewezen.length;
       const geleerd = statusRows.filter(
         (s) =>
@@ -103,11 +89,7 @@ export async function GET(req: NextRequest) {
           mijnToegewezen.some((t) => t.skill_id === s.skill_id)
       ).length;
 
-      return {
-        email: m.email,
-        total: totaalSkills,
-        learned: geleerd,
-      };
+      return { email: m.email, total: totaalSkills, learned: geleerd };
     });
 
     return NextResponse.json({ medewerkers, instructiestatus, skillsstatus });
