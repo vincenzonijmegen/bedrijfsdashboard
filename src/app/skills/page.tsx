@@ -61,6 +61,11 @@ export default function MijnSkillsPagina() {
 
     if (res.ok) {
       alert("✓ Opgeslagen als geleerd");
+      setSkills((prev) =>
+        prev.map((s) =>
+          s.skill_id === skill_id ? { ...s, status: "geleerd" } : s
+        )
+      );
     }
 (prev) =>
       prev.map((s) =>
