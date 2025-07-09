@@ -40,6 +40,14 @@ export default function OverzichtProgressiePagina() {
   if (error) return <div className="p-4">Fout bij laden rapportage</div>;
   if (!data) return <div className="p-4">Laden...</div>;
 
+  if (
+    !Array.isArray(data.medewerkers) ||
+    !Array.isArray(data.instructiestatus) ||
+    !Array.isArray(data.skillsstatus)
+  ) {
+    return <div className="p-4">Onvolledige data ontvangen</div>;
+  }
+
   const instrMap = Object.fromEntries(
     data.instructiestatus.map((r) => [r.email, r])
   );
