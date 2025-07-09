@@ -81,23 +81,14 @@ export default function OverzichtProgressiePagina() {
               const s = skillsMap[m.email] || { learned: 0, total: 0 };
               return (
                 <tr key={m.email} className="hover:bg-gray-50">
-                <td className="border p-2">
-                <div className="flex flex-col gap-1">
+                  <td className="border p-2">
                     <Link
-                    href={`/admin/medewerker/${encodeURIComponent(m.email)}`}
-                    className="text-blue-600 underline"
+                      href={`/admin/medewerker/${encodeURIComponent(m.email)}/dashboard`}
+                      className="text-blue-600 underline"
                     >
-                    {m.naam}
+                      {m.naam}
                     </Link>
-                    <Link
-                    href={`/admin/medewerker/${encodeURIComponent(m.email)}/dashboard`}
-                    className="text-sm text-blue-500 underline"
-                    >
-                    🔍 Bekijk dashboard
-                    </Link>
-                </div>
-                </td>
-
+                  </td>
                   <td className="border p-2">{m.functie}</td>
                   <td className="border p-2 text-center">
                     {i.gelezen} / {i.totaal}
