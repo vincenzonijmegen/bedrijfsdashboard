@@ -24,6 +24,8 @@ export async function GET(req: NextRequest) {
       WHERE status = 'actief'
     `);
     const alleInstructies = instrResp.rows as InstructieRow[];
+    alleInstructies.forEach((i) => console.log(i.functies));
+
 
     // 3) Gelezen instructies
     const gelezenResp = await db.query(`
