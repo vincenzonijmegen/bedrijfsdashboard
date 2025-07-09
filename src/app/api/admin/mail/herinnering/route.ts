@@ -18,14 +18,8 @@ export async function POST(req: NextRequest) {
         const gepersonaliseerd = tekst
           .replace(/\{email\}/gi, to)
           .replace(/\{voornaam\}/gi, voornaam.charAt(0).toUpperCase() + voornaam.slice(1));
-        return resend.emails.send({
-          from: "noreply@ijssalonvincenzo.nl",
-          to,
-          cc,
-          subject: onderwerp,
-          text: gepersonaliseerd,
-        })
-      )
+        return resend.emails.send($1);
+      })
     );
 
     return NextResponse.json({ success: true });
