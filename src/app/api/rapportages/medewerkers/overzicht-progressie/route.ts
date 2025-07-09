@@ -1,27 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-type InstructieRow = { id: string; functies: string | null };
+type InstructieDebugRow = {
+  id: string;
+  status: string | null;
+  functies: string | null;
+};
 
 export async function GET(req: NextRequest) {
   try {
-    // Alleen deze debugversie, dus medewerkers en skills zijn tijdelijk weggelaten
-
-    // Actieve instructies ophalen
+    // Haal ALLE instructies op — ook concept of inactief
     const instrResp = await db.query(`
-      SELECT id, functies
+      SELECT id, status, functies
       FROM instructies
-      WHERE status = 'actief'
+      ORDER BY created_at DESC
+      LIMIT 10
     `);
-    const alleInstructies = instrResp.rows as InstructieRow[];
 
-    // Debug: toon voorbeeldwaarden van 'functies'-veld
+    const instructies = instrResp.rows as InstructieDebugRow[];
+
     return NextResponse.json({
-      voorbeeldFuncties: alleInstructies.map((i) => i.functies).slice(0, 10),
+      instructies: instructies.map((i) => ({
+        id: i.id,
+        status: i.status,
+        functies: i.functies,
+      })),
     });
-
   } catch (err: any) {
-    console.error("Fout bij ophalen functies-debug:", err);
+    console.error("Fout bij instructie-debug:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
