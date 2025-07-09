@@ -1,7 +1,4 @@
-// src/app/admin/medewerker/[email]/page.tsx
-// @ts-nocheck
-
-export default function Page({ params }: { params: { email: string } }) {
+export default function Page({ params }) {
   return (
     <main className="p-6">
       <h1 className="text-xl">Medewerker {params.email}</h1>
