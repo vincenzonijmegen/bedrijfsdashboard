@@ -68,7 +68,7 @@ export default function SkillBeheer() {
   });
 
   return (
-    <div className="w-full px-6 py-6 space-y-6">
+    <div className="w-screen max-w-none px-12 py-6 space-y-6">
       <h1 className="text-2xl font-bold">🧩 Skillbeheer</h1>
 
       <div className="bg-slate-50 p-4 rounded border">
@@ -99,8 +99,8 @@ export default function SkillBeheer() {
       {Object.entries(gegroepeerd).map(([cat, lijst]) => (
         <div key={cat} className="space-y-2">
           <h3 className="text-lg font-semibold mt-6">📁 {cat}</h3>
-          <div className="overflow-x-auto w-full">
-            <table className="w-full text-sm border table-fixed">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm border">
               <thead>
                 <tr className="bg-slate-100">
                   <th className="border p-2 text-left w-[20%]">Naam</th>
