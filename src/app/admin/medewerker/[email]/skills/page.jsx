@@ -3,85 +3,82 @@ import { notFound } from "next/navigation";
 
 export default function AdminSkillsPage({ params }) {
   const email = decodeURIComponent(params.email);
-  return <SkillsLijst email={email} />;
+  return <ReadonlySkills email={email} />;
 }
 
-async function SkillsLijst({ email }) {
-  const gebruikerResult = await db.query(
-    `SELECT naam, functie FROM medewerkers WHERE email = $1`,
+async function ReadonlySkills({ email }) {
+  const { rows: medewerkerRows } = await db.query(
+    `SELECT id, naam, functie FROM medewerkers WHERE email = $1`,
     [email]
   );
-  const gebruiker = gebruikerResult.rows?.[0];
-  if (!gebruiker) return notFound();
+  const medewerker = medewerkerRows?.[0];
+  if (!medewerker) return notFound();
 
-  const toegewezen = await db.query(
-    `SELECT s.id, s.naam, sc.naam AS categorie, st.deadline_dagen, st.toegewezen_op
-     FROM skill_toegewezen st
-     JOIN skills s ON st.skill_id = s.id
-     LEFT JOIN skill_categorieen sc ON s.categorie_id = sc.id
-     WHERE st.medewerker_id = (SELECT id FROM medewerkers WHERE email = $1)`,
-    [email]
-  );
-
-  const status = await db.query(
-    `SELECT skill_id FROM skill_status WHERE medewerker_id = (SELECT id FROM medewerkers WHERE email = $1)`,
-    [email]
-  );
-
-  const geleerdeIDs = new Set(status.rows.map((r) => r.skill_id));
+  const { rows } = await db.query(`
+    SELECT
+      s.id AS skill_id,
+      s.naam AS skill_naam,
+      sc.naam AS categorie,
+      ss.status,
+      s.beschrijving AS omschrijving,
+      CURRENT_DATE + (st.deadline_dagen || ' days')::interval AS deadline
+    FROM skill_toegewezen st
+    JOIN skills s ON st.skill_id = s.id
+    LEFT JOIN skill_status ss ON ss.skill_id = s.id AND ss.medewerker_id = st.medewerker_id
+    LEFT JOIN skill_categorieen sc ON sc.id = s.categorie_id
+    WHERE st.medewerker_id = $1
+    ORDER BY sc.naam, s.naam
+  `, [medewerker.id]);
 
   return (
-    <main className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">
-        🧠 Skills van {gebruiker.naam} ({gebruiker.functie})
+    <main className="max-w-5xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6">
+        🧠 Skill-overzicht van {medewerker.naam} ({medewerker.functie})
       </h1>
 
-      {toegewezen.rows.length === 0 ? (
-        <p className="text-gray-600">Geen skills toegewezen.</p>
-      ) : (
-        <ul className="space-y-3">
-          {toegewezen.rows.map((s, i) => {
-            const deadline = s.deadline_dagen
-              ? new Date(
-                  new Date(s.toegewezen_op).getTime() + s.deadline_dagen * 86400000
-                )
-              : null;
-            const verlopen = deadline && deadline.getTime() < Date.now();
-            const geleerd = geleerdeIDs.has(s.id);
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {rows.length === 0 ? (
+          <p className="text-gray-600 col-span-2">Geen skills gevonden.</p>
+        ) : (
+          rows.map((s) => {
+            const status = s.status === "geleerd" ? "geleerd" : "niet_geleerd";
+            const statusKleur =
+              status === "geleerd"
+                ? "text-green-700 font-semibold"
+                : "text-gray-500 italic";
+            const statusLabel =
+              status === "geleerd" ? "✅ Geleerd" : "🕐 Nog niet geleerd";
+
+            const kleur =
+              status === "geleerd"
+                ? "bg-gray-200"
+                : s.deadline
+                ? new Date(s.deadline) < new Date()
+                  ? "bg-red-200"
+                  : "bg-yellow-200"
+                : "bg-green-200";
 
             return (
-              <li
-                key={i}
-                className={`p-3 rounded border ${
-                  geleerd
-                    ? "bg-green-50"
-                    : verlopen
-                    ? "bg-red-50"
-                    : "bg-white"
-                }`}
+              <div
+                key={s.skill_id}
+                className={`rounded-lg shadow px-4 py-3 border ${kleur}`}
+                title={s.omschrijving || ""}
               >
-                <div className="flex justify-between">
-                  <div>
-                    <p className="font-semibold">{s.naam}</p>
-                    <p className="text-sm text-gray-500">{s.categorie}</p>
-                  </div>
-                  <div className="text-sm text-right">
-                    {geleerd ? (
-                      <p className="text-green-600">✓ Geleerd</p>
-                    ) : deadline ? (
-                      <p className={verlopen ? "text-red-600" : "text-orange-600"}>
-                        Deadline: {deadline.toLocaleDateString("nl-NL")}
-                      </p>
-                    ) : (
-                      <p className="text-gray-400">Nog niet geleerd</p>
-                    )}
-                  </div>
+                <div className="font-semibold text-slate-800 mb-1">{s.skill_naam}</div>
+                <div className="text-sm text-slate-700 mb-1 italic">
+                  Categorie: {s.categorie || "–"}
                 </div>
-              </li>
+                {s.deadline && (
+                  <div className="text-sm text-orange-700 mb-1">
+                    🗓 Deadline: {new Date(s.deadline).toLocaleDateString("nl-NL")}
+                  </div>
+                )}
+                <div className={`text-sm ${statusKleur}`}>{statusLabel}</div>
+              </div>
             );
-          })}
-        </ul>
-      )}
+          })
+        )}
+      </div>
     </main>
   );
 }
