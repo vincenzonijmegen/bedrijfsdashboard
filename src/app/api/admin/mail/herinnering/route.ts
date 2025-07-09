@@ -1,7 +1,8 @@
 // src/app/api/admin/mail/herinnering/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { resend } from "@/lib/resend"; // Zorg dat deze lib goed geconfigureerd is
+import { Resend } from "resend";
+const resend = new Resend(process.env.RESEND_API_KEY || ""); // Zorg dat deze lib goed geconfigureerd is
 
 export async function POST(req: NextRequest) {
   const { emails, onderwerp, tekst, cc } = await req.json();
