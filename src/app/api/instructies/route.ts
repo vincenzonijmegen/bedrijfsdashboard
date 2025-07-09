@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
 await db.query(
   `INSERT INTO instructies (titel, inhoud, slug, status, created_at, nummer, functies)
-   VALUES ($1, $2, $3, 'concept', $4, $5, $6)`,
+   VALUES ($1, $2, $3, 'actief', $4, $5, $6)`,
   [titel, inhoud, slug, created_at, nummer, JSON.stringify(functiesGeparsed)]
     );
 
