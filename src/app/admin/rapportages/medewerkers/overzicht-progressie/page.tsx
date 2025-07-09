@@ -54,7 +54,7 @@ export default function OverzichtProgressiePagina() {
         emails: selectedEmails,
         cc: ["info@ijssalonvincenzo.nl"],
         onderwerp: "Herinnering werkinstructies",
-        tekst: `Beste collega,\n\nJe hebt nog geen werkinstructies gelezen. Wil je dit z.s.m. doen?\n\nGa naar: https://werkinstructies-app.vercel.app\n\nMet vriendelijke groet,\nTeam IJssalon Vincenzo`,
+        tekst: `Beste {voornaam},\n\nJe hebt nog geen werkinstructies gelezen. Wil je dit z.s.m. doen?\n\nGa naar: https://werkinstructies-app.vercel.app\n\nMet vriendelijke groet,\nTeam IJssalon Vincenzo`,
       }),
     });
     alert(`Herinneringsmail verzonden naar ${selectedEmails.length} medewerker(s).
