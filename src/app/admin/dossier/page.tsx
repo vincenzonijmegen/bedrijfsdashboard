@@ -4,7 +4,6 @@
 
 import { useEffect, useState } from "react";
 import useSWR from "swr";
-import { Textarea } from "@/components/ui/textarea";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -45,11 +44,12 @@ export default function DossierOverzicht() {
         className="border px-2 py-1 w-full"
       />
 
-      <Textarea
+      <textarea
         placeholder="Nieuwe opmerking"
         value={tekst}
         onChange={(e) => setTekst(e.target.value)}
         rows={3}
+        className="w-full border px-2 py-1"
       />
 
       <button
