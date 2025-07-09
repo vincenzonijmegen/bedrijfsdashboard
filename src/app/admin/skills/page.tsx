@@ -33,8 +33,7 @@ function BeschrijvingPopup({ beschrijving, onSave }: { beschrijving: string; onS
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded p-6 w-full max-w-2xl space-y-4">
             <h2 className="text-lg font-semibold">Beschrijving bewerken</h2>
-            <textarea
-              className="w-full border rounded p-2 min-h-[200px] resize-y"
+            <textarea className="w-full border rounded p-4 min-h-[300px] text-base resize-y"
               value={tekst}
               onChange={(e) => setTekst(e.target.value)}
               autoFocus
@@ -167,6 +166,9 @@ export default function SkillBeheer() {
                       />
                     </td>
                     <td className="border p-2">
+  <div className="text-sm text-gray-800 whitespace-pre-line mb-1">
+    {s.beschrijving || <em className="text-gray-400">(geen beschrijving)</em>}
+  </div>
   <BeschrijvingPopup
     beschrijving={s.beschrijving || ""}
     onSave={(inhoud) => update(s.id, "beschrijving", inhoud)}
