@@ -24,8 +24,10 @@ export async function GET(req: NextRequest) {
       WHERE status = 'actief'
     `);
     const alleInstructies = instrResp.rows as InstructieRow[];
-    alleInstructies.forEach((i) => console.log(i.functies));
 
+    // DEBUG
+    console.log("Functies in actieve instructies:");
+    alleInstructies.forEach((i) => console.log(i.functies));
 
     // 3) Gelezen instructies
     const gelezenResp = await db.query(`
@@ -60,14 +62,14 @@ export async function GET(req: NextRequest) {
     // 7) Instructiestatus per medewerker
     const instructiestatus = medewerkers.map((m) => {
       const relevant = alleInstructies.filter((i) => {
-  if (!i.functies) return true;
-  try {
-    const f = JSON.parse(i.functies);
-    return Array.isArray(f) && f.includes(m.functie); // ← dit is goed bij exact
-  } catch {
-    return false;
-  }
-});
+        if (!i.functies) return true;
+        try {
+          const f = JSON.parse(i.functies);
+          return Array.isArray(f) && f.includes(m.functie);
+        } catch {
+          return false;
+        }
+      });
 
       const totaal = relevant.length;
       const gelezenAantal = gelezen.filter(
@@ -79,7 +81,12 @@ export async function GET(req: NextRequest) {
         (t) => t.email === m.email && t.score >= 80
       ).length;
 
-      return { email: m.email, totaal, gelezen: gelezenAantal, geslaagd: geslaagdAantal };
+      return {
+        email: m.email,
+        totaal,
+        gelezen: gelezenAantal,
+        geslaagd: geslaagdAantal,
+      };
     });
 
     // 8) Skillsstatus per medewerker
@@ -92,7 +99,11 @@ export async function GET(req: NextRequest) {
           mijnToegewezen.some((t) => t.skill_id === s.skill_id)
       ).length;
 
-      return { email: m.email, total: totaalSkills, learned: geleerd };
+      return {
+        email: m.email,
+        total: totaalSkills,
+        learned: geleerd,
+      };
     });
 
     return NextResponse.json({ medewerkers, instructiestatus, skillsstatus });
