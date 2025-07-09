@@ -68,7 +68,7 @@ export default function SkillBeheer() {
   });
 
   return (
-    <div className="w-full px-12 py-6 space-y-6">
+    <div className="w-full px-12 py-6 space-y-6 overflow-x-hidden">
       <h1 className="text-2xl font-bold">🧩 Skillbeheer</h1>
 
       <div className="bg-slate-50 p-4 rounded border w-full">
@@ -120,11 +120,15 @@ export default function SkillBeheer() {
                       />
                     </td>
                     <td className="border p-2">
-                      <textarea
-                        value={s.beschrijving || ""}
-                        onChange={(e) => update(s.id, "beschrijving", e.target.value)}
-                        className="w-full border rounded px-3 py-2 min-h-[120px] resize-y"
-                      />
+                      <button
+  onClick={() => {
+    const inhoud = prompt("Voer beschrijving in:", s.beschrijving || "");
+    if (inhoud !== null) update(s.id, "beschrijving", inhoud);
+  }}
+  className="text-sm text-blue-600 underline"
+>
+  ✏️ Bewerken
+</button>
                     </td>
                     <td className="border p-2">
                       <select
