@@ -68,10 +68,10 @@ export default function SkillBeheer() {
   });
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-6 py-6 space-y-6">
+    <div className="w-screen px-12 py-6 space-y-6">
       <h1 className="text-2xl font-bold">🧩 Skillbeheer</h1>
 
-      <div className="bg-slate-50 p-4 rounded border">
+      <div className="bg-slate-50 p-4 rounded border w-full">
         <h2 className="font-semibold mb-2">➕ Nieuwe skill toevoegen</h2>
         <div className="flex flex-wrap gap-4 mb-2">
           <input
