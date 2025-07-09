@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
     const statusResp = await db.query(`
       SELECT medewerker_id, skill_id
       FROM skill_status
+      WHERE status = 'geleerd'
     `);
     const statusRows = statusResp.rows as StatusRow[];
 
