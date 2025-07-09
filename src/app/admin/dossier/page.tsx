@@ -15,6 +15,7 @@ interface Medewerker {
 export default function DossierOverzicht() {
   const [email, setEmail] = useState("");
   const [tekst, setTekst] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [success, setSuccess] = useState(false);
 
   const { data: opmerkingen, mutate } = useSWR(
@@ -33,6 +34,23 @@ export default function DossierOverzicht() {
     setTekst("");
     setSuccess(true);
     mutate();
+  };
+
+  const uploadPdf = async () => {
+    if (!file || !email) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("email", email);
+
+    const res = await fetch("/api/dossier/upload", {
+      method: "POST",
+      body: formData
+    });
+
+    if (res.ok) {
+      setSuccess(true);
+      setFile(null);
+    }
   };
 
   useEffect(() => {
@@ -74,7 +92,23 @@ export default function DossierOverzicht() {
         Voeg opmerking toe (met datum)
       </button>
 
-      {success && <div className="text-green-600">Opmerking toegevoegd!</div>}
+      <hr className="my-4" />
+
+      <h2 className="font-semibold">📄 Sollicitatiebestand</h2>
+      <input
+        type="file"
+        accept="application/pdf"
+        onChange={(e) => setFile(e.target.files?.[0] || null)}
+        className="block border px-2 py-1"
+      />
+      <button
+        onClick={uploadPdf}
+        className="mt-2 bg-green-600 text-white px-4 py-2 rounded"
+      >
+        Upload PDF
+      </button>
+
+      {success && <div className="text-green-600">Actie voltooid!</div>}
 
       <hr />
 
