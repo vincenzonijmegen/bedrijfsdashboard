@@ -2,7 +2,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
-const resend = new Resend(process.env.RESEND_API_KEY || ""); // Zorg dat deze lib goed geconfigureerd is
+import { db } from "@/lib/db";
+
+const resend = new Resend(process.env.RESEND_API_KEY || "");
 
 export async function POST(req: NextRequest) {
   const { emails, onderwerp, tekst, cc } = await req.json();
@@ -12,13 +14,24 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const naamResult = await db.query(
+      `SELECT email, naam FROM medewerkers WHERE email = ANY($1)`,
+      [emails]
+    );
+
+    const naamMap = Object.fromEntries(
+      naamResult.rows.map((r: { email: string; naam: string }) => [r.email, r.naam])
+    );
+
     await Promise.all(
       emails.map((to) => {
-        const emailZonderDomein = to.split("@")[0];
-        const voornaam = emailZonderDomein.replace(/[^a-zA-Z]/g, "");
+        const volledigeNaam = naamMap[to] || "medewerker";
+        const voornaam = volledigeNaam.split(" ")[0];
+
         const gepersonaliseerd = tekst
           .replace(/\{email\}/gi, to)
           .replace(/\{voornaam\}/gi, voornaam.charAt(0).toUpperCase() + voornaam.slice(1));
+
         return resend.emails.send({
           from: "Team Vincenzo <noreply@ijssalonvincenzo.nl>",
           to,
