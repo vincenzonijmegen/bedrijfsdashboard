@@ -79,20 +79,24 @@ export async function GET(req: NextRequest) {
     });
 
     const skillsstatus = medewerkers.map((m) => {
-      const mijnToegewezen = toegewezen.filter((t) => t.medewerker_id === m.id);
-      const totaalSkills = mijnToegewezen.length;
-      const geleerd = statusRows.filter(
-        (s) =>
-          s.medewerker_id === m.id &&
-          mijnToegewezen.some((t) => t.skill_id === s.skill_id)
-      ).length;
+  const mijnToegewezen = toegewezen.filter((t) => t.medewerker_id === m.id);
+  const totaalSkills = mijnToegewezen.length;
 
-      return {
-        email: m.email,
-        total: totaalSkills,
-        learned: geleerd,
-      };
-    });
+  const toegewezenSkillIDs = new Set(
+    mijnToegewezen.map((s) => s.skill_id)
+  );
+
+  const geleerd = statusRows.filter(
+    (s) =>
+      s.medewerker_id === m.id && toegewezenSkillIDs.has(s.skill_id)
+  ).length;
+
+  return {
+    email: m.email,
+    total: totaalSkills,
+    learned: geleerd,
+  };
+});
 
     return NextResponse.json({ medewerkers, instructiestatus, skillsstatus });
   } catch (err: any) {
