@@ -90,13 +90,25 @@ export default function OverzichtProgressiePagina() {
                     </Link>
                   </td>
                   <td className="border p-2">{m.functie}</td>
-                  <td className="border p-2 text-center">
-                    {i.gelezen} / {i.totaal}
-                  </td>
+                  <td className={`border p-2 text-center ${
+  i.totaal === 0
+    ? 'text-gray-400'
+    : i.gelezen === 0
+    ? 'text-red-600'
+    : i.gelezen < i.totaal
+    ? 'text-yellow-600'
+    : 'text-green-700'
+}`}>{i.gelezen} / {i.totaal}</td>
                   <td className="border p-2 text-center">{i.geslaagd}</td>
-                  <td className="border p-2 text-center">
-                    {s.learned} / {s.total}
-                  </td>
+                  <td className={`border p-2 text-center ${
+  s.total === 0
+    ? 'text-gray-400'
+    : s.learned === 0
+    ? 'text-red-600'
+    : s.learned < s.total
+    ? 'text-yellow-600'
+    : 'text-green-700'
+}`}>{s.learned} / {s.total}</td>
                 </tr>
               );
             })}
