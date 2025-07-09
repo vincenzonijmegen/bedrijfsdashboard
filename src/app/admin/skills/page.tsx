@@ -16,6 +16,53 @@ interface Categorie {
   naam: string;
 }
 
+function BeschrijvingPopup({ beschrijving, onSave }: { beschrijving: string; onSave: (inhoud: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [tekst, setTekst] = useState(beschrijving);
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="text-sm text-blue-600 underline"
+      >
+        ✏️ Bewerken
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded p-6 w-full max-w-2xl space-y-4">
+            <h2 className="text-lg font-semibold">Beschrijving bewerken</h2>
+            <textarea
+              className="w-full border rounded p-2 min-h-[200px] resize-y"
+              value={tekst}
+              onChange={(e) => setTekst(e.target.value)}
+              autoFocus
+            />
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={() => setOpen(false)}
+                className="px-4 py-1 rounded border text-gray-600 hover:bg-gray-100"
+              >
+                Annuleren
+              </button>
+              <button
+                onClick={() => {
+                  onSave(tekst);
+                  setOpen(false);
+                }}
+                className="px-4 py-1 rounded bg-blue-600 text-white"
+              >
+                Opslaan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function SkillBeheer() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [categorieen, setCategorieen] = useState<Categorie[]>([]);
@@ -120,16 +167,11 @@ export default function SkillBeheer() {
                       />
                     </td>
                     <td className="border p-2">
-                      <button
-  onClick={() => {
-    const inhoud = prompt("Voer beschrijving in:", s.beschrijving || "");
-    if (inhoud !== null) update(s.id, "beschrijving", inhoud);
-  }}
-  className="text-sm text-blue-600 underline"
->
-  ✏️ Bewerken
-</button>
-                    </td>
+  <BeschrijvingPopup
+    beschrijving={s.beschrijving || ""}
+    onSave={(inhoud) => update(s.id, "beschrijving", inhoud)}
+  />
+</td>
                     <td className="border p-2">
                       <select
                         value={s.categorie_id}
