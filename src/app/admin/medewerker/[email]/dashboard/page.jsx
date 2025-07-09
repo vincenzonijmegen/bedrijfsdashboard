@@ -2,30 +2,17 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import DashboardWrapper from "@/components/medewerker/DashboardWrapper";
 
-// async logica in loader-functie, NIET in de default export
-async function getMedewerker(email: string) {
+export default function AdminMedewerkerDashboard({ params }) {
+  const email = decodeURIComponent(params.email);
+  return <DashboardShell email={email} />;
+}
+
+async function DashboardShell({ email }) {
   const { rows } = await db.query(
     `SELECT id, naam, functie FROM medewerkers WHERE email = $1`,
     [email]
   );
-  return rows?.[0];
-}
-
-// ⛔️ GEEN async hier
-export default function AdminMedewerkerDashboard({
-  params,
-}: {
-  params: { email: string };
-}) {
-  const email = decodeURIComponent(params.email);
-
-  // Return placeholder + loader
-  return <DashboardShell email={email} />;
-}
-
-// 👇 Async loader losgekoppeld van default export
-async function DashboardShell({ email }: { email: string }) {
-  const medewerker = await getMedewerker(email);
+  const medewerker = rows?.[0];
   if (!medewerker) return notFound();
 
   return (
