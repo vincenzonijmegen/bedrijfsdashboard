@@ -46,13 +46,19 @@ export default function OverzichtProgressiePagina() {
     );
   };
 
-  const handleMailClick = () => {
-    const bcc = selectedEmails.join(",");
-    const subject = encodeURIComponent("Herinnering werkinstructies");
-    const body = encodeURIComponent(
-      `Beste collega,\n\nJe hebt nog geen werkinstructies gelezen. Wil je dit z.s.m. doen?\n\nGa naar: https://werkinstructies-app.vercel.app\n\nMet vriendelijke groet,\nTeam IJssalon Vincenzo`
-    );
-    window.location.href = `mailto:?bcc=${bcc}&subject=${subject}&body=${body}`;
+  const handleMailClick = async () => {
+    await fetch("/api/admin/mail/herinnering", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        emails: selectedEmails,
+        cc: ["info@ijssalonvincenzo.nl"],
+        onderwerp: "Herinnering werkinstructies",
+        tekst: `Beste collega,\n\nJe hebt nog geen werkinstructies gelezen. Wil je dit z.s.m. doen?\n\nGa naar: https://werkinstructies-app.vercel.app\n\nMet vriendelijke groet,\nTeam IJssalon Vincenzo`,
+      }),
+    });
+    alert(`Herinneringsmail verzonden naar ${selectedEmails.length} medewerker(s).
+CC: info@ijssalonvincenzo.nl`);
   };
 
   if (error) return <div className="p-4">Fout bij laden rapportage</div>;
