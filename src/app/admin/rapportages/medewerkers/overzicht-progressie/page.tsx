@@ -4,6 +4,7 @@ import useSWR from "swr";
 import Link from "next/link";
 
 interface Medewerker {
+  id: number;
   email: string;
   naam: string;
   functie: string;

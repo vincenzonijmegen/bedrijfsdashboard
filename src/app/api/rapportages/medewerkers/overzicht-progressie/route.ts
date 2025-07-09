@@ -3,39 +3,68 @@ import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
-    // Haal alle medewerkers op met hun e-mail, naam, functie
-    const { rows: medewerkers } = await db.query(
-      `SELECT email, naam, functie FROM medewerkers`
-    );
+    // 1) Medewerkers ophalen (incl. id voor skills-joins)
+    const { rows: medewerkers } = await db.query<{
+      id: number;
+      email: string;
+      naam: string;
+      functie: string;
+    }>(`
+      SELECT id, email, naam, functie
+      FROM medewerkers
+    `);
 
-    // Haal instructies met functiefilter op
-    const { rows: alleInstructies } = await db.query(
-      `SELECT id, functies FROM instructies WHERE status = 'actief'`
-    );
+    // 2) Actieve instructies ophalen (met JSON-array in 'functies')
+    const { rows: alleInstructies } = await db.query<{
+      id: string;
+      functies: string | null;
+    }>(`
+      SELECT id, functies
+      FROM instructies
+      WHERE status = 'actief'
+    `);
 
-    // Haal gelezen instructies
-    const { rows: gelezen } = await db.query(
-      `SELECT email, instructie_id FROM gelezen_instructies`
-    );
+    // 3) Gelezen instructies per e-mail
+    const { rows: gelezen } = await db.query<{
+      email: string;
+      instructie_id: string;
+    }>(`
+      SELECT email, instructie_id
+      FROM gelezen_instructies
+    `);
 
-    // Haal toetsresultaten
-    const { rows: toetsen } = await db.query(
-      `SELECT email, score FROM toetsresultaten`
-    );
+    // 4) Toetsresultaten per e-mail
+    const { rows: toetsen } = await db.query<{
+      email: string;
+      score: number;
+    }>(`
+      SELECT email, score
+      FROM toetsresultaten
+    `);
 
-    // Haal alle skills met functiefilter op
-    const { rows: alleSkills } = await db.query(
-      `SELECT id, functies FROM skills WHERE status = 'actief'`
-    );
+    // 5) Toegewezen skills (actieve skills alleen)
+    const { rows: toegewezen } = await db.query<{
+      medewerker_id: number;
+      skill_id: string;
+    }>(`
+      SELECT st.medewerker_id, st.skill_id
+      FROM skill_toegewezen st
+      JOIN skills s ON st.skill_id = s.id
+      WHERE s.actief = true
+    `);
 
-    // Haal behaalde skills
-    const { rows: behaaldeSkills } = await db.query(
-      `SELECT email, skill_id FROM behaalde_skills`
-    );
+    // 6) Voltooide skills (alle status-entries)
+    const { rows: statusRows } = await db.query<{
+      medewerker_id: number;
+      skill_id: string;
+    }>(`
+      SELECT medewerker_id, skill_id
+      FROM skill_status
+    `);
 
-    // Genereer instructiestatus per medewerker
+    // 7) Bouw instructiestatus per medewerker
     const instructiestatus = medewerkers.map((m) => {
-      const relevante = alleInstructies.filter((i) => {
+      const relevant = alleInstructies.filter((i) => {
         if (!i.functies) return true;
         try {
           const f = JSON.parse(i.functies);
@@ -44,12 +73,11 @@ export async function GET(req: NextRequest) {
           return false;
         }
       });
-
-      const totaal = relevante.length;
+      const totaal = relevant.length;
       const gelezenAantal = gelezen.filter(
         (g) =>
           g.email === m.email &&
-          relevante.some((r) => r.id === g.instructie_id)
+          relevant.some((r) => r.id === g.instructie_id)
       ).length;
       const geslaagdAantal = toetsen.filter(
         (t) => t.email === m.email && t.score >= 80
@@ -63,29 +91,22 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Genereer skillsstatus per medewerker
+    // 8) Bouw skillsstatus per medewerker
     const skillsstatus = medewerkers.map((m) => {
-      const relevanteSkills = alleSkills.filter((s) => {
-        if (!s.functies) return true;
-        try {
-          const f = JSON.parse(s.functies);
-          return Array.isArray(f) && f.includes(m.functie);
-        } catch {
-          return false;
-        }
-      });
-
-      const totalSkills = relevanteSkills.length;
-      const learnedCount = behaaldeSkills.filter(
-        (b) =>
-          b.email === m.email &&
-          relevanteSkills.some((r) => r.id === b.skill_id)
+      const mijnToegewezen = toegewezen.filter(
+        (t) => t.medewerker_id === m.id
+      );
+      const totaalSkills = mijnToegewezen.length;
+      const geleerd = statusRows.filter(
+        (s) =>
+          s.medewerker_id === m.id &&
+          mijnToegewezen.some((t) => t.skill_id === s.skill_id)
       ).length;
 
       return {
         email: m.email,
-        total: totalSkills,
-        learned: learnedCount,
+        total: totaalSkills,
+        learned: geleerd,
       };
     });
 
