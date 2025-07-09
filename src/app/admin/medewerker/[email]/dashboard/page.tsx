@@ -9,12 +9,11 @@ export default async function AdminMedewerkerDashboard({
 }) {
   const email = decodeURIComponent(params.email);
 
-  // Haal medewerker op uit de database
-  const { rows } = await db.query(
+  const medewerkerResult = await db.query(
     `SELECT id, naam, functie FROM medewerkers WHERE email = $1`,
     [email]
   );
-  const medewerker = rows[0];
+  const medewerker = medewerkerResult.rows?.[0];
 
   if (!medewerker) return notFound();
 
