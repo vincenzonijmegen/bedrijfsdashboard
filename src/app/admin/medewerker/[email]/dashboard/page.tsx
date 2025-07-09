@@ -2,14 +2,14 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import DashboardWrapper from "@/components/medewerker/DashboardWrapper";
 
-interface PageProps {
+export default async function AdminMedewerkerDashboard({
+  params,
+}: {
   params: { email: string };
-}
-
-export default async function AdminMedewerkerDashboard({ params }: PageProps) {
+}) {
   const email = decodeURIComponent(params.email);
 
-  // Haal medewerkergegevens op uit de database
+  // Haal medewerker op uit de database
   const { rows } = await db.query(
     `SELECT id, naam, functie FROM medewerkers WHERE email = $1`,
     [email]
