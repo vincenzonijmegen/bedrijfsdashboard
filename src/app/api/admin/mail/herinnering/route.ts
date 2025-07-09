@@ -14,7 +14,8 @@ export async function POST(req: NextRequest) {
   try {
     await Promise.all(
       emails.map((to) => {
-        const voornaam = to.split("@")[0].split(".")[0].split("_")[0].split("-")[0];
+        const emailZonderDomein = to.split("@")[0];
+        const voornaam = emailZonderDomein.replace(/[^a-zA-Z]/g, "");
         const gepersonaliseerd = tekst
           .replace(/\{email\}/gi, to)
           .replace(/\{voornaam\}/gi, voornaam.charAt(0).toUpperCase() + voornaam.slice(1));
