@@ -33,7 +33,7 @@ async function ReadonlySkills({ email }) {
   return (
     <main className="max-w-5xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">
-        🧠 Skill-overzicht van {medewerker.naam} ({medewerker.functie})
+        🧠 Skills van {medewerker.naam} ({medewerker.functie})
       </h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
