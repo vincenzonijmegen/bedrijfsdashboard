@@ -13,13 +13,17 @@ export async function POST(req: NextRequest) {
 
   try {
     await Promise.all(
-      emails.map((to) =>
-        resend.emails.send({
-          from: "Team Vincenzo <noreply@ijssalonvincenzo.nl>",
+      emails.map((to) => {
+        const voornaam = to.split("@")[0].split(".")[0].split("_")[0].split("-")[0];
+        const gepersonaliseerd = tekst
+          .replace(/\{email\}/gi, to)
+          .replace(/\{voornaam\}/gi, voornaam.charAt(0).toUpperCase() + voornaam.slice(1));
+        return resend.emails.send({
+          from: "noreply@ijssalonvincenzo.nl",
           to,
           cc,
           subject: onderwerp,
-          text: tekst,
+          text: gepersonaliseerd,
         })
       )
     );
