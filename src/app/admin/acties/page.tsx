@@ -27,7 +27,7 @@ export default function ActieLijstPagina() {
     fetcher
   );
   const [nieuweLijstNaam, setNieuweLijstNaam] = useState("");
-  const [nieuweLijstIcoon, setNieuweLijstIcoon] = useState("📝");
+  const [nieuweActieTekst, setNieuweActieTekst] = useState("");
 
   const toggleActie = async (id: number, voltooid: boolean) => {
     await fetch('/api/acties', {
@@ -43,10 +43,21 @@ export default function ActieLijstPagina() {
     await fetch('/api/actielijsten', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ naam: nieuweLijstNaam.trim(), icoon: nieuweLijstIcoon })
+      body: JSON.stringify({ naam: nieuweLijstNaam.trim(), icoon: "📋" })
     });
     setNieuweLijstNaam("");
     mutateLijsten();
+  };
+
+  const nieuweActieToevoegen = async () => {
+    if (!nieuweActieTekst.trim() || !geselecteerdeLijst) return;
+    await fetch('/api/acties', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lijst_id: geselecteerdeLijst.id, tekst: nieuweActieTekst.trim() })
+    });
+    setNieuweActieTekst("");
+    mutate();
   };
 
   useEffect(() => {
@@ -80,12 +91,6 @@ export default function ActieLijstPagina() {
             onChange={(e) => setNieuweLijstNaam(e.target.value)}
             placeholder="Nieuwe lijstnaam"
           />
-          <input
-            className="w-full border rounded px-2 py-1"
-            value={nieuweLijstIcoon}
-            onChange={(e) => setNieuweLijstIcoon(e.target.value)}
-            placeholder="Emoji"
-          />
           <button
             onClick={nieuweLijstToevoegen}
             className="w-full bg-blue-500 text-white py-1 rounded"
@@ -115,6 +120,18 @@ export default function ActieLijstPagina() {
               </div>
             </div>
           ))}
+
+          <div className="flex gap-2 pt-2">
+            <input
+              className="flex-1 border rounded px-2 py-1"
+              placeholder="Nieuwe actie"
+              value={nieuweActieTekst}
+              onChange={(e) => setNieuweActieTekst(e.target.value)}
+            />
+            <button onClick={nieuweActieToevoegen} className="bg-blue-500 text-white px-3 rounded">
+              ➕
+            </button>
+          </div>
         </div>
 
         {acties.some((a) => a.voltooid) && (
