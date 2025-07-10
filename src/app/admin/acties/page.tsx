@@ -185,51 +185,52 @@ export default function ActieLijstPagina() {
               ➕
             </button>
           </div>
-        {actieEdit && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded shadow-lg w-full max-w-2xl">
-              <h3 className="text-lg font-semibold mb-2">Bewerk actie</h3>
-              <input
-                className="w-full border px-4 py-3 text-lg rounded mb-6"
-                value={actieEdit.tekst}
-                onChange={(e) => setActieEdit({ ...actieEdit, tekst: e.target.value })}
-              />
-              <div className="flex justify-between items-center gap-2">
-                <button
-                  onClick={async () => {
-                    if (confirm('Weet je zeker dat je deze actie wilt verwijderen?')) {
-                      await fetch('/api/acties', {
-                        method: 'DELETE',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id: actieEdit.id })
-                      });
-                      setActieEdit(null);
-                      mutate();
-                    }
-                  }}
-                  className="text-red-600 mr-auto"
-                >🗑️ Verwijderen</button>
-                <button
-                  onClick={() => setActieEdit(null)}
-                  className="text-gray-600"
-                >Annuleer</button>
-                <button
-                  onClick={async () => {
-                    await updateActieTekst(actieEdit.id, actieEdit.tekst);
-                    setActieEdit(null);
-                  }}
-                  className="bg-blue-600 text-white px-4 py-1 rounded"
-                >
-                  Opslaan
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
+        
 </div>
 
-        {acties.some((a) => a.voltooid) && (
+      {actieEdit && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-8 rounded shadow-lg w-full max-w-2xl">
+            <h3 className="text-lg font-semibold mb-2">Bewerk actie</h3>
+            <input
+              className="w-full border px-4 py-3 text-lg rounded mb-6"
+              value={actieEdit.tekst}
+              onChange={(e) => setActieEdit({ ...actieEdit, tekst: e.target.value })}
+            />
+            <div className="flex justify-between items-center gap-2">
+              <button
+                onClick={async () => {
+                  if (confirm('Weet je zeker dat je deze actie wilt verwijderen?')) {
+                    await fetch('/api/acties', {
+                      method: 'DELETE',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ id: actieEdit.id })
+                    });
+                    setActieEdit(null);
+                    mutate();
+                  }
+                }}
+                className="text-red-600 mr-auto"
+              >🗑️ Verwijderen</button>
+              <button
+                onClick={() => setActieEdit(null)}
+                className="text-gray-600"
+              >Annuleer</button>
+              <button
+                onClick={async () => {
+                  await updateActieTekst(actieEdit.id, actieEdit.tekst);
+                  setActieEdit(null);
+                }}
+                className="bg-blue-600 text-white px-4 py-1 rounded"
+              >
+                Opslaan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {acties.some((a) => a.voltooid) && (
           <div className="mt-8">
             <h3 className="text-sm font-semibold text-gray-600 mb-2">Afgehandeld</h3>
             <div className="space-y-2">
