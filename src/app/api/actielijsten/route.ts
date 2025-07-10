@@ -2,7 +2,6 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
-// Bestand: src/app/api/acties/route.ts
 export async function GET(req: NextRequest) {
   const lijst_id = req.nextUrl.searchParams.get("lijst_id");
   if (!lijst_id) return NextResponse.json({ error: "lijst_id ontbreekt" }, { status: 400 });
