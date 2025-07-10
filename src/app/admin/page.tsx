@@ -40,7 +40,7 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/medewerkers" label="👤 Medewerkers beheren" color="green" />
         <LinkCard href="/admin/medewerkers/overzicht" label="👤 Gegevens medewerkers" color="green" />
         <LinkCard href="/sollicitatie/pdf" label="📥 Sollicitatiemails" color="green" />
-        <LinkCard href="/admin/functies" label="🏷️ Functies" color="green" />
+        <LinkCard href="/admin/dossier" label="Dossiers" color="green" />
       </Section>
 
       <Section title="📘 Instructies" color="blue">
