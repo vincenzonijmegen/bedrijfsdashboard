@@ -120,7 +120,7 @@ export default function DossierOverzicht() {
 
       {geselecteerde?.sollicitatie_pdf && (
         <a
-          href={`/api/dossier/download?email=${encodeURIComponent(email)}`}
+          href={geselecteerde.sollicitatie_pdf}
           target="_blank"
           rel="noopener noreferrer"
           className="block mt-2 text-blue-600 underline"
