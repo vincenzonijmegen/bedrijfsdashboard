@@ -1,19 +1,20 @@
 // src/app/api/dossier/document/route.ts
 
-import { db } from "@/lib/db";
+// src/app/api/dossier/document/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   const email = req.nextUrl.searchParams.get("email");
-  if (!email) return NextResponse.json({ url: null });
 
-  const result = await db.query(`
-    SELECT url
-    FROM personeelsdocumenten
-    WHERE medewerker_email = $1
-    ORDER BY toegevoegd_op DESC
-    LIMIT 1
-  `, [email]);
+  if (!email) {
+    return NextResponse.json({ error: "Email ontbreekt" }, { status: 400 });
+  }
 
-  return NextResponse.json({ url: result.rows[0]?.url || null });
+  const documenten = await db.query(
+    "SELECT bestand_url FROM personeelsdocumenten WHERE email = $1",
+    [email]
+  );
+
+  return NextResponse.json(documenten.rows);
 }
