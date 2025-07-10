@@ -19,17 +19,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Geen sollicitatiebestand gevonden" }, { status: 404 });
   }
 
- const res = await fetch(url);
-if (!res.ok) {
-  return NextResponse.json({ error: "Bestand niet gevonden in opslag" }, { status: 404 });
-}
-
-const blob = await res.blob();
-
-return new Response(blob, {
-  headers: {
-    "Content-Type": "application/pdf",
-    "Content-Disposition": `inline; filename=sollicitatie.pdf`
+  const res = await fetch(url);
+  if (!res.ok) {
+    return NextResponse.json({ error: "Bestand niet gevonden in opslag" }, { status: 404 });
   }
-});
+
+  const blob = await res.blob();
+
+  return new Response(blob, {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename=sollicitatie.pdf`
+    }
+  });
 }
