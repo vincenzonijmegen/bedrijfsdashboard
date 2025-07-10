@@ -1,4 +1,5 @@
 // src/app/api/dossier/upload/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { db } from "@/lib/db";
@@ -13,17 +14,27 @@ export async function POST(req: NextRequest) {
   }
 
   const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
-  const blob = await put(`sollicitaties/${email}.${extension}`, file, {
-    access: "public",
-    allowOverwrite: true,
-  });
 
-  // Sla op in personeelsdocumenten zonder kolommen type of toegevoegd_op
-  await db.query(
-    `INSERT INTO personeelsdocumenten (email, bestand_url)
-     VALUES ($1, $2)`,
-    [email, blob.url]
-  );
+  try {
+    // Upload bestand naar Vercel Blob (overschrijven toegestaan)
+    const blob = await put(`sollicitaties/${email}.${extension}`, file, {
+      access: "public",
+      allowOverwrite: true,
+    });
 
-  return NextResponse.json({ success: true, url: blob.url });
+    // Verwijder eventueel eerder opgeslagen document
+    await db.query("DELETE FROM personeelsdocumenten WHERE email = $1", [email]);
+
+    // Voeg nieuwe document-URL toe
+    await db.query(
+      `INSERT INTO personeelsdocumenten (email, bestand_url)
+       VALUES ($1, $2)`,
+      [email, blob.url]
+    );
+
+    return NextResponse.json({ success: true, url: blob.url });
+  } catch (err) {
+    console.error("Fout bij upload:", err);
+    return NextResponse.json({ error: "Upload mislukt" }, { status: 500 });
+  }
 }
