@@ -97,7 +97,7 @@ export default function ActieLijstPagina() {
     <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="col-span-1 space-y-2">
         <h2 className="text-lg font-semibold">Actielijst</h2>
-        {lijsten.map((lijst) => (
+        {lijsten.slice().sort((a, b) => a.naam.localeCompare(b.naam)).map((lijst) => (
           <div key={lijst.id} className="flex items-center gap-2">
             <button
               className={`flex-1 flex items-center gap-2 px-4 py-2 border rounded ${lijst.id === geselecteerdeLijst?.id ? "bg-gray-100 font-semibold" : "hover:bg-gray-50"}`}
