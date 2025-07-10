@@ -39,6 +39,15 @@ export default function ActieLijstPagina() {
     mutate();
   };
 
+  const updateActieTekst = async (id: number, tekst: string) => {
+    await fetch('/api/acties', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, tekst })
+    });
+    mutate();
+  };
+
   const nieuweLijstToevoegen = async () => {
     if (!nieuweLijstNaam.trim()) return;
     await fetch('/api/actielijsten', {
@@ -155,7 +164,11 @@ export default function ActieLijstPagina() {
                   checked={actie.voltooid}
                   onChange={() => toggleActie(actie.id, actie.voltooid)}
                 />
-                <span>{actie.tekst}</span>
+                <input
+                  className="border rounded px-2 py-1 w-full"
+                  value={actie.tekst}
+                  onChange={(e) => updateActieTekst(actie.id, e.target.value)}
+                />
               </label>
               <div className="text-sm text-gray-500">
                 {actie.deadline && <span className="mr-2">{actie.deadline}</span>}
