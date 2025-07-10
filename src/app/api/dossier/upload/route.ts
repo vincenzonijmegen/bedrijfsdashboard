@@ -12,14 +12,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Bestand of e-mail ontbreekt" }, { status: 400 });
   }
 
-  const blob = await put(`sollicitaties/${email}.pdf`, file, {
+  const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
+  const blob = await put(`sollicitaties/${email}.${extension}`, file, {
     access: "public",
     allowOverwrite: true,
   });
 
+  // Haal medewerker_id op
+  const medewerkerRes = await db.query(`SELECT id FROM medewerkers WHERE email = $1`, [email]);
+  const medewerker_id = medewerkerRes.rows[0]?.id;
+
+  if (!medewerker_id) {
+    return NextResponse.json({ error: "Medewerker niet gevonden" }, { status: 404 });
+  }
+
+  // Sla op in personeelsdocumenten
   await db.query(
-    `UPDATE medewerkers SET sollicitatie_pdf = $1 WHERE email = $2`,
-    [blob.url, email]
+    `INSERT INTO personeelsdocumenten (medewerker_id, bestand_url, type, toegevoegd_op)
+     VALUES ($1, $2, $3, NOW())`,
+    [medewerker_id, blob.url, "sollicitatie"]
   );
 
   return NextResponse.json({ success: true });
