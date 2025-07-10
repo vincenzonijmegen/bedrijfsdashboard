@@ -111,15 +111,25 @@ export default function DossierOverzicht() {
           )}
 
           {opmerkingen?.length > 0 && (
-            <div className="mt-6">
-              <h2 className="font-semibold mb-2">Opmerkingen</h2>
-              <ul className="list-disc pl-6">
-                {opmerkingen.map((o: any, i: number) => (
-                  <li key={i}>{o.tekst}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+  <div className="mt-6">
+    <h2 className="font-semibold mb-2">Opmerkingen</h2>
+    <div className="space-y-3">
+      {opmerkingen.map((o: any, i: number) => (
+        <div key={i} className="bg-gray-100 border border-gray-300 p-3 rounded shadow-sm">
+          <div className="text-sm text-gray-600 mb-1">
+            {new Date(o.toegevoegd_op ?? o.datum ?? "").toLocaleDateString("nl-NL", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "2-digit"
+            })}
+          </div>
+          <div>{o.tekst}</div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
         </>
       )}
 
@@ -133,7 +143,10 @@ export default function DossierOverzicht() {
               ✕
             </button>
             {actieveUrl.endsWith(".pdf") ? (
-              <iframe src={actieveUrl} className="w-full h-full rounded" />
+              <iframe
+  src={`${actieveUrl}#view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
+  className="w-full h-full rounded"
+/>
             ) : (
               <img src={actieveUrl} alt="Document" className="max-h-full max-w-full mx-auto" />
             )}
