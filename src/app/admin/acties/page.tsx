@@ -183,7 +183,6 @@ export default function ActieLijstPagina() {
             />
             <button onClick={nieuweActieToevoegen} className="bg-blue-500 px-3 py-1 rounded text-xl font-bold">
               <span className="text-yellow-300">➕</span>
-              ➕
             </button>
           </div>
         
