@@ -136,18 +136,16 @@ export default function DossierOverzicht() {
           {sollicitatieUrl && (
             <div className="mt-4">
               {sollicitatieUrl.endsWith(".pdf") ? (
-                <a
-                  href={sollicitatieUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 underline"
-                >
-                  📥 Bekijk huidig bestand
-                </a>
+                <iframe
+                  src={sollicitatieUrl}
+                  width="100%"
+                  height="500px"
+                  className="border rounded"
+                />
               ) : (
                 <img
                   src={sollicitatieUrl}
-                  alt="Formulier"
+                  alt="Upload preview"
                   className="max-w-full border rounded"
                 />
               )}
