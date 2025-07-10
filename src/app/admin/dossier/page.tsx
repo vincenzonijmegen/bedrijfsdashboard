@@ -1,8 +1,6 @@
-// src/app/admin/dossier/page.tsx
-
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -17,6 +15,7 @@ export default function DossierOverzicht() {
   const [tekst, setTekst] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [success, setSuccess] = useState(false);
+  const [actieveUrl, setActieveUrl] = useState<string | null>(null);
 
   const { data: opmerkingen, mutate } = useSWR(
     email ? `/api/dossier/opmerkingen?email=${email}` : null,
@@ -99,12 +98,13 @@ export default function DossierOverzicht() {
             <div className="mt-6">
               <h2 className="font-semibold mb-2">Documenten</h2>
               {documenten.map((doc: { bestand_url: string }, i: number) => (
-                <div key={i} className="my-4">
-                  {doc.bestand_url.endsWith(".pdf") ? (
-                    <iframe src={doc.bestand_url} className="w-full h-64 rounded border" />
-                  ) : (
-                    <img src={doc.bestand_url} alt="Document" className="w-32 h-32 object-cover border rounded" />
-                  )}
+                <div key={i} className="my-2">
+                  <button
+                    onClick={() => setActieveUrl(doc.bestand_url)}
+                    className="text-blue-600 underline hover:text-blue-800"
+                  >
+                    📄 Bekijk document
+                  </button>
                 </div>
               ))}
             </div>
@@ -121,6 +121,24 @@ export default function DossierOverzicht() {
             </div>
           )}
         </>
+      )}
+
+      {actieveUrl && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded shadow-lg w-full max-w-3xl h-[80vh] relative">
+            <button
+              onClick={() => setActieveUrl(null)}
+              className="absolute top-2 right-2 text-red-600 font-bold"
+            >
+              ✕
+            </button>
+            {actieveUrl.endsWith(".pdf") ? (
+              <iframe src={actieveUrl} className="w-full h-full rounded" />
+            ) : (
+              <img src={actieveUrl} alt="Document" className="max-h-full max-w-full mx-auto" />
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
