@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const result = await db.query(
-      `SELECT tekst, datum
+      `SELECT id, tekst, datum
        FROM personeelsopmerkingen
        WHERE email = $1
        ORDER BY datum DESC`,
@@ -43,6 +43,38 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(result.rows);
   } catch (err) {
     console.error("Fout bij ophalen opmerkingen:", err);
+    return NextResponse.json({ error: "Databasefout" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const { id } = await req.json();
+
+  if (!id) {
+    return NextResponse.json({ error: "ID ontbreekt" }, { status: 400 });
+  }
+
+  try {
+    await db.query("DELETE FROM personeelsopmerkingen WHERE id = $1", [id]);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Fout bij verwijderen opmerking:", err);
+    return NextResponse.json({ error: "Databasefout" }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  const { id, tekst } = await req.json();
+
+  if (!id || !tekst) {
+    return NextResponse.json({ error: "ID en tekst zijn verplicht" }, { status: 400 });
+  }
+
+  try {
+    await db.query("UPDATE personeelsopmerkingen SET tekst = $1 WHERE id = $2", [tekst, id]);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Fout bij bewerken opmerking:", err);
     return NextResponse.json({ error: "Databasefout" }, { status: 500 });
   }
 }

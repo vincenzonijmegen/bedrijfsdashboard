@@ -16,6 +16,8 @@ export default function DossierOverzicht() {
   const [file, setFile] = useState<File | null>(null);
   const [success, setSuccess] = useState(false);
   const [actieveUrl, setActieveUrl] = useState<string | null>(null);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editTekst, setEditTekst] = useState("");
 
   const { data: opmerkingen, mutate } = useSWR(
     email ? `/api/dossier/opmerkingen?email=${email}` : null,
@@ -57,6 +59,26 @@ export default function DossierOverzicht() {
       setFile(null);
       setSuccess(true);
     }
+  };
+
+  const verwijderOpmerking = async (id: number) => {
+    await fetch("/api/dossier/opmerkingen", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id })
+    });
+    mutate();
+  };
+
+  const bewerkOpmerking = async (id: number) => {
+    await fetch("/api/dossier/opmerkingen", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, tekst: editTekst })
+    });
+    setEditId(null);
+    setEditTekst("");
+    mutate();
   };
 
   return (
@@ -111,25 +133,54 @@ export default function DossierOverzicht() {
           )}
 
           {opmerkingen?.length > 0 && (
-  <div className="mt-6">
-    <h2 className="font-semibold mb-2">Opmerkingen</h2>
-    <div className="space-y-3">
-      {opmerkingen.map((o: any, i: number) => (
-        <div key={i} className="bg-gray-100 border border-gray-300 p-3 rounded shadow-sm">
-          <div className="text-sm text-gray-600 mb-1">
-            {new Date(o.toegevoegd_op ?? o.datum ?? "").toLocaleDateString("nl-NL", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "2-digit"
-            })}
-          </div>
-          <div>{o.tekst}</div>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+            <div className="mt-6">
+              <h2 className="font-semibold mb-2">Opmerkingen</h2>
+              <div className="space-y-3">
+                {opmerkingen.map((o: { id: number; tekst: string; datum: string }, i: number) => (
+                  <div key={o.id} className="bg-gray-100 border border-gray-300 p-3 rounded shadow-sm relative">
+                    <div className="text-sm text-gray-600 mb-1">
+                      {new Date(o.datum).toLocaleDateString("nl-NL", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "2-digit"
+                      })}
+                    </div>
 
+                    {editId === o.id ? (
+                      <>
+                        <textarea
+                          value={editTekst}
+                          onChange={(e) => setEditTekst(e.target.value)}
+                          className="w-full border rounded p-1"
+                        />
+                        <button onClick={() => bewerkOpmerking(o.id)} className="text-green-600 mt-1">💾 Opslaan</button>
+                      </>
+                    ) : (
+                      <div>{o.tekst}</div>
+                    )}
+
+                    <div className="absolute top-2 right-2 flex gap-2 text-sm">
+                      <button
+                        onClick={() => {
+                          setEditId(o.id);
+                          setEditTekst(o.tekst);
+                        }}
+                        className="text-blue-600"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => verwijderOpmerking(o.id)}
+                        className="text-red-600"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -144,9 +195,9 @@ export default function DossierOverzicht() {
             </button>
             {actieveUrl.endsWith(".pdf") ? (
               <iframe
-  src={`${actieveUrl}#view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
-  className="w-full h-full rounded"
-/>
+                src={`${actieveUrl}#view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
+                className="w-full h-full rounded"
+              />
             ) : (
               <img src={actieveUrl} alt="Document" className="max-h-full max-w-full mx-auto" />
             )}
