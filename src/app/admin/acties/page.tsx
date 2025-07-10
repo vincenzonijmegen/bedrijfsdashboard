@@ -209,7 +209,20 @@ export default function ActieLijstPagina() {
                   }}
                   className="text-red-600 mr-auto"
                 >🗑️ Verwijderen</button>
-$1</div>
+                <button
+                  onClick={() => setActieEdit(null)}
+                  className="text-gray-600"
+                >Annuleer</button>
+                <button
+                  onClick={async () => {
+                    await updateActieTekst(actieEdit.id, actieEdit.tekst);
+                    setActieEdit(null);
+                  }}
+                  className="bg-blue-600 text-white px-4 py-1 rounded"
+                >
+                  Opslaan
+                </button>
+              </div>
             </div>
           </div>
         )}
