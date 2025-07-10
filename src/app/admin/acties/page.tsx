@@ -2,6 +2,20 @@
 
 import { useEffect, useState } from "react";
 import useSWR from "swr";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { SortableItem } from './SortableItem';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -22,14 +36,39 @@ interface ActieLijst {
 export default function ActieLijstPagina() {
   const { data: lijsten, error: lijstError, isLoading: lijstLoading, mutate: mutateLijsten } = useSWR<ActieLijst[]>('/api/actielijsten', fetcher);
   const [geselecteerdeLijst, setGeselecteerdeLijst] = useState<ActieLijst | null>(null);
-  const { data: acties = [], mutate } = useSWR<Actie[]>(
+  const { data: actiesRaw = [], mutate } = useSWR<Actie[]>(
     geselecteerdeLijst ? `/api/acties?lijst_id=${geselecteerdeLijst.id}` : null,
     fetcher
   );
+  const [acties, setActies] = useState<Actie[]>([]);
   const [nieuweLijstNaam, setNieuweLijstNaam] = useState("");
   const [nieuweActieTekst, setNieuweActieTekst] = useState("");
   const [lijstEdit, setLijstEdit] = useState<{ id: number; naam: string; icoon: string } | null>(null);
   const [actieEdit, setActieEdit] = useState<{ id: number; tekst: string } | null>(null);
+
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  useEffect(() => {
+    setActies(actiesRaw.filter(a => !a.voltooid));
+  }, [actiesRaw]);
+
+  const handleDragEnd = async (event: any) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+      const oldIndex = acties.findIndex((a) => a.id === active.id);
+      const newIndex = acties.findIndex((a) => a.id === over.id);
+      const reordered = arrayMove(acties, oldIndex, newIndex);
+      setActies(reordered);
+      for (let i = 0; i < reordered.length; i++) {
+        await fetch('/api/acties', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: reordered[i].id, volgorde: i })
+        });
+      }
+      mutate();
+    }
+  };
 
   const toggleActie = async (id: number, voltooid: boolean) => {
     await fetch('/api/acties', {
@@ -156,85 +195,90 @@ export default function ActieLijstPagina() {
       <div className="col-span-2">
         <h2 className="text-lg font-semibold mb-4">{geselecteerdeLijst?.naam}</h2>
 
-        <div className="space-y-2">
-          {acties.filter((a) => !a.voltooid).map((actie) => (
-            <div key={actie.id} className="flex items-center justify-between border p-3 rounded bg-white shadow-sm">
-              <label className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  checked={actie.voltooid}
-                  onChange={() => toggleActie(actie.id, actie.voltooid)}
-                />
-                <button onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })} className="text-left w-full">📝 {actie.tekst}</button>
-              </label>
-              <div className="text-sm text-gray-500">
-                {actie.deadline && <span className="mr-2">{actie.deadline}</span>}
-                {actie.verantwoordelijke && <span>{actie.verantwoordelijke}</span>}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
+          <SortableContext items={acties.map(a => a.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-2">
+              {acties.map((actie) => (
+                <SortableItem key={actie.id} id={actie.id}>
+                  <div className="flex items-center justify-between border p-3 rounded bg-white shadow-sm">
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={actie.voltooid}
+                        onChange={() => toggleActie(actie.id, actie.voltooid)}
+                      />
+                      <button onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })} className="text-left w-full">📝 {actie.tekst}</button>
+                    </label>
+                    <div className="text-sm text-gray-500">
+                      {actie.deadline && <span className="mr-2">{actie.deadline}</span>}
+                      {actie.verantwoordelijke && <span>{actie.verantwoordelijke}</span>}
+                    </div>
+                  </div>
+                </SortableItem>
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+
+        <div className="flex gap-2 pt-2">
+          <input
+            className="flex-1 border rounded px-2 py-1"
+            placeholder="Nieuwe actie"
+            value={nieuweActieTekst}
+            onChange={(e) => setNieuweActieTekst(e.target.value)}
+          />
+          <button onClick={nieuweActieToevoegen} className="bg-blue-500 px-3 py-1 rounded text-xl font-bold">
+            <span className="text-yellow-300 text-2xl font-bold">+</span>
+          </button>
+        </div>
+
+        {actieEdit && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-8 rounded shadow-lg w-full max-w-2xl">
+              <h3 className="text-lg font-semibold mb-2">Bewerk actie</h3>
+              <input
+                className="w-full border px-4 py-3 text-lg rounded mb-6"
+                value={actieEdit.tekst}
+                onChange={(e) => setActieEdit({ ...actieEdit, tekst: e.target.value })}
+              />
+              <div className="flex justify-between items-center gap-2">
+                <button
+                  onClick={async () => {
+                    if (confirm('Weet je zeker dat je deze actie wilt verwijderen?')) {
+                      await fetch('/api/acties', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: actieEdit.id })
+                      });
+                      setActieEdit(null);
+                      mutate();
+                    }
+                  }}
+                  className="text-red-600 mr-auto"
+                >🗑️ Verwijderen</button>
+                <button
+                  onClick={() => setActieEdit(null)}
+                  className="text-gray-600"
+                >Annuleer</button>
+                <button
+                  onClick={async () => {
+                    await updateActieTekst(actieEdit.id, actieEdit.tekst);
+                    setActieEdit(null);
+                  }}
+                  className="bg-blue-600 text-white px-4 py-1 rounded"
+                >
+                  Opslaan
+                </button>
               </div>
             </div>
-          ))}
-
-          <div className="flex gap-2 pt-2">
-            <input
-              className="flex-1 border rounded px-2 py-1"
-              placeholder="Nieuwe actie"
-              value={nieuweActieTekst}
-              onChange={(e) => setNieuweActieTekst(e.target.value)}
-            />
-            <button onClick={nieuweActieToevoegen} className="bg-blue-500 px-3 py-1 rounded text-xl font-bold">
-              <span className="text-yellow-300 text-2xl font-bold">+</span>
-            </button>
           </div>
-        
-</div>
+        )}
 
-      {actieEdit && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded shadow-lg w-full max-w-2xl">
-            <h3 className="text-lg font-semibold mb-2">Bewerk actie</h3>
-            <input
-              className="w-full border px-4 py-3 text-lg rounded mb-6"
-              value={actieEdit.tekst}
-              onChange={(e) => setActieEdit({ ...actieEdit, tekst: e.target.value })}
-            />
-            <div className="flex justify-between items-center gap-2">
-              <button
-                onClick={async () => {
-                  if (confirm('Weet je zeker dat je deze actie wilt verwijderen?')) {
-                    await fetch('/api/acties', {
-                      method: 'DELETE',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ id: actieEdit.id })
-                    });
-                    setActieEdit(null);
-                    mutate();
-                  }
-                }}
-                className="text-red-600 mr-auto"
-              >🗑️ Verwijderen</button>
-              <button
-                onClick={() => setActieEdit(null)}
-                className="text-gray-600"
-              >Annuleer</button>
-              <button
-                onClick={async () => {
-                  await updateActieTekst(actieEdit.id, actieEdit.tekst);
-                  setActieEdit(null);
-                }}
-                className="bg-blue-600 text-white px-4 py-1 rounded"
-              >
-                Opslaan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {acties.some((a) => a.voltooid) && (
+        {actiesRaw.some((a) => a.voltooid) && (
           <div className="mt-8">
             <h3 className="text-sm font-semibold text-gray-600 mb-2">Afgehandeld</h3>
             <div className="space-y-2">
-              {acties.filter((a) => a.voltooid).map((actie) => (
+              {actiesRaw.filter((a) => a.voltooid).map((actie) => (
                 <div key={actie.id} className="flex items-center justify-between border p-3 rounded bg-gray-50 text-gray-500">
                   <label className="flex items-center gap-3">
                     <input
