@@ -1,5 +1,4 @@
 // src/app/api/dossier/upload/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { db } from "@/lib/db";
@@ -10,12 +9,11 @@ export async function POST(req: NextRequest) {
   const email = formData.get("email") as string;
 
   if (!file || !email) {
-    return NextResponse.json({ error: "Bestand en e-mailadres zijn verplicht." }, { status: 400 });
+    return NextResponse.json({ error: "Bestand of e-mail ontbreekt" }, { status: 400 });
   }
 
-  const filename = `${email.replace(/[^a-z0-9]/gi, "_")}_sollicitatie.pdf`;
-  const blob = await put(filename, file, {
-    access: "public"
+  const blob = await put(`sollicitaties/${email}.pdf`, file, {
+    access: "public",
   });
 
   await db.query(
@@ -23,5 +21,5 @@ export async function POST(req: NextRequest) {
     [blob.url, email]
   );
 
-  return NextResponse.json({ success: true, url: blob.url });
+  return NextResponse.json({ success: true });
 }

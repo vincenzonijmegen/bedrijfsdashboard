@@ -37,7 +37,11 @@ export default function DossierOverzicht() {
   };
 
   const uploadPdf = async () => {
-    if (!file || !email) return;
+    if (!file || !email) {
+      alert("Selecteer een medewerker en een bestand");
+      return;
+    }
+
     const formData = new FormData();
     formData.append("file", file);
     formData.append("email", email);
@@ -48,8 +52,11 @@ export default function DossierOverzicht() {
     });
 
     if (res.ok) {
+      alert("Upload gelukt!");
       setSuccess(true);
       setFile(null);
+    } else {
+      alert("Upload mislukt.");
     }
   };
 
