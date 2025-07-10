@@ -195,9 +195,10 @@ export default function DossierOverzicht() {
             </button>
             {actieveUrl.endsWith(".pdf") ? (
               <iframe
-                src={`${actieveUrl}#view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
-                className="w-full h-full rounded"
-              />
+  src={`${actieveUrl}?v=${Date.now()}#view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
+  className="w-full h-full rounded"
+/>
+
             ) : (
               <img src={actieveUrl} alt="Document" className="max-h-full max-w-full mx-auto" />
             )}

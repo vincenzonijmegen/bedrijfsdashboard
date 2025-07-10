@@ -1,5 +1,3 @@
-// src/app/api/dossier/upload/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { db } from "@/lib/db";
@@ -14,22 +12,19 @@ export async function POST(req: NextRequest) {
   }
 
   const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
+  const emailNorm = email.trim().toLowerCase();
+  const bestandsnaam = `sollicitaties/${emailNorm}-${Date.now()}.${extension}`;
 
   try {
-    // Upload bestand naar Vercel Blob (overschrijven toegestaan)
-    const blob = await put(`sollicitaties/${email}.${extension}`, file, {
-      access: "public",
-      allowOverwrite: true,
+    const blob = await put(bestandsnaam, file, {
+      access: "public"
     });
 
-    // Verwijder eventueel eerder opgeslagen document
-    await db.query("DELETE FROM personeelsdocumenten WHERE email = $1", [email]);
-
-    // Voeg nieuwe document-URL toe
     await db.query(
       `INSERT INTO personeelsdocumenten (email, bestand_url)
-       VALUES ($1, $2)`,
-      [email, blob.url]
+       VALUES ($1, $2)
+       ON CONFLICT (email) DO UPDATE SET bestand_url = EXCLUDED.bestand_url`,
+      [emailNorm, blob.url]
     );
 
     return NextResponse.json({ success: true, url: blob.url });
