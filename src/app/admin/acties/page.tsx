@@ -194,18 +194,22 @@ export default function ActieLijstPagina() {
                 value={actieEdit.tekst}
                 onChange={(e) => setActieEdit({ ...actieEdit, tekst: e.target.value })}
               />
-              <div className="flex justify-end gap-2">
-                <button onClick={() => setActieEdit(null)} className="text-gray-600">Annuleer</button>
+              <div className="flex justify-between items-center gap-2">
                 <button
                   onClick={async () => {
-                    await updateActieTekst(actieEdit.id, actieEdit.tekst);
-                    setActieEdit(null);
+                    if (confirm('Weet je zeker dat je deze actie wilt verwijderen?')) {
+                      await fetch('/api/acties', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: actieEdit.id })
+                      });
+                      setActieEdit(null);
+                      mutate();
+                    }
                   }}
-                  className="bg-blue-600 text-white px-4 py-1 rounded"
-                >
-                  Opslaan
-                </button>
-              </div>
+                  className="text-red-600 mr-auto"
+                >🗑️ Verwijderen</button>
+$1</div>
             </div>
           </div>
         )}
