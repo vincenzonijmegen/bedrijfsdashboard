@@ -38,6 +38,7 @@ export default function DossierOverzicht() {
     setTekst("");
     setSuccess(true);
     mutate();
+    setTimeout(() => setSuccess(false), 3000);
   };
 
   const uploadBestand = async () => {
@@ -57,7 +58,9 @@ export default function DossierOverzicht() {
 
     if (res.ok) {
       setFile(null);
+      (document.getElementById("upload") as HTMLInputElement).value = "";
       setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
     }
   };
 
@@ -107,13 +110,15 @@ export default function DossierOverzicht() {
             <button onClick={voegToe} className="mt-2 bg-blue-500 text-white px-4 py-1 rounded">
               Opslaan
             </button>
+            {success && <p className="text-green-600 mt-2">Opgeslagen</p>}
           </div>
 
           <div className="my-4">
-            <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+            <input id="upload" type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
             <button onClick={uploadBestand} className="ml-2 bg-green-500 text-white px-4 py-1 rounded">
               Upload bestand
             </button>
+            {success && <p className="text-green-600 mt-2">Upload voltooid</p>}
           </div>
 
           {documenten?.length > 0 && (
@@ -195,10 +200,9 @@ export default function DossierOverzicht() {
             </button>
             {actieveUrl.endsWith(".pdf") ? (
               <iframe
-  src={`${actieveUrl}?v=${Date.now()}#view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
-  className="w-full h-full rounded"
-/>
-
+                src={`${actieveUrl}?v=${Date.now()}#view=FitH&toolbar=0&navpanes=0&scrollbar=0`}
+                className="w-full h-full rounded"
+              />
             ) : (
               <img src={actieveUrl} alt="Document" className="max-h-full max-w-full mx-auto" />
             )}
