@@ -28,6 +28,7 @@ export default function ActieLijstPagina() {
   );
   const [nieuweLijstNaam, setNieuweLijstNaam] = useState("");
   const [nieuweActieTekst, setNieuweActieTekst] = useState("");
+  const [lijstEdit, setLijstEdit] = useState<{ id: number; naam: string; icoon: string } | null>(null);
 
   const toggleActie = async (id: number, voltooid: boolean) => {
     await fetch('/api/acties', {
@@ -46,6 +47,28 @@ export default function ActieLijstPagina() {
       body: JSON.stringify({ naam: nieuweLijstNaam.trim(), icoon: "📋" })
     });
     setNieuweLijstNaam("");
+    mutateLijsten();
+  };
+
+  const lijstVerwijderen = async (id: number) => {
+    if (!confirm("Weet je zeker dat je deze lijst wilt verwijderen?")) return;
+    await fetch('/api/actielijsten', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    mutateLijsten();
+    if (geselecteerdeLijst?.id === id) setGeselecteerdeLijst(null);
+  };
+
+  const lijstBijwerken = async () => {
+    if (!lijstEdit) return;
+    await fetch('/api/actielijsten', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(lijstEdit)
+    });
+    setLijstEdit(null);
     mutateLijsten();
   };
 
@@ -75,13 +98,16 @@ export default function ActieLijstPagina() {
       <div className="col-span-1 space-y-2">
         <h2 className="text-lg font-semibold">Actielijst</h2>
         {lijsten.map((lijst) => (
-          <button
-            key={lijst.id}
-            className={`w-full flex items-center gap-2 px-4 py-2 border rounded ${lijst.id === geselecteerdeLijst?.id ? "bg-gray-100 font-semibold" : "hover:bg-gray-50"}`}
-            onClick={() => setGeselecteerdeLijst(lijst)}
-          >
-            <span>{lijst.icoon}</span> {lijst.naam}
-          </button>
+          <div key={lijst.id} className="flex items-center gap-2">
+            <button
+              className={`flex-1 flex items-center gap-2 px-4 py-2 border rounded ${lijst.id === geselecteerdeLijst?.id ? "bg-gray-100 font-semibold" : "hover:bg-gray-50"}`}
+              onClick={() => setGeselecteerdeLijst(lijst)}
+            >
+              <span>{lijst.icoon}</span> {lijst.naam}
+            </button>
+            <button onClick={() => setLijstEdit({ ...lijst })} className="text-sm text-blue-600">✏️</button>
+            <button onClick={() => lijstVerwijderen(lijst.id)} className="text-sm text-red-500">🗑️</button>
+          </div>
         ))}
 
         <div className="pt-4 space-y-2">
@@ -98,6 +124,23 @@ export default function ActieLijstPagina() {
             + Nieuwe lijst
           </button>
         </div>
+
+        {lijstEdit && (
+          <div className="pt-4 space-y-2 border-t mt-4">
+            <h3 className="text-sm font-semibold">Bewerk lijst</h3>
+            <input
+              className="w-full border rounded px-2 py-1"
+              value={lijstEdit.naam}
+              onChange={(e) => setLijstEdit({ ...lijstEdit, naam: e.target.value })}
+            />
+            <input
+              className="w-full border rounded px-2 py-1"
+              value={lijstEdit.icoon}
+              onChange={(e) => setLijstEdit({ ...lijstEdit, icoon: e.target.value })}
+            />
+            <button onClick={lijstBijwerken} className="w-full bg-green-600 text-white py-1 rounded">Opslaan</button>
+          </div>
+        )}
       </div>
 
       <div className="col-span-2">
