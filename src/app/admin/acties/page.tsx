@@ -29,6 +29,7 @@ export default function ActieLijstPagina() {
   const [nieuweLijstNaam, setNieuweLijstNaam] = useState("");
   const [nieuweActieTekst, setNieuweActieTekst] = useState("");
   const [lijstEdit, setLijstEdit] = useState<{ id: number; naam: string; icoon: string } | null>(null);
+  const [actieEdit, setActieEdit] = useState<{ id: number; tekst: string } | null>(null);
 
   const toggleActie = async (id: number, voltooid: boolean) => {
     await fetch('/api/acties', {
@@ -164,18 +165,7 @@ export default function ActieLijstPagina() {
                   checked={actie.voltooid}
                   onChange={() => toggleActie(actie.id, actie.voltooid)}
                 />
-                <input
-                  className="border rounded px-4 py-2 w-full text-lg"
-                  value={actie.tekst}
-                  
-                  onBlur={(e) => updateActieTekst(actie.id, e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      updateActieTekst(actie.id, (e.target as HTMLInputElement).value);
-                    }
-                  }}
-                />
+                <button onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })} className="text-left w-full">📝 {actie.tekst}</button>
               </label>
               <div className="text-sm text-gray-500">
                 {actie.deadline && <span className="mr-2">{actie.deadline}</span>}
@@ -195,7 +185,32 @@ export default function ActieLijstPagina() {
               ➕
             </button>
           </div>
-        </div>
+        {actieEdit && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
+              <h3 className="text-lg font-semibold mb-2">Bewerk actie</h3>
+              <input
+                className="w-full border px-3 py-2 rounded mb-4"
+                value={actieEdit.tekst}
+                onChange={(e) => setActieEdit({ ...actieEdit, tekst: e.target.value })}
+              />
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setActieEdit(null)} className="text-gray-600">Annuleer</button>
+                <button
+                  onClick={async () => {
+                    await updateActieTekst(actieEdit.id, actieEdit.tekst);
+                    setActieEdit(null);
+                  }}
+                  className="bg-blue-600 text-white px-4 py-1 rounded"
+                >
+                  Opslaan
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+</div>
 
         {acties.some((a) => a.voltooid) && (
           <div className="mt-8">
