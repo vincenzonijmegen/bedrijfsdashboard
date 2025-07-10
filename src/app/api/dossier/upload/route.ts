@@ -18,11 +18,11 @@ export async function POST(req: NextRequest) {
     allowOverwrite: true,
   });
 
-  // Sla op in personeelsdocumenten
+  // Sla op in personeelsdocumenten zonder kolommen type of toegevoegd_op
   await db.query(
-    `INSERT INTO personeelsdocumenten (email, bestand_url, type, toegevoegd_op)
-     VALUES ($1, $2, $3, NOW())`,
-    [email, blob.url, "sollicitatie"]
+    `INSERT INTO personeelsdocumenten (email, bestand_url)
+     VALUES ($1, $2)`,
+    [email, blob.url]
   );
 
   return NextResponse.json({ success: true, url: blob.url });
