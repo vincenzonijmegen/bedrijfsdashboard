@@ -187,10 +187,10 @@ export default function ActieLijstPagina() {
           </div>
         {actieEdit && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded shadow-lg w-full max-w-md">
+            <div className="bg-white p-8 rounded shadow-lg w-full max-w-2xl">
               <h3 className="text-lg font-semibold mb-2">Bewerk actie</h3>
               <input
-                className="w-full border px-3 py-2 rounded mb-4"
+                className="w-full border px-4 py-3 text-lg rounded mb-6"
                 value={actieEdit.tekst}
                 onChange={(e) => setActieEdit({ ...actieEdit, tekst: e.target.value })}
               />
