@@ -10,6 +10,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 interface Medewerker {
   email: string;
   naam: string;
+  sollicitatie_pdf?: string;
 }
 
 export default function DossierOverzicht() {
@@ -23,6 +24,8 @@ export default function DossierOverzicht() {
     fetcher
   );
   const { data: medewerkers } = useSWR<Medewerker[]>("/api/admin/medewerkers", fetcher);
+
+  const geselecteerde = medewerkers?.find((m) => m.email === email);
 
   const voegToe = async () => {
     if (!email || !tekst.trim()) return;
@@ -114,6 +117,17 @@ export default function DossierOverzicht() {
       >
         Upload PDF
       </button>
+
+      {geselecteerde?.sollicitatie_pdf && (
+        <a
+          href={`/api/dossier/download?email=${encodeURIComponent(email)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block mt-2 text-blue-600 underline"
+        >
+          📥 Bekijk huidig sollicitatiebestand
+        </a>
+      )}
 
       {success && <div className="text-green-600">Actie voltooid!</div>}
 

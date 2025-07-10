@@ -14,6 +14,7 @@ export async function POST(req: NextRequest) {
 
   const blob = await put(`sollicitaties/${email}.pdf`, file, {
     access: "public",
+    allowOverwrite: true,
   });
 
   await db.query(
