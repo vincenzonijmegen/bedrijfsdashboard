@@ -4,8 +4,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "IJssalon Vincenzo",
-  description: "Managementportaal en werkinstructies",
+  title: "Bedrijfsdashboard Vincenzo",
+  description: "Bedrijfsdashboard IJssalon Vincenzo",
 };
 
 export default function RootLayout({
