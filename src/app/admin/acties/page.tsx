@@ -182,7 +182,7 @@ export default function ActieLijstPagina() {
               onChange={(e) => setNieuweActieTekst(e.target.value)}
             />
             <button onClick={nieuweActieToevoegen} className="bg-blue-500 px-3 py-1 rounded text-xl font-bold">
-              <span className="text-yellow-300">➕</span>
+              <span className="text-yellow-300 text-2xl font-bold">+</span>
             </button>
           </div>
         
