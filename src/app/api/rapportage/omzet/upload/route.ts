@@ -4,7 +4,6 @@ import { db } from '@/lib/db';
 import csv from 'csv-parser';
 import { Readable } from 'stream';
 
-// Gebruik nodejs-runtime voor buffer + stream toegang
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
@@ -36,11 +35,19 @@ export async function POST(req: NextRequest) {
         .on('error', reject);
     });
 
-    for (const r of rows) {
+    // Batch insert per 1000 regels
+    const batchSize = 1000;
+    for (let i = 0; i < rows.length; i += batchSize) {
+      const batch = rows.slice(i, i + batchSize);
+      const values = batch.map(
+        (_, idx) => `($${idx * 5 + 1}, $${idx * 5 + 2}, $${idx * 5 + 3}, $${idx * 5 + 4}, $${idx * 5 + 5})`
+      ).join(', ');
+
+      const flatValues = batch.flatMap(r => [r.datum, r.tijdstip, r.product, r.aantal, r.eenheidsprijs]);
+
       await db.query(
-        `INSERT INTO rapportage.omzet (datum, tijdstip, product, aantal, eenheidsprijs)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [r.datum, r.tijdstip, r.product, r.aantal, r.eenheidsprijs]
+        `INSERT INTO rapportage.omzet (datum, tijdstip, product, aantal, eenheidsprijs) VALUES ${values}`,
+        flatValues
       );
     }
 
