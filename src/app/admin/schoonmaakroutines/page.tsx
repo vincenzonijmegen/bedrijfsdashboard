@@ -10,7 +10,6 @@ import clsx from "clsx";
 dayjs.locale("nl");
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
-const fetchHistoriek = (routineId: number) => fetch(`/api/schoonmaakroutines/historiek?routine_id=${routineId}`).then(res => res.json());
 
 interface Routine {
   id: number;
@@ -42,47 +41,66 @@ function RoutineForm({ onToegevoegd }: { onToegevoegd: () => void }) {
   };
 
   return (
-    <div className="space-y-2">
-      <input
-        className="w-full border rounded px-3 py-2"
-        placeholder="Naam routine"
-        value={naam}
-        onChange={(e) => setNaam(e.target.value)}
-      />
-      <div className="flex gap-2">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        toevoegen();
+      }}
+      className="grid grid-cols-1 gap-4 md:grid-cols-2"
+    >
+      <div className="col-span-full">
+        <label className="block text-sm font-medium">Naam routine</label>
+        <input
+          className="w-full border rounded px-3 py-2 mt-1"
+          placeholder="Bijv. Zoutspoeling afwasmachine"
+          value={naam}
+          onChange={(e) => setNaam(e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium">Frequentie (in dagen)</label>
         <input
           type="number"
-          className="w-32 border rounded px-3 py-2"
+          className="w-full border rounded px-3 py-2 mt-1"
           value={frequentie}
           onChange={(e) => setFrequentie(parseInt(e.target.value))}
-          placeholder="Frequentie (dagen)"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium">Startmaand</label>
         <input
           type="number"
-          className="w-24 border rounded px-3 py-2"
+          className="w-full border rounded px-3 py-2 mt-1"
           value={start}
           min={1}
           max={12}
           onChange={(e) => setStart(parseInt(e.target.value))}
-          placeholder="Start maand"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium">Eindmaand</label>
         <input
           type="number"
-          className="w-24 border rounded px-3 py-2"
+          className="w-full border rounded px-3 py-2 mt-1"
           value={eind}
           min={1}
           max={12}
           onChange={(e) => setEind(parseInt(e.target.value))}
-          placeholder="Eind maand"
         />
       </div>
-      <button
-        onClick={toevoegen}
-        className="bg-green-600 text-white px-4 py-2 rounded mt-2"
-        disabled={saving}
-      >
-        {saving ? 'Toevoegen...' : '➕ Toevoegen'}
-      </button>
+
+      <div className="col-span-full">
+        <button
+          type="submit"
+          className="bg-green-600 text-white px-4 py-2 rounded mt-2"
+          disabled={saving}
+        >
+          {saving ? 'Toevoegen...' : '➕ Toevoegen'}
+        </button>
+      </div>
     </div>
   );
 }

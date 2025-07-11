@@ -18,8 +18,12 @@ export async function POST(req: NextRequest) {
   try {
     const { naam, frequentie, periode_start, periode_eind } = await req.json();
 
-    if (!naam || !frequentie || !periode_start || !periode_eind) {
-      return NextResponse.json({ error: 'Alle velden zijn verplicht' }, { status: 400 });
+    if (!naam || typeof frequentie !== 'number' || typeof periode_start !== 'number' || typeof periode_eind !== 'number') {
+      return NextResponse.json({ error: 'Alle velden zijn verplicht en moeten correct zijn ingevuld' }, { status: 400 });
+    }
+
+    if (frequentie <= 0 || periode_start < 1 || periode_start > 12 || periode_eind < 1 || periode_eind > 12) {
+      return NextResponse.json({ error: 'Frequentie of maandwaarden zijn ongeldig' }, { status: 400 });
     }
 
     const result = await db.query(
@@ -36,7 +40,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PATCH: laatst uitgevoerd datum bijwerken
+// PATCH: laatst uitgevoerd datum bijwerken + loggen
 export async function PATCH(req: NextRequest) {
   try {
     const { id, laatst_uitgevoerd } = await req.json();
@@ -46,7 +50,6 @@ export async function PATCH(req: NextRequest) {
 
     await db.query('BEGIN');
     try {
-
       await db.query(
         `UPDATE schoonmaakroutines SET laatst_uitgevoerd = $2 WHERE id = $1`,
         [id, laatst_uitgevoerd]
@@ -59,10 +62,9 @@ export async function PATCH(req: NextRequest) {
 
       await db.query('COMMIT');
     } catch (err) {
+      console.error("Fout in transactiestap:", err);
       await db.query('ROLLBACK');
       throw err;
-    } finally {
-      // geen release nodig zonder pool client
     }
 
     return NextResponse.json({ success: true });
