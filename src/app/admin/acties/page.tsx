@@ -1,21 +1,9 @@
+// Versie zonder drag-and-drop
+
 "use client";
 
 import { useEffect, useState } from "react";
 import useSWR from "swr";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { SortableItem } from './SortableItem';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -47,53 +35,30 @@ export default function ActieLijstPagina() {
   const [lijstEdit, setLijstEdit] = useState<{ id: number; naam: string; icoon: string } | null>(null);
   const [actieEdit, setActieEdit] = useState<{ id: number; tekst: string } | null>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor));
-
   useEffect(() => {
     if (!actiesRaw) return;
-    const openActies = actiesRaw
-      .filter((a) => !a.voltooid)
-      .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
+    const openActies = actiesRaw.filter((a) => !a.voltooid);
     setActies(openActies);
   }, [actiesRaw]);
 
-  const handleDragEnd = async (event: any) => {
-    const { active, over } = event;
-    if (active.id !== over.id) {
-      const oldIndex = acties.findIndex((a) => a.id === active.id);
-      const newIndex = acties.findIndex((a) => a.id === over.id);
-      const reordered = arrayMove(acties, oldIndex, newIndex);
-      setActies(reordered);
-      for (let i = 0; i < reordered.length; i++) {
-        await fetch('/api/acties', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: reordered[i].id, volgorde: i })
-        });
+  const toggleActie = async (id: number, voltooid: boolean) => {
+    try {
+      const nieuwVoltooid = !voltooid;
+      const res = await fetch('/api/acties', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, voltooid: nieuwVoltooid })
+      });
+      if (!res.ok) {
+        const fout = await res.text();
+        console.error('Fout bij opslaan voltooid-status:', fout);
+      } else {
+        await mutate();
       }
-      mutate();
+    } catch (error) {
+      console.error('Netwerkfout bij toggleActie:', error);
     }
   };
-
-  const toggleActie = async (id: number, voltooid: boolean) => {
-  try {
-    const nieuwVoltooid = !voltooid; // forceer echte boolean
-    const res = await fetch('/api/acties', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, voltooid: nieuwVoltooid })
-    });
-
-    if (!res.ok) {
-      const fout = await res.text();
-      console.error('Fout bij opslaan voltooid-status:', fout);
-    } else {
-      await mutate();
-    }
-  } catch (error) {
-    console.error('Netwerkfout bij toggleActie:', error);
-  }
-};
 
   const updateActieTekst = async (id: number, tekst: string) => {
     await fetch('/api/acties', {
@@ -211,30 +176,24 @@ export default function ActieLijstPagina() {
       <div className="col-span-2">
         <h2 className="text-lg font-semibold mb-4">{geselecteerdeLijst?.naam}</h2>
 
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd} modifiers={[restrictToVerticalAxis]}>
-          <SortableContext items={acties.map(a => a.id)} strategy={verticalListSortingStrategy}>
-            <div className="space-y-2">
-              {acties.map((actie) => (
-                <SortableItem key={actie.id} id={actie.id}>
-                  <div className="flex items-center justify-between border p-3 rounded bg-white shadow-sm">
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={actie.voltooid}
-                        onChange={() => toggleActie(actie.id, actie.voltooid)}
-                      />
-                      <button onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })} className="text-left w-full">📝 {actie.tekst}</button>
-                    </label>
-                    <div className="text-sm text-gray-500">
-                      {actie.deadline && <span className="mr-2">{actie.deadline}</span>}
-                      {actie.verantwoordelijke && <span>{actie.verantwoordelijke}</span>}
-                    </div>
-                  </div>
-                </SortableItem>
-              ))}
+        <div className="space-y-2">
+          {acties.map((actie) => (
+            <div key={actie.id} className="flex items-center justify-between border p-3 rounded bg-white shadow-sm">
+              <label className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={actie.voltooid}
+                  onChange={() => toggleActie(actie.id, actie.voltooid)}
+                />
+                <button onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })} className="text-left w-full">📝 {actie.tekst}</button>
+              </label>
+              <div className="text-sm text-gray-500">
+                {actie.deadline && <span className="mr-2">{actie.deadline}</span>}
+                {actie.verantwoordelijke && <span>{actie.verantwoordelijke}</span>}
+              </div>
             </div>
-          </SortableContext>
-        </DndContext>
+          ))}
+        </div>
 
         <div className="flex gap-2 pt-2">
           <input
