@@ -9,7 +9,7 @@ import clsx from "clsx";
 
 dayjs.locale("nl");
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 interface Routine {
   id: number;
@@ -33,7 +33,7 @@ function RoutineForm({ onToegevoegd }: { onToegevoegd: () => void }) {
     await fetch("/api/schoonmaakroutines", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ naam: naam.trim(), frequentie, periode_start: start, periode_eind: eind }),
+      body: JSON.stringify({ naam: naam.trim(), frequentie, periode_start: start, periode_eind: eind })
     });
     setNaam("");
     onToegevoegd();
@@ -42,10 +42,7 @@ function RoutineForm({ onToegevoegd }: { onToegevoegd: () => void }) {
 
   return (
     <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        toevoegen();
-      }}
+      onSubmit={e => { e.preventDefault(); toevoegen(); }}
       className="grid grid-cols-1 gap-4 md:grid-cols-2"
     >
       <div className="col-span-full">
@@ -54,7 +51,7 @@ function RoutineForm({ onToegevoegd }: { onToegevoegd: () => void }) {
           className="w-full border rounded px-3 py-2 mt-1"
           placeholder="Bijv. Zoutspoeling afwasmachine"
           value={naam}
-          onChange={(e) => setNaam(e.target.value)}
+          onChange={e => setNaam(e.target.value)}
         />
       </div>
       <div>
@@ -63,7 +60,7 @@ function RoutineForm({ onToegevoegd }: { onToegevoegd: () => void }) {
           type="number"
           className="w-full border rounded px-3 py-2 mt-1"
           value={frequentie}
-          onChange={(e) => setFrequentie(parseInt(e.target.value) || 0)}
+          onChange={e => setFrequentie(parseInt(e.target.value) || 0)}
         />
       </div>
       <div>
@@ -74,7 +71,7 @@ function RoutineForm({ onToegevoegd }: { onToegevoegd: () => void }) {
           value={start}
           min={1}
           max={12}
-          onChange={(e) => setStart(parseInt(e.target.value) || 1)}
+          onChange={e => setStart(parseInt(e.target.value) || 1)}
         />
       </div>
       <div>
@@ -85,7 +82,7 @@ function RoutineForm({ onToegevoegd }: { onToegevoegd: () => void }) {
           value={eind}
           min={1}
           max={12}
-          onChange={(e) => setEind(parseInt(e.target.value) || 12)}
+          onChange={e => setEind(parseInt(e.target.value) || 12)}
         />
       </div>
       <div className="col-span-full">
@@ -106,6 +103,7 @@ function RoutineHistoriek({ id, naam }: { id: number; naam: string }) {
     `/api/schoonmaakroutines/historiek?routine_id=${id}`,
     fetcher
   );
+
   return (
     <div className="mb-4">
       <div className="font-medium mb-1">{naam}</div>
@@ -138,19 +136,70 @@ export default function AdminSchoonmaakRoutinesPagina() {
     await fetch("/api/schoonmaakroutines", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, laatst_uitgevoerd: datum }),
+      body: JSON.stringify({ id, laatst_uitgevoerd: datum })
     });
     mutate();
   };
 
-  const bepaalStatusKleur = (routine: Routine) => { /*zelfde als app*/ };
-  const formatDatum = (d: string|null) => /*zelfde*/;
-  const berekenDueDate = (r: Routine) => /*zelfde*/;
+  const bepaalStatusKleur = (routine: Routine) => {
+    const maand = vandaag.month() + 1;
+    if (maand < routine.periode_start || maand > routine.periode_eind) return "text-gray-400";
+    if (!routine.laatst_uitgevoerd) return "bg-red-100 text-red-700";
+    const laatst = dayjs(routine.laatst_uitgevoerd);
+    const dagenSinds = vandaag.diff(laatst, "day");
+    if (dagenSinds >= routine.frequentie) return "bg-red-100 text-red-700";
+    if (dagenSinds >= routine.frequentie - 2) return "bg-yellow-100 text-yellow-800";
+    return "bg-green-100 text-green-700";
+  };
+
+  const formatDatum = (d: string | null) => (d ? dayjs(d).format("D MMMM YYYY") : "—");
+  const berekenDueDate = (r: Routine) =>
+    r.laatst_uitgevoerd
+      ? dayjs(r.laatst_uitgevoerd).add(r.frequentie, "day").format("D MMMM YYYY")
+      : "—";
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-8">
       <h1 className="text-2xl font-semibold mb-6">Admin Schoonmaakroutines</h1>
-      {/* lijst, historiek, formulier in dezelfde structuur als app versie */}
+
+      <div className="space-y-4">
+        {routines?.map(routine => (
+          <div
+            key={routine.id}
+            className={clsx(
+              "flex justify-between items-center p-4 rounded border",
+              bepaalStatusKleur(routine)
+            )}
+          >
+            <div>
+              <div className="font-medium">{routine.naam}</div>
+              <div className="text-sm">Laatst uitgevoerd: {formatDatum(routine.laatst_uitgevoerd)}</div>
+              <div className="text-sm">Volgende keer vóór: {berekenDueDate(routine)}</div>
+            </div>
+            <input
+              type="date"
+              className="border rounded px-2 py-1"
+              max={vandaag.format("YYYY-MM-DD")}
+              defaultValue={vandaag.format("YYYY-MM-DD")}
+              onChange={e => markeerAlsUitgevoerd(routine.id, e.target.value)}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Historiek */}
+      <div className="border-t pt-6">
+        <h2 className="text-lg font-semibold mb-4">Historiek</h2>
+        {routines?.map(routine => (
+          <RoutineHistoriek key={routine.id} id={routine.id} naam={routine.naam} />
+        ))}
+      </div>
+
+      {/* Formulier */}
+      <div className="border-t pt-6">
+        <h2 className="text-lg font-semibold mb-4">Nieuwe routine toevoegen</h2>
+        <RoutineForm onToegevoegd={mutate} />
+      </div>
     </div>
   );
 }
