@@ -44,9 +44,9 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'id en datum zijn verplicht' }, { status: 400 });
     }
 
-    const client = await db.connect();
+    // Gebruik directe queries zonder db.connect()
+    await db.query('BEGIN');
     try {
-      await client.query('BEGIN');
 
       await client.query(
         `UPDATE schoonmaakroutines SET laatst_uitgevoerd = $2 WHERE id = $1`,
@@ -58,12 +58,12 @@ export async function PATCH(req: NextRequest) {
         [id, laatst_uitgevoerd]
       );
 
-      await client.query('COMMIT');
+      await db.query('COMMIT');
     } catch (err) {
-      await client.query('ROLLBACK');
+      await db.query('ROLLBACK');
       throw err;
     } finally {
-      client.release();
+      // geen release nodig zonder pool client
     }
 
     return NextResponse.json({ success: true });
