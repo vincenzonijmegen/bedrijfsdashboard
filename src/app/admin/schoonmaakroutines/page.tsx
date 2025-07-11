@@ -33,7 +33,7 @@ function RoutineForm({ onToegevoegd }: { onToegevoegd: () => void }) {
     await fetch("/api/schoonmaakroutines", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ naam: naam.trim(), frequentie, periode_start: start, periode_eind: eind })
+      body: JSON.stringify({ naam: naam.trim(), frequentie, periode_start: start, periode_eind: eind }),
     });
     setNaam("");
     onToegevoegd();
@@ -49,7 +49,7 @@ function RoutineForm({ onToegevoegd }: { onToegevoegd: () => void }) {
         <label className="block text-sm font-medium">Naam routine</label>
         <input
           className="w-full border rounded px-3 py-2 mt-1"
-          placeholder="Bijv. Zoutspoeling afwasmachine"
+          placeholder="Bijv. Vitrines doorspoelen"
           value={naam}
           onChange={e => setNaam(e.target.value)}
         />
@@ -111,21 +111,22 @@ function RoutineHistoriek({ id, naam }: { id: number; naam: string }) {
         {Array.isArray(data) && data.length > 0 ? (
           data.map((entry, i) => (
             <li key={i} className="flex items-center justify-between">
-                <span>{dayjs(entry.datum).format("D MMMM YYYY")}</span>
-                <button
-                  onClick={async () => {
-                    if (!confirm('Weet je zeker dat je deze registratie wilt verwijderen?')) return;
-                    await fetch(`/api/schoonmaakroutines/historiek`, {
-                      method: 'DELETE',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ routine_id: id, datum: entry.datum })
-                    });
-                    // herlaad de historiek
-                    refetch();
-                  }}
-                  className="text-red-500 hover:text-red-700 ml-2"
-                >🗑️</button>
-              </li>
+              <span>{dayjs(entry.datum).format("D MMMM YYYY")}</span>
+              <button
+                onClick={async () => {
+                  if (!confirm('Weet je zeker dat je deze registratie wilt verwijderen?')) return;
+                  await fetch('/api/schoonmaakroutines/historiek', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ routine_id: id, datum: entry.datum }),
+                  });
+                  refetch();
+                }}
+                className="text-red-500 hover:text-red-700 ml-2"
+              >
+                🗑️
+              </button>
+            </li>
           ))
         ) : (
           <li className="text-gray-400">Nog geen registraties</li>
@@ -141,6 +142,7 @@ export default function AdminSchoonmaakRoutinesPagina() {
     fetcher
   );
   const [vandaag, setVandaag] = useState(dayjs());
+  const [selectedDates, setSelectedDates] = useState<Record<number, string>>({});
 
   useEffect(() => {
     const iv = setInterval(() => setVandaag(dayjs()), 60_000);
@@ -151,7 +153,7 @@ export default function AdminSchoonmaakRoutinesPagina() {
     await fetch("/api/schoonmaakroutines", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, laatst_uitgevoerd: datum })
+      body: JSON.stringify({ id, laatst_uitgevoerd: datum }),
     });
     mutate();
   };
@@ -191,13 +193,21 @@ export default function AdminSchoonmaakRoutinesPagina() {
               <div className="text-sm">Laatst uitgevoerd: {formatDatum(routine.laatst_uitgevoerd)}</div>
               <div className="text-sm">Volgende keer vóór: {berekenDueDate(routine)}</div>
             </div>
-            <input
-              type="date"
-              className="border rounded px-2 py-1"
-              max={vandaag.format("YYYY-MM-DD")}
-              defaultValue={vandaag.format("YYYY-MM-DD")}
-              onChange={e => markeerAlsUitgevoerd(routine.id, e.target.value)}
-            />
+            <div className="flex items-center">
+              <input
+                type="date"
+                className="border rounded px-2 py-1"
+                max={vandaag.format("YYYY-MM-DD")}
+                value={selectedDates[routine.id] ?? vandaag.format("YYYY-MM-DD")}
+                onChange={e => setSelectedDates(prev => ({ ...prev, [routine.id]: e.target.value }))}
+              />
+              <button
+                onClick={() => markeerAlsUitgevoerd(routine.id, selectedDates[routine.id] ?? vandaag.format("YYYY-MM-DD"))}
+                className="ml-2 bg-blue-600 text-white px-2 py-1 rounded"
+              >
+                Bevestig
+              </button>
+            </div>
           </div>
         ))}
       </div>
