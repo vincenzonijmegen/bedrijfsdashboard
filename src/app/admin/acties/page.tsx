@@ -74,7 +74,7 @@ export default function ActieLijstPagina() {
     await fetch('/api/acties', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, voltooid: !voltooid, tekst: null, volgorde: null })
+      body: JSON.stringify({ id, voltooid: !voltooid })
     });
     const updated = await fetch(`/api/acties?lijst_id=${geselecteerdeLijst?.id}`).then(res => res.json());
     setActies(updated.filter((a: Actie) => !a.voltooid));

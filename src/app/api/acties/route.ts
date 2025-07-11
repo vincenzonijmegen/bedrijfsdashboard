@@ -43,6 +43,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 
+
 export async function DELETE(req: NextRequest) {
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: "id ontbreekt" }, { status: 400 });
