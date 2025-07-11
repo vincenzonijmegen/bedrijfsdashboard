@@ -48,8 +48,8 @@ export async function PATCH(req: NextRequest) {
     const resultaat = await db.query(
       `UPDATE acties SET
          tekst = COALESCE($2, tekst),
-         voltooid = CASE WHEN $3 IS NOT NULL THEN CAST($3 AS boolean) ELSE voltooid END,
-         volgorde = COALESCE(CAST($4 AS integer), volgorde)
+         voltooid = COALESCE($3::boolean, voltooid),
+         volgorde = COALESCE($4::int, volgorde)
        WHERE id = $1
        RETURNING *`,
       [id, tekst ?? null, voltooid ?? null, volgorde ?? null]
