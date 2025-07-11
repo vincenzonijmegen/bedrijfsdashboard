@@ -27,19 +27,13 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const { id, tekst, voltooid, volgorde } = await req.json();
+  const body = await req.json();
+  console.log("PATCH body ontvangen:", body);
+
+  const { id, tekst, voltooid, volgorde } = body;
   if (!id) return NextResponse.json({ error: "id ontbreekt" }, { status: 400 });
 
-  const resultaat = await db.query(
-    `UPDATE acties SET
-     tekst = COALESCE($2, tekst),
-     voltooid = CASE WHEN $3 IS NOT NULL THEN $3 ELSE voltooid END,
-     volgorde = COALESCE($4, volgorde)
-     WHERE id = $1 RETURNING *`,
-    [id, tekst, voltooid, volgorde]
-  );
-
-  return NextResponse.json(resultaat.rows[0]);
+  // bestaande query...
 }
 
 

@@ -299,7 +299,7 @@ export default function ActieLijstPagina() {
                   <label className="flex items-center gap-3">
                     <input
                       type="checkbox"
-                      checked
+                      checked={actie.voltooid}
                       onChange={() => toggleActie(actie.id, actie.voltooid)}
                     />
                     <span className="line-through">{actie.tekst}</span>
