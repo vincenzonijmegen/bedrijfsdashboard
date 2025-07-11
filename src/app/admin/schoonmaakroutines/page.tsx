@@ -10,6 +10,7 @@ import clsx from "clsx";
 dayjs.locale("nl");
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetchHistoriek = (routineId: number) => fetch(`/api/schoonmaakroutines/historiek?routine_id=${routineId}`).then(res => res.json());
 
 interface Routine {
   id: number;
