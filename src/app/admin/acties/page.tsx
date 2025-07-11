@@ -25,6 +25,7 @@ interface Actie {
   voltooid: boolean;
   deadline?: string;
   verantwoordelijke?: string;
+  volgorde?: number;
 }
 
 interface ActieLijst {
@@ -49,7 +50,11 @@ export default function ActieLijstPagina() {
   const sensors = useSensors(useSensor(PointerSensor));
 
   useEffect(() => {
-    setActies(actiesRaw.filter(a => !a.voltooid));
+    if (!actiesRaw) return;
+    const openActies = actiesRaw
+      .filter((a) => !a.voltooid)
+      .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
+    setActies(openActies);
   }, [actiesRaw]);
 
   const handleDragEnd = async (event: any) => {
@@ -76,8 +81,6 @@ export default function ActieLijstPagina() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, voltooid: !voltooid })
     });
-    const updated = await fetch(`/api/acties?lijst_id=${geselecteerdeLijst?.id}`).then(res => res.json());
-    setActies(updated.filter((a: Actie) => !a.voltooid));
     mutate();
   };
 
