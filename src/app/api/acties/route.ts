@@ -27,22 +27,21 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const { id, tekst, voltooid } = await req.json();
+  const { id, tekst, voltooid, volgorde } = await req.json();
   if (!id) return NextResponse.json({ error: "id ontbreekt" }, { status: 400 });
-  if (tekst === undefined && voltooid === undefined) {
-    return NextResponse.json({ error: "Geen velden om bij te werken" }, { status: 400 });
-  }
 
   const resultaat = await db.query(
     `UPDATE acties SET
      tekst = COALESCE($2, tekst),
-     voltooid = COALESCE($3, voltooid)
+     voltooid = COALESCE($3, voltooid),
+     volgorde = COALESCE($4, volgorde)
      WHERE id = $1 RETURNING *`,
-    [id, tekst, voltooid]
+    [id, tekst, voltooid, volgorde]
   );
 
   return NextResponse.json(resultaat.rows[0]);
 }
+
 
 export async function DELETE(req: NextRequest) {
   const { id } = await req.json();
