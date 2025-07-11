@@ -44,11 +44,10 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'id en datum zijn verplicht' }, { status: 400 });
     }
 
-    // Gebruik directe queries zonder db.connect()
     await db.query('BEGIN');
     try {
 
-      await client.query(
+      await db.query(
         `UPDATE schoonmaakroutines SET laatst_uitgevoerd = $2 WHERE id = $1`,
         [id, laatst_uitgevoerd]
       );
