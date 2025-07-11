@@ -197,16 +197,9 @@ export default function SchoonmaakRoutinesPagina() {
 
       {/* Historiekweergave */}
       <div className="border-t pt-6">
-        <h2 className="text-lg font-semibold mb-4">Historiek</h2>
-        {routines?.map((routine) => (
-          <RoutineHistoriek key={routine.id} id={routine.id} naam={routine.naam} />
-        ))}
-      </div>
-
-      <div className="border-t pt-6">
         <h2 className="text-lg font-semibold mb-4">Nieuwe routine toevoegen</h2>
         <RoutineForm onToegevoegd={mutate} />
       </div>
-      </form>
+    </div>
   );
 }
