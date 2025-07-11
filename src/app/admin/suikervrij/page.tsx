@@ -11,6 +11,7 @@ interface Productie {
 }
 
 export default function SuikervrijPage() {
+  const [bewerken, setBewerken] = useState<Productie | null>(null);
   const [lijst, setLijst] = useState<Productie[]>([]);
   const [smakenlijst, setSmakenlijst] = useState<string[]>([]);
   const [kleurenlijst, setKleurenlijst] = useState<string[]>([]);
@@ -129,7 +130,10 @@ export default function SuikervrijPage() {
             <tr key={p.id}>
               <td className="border px-2 py-1">{new Date(p.datum).toLocaleDateString("nl-NL")}</td>
               <td className="border px-2 py-1">{p.aantal}</td>
-              <td className="border px-2 py-1">{p.kleur}</td>
+              <td className="border px-2 py-1">
+  <span className="inline-block w-4 h-4 rounded-full mr-2" style={{ backgroundColor: p.kleur.toLowerCase() }}></span>
+  {p.kleur}
+</td>
               <td className="border px-2 py-1 text-right">
                 <button className="text-blue-600 mr-2" onClick={() => setBewerken(p)}>✏️</button>
                 <button className="text-red-600" onClick={async () => {
@@ -183,7 +187,65 @@ export default function SuikervrijPage() {
             + Kleur
           </button>
         </div>
+
+    {bewerken && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded shadow-lg w-full max-w-lg">
+          <h2 className="text-lg font-semibold mb-4">Productie bewerken</h2>
+          <div className="space-y-4">
+            <label className="block">
+              Datum
+              <input
+                type="date"
+                className="w-full border rounded p-2"
+                value={bewerken.datum}
+                onChange={(e) => setBewerken({ ...bewerken, datum: e.target.value })}
+              />
+            </label>
+            <label className="block">
+              Aantal
+              <input
+                type="number"
+                className="w-full border rounded p-2"
+                value={bewerken.aantal}
+                onChange={(e) => setBewerken({ ...bewerken, aantal: parseInt(e.target.value) })}
+              />
+            </label>
+            <label className="block">
+              Stickerkleur
+              <select
+                className="w-full border rounded p-2"
+                value={bewerken.kleur}
+                onChange={(e) => setBewerken({ ...bewerken, kleur: e.target.value })}
+              >
+                {kleurenlijst.map((k) => <option key={k}>{k}</option>)}
+              </select>
+            </label>
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setBewerken(null)} className="text-gray-600">Annuleer</button>
+              <button
+                className="bg-blue-600 text-white px-4 py-1 rounded"
+                onClick={async () => {
+                  await fetch('/api/suikervrij/productie', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bewerken)
+                  });
+                  const res = await fetch('/api/suikervrij/productie');
+                  const data = await res.json();
+                  setLijst(data);
+                  setBewerken(null);
+                }}
+              >
+                Opslaan
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
+    )}
+
+  </div>
+</div>
   );
 }
