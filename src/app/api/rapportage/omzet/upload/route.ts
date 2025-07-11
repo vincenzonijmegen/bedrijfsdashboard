@@ -31,14 +31,10 @@ const parseDatum = (excelDatum: Date | string) => {
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-    const file = formData.get('file');
-    if (!file || typeof file === 'string') return NextResponse.json({ error: 'Ongeldig bestandstype' }, { status: 400 });
-
-    const arrayBuffer = await (file as Blob).arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const file = formData.get('file') as File;
     if (!file) return NextResponse.json({ error: 'Geen bestand ontvangen' }, { status: 400 });
 
-    
+    const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = xlsx.read(buffer, { type: 'buffer' });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rawData = xlsx.utils.sheet_to_json(sheet, { header: 1 });
