@@ -6,6 +6,17 @@ import { Readable } from 'stream';
 
 export const runtime = 'nodejs';
 
+const tijdString = (waarde: string) => {
+  if (waarde.includes(':')) return waarde;
+  const getal = parseFloat(waarde.replace(',', '.'));
+  if (isNaN(getal)) return '00:00:00';
+  const totaalSeconden = Math.round(getal * 24 * 60 * 60);
+  const uren = Math.floor(totaalSeconden / 3600).toString().padStart(2, '0');
+  const minuten = Math.floor((totaalSeconden % 3600) / 60).toString().padStart(2, '0');
+  const seconden = (totaalSeconden % 60).toString().padStart(2, '0');
+  return `${uren}:${minuten}:${seconden}`;
+};
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -26,7 +37,7 @@ export async function POST(req: NextRequest) {
           if (!aantal || !prijs) return;
           rows.push({
             datum: row.datum,
-            tijdstip: row.tijdstip,
+            tijdstip: tijdString(row.tijdstip),
             product: row.product,
             aantal,
             eenheidsprijs: prijs / aantal
@@ -56,6 +67,5 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error('Fout bij CSV-upload:', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
-    return NextResponse.json({ error: 'Verwerking mislukt' }, { status: 500 });
   }
 }
