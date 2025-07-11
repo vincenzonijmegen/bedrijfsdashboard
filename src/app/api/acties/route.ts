@@ -27,14 +27,31 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const body = await req.json();
-  console.log("PATCH body ontvangen:", body);
+  try {
+    const { id, tekst, voltooid, volgorde } = await req.json();
+    if (!id) return NextResponse.json({ error: "id ontbreekt" }, { status: 400 });
 
-  const { id, tekst, voltooid, volgorde } = body;
-  if (!id) return NextResponse.json({ error: "id ontbreekt" }, { status: 400 });
+    const resultaat = await db.query(
+      `UPDATE acties SET
+        tekst = COALESCE($2, tekst),
+        voltooid = CASE WHEN $3 IS NOT NULL THEN $3 ELSE voltooid END,
+        volgorde = COALESCE($4, volgorde)
+      WHERE id = $1
+      RETURNING *`,
+      [id, tekst ?? null, voltooid ?? null, volgorde ?? null]
+    );
 
-  // bestaande query...
+    if (resultaat.rows.length === 0) {
+      return NextResponse.json({ error: "Actie niet gevonden" }, { status: 404 });
+    }
+
+    return NextResponse.json(resultaat.rows[0]);
+  } catch (err: any) {
+    console.error("PATCH-fout in /api/acties:", err);
+    return NextResponse.json({ error: "Interne serverfout" }, { status: 500 });
+  }
 }
+
 
 
 
