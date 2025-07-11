@@ -10,21 +10,11 @@ interface Productie {
   kleur: string;
 }
 
-
-const kleurHex: Record<string, string> = {
-  rood: "#ef4444",
-  blauw: "#3b82f6",
-  groen: "#22c55e",
-  geel: "#facc15",
-  geen: "#9ca3af"
-};
-
-
 export default function SuikervrijPage() {
   const [bewerken, setBewerken] = useState<Productie | null>(null);
   const [lijst, setLijst] = useState<Productie[]>([]);
   const [smakenlijst, setSmakenlijst] = useState<string[]>([]);
-  const [kleurenlijst, setKleurenlijst] = useState<string[]>([]);
+  const [kleurenlijst, setKleurenlijst] = useState<{ naam: string; hexcode: string }[]>([]);
   const [smaak, setSmaak] = useState("");
   const [datum, setDatum] = useState(() => new Date().toISOString().substring(0, 10));
   const [aantal, setAantal] = useState(0);
@@ -45,7 +35,7 @@ export default function SuikervrijPage() {
     fetch('/api/suikervrij/kleuren')
       .then(res => res.json())
       .then((data) => {
-        setKleurenlijst(data.map((d: any) => d.naam));
+        setKleurenlijst(data);
         if (!kleur) setKleur(data[0]?.naam || "");
       });
   }, []);
@@ -108,7 +98,7 @@ export default function SuikervrijPage() {
         <div>
           <label>Kleur sticker</label>
           <select className="w-full border rounded p-2" value={kleur} onChange={(e) => setKleur(e.target.value)}>
-            {kleurenlijst.map((k) => <option key={k}>{k}</option>)}
+            {kleurenlijst.map((k) => <option key={k.naam}>{k.naam}</option>)}
           </select>
         </div>
       </div>
@@ -141,7 +131,7 @@ export default function SuikervrijPage() {
               <td className="border px-2 py-1">{new Date(p.datum).toLocaleDateString("nl-NL")}</td>
               <td className="border px-2 py-1">{p.aantal}</td>
               <td className="border px-2 py-1">
-  <span className="inline-block w-4 h-4 rounded-full mr-2" style={{ backgroundColor: kleurHex[p.kleur.toLowerCase()] || "#ccc" }}></span>
+  <span className="inline-block w-4 h-4 rounded-full mr-2" style={{ backgroundColor: kleurenlijst.find(k => k.naam === p.kleur)?.hexcode || '#ccc' }}></span>
   {p.kleur}
 </td>
               <td className="border px-2 py-1 text-right">
@@ -185,7 +175,7 @@ export default function SuikervrijPage() {
         <div>
           <h2 className="text-lg font-semibold mb-2">Kleuren beheren</h2>
           <ul className="mb-2 list-disc list-inside text-sm text-gray-700">
-            {kleurenlijst.map((k) => <li key={k}>{k}</li>)}
+            {kleurenlijst.map((k) => <li key={k.naam}>{k.naam}</li>)}
           </ul>
           <input
             value={nieuweKleur}
@@ -228,7 +218,7 @@ export default function SuikervrijPage() {
                 value={bewerken.kleur}
                 onChange={(e) => setBewerken({ ...bewerken, kleur: e.target.value })}
               >
-                {kleurenlijst.map((k) => <option key={k}>{k}</option>)}
+                {kleurenlijst.map((k) => <option key={k.naam}>{k.naam}</option>)}
               </select>
             </label>
             <div className="flex justify-end gap-2 pt-2">
