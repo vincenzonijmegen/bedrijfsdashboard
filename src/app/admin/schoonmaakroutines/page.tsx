@@ -99,7 +99,7 @@ function RoutineForm({ onToegevoegd }: { onToegevoegd: () => void }) {
 }
 
 function RoutineHistoriek({ id, naam }: { id: number; naam: string }) {
-  const { data } = useSWR<{ datum: string }[]>(
+  const { data, mutate: refetch } = useSWR<{ datum: string }[]>(
     `/api/schoonmaakroutines/historiek?routine_id=${id}`,
     fetcher
   );
@@ -121,7 +121,7 @@ function RoutineHistoriek({ id, naam }: { id: number; naam: string }) {
                       body: JSON.stringify({ routine_id: id, datum: entry.datum })
                     });
                     // herlaad de historiek
-                    mutate();
+                    refetch();
                   }}
                   className="text-red-500 hover:text-red-700 ml-2"
                 >🗑️</button>
