@@ -76,13 +76,22 @@ export default function ActieLijstPagina() {
   };
 
   const toggleActie = async (id: number, voltooid: boolean) => {
-    await fetch('/api/acties', {
+  try {
+    const res = await fetch('/api/acties', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, voltooid: !voltooid })
     });
-    mutate();
-  };
+
+    if (!res.ok) {
+      console.error('Fout bij opslaan voltooid-status');
+    } else {
+      await mutate();
+    }
+  } catch (error) {
+    console.error('Netwerkfout bij toggleActie:', error);
+  }
+};
 
   const updateActieTekst = async (id: number, tekst: string) => {
     await fetch('/api/acties', {
