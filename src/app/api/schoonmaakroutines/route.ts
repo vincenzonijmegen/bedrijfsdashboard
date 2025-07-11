@@ -44,15 +44,29 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'id en datum zijn verplicht' }, { status: 400 });
     }
 
-    const result = await db.query(
-      `UPDATE schoonmaakroutines
-       SET laatst_uitgevoerd = $2
-       WHERE id = $1
-       RETURNING *`,
-      [id, laatst_uitgevoerd]
-    );
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
 
-    return NextResponse.json(result.rows[0]);
+      await client.query(
+        `UPDATE schoonmaakroutines SET laatst_uitgevoerd = $2 WHERE id = $1`,
+        [id, laatst_uitgevoerd]
+      );
+
+      await client.query(
+        `INSERT INTO schoonmaak_log (routine_id, datum) VALUES ($1, $2)`,
+        [id, laatst_uitgevoerd]
+      );
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    return NextResponse.json({ success: true });
   } catch (err) {
     console.error("Fout bij bijwerken routine:", err);
     return NextResponse.json({ error: 'Interne serverfout' }, { status: 500 });

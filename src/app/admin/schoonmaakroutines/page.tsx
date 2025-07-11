@@ -93,7 +93,7 @@ function RoutineHistoriek({ id, naam }: { id: number; naam: string }) {
     <div className="mb-4">
       <div className="font-medium mb-1">{naam}</div>
       <ul className="text-sm list-disc list-inside text-gray-700">
-        {data?.length > 0 ? (
+        {Array.isArray(data) && data.length > 0 ? (
           data.map((entry, i) => (
             <li key={i}>{dayjs(entry.datum).format("D MMMM YYYY")}</li>
           ))
