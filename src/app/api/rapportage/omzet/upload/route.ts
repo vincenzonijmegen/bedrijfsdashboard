@@ -6,6 +6,13 @@ import { Readable } from 'stream';
 
 export const runtime = 'nodejs';
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+  maxSize: '100mb',
+};
+
 const tijdString = (waarde: string) => {
   if (waarde.includes(':')) return waarde;
   const getal = parseFloat(waarde.replace(',', '.'));
