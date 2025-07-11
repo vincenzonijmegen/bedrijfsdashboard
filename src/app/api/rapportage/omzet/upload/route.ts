@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
       Readable.from(buffer.toString())
         .pipe(csv({ separator: ';' }))
         .on('data', (row) => {
+          console.log('Gelezen rij:', row);
           if (!row.datum || !row.tijdstip || !row.product || !row.aantal || !row.verkoopprijs) return;
           const aantal = parseInt(row.aantal);
           const prijs = parseFloat(row.verkoopprijs);
