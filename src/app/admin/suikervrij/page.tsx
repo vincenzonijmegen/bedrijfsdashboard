@@ -121,6 +121,7 @@ export default function SuikervrijPage() {
             <th className="border px-2 py-1 text-left">Datum</th>
             <th className="border px-2 py-1 text-left">Aantal</th>
             <th className="border px-2 py-1 text-left">Sticker</th>
+            <th className="border px-2 py-1 text-right">Acties</th>
           </tr>
         </thead>
         <tbody>
@@ -129,6 +130,19 @@ export default function SuikervrijPage() {
               <td className="border px-2 py-1">{new Date(p.datum).toLocaleDateString("nl-NL")}</td>
               <td className="border px-2 py-1">{p.aantal}</td>
               <td className="border px-2 py-1">{p.kleur}</td>
+              <td className="border px-2 py-1 text-right">
+                <button className="text-blue-600 mr-2" onClick={() => setBewerken(p)}>✏️</button>
+                <button className="text-red-600" onClick={async () => {
+                  if (confirm('Weet je zeker dat je deze productie wilt verwijderen?')) {
+                    await fetch('/api/suikervrij/productie', {
+                      method: 'DELETE',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ id: p.id })
+                    });
+                    setLijst(lijst.filter((item) => item.id !== p.id));
+                  }
+                }}>🗑️</button>
+              </td>
             </tr>
           ))}
         </tbody>
