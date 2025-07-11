@@ -182,8 +182,8 @@ export default function ActieLijstPagina() {
               <label className="flex items-center gap-3">
                 <input
   type="checkbox"
-  checked={false}
-  onChange={() => toggleActie(actie.id, false)}
+  checked={actie.voltooid}
+  onChange={() => toggleActie(actie.id, actie.voltooid)}
 />
                 <button onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })} className="text-left w-full">📝 {actie.tekst}</button>
               </label>
@@ -258,8 +258,8 @@ export default function ActieLijstPagina() {
                   <label className="flex items-center gap-3">
                     <input
   type="checkbox"
-  checked={true}
-  onChange={() => toggleActie(actie.id, true)}
+  checked={actie.voltooid}
+  onChange={() => toggleActie(actie.id, actie.voltooid)}
 />
                     <span className="line-through">{actie.tekst}</span>
                   </label>
