@@ -42,7 +42,6 @@ export async function POST(req: NextRequest) {
   const datumISO = `${jaar}-${maand.padStart(2, '0')}-${dag.padStart(2, '0')}`;
   return isNaN(Date.parse(datumISO)) ? null : datumISO;
 };
-    };
 
     await new Promise((resolve, reject) => {
       Readable.from(buffer.toString())
