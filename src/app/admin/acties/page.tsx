@@ -77,14 +77,16 @@ export default function ActieLijstPagina() {
 
   const toggleActie = async (id: number, voltooid: boolean) => {
   try {
+    const nieuwVoltooid = !voltooid; // forceer echte boolean
     const res = await fetch('/api/acties', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, voltooid: !voltooid })
+      body: JSON.stringify({ id, voltooid: nieuwVoltooid })
     });
 
     if (!res.ok) {
-      console.error('Fout bij opslaan voltooid-status');
+      const fout = await res.text();
+      console.error('Fout bij opslaan voltooid-status:', fout);
     } else {
       await mutate();
     }
