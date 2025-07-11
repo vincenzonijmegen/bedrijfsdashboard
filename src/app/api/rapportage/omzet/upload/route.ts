@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, ingevoerd: rows.length });
   } catch (err) {
     console.error('Fout bij CSV-upload:', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
     return NextResponse.json({ error: 'Verwerking mislukt' }, { status: 500 });
   }
 }
