@@ -156,13 +156,11 @@ export default function SchoonmaakRoutinesPagina() {
           </div>
         ))}
       </div>
-            <div className="border-t pt-6">
+
+      <div className="border-t pt-6">
         <h2 className="text-lg font-semibold mb-4">Nieuwe routine toevoegen</h2>
         <RoutineForm onToegevoegd={mutate} />
       </div>
-    </div>
-
-
     </div>
   );
 }
