@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
     await new Promise((resolve, reject) => {
       Readable.from(buffer.toString())
-        .pipe(csv({ separator: ';' }))
+        .pipe(csv({ separator: ';', mapHeaders: ({ header }) => header.replace(/^\uFEFF/, '').toLowerCase() }))
         .on('data', (row) => {
           console.log('Gelezen rij:', row);
           if (!row.datum || !row.tijdstip || !row.product || !row.aantal || !row.verkoopprijs) return;
