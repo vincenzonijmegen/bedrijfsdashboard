@@ -10,6 +10,16 @@ interface Productie {
   kleur: string;
 }
 
+
+const kleurHex: Record<string, string> = {
+  rood: "#ef4444",
+  blauw: "#3b82f6",
+  groen: "#22c55e",
+  geel: "#facc15",
+  geen: "#9ca3af"
+};
+
+
 export default function SuikervrijPage() {
   const [bewerken, setBewerken] = useState<Productie | null>(null);
   const [lijst, setLijst] = useState<Productie[]>([]);
@@ -131,7 +141,7 @@ export default function SuikervrijPage() {
               <td className="border px-2 py-1">{new Date(p.datum).toLocaleDateString("nl-NL")}</td>
               <td className="border px-2 py-1">{p.aantal}</td>
               <td className="border px-2 py-1">
-  <span className="inline-block w-4 h-4 rounded-full mr-2" style={{ backgroundColor: p.kleur.toLowerCase() }}></span>
+  <span className="inline-block w-4 h-4 rounded-full mr-2" style={{ backgroundColor: kleurHex[p.kleur.toLowerCase()] || "#ccc" }}></span>
   {p.kleur}
 </td>
               <td className="border px-2 py-1 text-right">
