@@ -6,6 +6,13 @@ import { Readable } from 'stream';
 
 export const runtime = 'nodejs';
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+  maxSize: '100mb',
+};
+
 const tijdString = (waarde: string) => {
   if (waarde.includes(':')) return waarde;
   const getal = parseFloat(waarde.replace(',', '.'));
@@ -17,6 +24,7 @@ const tijdString = (waarde: string) => {
   return `${uren}:${minuten}:${seconden}`;
 };
 
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -25,6 +33,13 @@ export async function POST(req: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const rows: any[] = [];
+
+    const parseDatumNL = (waarde: string) => {
+      const parts = waarde.split('-');
+      if (parts.length !== 3) return null;
+      const [dag, maand, jaar] = parts;
+      return `${jaar}-${maand.padStart(2, '0')}-${dag.padStart(2, '0')}`;
+    };
 
     await new Promise((resolve, reject) => {
       Readable.from(buffer.toString())
@@ -36,7 +51,7 @@ export async function POST(req: NextRequest) {
           const prijs = parseFloat(row.verkoopprijs);
           if (!aantal || !prijs) return;
           rows.push({
-            datum: row.datum,
+            datum: parseDatumNL(row.datum),
             tijdstip: tijdString(row.tijdstip),
             product: row.product,
             aantal,
