@@ -50,6 +50,7 @@ export default function AdminDashboard() {
       <Section title="📘 Management" color="blue">
         <LinkCard href="/admin/acties" label="📝 Actielijsten" color="blue" />
         <LinkCard href="/admin/suikervrij" label="📝 Suikervrij productie" color="blue" />        
+        <LinkCard href="/admin/schoonmaakroutines" label="📝 Schoonmaakroutines" color="blue" />        
       </Section>
 
       <Section title="🧠 Skills" color="purple">

@@ -4,15 +4,18 @@
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 import dayjs from "dayjs";
+import "dayjs/locale/nl";
 import clsx from "clsx";
+
+dayjs.locale("nl");
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 interface Routine {
   id: number;
   naam: string;
-  frequentie: number; // in dagen
-  periode_start: number; // maand
+  frequentie: number;
+  periode_start: number;
   periode_eind: number;
   laatst_uitgevoerd: string | null;
 }
@@ -50,6 +53,16 @@ export default function SchoonmaakRoutinesPagina() {
     return "bg-green-100 text-green-700";
   };
 
+  const formatDatum = (datum: string | null) => {
+    if (!datum) return "—";
+    return dayjs(datum).format("D MMMM YYYY");
+  };
+
+  const berekenDueDate = (routine: Routine) => {
+    if (!routine.laatst_uitgevoerd) return "—";
+    return dayjs(routine.laatst_uitgevoerd).add(routine.frequentie, "day").format("D MMMM YYYY");
+  };
+
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold mb-6">Schoonmaakroutines</h1>
@@ -65,9 +78,8 @@ export default function SchoonmaakRoutinesPagina() {
           >
             <div>
               <div className="font-medium">{routine.naam}</div>
-              <div className="text-sm">
-                Laatst uitgevoerd: {routine.laatst_uitgevoerd || "—"}
-              </div>
+              <div className="text-sm">Laatst uitgevoerd: {formatDatum(routine.laatst_uitgevoerd)}</div>
+              <div className="text-sm">Volgende keer vóór: {berekenDueDate(routine)}</div>
             </div>
             <button
               onClick={() => markeerAlsUitgevoerd(routine.id)}
