@@ -181,10 +181,10 @@ export default function ActieLijstPagina() {
             <div key={actie.id} className="flex items-center justify-between border p-3 rounded bg-white shadow-sm">
               <label className="flex items-center gap-3">
                 <input
-                  type="checkbox"
-                  checked={actie.voltooid}
-                  onChange={() => toggleActie(actie.id, actie.voltooid)}
-                />
+  type="checkbox"
+  checked={false}
+  onChange={() => toggleActie(actie.id, false)}
+/>
                 <button onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })} className="text-left w-full">📝 {actie.tekst}</button>
               </label>
               <div className="text-sm text-gray-500">
@@ -257,10 +257,10 @@ export default function ActieLijstPagina() {
                 <div key={actie.id} className="flex items-center justify-between border p-3 rounded bg-gray-50 text-gray-500">
                   <label className="flex items-center gap-3">
                     <input
-                      type="checkbox"
-                      checked={actie.voltooid}
-                      onChange={() => toggleActie(actie.id, actie.voltooid)}
-                    />
+  type="checkbox"
+  checked={true}
+  onChange={() => toggleActie(actie.id, true)}
+/>
                     <span className="line-through">{actie.tekst}</span>
                   </label>
                 </div>
