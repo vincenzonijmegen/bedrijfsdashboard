@@ -22,15 +22,55 @@ export default function SuikervrijPage() {
   const [aantal, setAantal] = useState(0);
   const [kleur, setKleur] = useState(kleuren[0]);
 
-  const toevoegen = () => {
+  const toevoegen = async () => {
     if (!aantal || aantal <= 0) return;
-    const nieuwe = { id: nextId++, smaak, datum, aantal, kleur };
-    setLijst((prev) => [...prev, nieuwe]);
+    const res = await fetch('/api/suikervrij/productie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ smaak, datum, aantal, kleur })
+    });
+    const nieuw = await res.json();
+    setLijst((prev) => [nieuw, ...prev]);
     setAantal(0);
   };
+  };
 
-  return (
-    <div className="p-6">
+  const [smakenlijst, setSmakenlijst] = useState<string[]>([]);
+const [kleurenlijst, setKleurenlijst] = useState<string[]>([]);
+const [nieuweSmaak, setNieuweSmaak] = useState("");
+const [nieuweKleur, setNieuweKleur] = useState("");
+
+useEffect(() => {
+  fetch('/api/suikervrij/smaken').then(res => res.json()).then(setSmakenlijst);
+  fetch('/api/suikervrij/kleuren').then(res => res.json()).then(setKleurenlijst);
+}, []);
+
+const voegSmaakToe = async () => {
+  if (!nieuweSmaak.trim()) return;
+  await fetch('/api/suikervrij/smaken', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ naam: nieuweSmaak.trim() })
+  });
+  setNieuweSmaak("");
+  const data = await fetch('/api/suikervrij/smaken').then(res => res.json());
+  setSmakenlijst(data);
+};
+
+const voegKleurToe = async () => {
+  if (!nieuweKleur.trim()) return;
+  await fetch('/api/suikervrij/kleuren', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ naam: nieuweKleur.trim() })
+  });
+  setNieuweKleur("");
+  const data = await fetch('/api/suikervrij/kleuren').then(res => res.json());
+  setKleurenlijst(data);
+};
+
+return (
+  <div className="p-6">
       <h1 className="text-xl font-bold mb-4">Productie suikervrij ijs</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -80,6 +120,40 @@ export default function SuikervrijPage() {
           ))}
         </tbody>
       </table>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
+        <div>
+          <h2 className="text-lg font-semibold mb-2">Smaken beheren</h2>
+          <ul className="mb-2 list-disc list-inside text-sm text-gray-700">
+            {smakenlijst.map((s) => <li key={s}>{s}</li>)}
+          </ul>
+          <input
+            value={nieuweSmaak}
+            onChange={(e) => setNieuweSmaak(e.target.value)}
+            placeholder="Nieuwe smaak"
+            className="border rounded px-2 py-1 w-full mb-2"
+          />
+          <button onClick={voegSmaakToe} className="bg-blue-500 text-white px-3 py-1 rounded">
+            + Smaak
+          </button>
+        </div>
+
+        <div>
+          <h2 className="text-lg font-semibold mb-2">Kleuren beheren</h2>
+          <ul className="mb-2 list-disc list-inside text-sm text-gray-700">
+            {kleurenlijst.map((k) => <li key={k}>{k}</li>)}
+          </ul>
+          <input
+            value={nieuweKleur}
+            onChange={(e) => setNieuweKleur(e.target.value)}
+            placeholder="Nieuwe kleur"
+            className="border rounded px-2 py-1 w-full mb-2"
+          />
+          <button onClick={voegKleurToe} className="bg-green-600 text-white px-3 py-1 rounded">
+            + Kleur
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
