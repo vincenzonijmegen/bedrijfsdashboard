@@ -106,26 +106,36 @@ export default function SuikervrijPage() {
         + Toevoegen
       </button>
 
+      {smakenlijst.map((smaakNaam) => {
+  const items = lijst
+    .filter((item) => item.smaak === smaakNaam)
+    .sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime());
+  if (items.length === 0) return null;
+
+  return (
+    <div key={smaakNaam} className="mb-6">
+      <h3 className="text-base font-semibold mb-2">{smaakNaam}</h3>
       <table className="w-full border text-sm">
         <thead>
           <tr className="bg-gray-100">
-            <th className="border px-2 py-1 text-left">Smaak</th>
             <th className="border px-2 py-1 text-left">Datum</th>
             <th className="border px-2 py-1 text-left">Aantal</th>
             <th className="border px-2 py-1 text-left">Sticker</th>
           </tr>
         </thead>
         <tbody>
-          {lijst.map((p) => (
+          {items.map((p) => (
             <tr key={p.id}>
-              <td className="border px-2 py-1">{p.smaak}</td>
-              <td className="border px-2 py-1">{p.datum}</td>
+              <td className="border px-2 py-1">{new Date(p.datum).toLocaleDateString("nl-NL")}</td>
               <td className="border px-2 py-1">{p.aantal}</td>
               <td className="border px-2 py-1">{p.kleur}</td>
             </tr>
           ))}
         </tbody>
       </table>
+    </div>
+  );
+})}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
         <div>
