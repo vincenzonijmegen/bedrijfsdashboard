@@ -110,7 +110,22 @@ function RoutineHistoriek({ id, naam }: { id: number; naam: string }) {
       <ul className="text-sm list-disc list-inside text-gray-700">
         {Array.isArray(data) && data.length > 0 ? (
           data.map((entry, i) => (
-            <li key={i}>{dayjs(entry.datum).format("D MMMM YYYY")}</li>
+            <li key={i} className="flex items-center justify-between">
+                <span>{dayjs(entry.datum).format("D MMMM YYYY")}</span>
+                <button
+                  onClick={async () => {
+                    if (!confirm('Weet je zeker dat je deze registratie wilt verwijderen?')) return;
+                    await fetch(`/api/schoonmaakroutines/historiek`, {
+                      method: 'DELETE',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ routine_id: id, datum: entry.datum })
+                    });
+                    // herlaad de historiek
+                    mutate();
+                  }}
+                  className="text-red-500 hover:text-red-700 ml-2"
+                >🗑️</button>
+              </li>
           ))
         ) : (
           <li className="text-gray-400">Nog geen registraties</li>
