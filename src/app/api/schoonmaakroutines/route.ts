@@ -52,7 +52,7 @@ export async function PATCH(req: NextRequest) {
         [id, laatst_uitgevoerd]
       );
 
-      await client.query(
+      await db.query(
         `INSERT INTO schoonmaak_log (routine_id, datum) VALUES ($1, $2)`,
         [id, laatst_uitgevoerd]
       );
