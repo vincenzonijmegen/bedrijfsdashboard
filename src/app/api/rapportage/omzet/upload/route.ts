@@ -50,8 +50,10 @@ export async function POST(req: NextRequest) {
           const aantal = parseInt(row.aantal);
           const prijs = parseFloat(row.verkoopprijs);
           if (!aantal || !prijs) return;
+          const omgezetteDatum = parseDatumNL(row.datum);
+          if (!omgezetteDatum) return;
           rows.push({
-            datum: parseDatumNL(row.datum),
+            datum: omgezetteDatum,
             tijdstip: tijdString(row.tijdstip),
             product: row.product,
             aantal,
