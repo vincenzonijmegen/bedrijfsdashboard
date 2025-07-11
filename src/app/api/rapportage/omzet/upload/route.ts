@@ -1,8 +1,7 @@
 // Bestand: src/app/api/rapportage/omzet/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import csv from 'csv-parser';
-import { Readable } from 'stream';
+import xlsx from 'xlsx';
 
 export const runtime = 'nodejs';
 
@@ -24,6 +23,10 @@ const tijdString = (waarde: string) => {
   return `${uren}:${minuten}:${seconden}`;
 };
 
+const parseDatum = (excelDatum: Date | string) => {
+  if (typeof excelDatum === 'string') return excelDatum;
+  return excelDatum.toISOString().split('T')[0];
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,37 +35,38 @@ export async function POST(req: NextRequest) {
     if (!file) return NextResponse.json({ error: 'Geen bestand ontvangen' }, { status: 400 });
 
     const buffer = Buffer.from(await file.arrayBuffer());
+    const workbook = xlsx.read(buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rawData = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+
     const rows: any[] = [];
 
-    const parseDatumNL = (waarde: string) => {
-      const parts = waarde.split('-');
-      if (parts.length !== 3) return null;
-      const [dag, maand, jaar] = parts;
-      return `${jaar}-${maand.padStart(2, '0')}-${dag.padStart(2, '0')}`;
-    };
+    for (const rij of rawData as any[]) {
+      if (rij.length < 5) continue;
+      const [datum, tijd, _betaalwijze, aantal, totaal] = rij;
+      const parsedDatum = parseDatum(datum);
+      const tijdstip = tijdString(tijd.toString());
+      const parsedAantal = parseInt(aantal);
+      const parsedTotaal = parseFloat(totaal);
+      if (!parsedDatum || isNaN(parsedAantal) || isNaN(parsedTotaal)) continue;
+      rows.push({
+        datum: parsedDatum,
+        tijdstip,
+        product: 'Onbekend',
+        aantal: parsedAantal,
+        eenheidsprijs: parsedTotaal / parsedAantal
+      });
+    }
 
-    await new Promise((resolve, reject) => {
-      Readable.from(buffer.toString())
-        .pipe(csv({ separator: ';', mapHeaders: ({ header }) => header.replace(/^\uFEFF/, '').toLowerCase() }))
-        .on('data', (row) => {
-          console.log('Gelezen rij:', row);
-          if (!row.datum || !row.tijdstip || !row.product || !row.aantal || !row.verkoopprijs) return;
-          const aantal = parseInt(row.aantal);
-          const prijs = parseFloat(row.verkoopprijs);
-          if (!aantal || !prijs) return;
-          rows.push({
-            datum: parseDatumNL(row.datum),
-            tijdstip: tijdString(row.tijdstip),
-            product: row.product,
-            aantal,
-            eenheidsprijs: prijs / aantal
-          });
-        })
-        .on('end', resolve)
-        .on('error', reject);
-    });
+    const uniekeDatums = [...new Set(rows.map(r => r.datum))];
+    const result = await db.query(
+      `SELECT COUNT(*) FROM rapportage.omzet WHERE datum = ANY($1::date[])`,
+      [uniekeDatums]
+    );
+    if (parseInt(result.rows[0].count) > 0) {
+      return NextResponse.json({ error: 'Er bestaan al regels met deze datum. Bestand geweigerd.' }, { status: 400 });
+    }
 
-    // Batch insert per 1000 regels
     const batchSize = 1000;
     for (let i = 0; i < rows.length; i += batchSize) {
       const batch = rows.slice(i, i + batchSize);
@@ -80,7 +84,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, ingevoerd: rows.length });
   } catch (err) {
-    console.error('Fout bij CSV-upload:', err);
+    console.error('Fout bij upload:', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
