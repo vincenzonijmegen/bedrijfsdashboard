@@ -95,12 +95,11 @@ export default function SchoonmaakRoutinesPagina() {
     return () => clearInterval(interval);
   }, []);
 
-  const markeerAlsUitgevoerd = async (id: number) => {
-    const vandaagDatum = vandaag.format("YYYY-MM-DD");
+  const markeerAlsUitgevoerd = async (id: number, datum: string) => {
     await fetch("/api/schoonmaakroutines", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, laatst_uitgevoerd: vandaagDatum }),
+      body: JSON.stringify({ id, laatst_uitgevoerd: datum }),
     });
     mutate();
   };
@@ -147,12 +146,13 @@ export default function SchoonmaakRoutinesPagina() {
               <div className="text-sm">Laatst uitgevoerd: {formatDatum(routine.laatst_uitgevoerd)}</div>
               <div className="text-sm">Volgende keer vóór: {berekenDueDate(routine)}</div>
             </div>
-            <button
-              onClick={() => markeerAlsUitgevoerd(routine.id)}
-              className="bg-blue-600 text-white px-3 py-1 rounded"
-            >
-              ✔ Vandaag
-            </button>
+            <input
+              type="date"
+              className="border rounded px-2 py-1"
+              max={vandaag.format("YYYY-MM-DD")}
+              defaultValue={vandaag.format("YYYY-MM-DD")}
+              onChange={(e) => markeerAlsUitgevoerd(routine.id, e.target.value)}
+            />
           </div>
         ))}
       </div>
