@@ -20,6 +20,72 @@ interface Routine {
   laatst_uitgevoerd: string | null;
 }
 
+function RoutineForm({ onToegevoegd }: { onToegevoegd: () => void }) {
+  const [naam, setNaam] = useState("");
+  const [frequentie, setFrequentie] = useState(14);
+  const [start, setStart] = useState(3);
+  const [eind, setEind] = useState(9);
+  const [saving, setSaving] = useState(false);
+
+  const toevoegen = async () => {
+    if (!naam.trim()) return;
+    setSaving(true);
+    await fetch("/api/schoonmaakroutines", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ naam: naam.trim(), frequentie, periode_start: start, periode_eind: eind })
+    });
+    setNaam("");
+    onToegevoegd();
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-2">
+      <input
+        className="w-full border rounded px-3 py-2"
+        placeholder="Naam routine"
+        value={naam}
+        onChange={(e) => setNaam(e.target.value)}
+      />
+      <div className="flex gap-2">
+        <input
+          type="number"
+          className="w-32 border rounded px-3 py-2"
+          value={frequentie}
+          onChange={(e) => setFrequentie(parseInt(e.target.value))}
+          placeholder="Frequentie (dagen)"
+        />
+        <input
+          type="number"
+          className="w-24 border rounded px-3 py-2"
+          value={start}
+          min={1}
+          max={12}
+          onChange={(e) => setStart(parseInt(e.target.value))}
+          placeholder="Start maand"
+        />
+        <input
+          type="number"
+          className="w-24 border rounded px-3 py-2"
+          value={eind}
+          min={1}
+          max={12}
+          onChange={(e) => setEind(parseInt(e.target.value))}
+          placeholder="Eind maand"
+        />
+      </div>
+      <button
+        onClick={toevoegen}
+        className="bg-green-600 text-white px-4 py-2 rounded mt-2"
+        disabled={saving}
+      >
+        {saving ? 'Toevoegen...' : '➕ Toevoegen'}
+      </button>
+    </div>
+  );
+}
+
 export default function SchoonmaakRoutinesPagina() {
   const { data: routines, mutate } = useSWR<Routine[]>("/api/schoonmaakroutines", fetcher);
   const [vandaag, setVandaag] = useState(dayjs());
@@ -64,7 +130,7 @@ export default function SchoonmaakRoutinesPagina() {
   };
 
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-3xl mx-auto space-y-8">
       <h1 className="text-2xl font-semibold mb-6">Schoonmaakroutines</h1>
 
       <div className="space-y-4">
@@ -90,6 +156,13 @@ export default function SchoonmaakRoutinesPagina() {
           </div>
         ))}
       </div>
+            <div className="border-t pt-6">
+        <h2 className="text-lg font-semibold mb-4">Nieuwe routine toevoegen</h2>
+        <RoutineForm onToegevoegd={mutate} />
+      </div>
+    </div>
+
+
     </div>
   );
 }
