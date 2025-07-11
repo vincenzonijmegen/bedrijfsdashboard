@@ -10,6 +10,7 @@ import clsx from "clsx";
 dayjs.locale("nl");
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetchHistoriek = (routineId: number) => fetch(`/api/schoonmaakroutines/historiek?routine_id=${routineId}`).then(res => res.json());
 
 interface Routine {
   id: number;
@@ -86,6 +87,24 @@ function RoutineForm({ onToegevoegd }: { onToegevoegd: () => void }) {
   );
 }
 
+function RoutineHistoriek({ id, naam }: { id: number; naam: string }) {
+  const { data } = useSWR<{ datum: string }[]>(`/api/schoonmaakroutines/historiek?routine_id=${id}`, fetcher);
+  return (
+    <div className="mb-4">
+      <div className="font-medium mb-1">{naam}</div>
+      <ul className="text-sm list-disc list-inside text-gray-700">
+        {data?.length > 0 ? (
+          data.map((entry, i) => (
+            <li key={i}>{dayjs(entry.datum).format("D MMMM YYYY")}</li>
+          ))
+        ) : (
+          <li className="text-gray-400">Nog geen registraties</li>
+        )}
+      </ul>
+    </div>
+  );
+}
+
 export default function SchoonmaakRoutinesPagina() {
   const { data: routines, mutate } = useSWR<Routine[]>("/api/schoonmaakroutines", fetcher);
   const [vandaag, setVandaag] = useState(dayjs());
@@ -154,6 +173,14 @@ export default function SchoonmaakRoutinesPagina() {
               onChange={(e) => markeerAlsUitgevoerd(routine.id, e.target.value)}
             />
           </div>
+        ))}
+      </div>
+
+      {/* Historiekweergave */}
+      <div className="border-t pt-6">
+        <h2 className="text-lg font-semibold mb-4">Historiek</h2>
+        {routines?.map((routine) => (
+          <RoutineHistoriek key={routine.id} id={routine.id} naam={routine.naam} />
         ))}
       </div>
 
