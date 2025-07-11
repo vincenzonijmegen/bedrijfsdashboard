@@ -21,3 +21,18 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json(result.rows[0]);
 }
+export async function PATCH(req: NextRequest) {
+  const { id, datum, aantal, kleur } = await req.json();
+  if (!id || !datum || !aantal || !kleur) {
+    return NextResponse.json({ error: "Alles is verplicht" }, { status: 400 });
+  }
+
+  const result = await db.query(
+    `UPDATE ijs_productie
+     SET datum = $2, aantal = $3, kleur = $4
+     WHERE id = $1 RETURNING *`,
+    [id, datum, aantal, kleur]
+  );
+
+  return NextResponse.json(result.rows[0]);
+}
