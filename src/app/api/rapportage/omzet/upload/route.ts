@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   const parts = waarde.split('-');
   if (parts.length !== 3) return null;
   let [dag, maand, jaar] = parts;
-  if (jaar.length === 2) jaar = '20' + jaar; // fallback als het kort is
+  if (jaar.length === 2) jaar = '20' + jaar;
   const datumISO = `${jaar}-${maand.padStart(2, '0')}-${dag.padStart(2, '0')}`;
   return isNaN(Date.parse(datumISO)) ? null : datumISO;
 };
