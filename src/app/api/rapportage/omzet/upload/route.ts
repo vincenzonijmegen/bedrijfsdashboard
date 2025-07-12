@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { Readable } from 'stream';
-import csv from 'csv-parse';
+import * as csv from 'csv-parse';
 
 export const runtime = 'nodejs';
 export const config = {
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const tijdelijkeDatums: string[] = [];
     await new Promise((resolve, reject) => {
       Readable.from(buffer)
-        .pipe(csv.parse({ delimiter: ',', fromLine: 1 }))
+        .pipe(csv.parse({ delimiter: ';', fromLine: 1 }))
         .on('data', (cols: string[]) => {
           const datum = cols[0]?.trim();
           if (parseDatumNL(datum)) tijdelijkeDatums.push(datum);
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     const rows: any[] = [];
     await new Promise((resolve, reject) => {
       Readable.from(buffer)
-        .pipe(csv.parse({ delimiter: ',', fromLine: 1 }))
+        .pipe(csv.parse({ delimiter: ';', fromLine: 1 }))
         .on('data', (cols: string[]) => {
           const [datum, tijdstip, , product, aantalStr, prijsStr] = cols;
           if (!datum || bestaande.includes(datum)) return;
