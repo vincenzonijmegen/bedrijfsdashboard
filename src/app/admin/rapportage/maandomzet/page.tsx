@@ -72,6 +72,13 @@ export default async function MaandomzetPage() {
     <div className="p-6">
       <Link href="/admin" className="text-sm underline text-blue-600">← Terug naar admin</Link>
       <h1 className="text-2xl font-bold mt-4 mb-6">Maandomzet per jaar</h1>
+      {/* Huidige jaar bijgewerkt t/m laatste omzetdatum */}
+      <p className="text-sm text-gray-600 mb-4">
+        Huidige jaar bijgewerkt t/m {new Date(
+          (await dbRapportage.query(`SELECT MAX(datum) AS max_datum FROM rapportage.omzet`))
+            .rows[0].max_datum
+        ).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
+      </p>
 
       <table className="w-full border border-gray-400">
         <thead>
