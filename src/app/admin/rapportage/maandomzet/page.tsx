@@ -31,7 +31,8 @@ export default async function MaandomzetPage() {
   // Maak een draaitabel: { maandnaam: { jaar: totaalbedrag } }
   const perMaand: Record<string, Record<number, number>> = {};
   data.forEach(({ jaar, maand_start, totaal }) => {
-    const maandIndex = new Date(maand_start).getMonth() + 1;
+    const maandDate = new Date(maand_start);
+    const maandIndex = maandDate.getMonth() + 1;
     const maand = maandnamen[maandIndex];
     perMaand[maand] = perMaand[maand] || {};
     perMaand[maand][jaar] = totaal;
@@ -70,13 +71,12 @@ export default async function MaandomzetPage() {
                 <td className="border p-2 font-medium">{maand}</td>
                 {jaren.map((jaar) => {
                   const value = perMaand[maand]?.[jaar];
-                  const kleur = value ? getColor(value, waarden) : '';
+                  const kleur = typeof value === 'number' ? getColor(value, waarden) : '';
                   return (
                     <td key={jaar} className={`border p-2 text-right ${kleur}`}>
-                      {value?.toLocaleString('nl-NL', {
-                        style: 'currency',
-                        currency: 'EUR'
-                      }) || ''}
+                      {typeof value === 'number'
+                        ? value.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })
+                        : ''}
                     </td>
                   );
                 })}
