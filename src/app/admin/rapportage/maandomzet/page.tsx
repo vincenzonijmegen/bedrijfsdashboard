@@ -35,7 +35,7 @@ export default async function MaandomzetPage() {
     const d = new Date(maand_start);
     const maand = maandnamen[d.getMonth() + 1];
     perMaand[maand] = perMaand[maand] || {};
-    perMaand[maand][jaar] = totaal;
+        perMaand[maand][jaar] = totaalNum;
   });
 
   // Bereken jaartotalen
