@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     await new Promise((resolve, reject) => {
       let regelTeller = 0;
       Readable.from(text)
-        .pipe(csv({ separator: ',', mapHeaders: ({ header }) => header.trim().toLowerCase() }))
+        .pipe(csv({ separator: ';', mapHeaders: ({ header }) => header.trim().toLowerCase() }))
         .on('data', (row) => {
           regelTeller++;
           console.log(`Rij ${regelTeller}:`, row);
