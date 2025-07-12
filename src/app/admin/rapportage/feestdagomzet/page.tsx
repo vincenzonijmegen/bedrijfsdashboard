@@ -57,7 +57,7 @@ export default function FeestdagOmzetPage() {
                 const val = perFeestdag[feestdag]?.[jaar];
                 const style = typeof val === 'number' ? getColorStyle(val) : {};
                 return (
-                  <td key={jaar} className="border p-1 text-right" style={style}>
+                  <td key={jaar} className="border p-1 text-right" style={style} title={val?.toString()}>
                     {val?.toLocaleString('nl-NL', { maximumFractionDigits: 0 }) || ''}
                   </td>
                 );
