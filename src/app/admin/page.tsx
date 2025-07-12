@@ -51,7 +51,7 @@ type LinkCardProps = {
   href: string;
   label: string;
   color: string;
-  Icon: (props: React.SVGProps<SVGSVGElement>) => JSX.Element;
+  Icon: React.FC<React.SVGProps<SVGSVGElement>>;
 };
 
 const LinkCard = ({ href, label, color, Icon }: LinkCardProps) => (
