@@ -37,18 +37,26 @@ export default async function MaandomzetPage() {
     perMaand[maand][jaar] = totaal;
   });
 
-  // Functie voor kleurverloop per maand (rij) met inline style
+    // Functie voor kleurverloop per maand (rij) met pastel inline style
   const getColorStyle = (value: number, all: number[]) => {
     const min = Math.min(...all);
     const max = Math.max(...all);
     if (max === min) return {};
+    const pct = (value - min) / (max - min);
+    // Pastel overgang van zacht rood naar zacht groen
+    const rStart = 255, gStart = 200, b = 200;
+    const rEnd = 200, gEnd = 255;
+    const r = Math.round(rStart + (rEnd - rStart) * pct);
+    const g = Math.round(gStart + (gEnd - gStart) * pct);
+    return { backgroundColor: `rgb(${r},${g},${b})`, color: '#000', fontWeight: 'bold' };
+  };
     const pct = (value - min) / (max - min);
     const r = Math.round(255 - 255 * pct);
     const g = Math.round(255 * pct);
     // Zwarte tekst en bold voor leesbaarheid
     return { backgroundColor: `rgb(${r},${g},0)`, color: '#000', fontWeight: 'bold' };
   };
-  
+
 
   return (
     <div className="p-6">
