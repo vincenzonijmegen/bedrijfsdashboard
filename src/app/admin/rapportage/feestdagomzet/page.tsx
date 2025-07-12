@@ -47,7 +47,7 @@ export default function FeestdagOmzetPage() {
 
   return (
     <div className="p-6">
-      <Link href="/admin" className="text-sm underline text-blue-600">← Terug naar admin</Link>
+      <Link href="/admin/rapportage" className="text-sm underline text-blue-600">← Terug naar Rapportage</Link>
       <h1 className="text-2xl font-bold mt-4 mb-6">Omzet per feestdag</h1>
 
       <table className="border border-gray-400 text-sm leading-tight">
@@ -55,7 +55,7 @@ export default function FeestdagOmzetPage() {
           <tr className="bg-gray-200">
             <th className="p-1 border">Feestdag</th>
             {jaren.map(jaar => (
-              <th key={jaar} className="p-1 border text-right">{jaar}</th>
+              <th key={jaar} className="px-2 py-1 border text-right">{jaar}</th>
             ))}
           </tr>
         </thead>
@@ -67,7 +67,7 @@ export default function FeestdagOmzetPage() {
                 const val = perFeestdag[feestdag]?.[jaar] ?? 0;
                 const style = val > 0 ? getColorStyle(val) : {};
                 return (
-                  <td key={jaar} className="border p-1 text-right" style={style}>
+                  <td key={jaar} className="border px-2 py-1 text-right" style={style}>
                     {val.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
                   </td>
                 );
