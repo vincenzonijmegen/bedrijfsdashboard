@@ -37,7 +37,7 @@ export default async function MaandomzetPage() {
     perMaand[maand][jaar] = totaal;
   });
 
-    // Functie voor kleurverloop per maand (rij) met pastel inline style
+  // Functie voor kleurverloop per maand (rij) met pastel inline style
   const getColorStyle = (value: number, all: number[]) => {
     const min = Math.min(...all);
     const max = Math.max(...all);
@@ -50,13 +50,6 @@ export default async function MaandomzetPage() {
     const g = Math.round(gStart + (gEnd - gStart) * pct);
     return { backgroundColor: `rgb(${r},${g},${b})`, color: '#000', fontWeight: 'bold' };
   };
-    const pct = (value - min) / (max - min);
-    const r = Math.round(255 - 255 * pct);
-    const g = Math.round(255 * pct);
-    // Zwarte tekst en bold voor leesbaarheid
-    return { backgroundColor: `rgb(${r},${g},0)`, color: '#000', fontWeight: 'bold' };
-  };
-
 
   return (
     <div className="p-6">
@@ -74,20 +67,20 @@ export default async function MaandomzetPage() {
         </thead>
         <tbody>
           {alleMaanden.map(maand => {
-            const values = jaren.map(j => perMaand[maand]?.[j] || 0);
+            const values = jaren.map(j => perMaand[maand]?.[j] ?? 0);
             return (
               <tr key={maand}>
                 <td className="border p-2 font-medium">{maand}</td>
                 {jaren.map(jaar => {
-                  const val = perMaand[maand]?.[jaar] || 0;
-                  const style = val > 0 ? getColorStyle(val, values) : {};
+                  const val = perMaand[maand]?.[jaar] ?? 0;
+                  const style = val ? getColorStyle(val, values) : {};
                   return (
                     <td
                       key={jaar}
                       className="border p-2 text-right"
                       style={style}
                     >
-                      {val > 0 && val.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })}
+                      {val ? val.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' }) : ''}
                     </td>
                   );
                 })}
