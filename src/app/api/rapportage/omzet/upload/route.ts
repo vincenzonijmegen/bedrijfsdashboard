@@ -41,12 +41,12 @@ export async function POST(req: NextRequest) {
     }
 
     const arrayBuffer = await (file as unknown as Blob).arrayBuffer();
-    const text = Buffer.from(arrayBuffer).toString('utf-8');
+    const buffer = Buffer.from(arrayBuffer);
     const rows: any[] = [];
 
     await new Promise((resolve, reject) => {
       let regelTeller = 0;
-      Readable.from(text)
+      Readable.from(buffer)
         .pipe(csv({ separator: ';', mapHeaders: ({ header }) => header.trim().toLowerCase() }))
         .on('data', (row) => {
           regelTeller++;
