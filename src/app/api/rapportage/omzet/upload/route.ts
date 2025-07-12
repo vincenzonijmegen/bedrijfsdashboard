@@ -37,11 +37,15 @@ export async function POST(req: NextRequest) {
     if (!file || typeof file === 'string') return NextResponse.json({ error: 'Ongeldig bestand' }, { status: 400 });
     // Converteer file naar ArrayBuffer via Response, ondersteund in Node runtime
     const arrayBuffer = await new Response(file).arrayBuffer();
+    console.log('✅ Bestand ontvangen, arrayBuffer lengte:', arrayBuffer.byteLength);
     const data = new Uint8Array(arrayBuffer);
+    console.log('✅ Data omgezet naar Uint8Array, lengte:', data.length);
 
     const workbook = xlsx.read(data, { type: 'array' });
+    console.log('✅ Workbook geladen, sheets:', workbook.SheetNames);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rawData: any[][] = xlsx.utils.sheet_to_json(sheet, { header: 1 });
+    console.log('✅ Aantal rijen in sheet:', rawData.length);
 
     const rows: any[] = [];
     for (const rij of rawData) {
