@@ -32,7 +32,11 @@ export default function FeestdagOmzetPage() {
     const pct = (value - min) / (max - min);
     const r = Math.round(255 - 255 * pct);
     const g = Math.round(255 * pct);
-    return { backgroundColor: `rgb(${r},${g},180)`, color: '#000', fontWeight: 'bold' };
+    return {
+      backgroundColor: `rgb(${r},${g},180) !important`,
+      color: '#000',
+      fontWeight: 'bold'
+    } as React.CSSProperties;
   };
 
   return (
