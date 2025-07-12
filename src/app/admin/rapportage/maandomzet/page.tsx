@@ -64,20 +64,22 @@ export default async function MaandomzetPage() {
         </thead>
         <tbody>
           {alleMaanden.map((maand) => {
-            // Verzameling van alle waarden voor deze maand
-            const waarden = jaren.map((jaar) => perMaand[maand]?.[jaar] || 0);
+            // Verzameling van alle waarden voor deze maand (inclusief 0 voor ontbrekende)
+            const waarden = jaren.map((jaar) => perMaand[maand]?.[jaar] ?? 0);
             return (
               <tr key={maand}>
                 <td className="border p-2 font-medium">{maand}</td>
-                {jaren.map((jaar, i) => {
-                  const val = perMaand[maand]?.[jaar] ?? 0;
-                  const kleur = val > 0 ? getColor(val, waarden) : '';
+                {jaren.map((jaar) => {
+                  const val = perMaand[maand]?.[jaar];
+                  const kleur = val != null ? getColor(val, waarden) : '';
                   return (
                     <td
                       key={jaar}
                       className={`border p-2 text-right ${kleur}`}
                     >
-                      {val > 0 && val.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })}
+                      {val != null
+                        ? val.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })
+                        : ''}
                     </td>
                   );
                 })}
