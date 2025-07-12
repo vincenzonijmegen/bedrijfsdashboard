@@ -35,7 +35,8 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get('file');
     if (!file || typeof file === 'string') return NextResponse.json({ error: 'Ongeldig bestand' }, { status: 400 });
-    const arrayBuffer = await (file as Blob).arrayBuffer();
+    // Converteer file naar ArrayBuffer via Response, ondersteund in Node runtime
+    const arrayBuffer = await new Response(file).arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
     const workbook = xlsx.read(buffer, { type: 'buffer' });
