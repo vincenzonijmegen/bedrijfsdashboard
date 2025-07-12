@@ -75,6 +75,7 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/rapportages" label="📈 Omzet & voorraad" color="gray" />
         <LinkCard href="/admin/rapportages/medewerkers/overzicht-progressie" label="📈 Medewerkers-voortgang" color="gray" />
         <LinkCard href="/admin/rapportage/omzet" label="📈 Inlezen omzet" color="gray" />
+        <LinkCard href="/admin/rapportage" label="📈 Rapporten" color="gray" />
       </Section>
     </main>
   );
