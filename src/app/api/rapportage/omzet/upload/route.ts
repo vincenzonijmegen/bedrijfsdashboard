@@ -35,10 +35,8 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get('file');
     if (!file || typeof file === 'string') return NextResponse.json({ error: 'Ongeldig bestand' }, { status: 400 });
-    const stream = (file as any).stream();
-    const chunks: Uint8Array[] = [];
-    for await (const chunk of stream) chunks.push(chunk);
-    const buffer = Buffer.concat(chunks);
+    const arrayBuffer = await (file as Blob).arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
     const workbook = xlsx.read(buffer, { type: 'buffer' });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
