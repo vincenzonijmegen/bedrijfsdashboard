@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
       Readable.from(text)
         .pipe(csv({ separator: ';' }))
         .on('data', (row) => {
+          if (!row.datum || typeof row.datum !== 'string') return;
           const datum = parseDatumNL(row.datum);
           if (!datum) return;
           const tijd = tijdString(row.tijdstip);
