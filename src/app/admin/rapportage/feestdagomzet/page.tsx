@@ -16,10 +16,24 @@ export default function FeestdagOmzetPage() {
   const jaren = [...new Set(data.map((r: any) => r.jaar))].sort() as number[];
 
   const perFeestdag: Record<string, Record<number, number>> = {};
+  const alleWaarden: number[] = [];
+
   data.forEach(({ feestdag, jaar, totaal }: any) => {
     perFeestdag[feestdag] = perFeestdag[feestdag] || {};
     perFeestdag[feestdag][jaar] = totaal;
+    if (totaal !== null && typeof totaal === 'number') alleWaarden.push(totaal);
   });
+
+  const min = Math.min(...alleWaarden);
+  const max = Math.max(...alleWaarden);
+
+  const getColorStyle = (value: number) => {
+    if (max === min) return {};
+    const pct = (value - min) / (max - min);
+    const r = Math.round(255 - 255 * pct);
+    const g = Math.round(255 * pct);
+    return { backgroundColor: `rgb(${r},${g},180)`, color: '#000', fontWeight: 'bold' };
+  };
 
   return (
     <div className="p-6">
@@ -31,19 +45,23 @@ export default function FeestdagOmzetPage() {
           <tr className="bg-gray-200">
             <th className="p-1 border">Feestdag</th>
             {jaren.map((jaar) => (
-              <th key={jaar} className="p-2 border text-right">{jaar}</th>
+              <th key={jaar} className="p-1 border text-right">{jaar}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {feestdagen.map((feestdag) => (
             <tr key={feestdag}>
-              <td className="border p-1 font-medium">{feestdag}</td>
-              {jaren.map((jaar) => (
-                <td key={jaar} className="border p-2 text-right">
-                  {perFeestdag[feestdag]?.[jaar]?.toLocaleString('nl-NL', { maximumFractionDigits: 0 }) || ''}
-                </td>
-              ))}
+              <td className="border p-1 font-medium whitespace-nowrap">{feestdag}</td>
+              {jaren.map((jaar) => {
+                const val = perFeestdag[feestdag]?.[jaar];
+                const style = typeof val === 'number' ? getColorStyle(val) : {};
+                return (
+                  <td key={jaar} className="border p-1 text-right" style={style}>
+                    {val?.toLocaleString('nl-NL', { maximumFractionDigits: 0 }) || ''}
+                  </td>
+                );
+              })}
             </tr>
           ))}
         </tbody>

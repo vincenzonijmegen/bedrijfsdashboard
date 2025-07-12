@@ -40,6 +40,7 @@ export async function GET() {
           Zomerfeesten dag 4
           Zomerfeesten dag 5
           Zomerfeesten dag 6
+          Zomerfeesten dag 7
         ')
     `);
 
