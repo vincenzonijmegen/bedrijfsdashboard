@@ -37,6 +37,12 @@ export default async function MaandomzetPage() {
     perMaand[maand][jaar] = totaal;
   });
 
+  // Bereken jaartotalen
+  const jaarTotalen: Record<number, number> = {};
+  jaren.forEach(jaar => {
+    jaarTotalen[jaar] = alleMaanden.reduce((sum, maand) => sum + (perMaand[maand]?.[jaar] ?? 0), 0);
+  });
+
   // Functie voor kleurverloop per maand (rij) met pastel inline style
   const getColorStyle = (value: number, all: number[]) => {
     const min = Math.min(...all);
@@ -88,6 +94,16 @@ export default async function MaandomzetPage() {
             );
           })}
         </tbody>
+        <tfoot>
+          <tr className="bg-gray-200 font-semibold">
+            <td className="border p-2">Totaal per jaar</td>
+            {jaren.map(jaar => (
+              <td key={jaar} className="border p-2 text-right">
+                {jaarTotalen[jaar].toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })}
+              </td>
+            ))}
+          </tr>
+        </tfoot>
       </table>
     </div>
   );
