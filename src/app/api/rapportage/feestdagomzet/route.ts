@@ -12,6 +12,7 @@ export async function GET() {
       FROM rapportage.feestdagen f
       LEFT JOIN rapportage.omzet o ON o.datum = f.datum
       GROUP BY f.naam, EXTRACT(YEAR FROM f.datum)
+      HAVING SUM(o.aantal * o.eenheidsprijs) IS NOT NULL
       ORDER BY MIN(f.datum)
     `);
 
