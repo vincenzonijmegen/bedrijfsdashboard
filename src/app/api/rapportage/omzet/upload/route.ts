@@ -38,8 +38,32 @@ export async function POST(req: NextRequest) {
 
     const arrayBuffer = await (file as unknown as Blob).arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const rows: any[] = [];
+    const testRows: any[] = [];
 
+    // Eerst 20 regels uitlezen om unieke datums te verzamelen vóór parsen
+    await new Promise((resolve, reject) => {
+      let regelTeller = 0;
+      Readable.from(buffer)
+        .pipe(csv({ separator: ';', mapHeaders: ({ header }) => header.trim().toLowerCase() }))
+        .on('data', (row) => {
+          if (regelTeller >= 50) return;
+          regelTeller++;
+          const datum = parseDatumNL(row.datum);
+          if (datum) testRows.push(datum);
+        })
+        .on('end', resolve)
+        .on('error', reject);
+    });
+
+    const unieke = [...new Set(testRows)];
+    const exists = await db.query(
+      'SELECT COUNT(*) FROM rapportage.omzet WHERE datum = ANY($1::date[])', [unieke]
+    );
+    if (parseInt(exists.rows[0].count) > 0) {
+      return NextResponse.json({ error: 'Datum bestaat al, import geannuleerd' }, { status: 400 });
+    }
+
+    const rows: any[] = [];
     await new Promise((resolve, reject) => {
       let regelTeller = 0;
       Readable.from(buffer)
@@ -83,14 +107,6 @@ export async function POST(req: NextRequest) {
           reject(err);
         });
     });
-
-    const unieke = [...new Set(rows.map(r => r.datum))];
-    const exists = await db.query(
-      'SELECT COUNT(*) FROM rapportage.omzet WHERE datum = ANY($1::date[])', [unieke]
-    );
-    if (parseInt(exists.rows[0].count) > 0) {
-      return NextResponse.json({ error: 'Datum bestaat al, import geannuleerd' }, { status: 400 });
-    }
 
     const batchSize = 1000;
     for (let i = 0; i < rows.length; i += batchSize) {
