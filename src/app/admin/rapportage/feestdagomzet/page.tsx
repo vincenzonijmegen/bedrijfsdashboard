@@ -28,7 +28,20 @@ export default function FeestdagOmzetPage() {
   const max = Math.max(...alleWaarden);
 
   const getColorStyle = (value: number) => {
+    const min = Math.min(...alleWaarden);
+    const max = Math.max(...alleWaarden);
     if (max === min) return {};
+    const pct = (value - min) / (max - min);
+    const rStart = 255, gStart = 200, b = 200;
+    const rEnd = 200, gEnd = 255;
+    const r = Math.round(rStart + (rEnd - rStart) * pct);
+    const g = Math.round(gStart + (gEnd - gStart) * pct);
+    return {
+      backgroundColor: `rgb(${r},${g},${b})`,
+      color: '#000',
+      fontWeight: 'bold'
+    };
+  };
     const pct = (value - min) / (max - min);
     const r = Math.round(255 - 255 * pct);
     const g = Math.round(255 * pct);
