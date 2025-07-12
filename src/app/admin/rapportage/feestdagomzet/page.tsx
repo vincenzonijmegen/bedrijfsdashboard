@@ -12,8 +12,8 @@ export default function FeestdagOmzetPage() {
   if (error) return <div className="p-6 text-red-600">Fout bij laden van data.</div>;
   if (!data) return <div className="p-6">Bezig met laden...</div>;
 
-  const feestdagen: string[] = [...new Set(data.map((r: any) => r.feestdag))];
-  const jaren: (number | string)[] = [...new Set(data.map((r: any) => r.jaar))].sort();
+  const feestdagen = [...new Set(data.map((r: any) => r.feestdag))] as string[];
+  const jaren = [...new Set(data.map((r: any) => r.jaar))].sort() as number[];
 
   const perFeestdag: Record<string, Record<number, number>> = {};
   data.forEach(({ feestdag, jaar, totaal }: any) => {
