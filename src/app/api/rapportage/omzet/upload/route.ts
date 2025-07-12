@@ -37,9 +37,9 @@ export async function POST(req: NextRequest) {
     if (!file || typeof file === 'string') return NextResponse.json({ error: 'Ongeldig bestand' }, { status: 400 });
     // Converteer file naar ArrayBuffer via Response, ondersteund in Node runtime
     const arrayBuffer = await new Response(file).arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    const data = new Uint8Array(arrayBuffer);
 
-    const workbook = xlsx.read(buffer, { type: 'buffer' });
+    const workbook = xlsx.read(data, { type: 'array' });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rawData: any[][] = xlsx.utils.sheet_to_json(sheet, { header: 1 });
 
