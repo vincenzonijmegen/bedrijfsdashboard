@@ -31,6 +31,7 @@ export default async function MaandomzetPage() {
   // Draaitabel opbouwen: { maandnaam: { jaar: totaal } }
   const perMaand: Record<string, Record<number, number>> = {};
   data.forEach(({ jaar, maand_start, totaal }) => {
+    const totaalNum = typeof totaal === 'string' ? Number(totaal) : totaal;
     const d = new Date(maand_start);
     const maand = maandnamen[d.getMonth() + 1];
     perMaand[maand] = perMaand[maand] || {};
