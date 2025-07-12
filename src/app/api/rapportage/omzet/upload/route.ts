@@ -1,8 +1,8 @@
 // Bestand: src/app/api/rapportage/omzet/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import csv from 'csv-parser';
 import { Readable } from 'stream';
+import csv from 'csv-parse';
 
 export const runtime = 'nodejs';
 export const config = {
@@ -38,73 +38,50 @@ export async function POST(req: NextRequest) {
 
     const arrayBuffer = await (file as unknown as Blob).arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const testRows: any[] = [];
 
-    // Eerst 50 regels uitlezen om unieke datums te verzamelen vóór parsen
+    // Eerst unieke datums verzamelen
+    const tijdelijkeDatums: string[] = [];
     await new Promise((resolve, reject) => {
-      let regelTeller = 0;
       Readable.from(buffer)
-        .pipe(csv({ separator: ';', mapHeaders: ({ header }) => header.trim().toLowerCase() }))
-        .on('data', (row) => {
-          if (regelTeller >= 50) return;
-          regelTeller++;
-          const datum = parseDatumNL(row.datum);
-          if (datum) testRows.push(datum);
+        .pipe(csv.parse({ delimiter: ',', fromLine: 1 }))
+        .on('data', (cols: string[]) => {
+          const datum = cols[0]?.trim();
+          if (parseDatumNL(datum)) tijdelijkeDatums.push(datum);
         })
         .on('end', resolve)
         .on('error', reject);
     });
 
-    const unieke = [...new Set(testRows)];
+    const uniekeDatums = [...new Set(tijdelijkeDatums)];
     const result = await db.query(
-      'SELECT DISTINCT datum FROM rapportage.omzet WHERE datum = ANY($1::date[])', [unieke]
+      'SELECT DISTINCT datum FROM rapportage.omzet WHERE datum = ANY($1::date[])', [uniekeDatums]
     );
-    const bestaandeDatums = result.rows.map(r => r.datum.toISOString().slice(0, 10));
+    const bestaande = result.rows.map(r => r.datum.toISOString().slice(0, 10));
 
     const rows: any[] = [];
     await new Promise((resolve, reject) => {
-      let regelTeller = 0;
       Readable.from(buffer)
-        .pipe(csv({ separator: ';', mapHeaders: ({ header }) => header.trim().toLowerCase() }))
-        .on('data', (row) => {
-          regelTeller++;
-          console.log(`Rij ${regelTeller}:`, row);
+        .pipe(csv.parse({ delimiter: ',', fromLine: 1 }))
+        .on('data', (cols: string[]) => {
+          const [datum, tijdstip, , product, aantalStr, prijsStr] = cols;
+          if (!datum || bestaande.includes(datum)) return;
 
-          if (!row.datum || typeof row.datum !== 'string') {
-            console.log(`❌ Rij ${regelTeller} overgeslagen: geen geldige datum.`);
-            return;
-          }
-          const datum = parseDatumNL(row.datum);
-          if (!datum || bestaandeDatums.includes(datum)) {
-            console.log(`❌ Rij ${regelTeller} overgeslagen: datum ${row.datum} ongeldig of al in database.`);
-            return;
-          }
+          const tijd = tijdString(tijdstip?.trim());
+          const aantal = parseInt(aantalStr);
+          const prijs = parseFloat(prijsStr?.replace(',', '.') || '');
 
-          const tijd = tijdString(row.tijdstip);
-          const aantal = parseInt(row.aantal);
-          const prijs = parseFloat(row.verkoopprijs?.toString().replace(',', '.') || '');
-
-          if (!aantal || !prijs) {
-            console.log(`❌ Rij ${regelTeller} overgeslagen: ongeldige aantal/prijs.`);
-            return;
-          }
+          if (!aantal || !prijs || !parseDatumNL(datum)) return;
 
           rows.push({
-            datum,
+            datum: parseDatumNL(datum),
             tijdstip: tijd,
-            product: row.product || 'Onbekend',
+            product: product?.trim() || 'Onbekend',
             aantal,
             eenheidsprijs: prijs / aantal
           });
         })
-        .on('end', () => {
-          console.log(`✅ Parser klaar. ${rows.length} geldige rijen verzameld.`);
-          resolve(null);
-        })
-        .on('error', (err) => {
-          console.error('❌ CSV-parser fout:', err);
-          reject(err);
-        });
+        .on('end', resolve)
+        .on('error', reject);
     });
 
     const batchSize = 1000;
