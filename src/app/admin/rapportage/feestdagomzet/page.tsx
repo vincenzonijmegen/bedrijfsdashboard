@@ -24,10 +24,6 @@ export default function FeestdagOmzetPage() {
   const alleWaarden: number[] = [];
 
   (data as any[]).forEach(({ feestdag, jaar, totaal }) => {
-    const totaalNum = Number(totaal);
-    perFeestdag[feestdag] = perFeestdag[feestdag] || {};
-    perFeestdag[feestdag][Number(jaar)] = totaalNum;
-    if (!isNaN(totaalNum)) alleWaarden.push(totaalNum);
     perFeestdag[feestdag] = perFeestdag[feestdag] || {};
     perFeestdag[feestdag][Number(jaar)] = totaal;
     if (totaal !== null && !isNaN(totaal)) alleWaarden.push(totaal);
