@@ -26,26 +26,26 @@ export default async function MaandomzetPage() {
     'juli', 'augustus', 'september', 'oktober', 'november', 'december',
   ];
 
-  const jaren = [...new Set(data.map((r) => r.jaar))].sort();
+  const jaren = [...new Set(data.map(r => r.jaar))].sort();
 
   // Draaitabel opbouwen: { maandnaam: { jaar: totaal } }
   const perMaand: Record<string, Record<number, number>> = {};
   data.forEach(({ jaar, maand_start, totaal }) => {
-    const maandDate = new Date(maand_start);
-    const maand = maandnamen[maandDate.getMonth() + 1];
+    const d = new Date(maand_start);
+    const maand = maandnamen[d.getMonth() + 1];
     perMaand[maand] = perMaand[maand] || {};
     perMaand[maand][jaar] = totaal;
   });
 
-  // Functie voor kleurverloop per maand (rij)
-  const getColor = (value: number, all: number[]) => {
+  // Functie voor kleurverloop per maand (rij) met inline style
+  const getColorStyle = (value: number, all: number[]) => {
     const min = Math.min(...all);
     const max = Math.max(...all);
-    if (max === min) return '';
+    if (max === min) return {};
     const pct = (value - min) / (max - min);
     const r = Math.round(255 - 255 * pct);
     const g = Math.round(255 * pct);
-    return `bg-[rgb(${r},${g},0)] text-white`;
+    return { backgroundColor: `rgb(${r},${g},0)`, color: '#fff' };
   };
 
   return (
@@ -53,33 +53,31 @@ export default async function MaandomzetPage() {
       <Link href="/admin" className="text-sm underline text-blue-600">← Terug naar admin</Link>
       <h1 className="text-2xl font-bold mt-4 mb-6">Maandomzet per jaar</h1>
 
-      <table className="border border-gray-400">
+      <table className="w-full border border-gray-400">
         <thead>
           <tr className="bg-gray-200">
             <th className="p-2 border">Maand</th>
-            {jaren.map((jaar) => (
+            {jaren.map(jaar => (
               <th key={jaar} className="p-2 border text-right">{jaar}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {alleMaanden.map((maand) => {
-            // Verzameling van alle waarden voor deze maand (inclusief 0 voor ontbrekende)
-            const waarden = jaren.map((jaar) => perMaand[maand]?.[jaar] ?? 0);
+          {alleMaanden.map(maand => {
+            const values = jaren.map(j => perMaand[maand]?.[j] || 0);
             return (
               <tr key={maand}>
                 <td className="border p-2 font-medium">{maand}</td>
-                {jaren.map((jaar) => {
-                  const val = perMaand[maand]?.[jaar];
-                  const kleur = val != null ? getColor(val, waarden) : '';
+                {jaren.map(jaar => {
+                  const val = perMaand[maand]?.[jaar] || 0;
+                  const style = val > 0 ? getColorStyle(val, values) : {};
                   return (
                     <td
                       key={jaar}
-                      className={`border p-2 text-right ${kleur}`}
+                      className="border p-2 text-right"
+                      style={style}
                     >
-                      {val != null
-                        ? val.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })
-                        : ''}
+                      {val > 0 && val.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })}
                     </td>
                   );
                 })}
