@@ -23,13 +23,9 @@ const tijdString = (waarde: string) => {
 
 const parseDatumNL = (waarde: string) => {
   if (!waarde || typeof waarde !== 'string') return null;
-  const parts = waarde.split('-');
-  if (parts.length !== 3) return null;
-  const [dag, maand, jaarRaw] = parts;
-  let jaar = jaarRaw;
-  if (jaar.length === 2) jaar = '20' + jaar;
-  const datumISO = `${jaar}-${maand.padStart(2, '0')}-${dag.padStart(2, '0')}`;
-  return isNaN(Date.parse(datumISO)) ? null : datumISO;
+  const isoMatch = /^\d{4}-\d{2}-\d{2}$/.test(waarde);
+  if (!isoMatch || isNaN(Date.parse(waarde))) return null;
+  return waarde;
 };
 
 export async function POST(req: NextRequest) {
