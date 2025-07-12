@@ -11,8 +11,8 @@ export async function GET() {
         ROUND(SUM(o.aantal * o.eenheidsprijs)) AS totaal
       FROM rapportage.feestdagen f
       LEFT JOIN rapportage.omzet o ON o.datum = f.datum
-      GROUP BY f.naam, jaar
-      ORDER BY f.datum
+      GROUP BY f.naam, EXTRACT(YEAR FROM f.datum)
+      ORDER BY MIN(f.datum)
     `);
 
     return NextResponse.json(resultaat.rows);

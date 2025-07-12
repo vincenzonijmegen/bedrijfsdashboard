@@ -11,7 +11,7 @@ const rapportages = [
     {
     titel: 'Omzet Feestdagen',
     beschrijving: 'Toon omzet op feestdagen een overzicht.',
-    link: '/admin/rapportage/deestdagomzet',
+    link: '/admin/rapportage/feestdagomzet',
   },
   // Toekomstige rapportages kunnen hier worden toegevoegd
 ];
