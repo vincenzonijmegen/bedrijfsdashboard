@@ -45,8 +45,10 @@ export default async function MaandomzetPage() {
     const pct = (value - min) / (max - min);
     const r = Math.round(255 - 255 * pct);
     const g = Math.round(255 * pct);
-    return { backgroundColor: `rgb(${r},${g},0)`, color: '#fff' };
+    // Zwarte tekst en bold voor leesbaarheid
+    return { backgroundColor: `rgb(${r},${g},0)`, color: '#000', fontWeight: 'bold' };
   };
+  
 
   return (
     <div className="p-6">
