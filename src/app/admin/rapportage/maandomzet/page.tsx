@@ -35,13 +35,23 @@ export default async function MaandomzetPage() {
     const d = new Date(maand_start);
     const maand = maandnamen[d.getMonth() + 1];
     perMaand[maand] = perMaand[maand] || {};
-        perMaand[maand][jaar] = totaalNum;
+    perMaand[maand][jaar] = totaalNum;
   });
 
   // Bereken jaartotalen
   const jaarTotalen: Record<number, number> = {};
   jaren.forEach(jaar => {
     jaarTotalen[jaar] = alleMaanden.reduce((sum, maand) => sum + (perMaand[maand]?.[jaar] ?? 0), 0);
+  });
+
+  // Bereken gemiddeldes per maand over jaren
+  const maandGemiddelden: Record<string, number> = {};
+  alleMaanden.forEach(maand => {
+    const values = jaren.map(j => perMaand[maand]?.[j] ?? 0);
+    const nonZero = values.filter(v => v > 0);
+    maandGemiddelden[maand] = nonZero.length
+      ? Math.round(nonZero.reduce((a, b) => a + b, 0) / nonZero.length)
+      : 0;
   });
 
   // Functie voor kleurverloop per maand (rij) met pastel inline style
@@ -70,6 +80,7 @@ export default async function MaandomzetPage() {
             {jaren.map(jaar => (
               <th key={jaar} className="p-2 border text-right">{jaar}</th>
             ))}
+            <th className="p-2 border text-right">Gem.</th>
           </tr>
         </thead>
         <tbody>
@@ -87,10 +98,17 @@ export default async function MaandomzetPage() {
                       className="border p-2 text-right"
                       style={style}
                     >
-                      {val ? val.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' }) : ''}
+                      {val
+                        ? val.toLocaleString('nl-NL', { maximumFractionDigits: 0 })
+                        : ''}
                     </td>
                   );
                 })}
+                <td className="border p-2 text-right font-semibold">
+                  {maandGemiddelden[maand]
+                    ? maandGemiddelden[maand].toLocaleString('nl-NL', { maximumFractionDigits: 0 })
+                    : ''}
+                </td>
               </tr>
             );
           })}
@@ -100,9 +118,10 @@ export default async function MaandomzetPage() {
             <td className="border p-2">Totaal per jaar</td>
             {jaren.map(jaar => (
               <td key={jaar} className="border p-2 text-right">
-                {jaarTotalen[jaar].toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })}
+                {jaarTotalen[jaar].toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
               </td>
             ))}
+            <td className="border p-2 text-right">—</td>
           </tr>
         </tfoot>
       </table>
