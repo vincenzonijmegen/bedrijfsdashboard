@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
     const testRows: any[] = [];
 
-    // Eerst 20 regels uitlezen om unieke datums te verzamelen vóór parsen
+    // Eerst 50 regels uitlezen om unieke datums te verzamelen vóór parsen
     await new Promise((resolve, reject) => {
       let regelTeller = 0;
       Readable.from(buffer)
@@ -56,12 +56,10 @@ export async function POST(req: NextRequest) {
     });
 
     const unieke = [...new Set(testRows)];
-    const exists = await db.query(
-      'SELECT COUNT(*) FROM rapportage.omzet WHERE datum = ANY($1::date[])', [unieke]
+    const result = await db.query(
+      'SELECT DISTINCT datum FROM rapportage.omzet WHERE datum = ANY($1::date[])', [unieke]
     );
-    if (parseInt(exists.rows[0].count) > 0) {
-      return NextResponse.json({ error: 'Datum bestaat al, import geannuleerd' }, { status: 400 });
-    }
+    const bestaandeDatums = result.rows.map(r => r.datum.toISOString().slice(0, 10));
 
     const rows: any[] = [];
     await new Promise((resolve, reject) => {
@@ -77,10 +75,11 @@ export async function POST(req: NextRequest) {
             return;
           }
           const datum = parseDatumNL(row.datum);
-          if (!datum) {
-            console.log(`❌ Rij ${regelTeller} overgeslagen: datum ${row.datum} ongeldig.`);
+          if (!datum || bestaandeDatums.includes(datum)) {
+            console.log(`❌ Rij ${regelTeller} overgeslagen: datum ${row.datum} ongeldig of al in database.`);
             return;
           }
+
           const tijd = tijdString(row.tijdstip);
           const aantal = parseInt(row.aantal);
           const prijs = parseFloat(row.verkoopprijs?.toString().replace(',', '.') || '');
