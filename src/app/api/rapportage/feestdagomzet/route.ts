@@ -1,8 +1,8 @@
-// Bestand: src/pages/api/rapportage/feestdagomzet.ts
+// Bestand: src/app/api/rapportage/feestdagomzet/route.ts
 import { dbRapportage } from '@/lib/dbRapportage';
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { NextResponse } from 'next/server';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export async function GET() {
   try {
     const resultaat = await dbRapportage.query(`
       SELECT
@@ -15,9 +15,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ORDER BY f.datum
     `);
 
-    res.status(200).json(resultaat.rows);
+    return NextResponse.json(resultaat.rows);
   } catch (error) {
     console.error('API fout:', error);
-    res.status(500).json({ error: 'Fout bij ophalen feestdagomzet' });
+    return NextResponse.json({ error: 'Fout bij ophalen feestdagomzet' }, { status: 500 });
   }
 }
