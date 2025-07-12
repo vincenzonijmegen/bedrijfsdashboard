@@ -29,6 +29,17 @@ export default function FeestdagOmzetPage() {
 
   const getColorStyle = (value: number) => {
     if (max === min) return {};
+    const pct = (value - min) / (max - min);
+    const rStart = 255, gStart = 200, b = 200;
+    const rEnd = 200, gEnd = 255;
+    const r = Math.round(rStart + (rEnd - rStart) * pct);
+    const g = Math.round(gStart + (gEnd - gStart) * pct);
+    return {
+      backgroundColor: `rgb(${r},${g},${b})`,
+      color: '#000',
+      fontWeight: 'bold'
+    };
+  };
     
   };
     const pct = (value - min) / (max - min);
