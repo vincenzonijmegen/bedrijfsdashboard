@@ -28,9 +28,9 @@ export default function FeestdagOmzetPage() {
   const max = Math.max(...alleWaarden);
 
   const getColorStyle = (value: number) => {
-    const min = Math.min(...alleWaarden);
-    const max = Math.max(...alleWaarden);
     if (max === min) return {};
+    
+  };
     const pct = (value - min) / (max - min);
     const rStart = 255, gStart = 200, b = 200;
     const rEnd = 200, gEnd = 255;
