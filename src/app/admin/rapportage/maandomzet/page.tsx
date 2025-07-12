@@ -22,8 +22,8 @@ export default async function MaandomzetPage() {
   };
 
   const alleMaanden = [
-    'februari', 'maart', 'april', 'mei', 'juni',
-    'juli', 'augustus', 'september', 'oktober'
+    'maart', 'april', 'mei', 'juni',
+    'juli', 'augustus', 'september'
   ];
 
   const jaren = [...new Set(data.map(r => r.jaar))].sort();
@@ -70,7 +70,6 @@ export default async function MaandomzetPage() {
 
   return (
     <div className="p-6">
-      <Link href="/admin" className="text-sm underline text-blue-600">← Terug naar admin</Link>
       <h1 className="text-2xl font-bold mt-4 mb-6">Maandomzet per jaar</h1>
       {/* Huidige jaar bijgewerkt t/m laatste omzetdatum */}
       <p className="text-sm text-gray-600 mb-4">
