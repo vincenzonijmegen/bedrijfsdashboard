@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   const [dag, maand, jaarRaw] = parts;
   let jaar = jaarRaw;
   if (jaar.length === 2) jaar = '20' + jaar; // fallback als het kort is
-  const datumISO = `${jaar}-${maand.padStart(2, '0')}-${dag.padStart(2, '0')}`; `${jaar}-${maand.padStart(2, '0')}-${dag.padStart(2, '0')}`;
+  const datumISO = `${jaar}-${maand.padStart(2, '0')}-${dag.padStart(2, '0')}`;
   return isNaN(Date.parse(datumISO)) ? null : datumISO;
 };
 
