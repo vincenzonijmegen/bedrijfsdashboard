@@ -36,7 +36,8 @@ export async function POST(req: NextRequest) {
     const file = formData.get('file');
     if (!file || typeof file === 'string') return NextResponse.json({ error: 'Ongeldig bestand' }, { status: 400 });
     // Converteer file naar ArrayBuffer via Response, ondersteund in Node runtime
-    const arrayBuffer = await new Response(file).arrayBuffer();
+    const blob = file as unknown as Blob;
+    const arrayBuffer = await blob.arrayBuffer();
     console.log('✅ Bestand ontvangen, arrayBuffer lengte:', arrayBuffer.byteLength);
     const data = new Uint8Array(arrayBuffer);
     console.log('✅ Data omgezet naar Uint8Array, lengte:', data.length);
