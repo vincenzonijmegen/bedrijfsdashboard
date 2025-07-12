@@ -22,8 +22,8 @@ export default async function MaandomzetPage() {
   };
 
   const alleMaanden = [
-    'januari', 'februari', 'maart', 'april', 'mei', 'juni',
-    'juli', 'augustus', 'september', 'oktober', 'november', 'december',
+    'februari', 'maart', 'april', 'mei', 'juni',
+    'juli', 'augustus', 'september', 'oktober'
   ];
 
   const jaren = [...new Set(data.map(r => r.jaar))].sort();
