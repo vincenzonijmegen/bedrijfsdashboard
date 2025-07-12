@@ -22,6 +22,7 @@ const tijdString = (waarde: string) => {
 };
 
 const parseDatumNL = (waarde: string) => {
+  if (!waarde || typeof waarde !== 'string') return null;
   const parts = waarde.split('-');
   if (parts.length !== 3) return null;
   const [dag, maand, jaarRaw] = parts;
@@ -44,17 +45,31 @@ export async function POST(req: NextRequest) {
     const rows: any[] = [];
 
     await new Promise((resolve, reject) => {
+      let regelTeller = 0;
       Readable.from(text)
         .pipe(csv({ separator: ',', mapHeaders: ({ header }) => header.trim().toLowerCase() }))
         .on('data', (row) => {
-          console.log('Rij ontvangen:', row);
-          if (!row.datum || typeof row.datum !== 'string') return;
+          regelTeller++;
+          console.log(`Rij ${regelTeller}:`, row);
+
+          if (!row.datum || typeof row.datum !== 'string') {
+            console.log(`❌ Rij ${regelTeller} overgeslagen: geen geldige datum.`);
+            return;
+          }
           const datum = parseDatumNL(row.datum);
-          if (!datum) return;
+          if (!datum) {
+            console.log(`❌ Rij ${regelTeller} overgeslagen: datum ${row.datum} ongeldig.`);
+            return;
+          }
           const tijd = tijdString(row.tijdstip);
           const aantal = parseInt(row.aantal);
-          const prijs = parseFloat(row.verkoopprijs.toString().replace(',', '.'));
-          if (!aantal || !prijs) return;
+          const prijs = parseFloat(row.verkoopprijs?.toString().replace(',', '.') || '');
+
+          if (!aantal || !prijs) {
+            console.log(`❌ Rij ${regelTeller} overgeslagen: ongeldige aantal/prijs.`);
+            return;
+          }
+
           rows.push({
             datum,
             tijdstip: tijd,
@@ -63,8 +78,14 @@ export async function POST(req: NextRequest) {
             eenheidsprijs: prijs / aantal
           });
         })
-        .on('end', resolve)
-        .on('error', reject);
+        .on('end', () => {
+          console.log(`✅ Parser klaar. ${rows.length} geldige rijen verzameld.`);
+          resolve(null);
+        })
+        .on('error', (err) => {
+          console.error('❌ CSV-parser fout:', err);
+          reject(err);
+        });
     });
 
     const unieke = [...new Set(rows.map(r => r.datum))];
