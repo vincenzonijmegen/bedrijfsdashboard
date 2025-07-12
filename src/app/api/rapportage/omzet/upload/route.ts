@@ -39,14 +39,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Geen geldig bestand ontvangen' }, { status: 400 });
     }
 
-    const arrayBuffer = await file.arrayBuffer();
+    const arrayBuffer = await (file as unknown as Blob).arrayBuffer();
     const text = Buffer.from(arrayBuffer).toString('utf-8');
     const rows: any[] = [];
 
     await new Promise((resolve, reject) => {
       Readable.from(text)
-        .pipe(csv({ separator: ';' }))
+        .pipe(csv({ separator: ',', mapHeaders: ({ header }) => header.trim().toLowerCase() }))
         .on('data', (row) => {
+          console.log('Rij ontvangen:', row);
           if (!row.datum || typeof row.datum !== 'string') return;
           const datum = parseDatumNL(row.datum);
           if (!datum) return;
