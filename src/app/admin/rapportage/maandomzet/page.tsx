@@ -31,23 +31,11 @@ export default async function MaandomzetPage() {
   // Maak een draaitabel: { maandnaam: { jaar: totaalbedrag } }
   const perMaand: Record<string, Record<number, number>> = {};
   data.forEach(({ jaar, maand_start, totaal }) => {
-    const maandDate = new Date(maand_start);
-    const maandIndex = maandDate.getMonth() + 1;
+    const maandIndex = new Date(maand_start).getMonth() + 1;
     const maand = maandnamen[maandIndex];
     perMaand[maand] = perMaand[maand] || {};
     perMaand[maand][jaar] = totaal;
   });
-
-  // Bepaal de kleur op basis van de waarde binnen een maand (per rij)
-  const getColor = (value: number, valuesInRow: number[]) => {
-    const min = Math.min(...valuesInRow);
-    const max = Math.max(...valuesInRow);
-    if (max === min) return 'bg-white';
-    const percentage = (value - min) / (max - min);
-    const r = Math.round(255 - 255 * percentage);
-    const g = Math.round(255 * percentage);
-    return `bg-[rgb(${r},${g},0)] text-white`;
-  };
 
   return (
     <div className="p-6">
@@ -64,25 +52,19 @@ export default async function MaandomzetPage() {
           </tr>
         </thead>
         <tbody>
-          {alleMaanden.map((maand) => {
-            const waarden = jaren.map((jaar) => perMaand[maand]?.[jaar] || 0);
-            return (
-              <tr key={maand}>
-                <td className="border p-2 font-medium">{maand}</td>
-                {jaren.map((jaar) => {
-                  const value = perMaand[maand]?.[jaar];
-                  const kleur = typeof value === 'number' ? getColor(value, waarden) : '';
-                  return (
-                    <td key={jaar} className={`border p-2 text-right ${kleur}`}>
-                      {typeof value === 'number'
-                        ? value.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })
-                        : ''}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
+          {alleMaanden.map((maand) => (
+            <tr key={maand}>
+              <td className="border p-2 font-medium">{maand}</td>
+              {jaren.map((jaar) => (
+                <td key={jaar} className="border p-2 text-right">
+                  {perMaand[maand]?.[jaar]?.toLocaleString('nl-NL', {
+                    style: 'currency',
+                    currency: 'EUR'
+                  }) || ''}
+                </td>
+              ))}
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
