@@ -1,7 +1,8 @@
 // Bestand: src/app/api/rapportage/omzet/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import xlsx from 'xlsx';
+import csv from 'csv-parser';
+import { Readable } from 'stream';
 
 export const runtime = 'nodejs';
 export const config = {
@@ -33,36 +34,37 @@ const parseDatumNL = (waarde: string) => {
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
-    const file = formData.get('file');
-    if (!file || typeof file === 'string') return NextResponse.json({ error: 'Ongeldig bestand' }, { status: 400 });
-    // Converteer file naar ArrayBuffer via Response, ondersteund in Node runtime
-    const blob = file as unknown as Blob;
-    const arrayBuffer = await blob.arrayBuffer();
-    console.log('✅ Bestand ontvangen, arrayBuffer lengte:', arrayBuffer.byteLength);
-    const data = new Uint8Array(arrayBuffer);
-    console.log('✅ Data omgezet naar Uint8Array, lengte:', data.length);
-
-    const workbook = xlsx.read(data, { type: 'array' });
-    console.log('✅ Workbook geladen, sheets:', workbook.SheetNames);
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rawData: any[][] = xlsx.utils.sheet_to_json(sheet, { header: 1 });
-    console.log('✅ Aantal rijen in sheet:', rawData.length);
-
-    const rows: any[] = [];
-    for (const rij of rawData) {
-      // cel1 datum, cel2 tijd, cel3 betaalwijze, cel4 aantal, cel5 totaalbedrag
-      if (rij.length < 5) continue;
-      const [datum, tijd, _betaal, aantal, totaal] = rij;
-      const d = parseDatumNL(datum.toString());
-      if (!d) return NextResponse.json({ error: `Ongeldige datum: ${datum}` }, { status: 400 });
-      const t = tijdString(tijd.toString());
-      const count = parseInt(aantal);
-      const sum = parseFloat(totaal.toString().replace(',', '.'));
-      if (isNaN(count) || isNaN(sum)) continue;
-      rows.push({ datum: d, tijdstip: t, product: 'Onbekend', aantal: count, eenheidsprijs: sum / count });
+    const file = formData.get('file') as File;
+    if (!file || typeof file === 'string') {
+      return NextResponse.json({ error: 'Geen geldig bestand ontvangen' }, { status: 400 });
     }
 
-    // Check op bestaande datums
+    const arrayBuffer = await file.arrayBuffer();
+    const text = Buffer.from(arrayBuffer).toString('utf-8');
+    const rows: any[] = [];
+
+    await new Promise((resolve, reject) => {
+      Readable.from(text)
+        .pipe(csv({ separator: ';' }))
+        .on('data', (row) => {
+          const datum = parseDatumNL(row.datum);
+          if (!datum) return;
+          const tijd = tijdString(row.tijdstip);
+          const aantal = parseInt(row.aantal);
+          const prijs = parseFloat(row.verkoopprijs.toString().replace(',', '.'));
+          if (!aantal || !prijs) return;
+          rows.push({
+            datum,
+            tijdstip: tijd,
+            product: row.product || 'Onbekend',
+            aantal,
+            eenheidsprijs: prijs / aantal
+          });
+        })
+        .on('end', resolve)
+        .on('error', reject);
+    });
+
     const unieke = [...new Set(rows.map(r => r.datum))];
     const exists = await db.query(
       'SELECT COUNT(*) FROM rapportage.omzet WHERE datum = ANY($1::date[])', [unieke]
@@ -71,18 +73,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Datum bestaat al, import geannuleerd' }, { status: 400 });
     }
 
-    // Batch insert
     const batchSize = 1000;
     for (let i = 0; i < rows.length; i += batchSize) {
       const batch = rows.slice(i, i + batchSize);
-      const vals = batch.map((_, idx) =>
-        `($${idx*5+1},$${idx*5+2},$${idx*5+3},$${idx*5+4},$${idx*5+5})`
-      ).join(',');
-      const flat = batch.flatMap(r => [r.datum, r.tijdstip, r.product, r.aantal, r.eenheidsprijs]);
+      const values = batch.map((_, idx) => `($${idx * 5 + 1}, $${idx * 5 + 2}, $${idx * 5 + 3}, $${idx * 5 + 4}, $${idx * 5 + 5})`).join(', ');
+      const flatValues = batch.flatMap(r => [r.datum, r.tijdstip, r.product, r.aantal, r.eenheidsprijs]);
       await db.query(
-        `INSERT INTO rapportage.omzet (datum,tijdstip,product,aantal,eenheidsprijs) VALUES ${vals}`, flat
+        `INSERT INTO rapportage.omzet (datum, tijdstip, product, aantal, eenheidsprijs) VALUES ${values}`,
+        flatValues
       );
     }
+
     return NextResponse.json({ success: true, ingevoerd: rows.length });
   } catch (err: any) {
     console.error('Upload error:', err);
