@@ -12,16 +12,21 @@ export default function FeestdagOmzetPage() {
   if (error) return <div className="p-6 text-red-600">Fout bij laden van data.</div>;
   if (!data) return <div className="p-6">Bezig met laden...</div>;
 
-  const feestdagen = [...new Set(data.map((r: any) => r.feestdag))] as string[];
-  const jaren = [...new Set(data.map((r: any) => r.jaar))].sort() as number[];
+  const feestdagen = (data as any[])
+    .map(r => r.feestdag)
+    .filter((v, i, a) => a.indexOf(v) === i) as string[];
+  const jaren = (data as any[])
+    .map(r => Number(r.jaar))
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .sort((a, b) => a - b) as number[];
 
   const perFeestdag: Record<string, Record<number, number>> = {};
   const alleWaarden: number[] = [];
 
-  data.forEach(({ feestdag, jaar, totaal }: any) => {
+  (data as any[]).forEach(({ feestdag, jaar, totaal }) => {
     perFeestdag[feestdag] = perFeestdag[feestdag] || {};
-    perFeestdag[feestdag][jaar] = totaal;
-    if (totaal !== null && typeof totaal === 'number') alleWaarden.push(totaal);
+    perFeestdag[feestdag][Number(jaar)] = totaal;
+    if (totaal !== null && !isNaN(totaal)) alleWaarden.push(totaal);
   });
 
   const min = Math.min(...alleWaarden);
@@ -30,39 +35,14 @@ export default function FeestdagOmzetPage() {
   const getColorStyle = (value: number) => {
     if (max === min) return {};
     const pct = (value - min) / (max - min);
-    const rStart = 255, gStart = 200, b = 200;
-    const rEnd = 200, gEnd = 255;
-    const r = Math.round(rStart + (rEnd - rStart) * pct);
-    const g = Math.round(gStart + (gEnd - gStart) * pct);
+    const r = Math.round(255 - 155 * pct);   // pastel range
+    const g = Math.round(200 + 55 * pct);
+    const b = 200;
     return {
       backgroundColor: `rgb(${r},${g},${b})`,
       color: '#000',
       fontWeight: 'bold'
-    }; (value - min) / (max - min);
-    const rStart = 255, gStart = 200, b = 200;
-    const rEnd = 200, gEnd = 255;
-    const r = Math.round(rStart + (rEnd - rStart) * pct);
-    const g = Math.round(gStart + (gEnd - gStart) * pct);
-    return {
-      backgroundColor: `rgb(${r},${g},${b})`,
-      color: '#000',
-      fontWeight: 'bold'
-    };
-  };
-    
-  };
-    const pct = (value - min) / (max - min);
-    const rStart = 255, gStart = 200, b = 200;
-    const rEnd = 200, gEnd = 255;
-    const r = Math.round(rStart + (rEnd - rStart) * pct);
-    const g = Math.round(gStart + (gEnd - gStart) * pct);
-    return {
-      backgroundColor: `rgb(${r},${g},${b})`,
-      color: '#000',
-      fontWeight: 'bold'
-    };
-  };
-    
+    } as React.CSSProperties;
   };
 
   return (
@@ -74,21 +54,21 @@ export default function FeestdagOmzetPage() {
         <thead>
           <tr className="bg-gray-200">
             <th className="p-1 border">Feestdag</th>
-            {jaren.map((jaar) => (
+            {jaren.map(jaar => (
               <th key={jaar} className="p-1 border text-right">{jaar}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {feestdagen.map((feestdag) => (
+          {feestdagen.map(feestdag => (
             <tr key={feestdag}>
               <td className="border p-1 font-medium whitespace-nowrap">{feestdag}</td>
-              {jaren.map((jaar) => {
-                const val = perFeestdag[feestdag]?.[jaar];
-                const style = typeof val === 'number' ? getColorStyle(val) : {};
+              {jaren.map(jaar => {
+                const val = perFeestdag[feestdag]?.[jaar] ?? 0;
+                const style = val > 0 ? getColorStyle(val) : {};
                 return (
-                  <td key={jaar} className="border p-1 text-right" style={style} title={val?.toString()}>
-                    {val?.toLocaleString('nl-NL', { maximumFractionDigits: 0 }) || ''}
+                  <td key={jaar} className="border p-1 text-right" style={style}>
+                    {val.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
                   </td>
                 );
               })}
