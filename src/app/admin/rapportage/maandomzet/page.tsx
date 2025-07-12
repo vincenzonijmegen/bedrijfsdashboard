@@ -17,7 +17,7 @@ export default async function MaandomzetPage() {
   const data = resultaat.rows;
 
   const jaren = [...new Set(data.map((r) => r.jaar))];
-  const maanden = [...new Set(data.map((r) => r.maand_start.toISOString().slice(0, 7)))];
+  const maanden = [...new Set(data.map((r) => r.maand_start.toISOString().slice(0, 7)))].sort();
 
   const perMaand: Record<string, Record<number, number>> = {};
   data.forEach(({ jaar, maand_start, totaal }) => {
