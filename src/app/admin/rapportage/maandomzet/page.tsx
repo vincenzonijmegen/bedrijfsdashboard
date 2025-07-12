@@ -6,24 +6,35 @@ export default async function MaandomzetPage() {
   const resultaat = await dbRapportage.query(`
     SELECT 
       EXTRACT(YEAR FROM datum) AS jaar,
-      TO_CHAR(datum, 'Month') AS maand,
       DATE_TRUNC('month', datum) AS maand_start,
       ROUND(SUM(aantal * eenheidsprijs)) AS totaal
     FROM rapportage.omzet
-    GROUP BY jaar, maand, maand_start
+    GROUP BY jaar, maand_start
     ORDER BY maand_start
   `);
 
   const data = resultaat.rows;
 
-  const jaren = [...new Set(data.map((r) => r.jaar))];
-  const maanden = [...new Set(data.map((r) => r.maand_start.toISOString().slice(0, 7)))].sort();
+  const maandnamen: Record<number, string> = {
+    1: 'januari', 2: 'februari', 3: 'maart', 4: 'april',
+    5: 'mei', 6: 'juni', 7: 'juli', 8: 'augustus',
+    9: 'september', 10: 'oktober', 11: 'november', 12: 'december',
+  };
 
+  const alleMaanden = [
+    'januari', 'februari', 'maart', 'april', 'mei', 'juni',
+    'juli', 'augustus', 'september', 'oktober', 'november', 'december',
+  ];
+
+  const jaren = [...new Set(data.map((r) => r.jaar))].sort();
+
+  // Maak een draaitabel: { maandnaam: { jaar: totaalbedrag } }
   const perMaand: Record<string, Record<number, number>> = {};
   data.forEach(({ jaar, maand_start, totaal }) => {
-    const key = maand_start.toISOString().slice(0, 7);
-    perMaand[key] = perMaand[key] || {};
-    perMaand[key][jaar] = totaal;
+    const maandIndex = new Date(maand_start).getMonth() + 1;
+    const maand = maandnamen[maandIndex];
+    perMaand[maand] = perMaand[maand] || {};
+    perMaand[maand][jaar] = totaal;
   });
 
   return (
@@ -41,12 +52,15 @@ export default async function MaandomzetPage() {
           </tr>
         </thead>
         <tbody>
-          {maanden.map((maand) => (
+          {alleMaanden.map((maand) => (
             <tr key={maand}>
-              <td className="border p-2 font-medium">{new Date(maand + '-01').toLocaleDateString('nl-NL', { month: 'long' })}</td>
+              <td className="border p-2 font-medium">{maand}</td>
               {jaren.map((jaar) => (
                 <td key={jaar} className="border p-2 text-right">
-                  {perMaand[maand][jaar]?.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' }) || ''}
+                  {perMaand[maand]?.[jaar]?.toLocaleString('nl-NL', {
+                    style: 'currency',
+                    currency: 'EUR'
+                  }) || ''}
                 </td>
               ))}
             </tr>
