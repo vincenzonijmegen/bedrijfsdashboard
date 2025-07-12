@@ -26,10 +26,10 @@ export default function FeestdagOmzetPage() {
       <Link href="/admin" className="text-sm underline text-blue-600">← Terug naar admin</Link>
       <h1 className="text-2xl font-bold mt-4 mb-6">Omzet per feestdag</h1>
 
-      <table className="border border-gray-400">
+      <table className="border border-gray-400 text-sm leading-tight">
         <thead>
           <tr className="bg-gray-200">
-            <th className="p-2 border">Feestdag</th>
+            <th className="p-1 border">Feestdag</th>
             {jaren.map((jaar) => (
               <th key={jaar} className="p-2 border text-right">{jaar}</th>
             ))}
@@ -38,7 +38,7 @@ export default function FeestdagOmzetPage() {
         <tbody>
           {feestdagen.map((feestdag) => (
             <tr key={feestdag}>
-              <td className="border p-2 font-medium">{feestdag}</td>
+              <td className="border p-1 font-medium">{feestdag}</td>
               {jaren.map((jaar) => (
                 <td key={jaar} className="border p-2 text-right">
                   {perFeestdag[feestdag]?.[jaar]?.toLocaleString('nl-NL', { maximumFractionDigits: 0 }) || ''}

@@ -13,7 +13,34 @@ export async function GET() {
       LEFT JOIN rapportage.omzet o ON o.datum = f.datum
       GROUP BY f.naam, EXTRACT(YEAR FROM f.datum)
       HAVING SUM(o.aantal * o.eenheidsprijs) IS NOT NULL
-      ORDER BY MIN(f.datum)
+      ORDER BY 
+        POSITION(f.naam IN '
+          Goede Vrijdag
+          1e Paasdag
+          2e Paasdag
+          1e Pinksterdag
+          2e Pinksterdag
+          Hemelvaartsdag
+          Koningsdag
+          Bevrijdingsdag
+          Moederdag
+          Vaderdag
+          meivakantie dag 1
+          meivakantie dag 2
+          meivakantie dag 3
+          meivakantie dag 4
+          meivakantie dag 5
+          meivakantie dag 6
+          meivakantie dag 7
+          meivakantie dag 8
+          meivakantie dag 9
+          Zomerfeesten dag 1
+          Zomerfeesten dag 2
+          Zomerfeesten dag 3
+          Zomerfeesten dag 4
+          Zomerfeesten dag 5
+          Zomerfeesten dag 6
+        ')
     `);
 
     return NextResponse.json(resultaat.rows);
