@@ -1,22 +1,22 @@
 // Bestand: src/app/api/rapportage/maandomzet/route.ts
+import { dbRapportage } from '@/lib/dbRapportage';
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
 
 export async function GET() {
   try {
-    const result = await db.query(`
-      SELECT
+    const omzet = await dbRapportage.query(`
+      SELECT 
         EXTRACT(YEAR FROM datum) AS jaar,
-        EXTRACT(MONTH FROM datum) AS maand,
-        ROUND(SUM(aantal * eenheidsprijs))::int AS omzet
+        DATE_TRUNC('month', datum) AS maand_start,
+        ROUND(SUM(aantal * eenheidsprijs)) AS totaal
       FROM rapportage.omzet
-      GROUP BY jaar, maand
-      ORDER BY jaar, maand
+      GROUP BY jaar, maand_start
+      ORDER BY maand_start
     `);
-
-    return NextResponse.json(result.rows);
-  } catch (err: any) {
-    console.error('Fout bij ophalen maandelijkse omzet:', err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    const maxDatum = await dbRapportage.query(`SELECT MAX(datum) AS max_datum FROM rapportage.omzet`);
+    return NextResponse.json({ rows: omzet.rows, max_datum: maxDatum.rows[0].max_datum });
+  } catch (err) {
+    console.error('API maandomzet fout:', err);
+    return NextResponse.json({ error: 'Fout bij ophalen maandomzet' }, { status: 500 });
   }
 }
