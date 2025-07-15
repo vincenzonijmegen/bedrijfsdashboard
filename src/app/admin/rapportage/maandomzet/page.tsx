@@ -1,143 +1,124 @@
 // Bestand: src/app/admin/rapportage/maandomzet/page.tsx
-import Link from 'next/link';
-import { dbRapportage } from '@/lib/dbRapportage';
-
 'use client';
 
+import Link from 'next/link';
 import { useEffect } from 'react';
-import { mutate } from 'swr';
+import useSWR, { mutate } from 'swr';
 
-export default async function MaandomzetPage() {
+const fetcher = (url: string) => fetch(url).then(res => res.json());
+
+export default function MaandomzetPage() {
+  // Forceer data-verversing
   useEffect(() => {
     mutate('/api/rapportage/maandomzet');
   }, []);
-  const resultaat = await dbRapportage.query(`
-    SELECT 
-      EXTRACT(YEAR FROM datum) AS jaar,
-      DATE_TRUNC('month', datum) AS maand_start,
-      ROUND(SUM(aantal * eenheidsprijs)) AS totaal
-    FROM rapportage.omzet
-    GROUP BY jaar, maand_start
-    ORDER BY maand_start
-  `);
 
-  const data = resultaat.rows;
+  // Data opvragen via SWR
+  const { data, error } = useSWR('/api/rapportage/maandomzet', fetcher);
 
-  const maandnamen: Record<number, string> = {
+  if (error) return <div className="p-6 text-red-600">Fout bij laden van maandomzet.</div>;
+  if (!data) return <div className="p-6">Bezig met laden...</div>;
+
+  // Structuur van de response
+  interface Row { jaar: number; maand_start: string; totaal: number }
+  const rows = data.rows as Row[];
+  const maxDatum = new Date(data.max_datum);
+
+  // Maandnamen
+  const maandnamenMap: Record<number, string> = {
     1: 'januari', 2: 'februari', 3: 'maart', 4: 'april',
     5: 'mei', 6: 'juni', 7: 'juli', 8: 'augustus',
-    9: 'september', 10: 'oktober', 11: 'november', 12: 'december',
+    9: 'september', 10: 'oktober', 11: 'november', 12: 'december'
   };
 
-  const alleMaanden = [
-    'maart', 'april', 'mei', 'juni',
-    'juli', 'augustus', 'september'
-  ];
+  // Unieke maanden en jaren verzamelen
+  const alleMaanden = Array.from(new Set(rows.map(r => new Date(r.maand_start).getMonth() + 1)))
+    .sort()
+    .map(m => maandnamenMap[m]);
+  const jaren = Array.from(new Set(rows.map(r => r.jaar))).sort() as number[];
 
-  const jaren = [...new Set(data.map(r => r.jaar))].sort();
-
-  // Draaitabel opbouwen: { maandnaam: { jaar: totaal } }
+  // Draaitabel opbouwen
   const perMaand: Record<string, Record<number, number>> = {};
-  data.forEach(({ jaar, maand_start, totaal }) => {
-    const totaalNum = typeof totaal === 'string' ? Number(totaal) : totaal;
-    const d = new Date(maand_start);
-    const maand = maandnamen[d.getMonth() + 1];
+  const alleWaarden: number[] = [];
+  rows.forEach(({ jaar, maand_start, totaal }) => {
+    const maandIndex = new Date(maand_start).getMonth() + 1;
+    const maand = maandnamenMap[maandIndex];
     perMaand[maand] = perMaand[maand] || {};
-    perMaand[maand][jaar] = totaalNum;
+    perMaand[maand][jaar] = totaal;
+    alleWaarden.push(totaal);
   });
 
-  // Bereken jaartotalen
-  const jaarTotalen: Record<number, number> = {};
-  jaren.forEach(jaar => {
-    jaarTotalen[jaar] = alleMaanden.reduce((sum, maand) => sum + (perMaand[maand]?.[jaar] ?? 0), 0);
-  });
-
-  // Bereken gemiddeldes per maand over jaren
-  const maandGemiddelden: Record<string, number> = {};
-  alleMaanden.forEach(maand => {
-    const values = jaren.map(j => perMaand[maand]?.[j] ?? 0);
-    const nonZero = values.filter(v => v > 0);
-    maandGemiddelden[maand] = nonZero.length
-      ? Math.round(nonZero.reduce((a, b) => a + b, 0) / nonZero.length)
-      : 0;
-  });
-
-  // Functie voor kleurverloop per maand (rij) met pastel inline style
-  const getColorStyle = (value: number, all: number[]) => {
-    const min = Math.min(...all);
-    const max = Math.max(...all);
+  // Kleurfunctie
+  const min = Math.min(...alleWaarden);
+  const max = Math.max(...alleWaarden);
+  const getColorStyle = (value: number) => {
     if (max === min) return {};
     const pct = (value - min) / (max - min);
-    // Pastel overgang van zacht rood naar zacht groen
-    const rStart = 255, gStart = 200, b = 200;
-    const rEnd = 200, gEnd = 255;
-    const r = Math.round(rStart + (rEnd - rStart) * pct);
-    const g = Math.round(gStart + (gEnd - gStart) * pct);
-    return { backgroundColor: `rgb(${r},${g},${b})`, color: '#000', fontWeight: 'bold' };
+    const r = Math.round(255 - 155 * pct);
+    const g = Math.round(200 + 55 * pct);
+    const b = 200;
+    return { backgroundColor: `rgb(${r},${g},${b})`, color: '#000', fontWeight: 'bold' } as React.CSSProperties;
   };
 
+  // Jaar totalen en maandgemiddelden
+  const jaarTotalen: Record<number, number> = {};
+  jaren.forEach(j => {
+    jaarTotalen[j] = alleMaanden.reduce((sum, m) => sum + (perMaand[m]?.[j] || 0), 0);
+  });
+
+  const maandGemiddelden: Record<string, number> = {};
+  alleMaanden.forEach(m => {
+    const vals = jaren.map(j => perMaand[m]?.[j] || 0);
+    maandGemiddelden[m] = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+  });
+
+  // Render
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mt-4 mb-6">Maandomzet per jaar</h1>
-    <Link href="/admin/rapportage" className="text-sm underline text-blue-600">← Terug naar Rapportage</Link>
-      {/* Huidige jaar bijgewerkt t/m laatste omzetdatum */}
+      <Link href="/admin/rapportage" className="text-sm underline text-blue-600">← Terug naar Rapportage</Link>
+      <h1 className="text-2xl font-bold mt-4 mb-2">Maandomzet per jaar</h1>
       <p className="text-sm text-gray-600 mb-4">
-        Huidige jaar bijgewerkt t/m {maxDatum?.toLocaleDateString('nl-NL', {
-          day: 'numeric',
-          month: 'long',
-          year: 'numeric'
-        })}
+        Huidige jaar bijgewerkt t/m {maxDatum.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
       </p>
 
-      <table className="w-full border border-gray-400">
+      <table className="w-full border border-gray-400 text-sm leading-tight">
         <thead>
           <tr className="bg-gray-200">
-            <th className="p-2 border">Maand</th>
-            {jaren.map(jaar => (
-              <th key={jaar} className="p-2 border text-right">{jaar}</th>
+            <th className="p-1 border">Maand</th>
+            {jaren.map(j => (
+              <th key={j} className="px-2 py-1 border text-right">{j}</th>
             ))}
-            <th className="p-2 border text-right">Gem.</th>
+            <th className="px-2 py-1 border text-right">Gem.</th>
           </tr>
         </thead>
         <tbody>
-          {alleMaanden.map(maand => {
-            const values = jaren.map(j => perMaand[maand]?.[j] ?? 0);
-            return (
-              <tr key={maand}>
-                <td className="border p-2 font-medium">{maand}</td>
-                {jaren.map(jaar => {
-                  const val = perMaand[maand]?.[jaar] ?? 0;
-                  const style = val ? getColorStyle(val, values) : {};
-                  return (
-                    <td
-                      key={jaar}
-                      className="border p-2 text-right"
-                      style={style}
-                    >
-                      {val
-                        ? val.toLocaleString('nl-NL', { maximumFractionDigits: 0 })
-                        : ''}
-                    </td>
-                  );
-                })}
-                <td className="border p-2 text-right font-semibold">
-                  {maandGemiddelden[maand]
-                    ? maandGemiddelden[maand].toLocaleString('nl-NL', { maximumFractionDigits: 0 })
-                    : ''}
-                </td>
-              </tr>
-            );
-          })}
+          {alleMaanden.map(maand => (
+            <tr key={maand}>
+              <td className="border p-1 font-medium capitalize">{maand}</td>
+              {jaren.map(j => {
+                const val = perMaand[maand]?.[j] || 0;
+                const style = val > 0 ? getColorStyle(val) : {};
+                return (
+                  <td key={j} className="border px-2 py-1 text-right" style={style}>
+                    {val.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
+                  </td>
+                );
+              })}
+              <td className="border px-2 py-1 text-right font-semibold">
+                {maandGemiddelden[maand].toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
+              </td>
+            </tr>
+          ))}
         </tbody>
         <tfoot>
           <tr className="bg-gray-200 font-semibold">
-            <td className="border p-2">Totaal per jaar</td>
-            {jaren.map(jaar => (
-              <td key={jaar} className="border p-2 text-right">
-                {jaarTotalen[jaar].toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
+            <td className="border p-1">Totaal per jaar</td>
+            {jaren.map(j => (
+              <td key={j} className="px-2 py-1 border text-right">
+                {jaarTotalen[j].toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
               </td>
             ))}
-            <td className="border p-2 text-right">—</td>
+            <td className="px-2 py-1 border text-right">—</td>
           </tr>
         </tfoot>
       </table>
