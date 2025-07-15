@@ -35,7 +35,7 @@ export default function MaandomzetPage() {
   const alleMaanden = Array.from(new Set(rows.map(r => new Date(r.maand_start).getMonth() + 1)))
     .sort()
     .map(m => maandnamenMap[m]);
-  const jaren = Array.from(new Set(rows.map(r => r.jaar))).sort()) as number[];
+  const jaren = Array.from(new Set(rows.map(r => r.jaar))).sort() as number[];
 
   // Draaitabel en waardes
   const perMaand: Record<string, Record<number, number>> = {};
