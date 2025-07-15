@@ -8,47 +8,47 @@ import useSWR, { mutate } from 'swr';
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export default function MaandomzetPage() {
-  // Forceer data-verversing
+  // Forceer data-verversing bij openen
   useEffect(() => {
     mutate('/api/rapportage/maandomzet');
   }, []);
 
-  // Data opvragen via SWR
+  // Ophalen via SWR
   const { data, error } = useSWR('/api/rapportage/maandomzet', fetcher);
 
   if (error) return <div className="p-6 text-red-600">Fout bij laden van maandomzet.</div>;
   if (!data) return <div className="p-6">Bezig met laden...</div>;
 
-  // Structuur van de response
+  // Response structuren
   interface Row { jaar: number; maand_start: string; totaal: number }
   const rows = data.rows as Row[];
   const maxDatum = new Date(data.max_datum);
 
-  // Maandnamen
+  // Maandnamen mapping
   const maandnamenMap: Record<number, string> = {
     1: 'januari', 2: 'februari', 3: 'maart', 4: 'april',
     5: 'mei', 6: 'juni', 7: 'juli', 8: 'augustus',
     9: 'september', 10: 'oktober', 11: 'november', 12: 'december'
   };
 
-  // Unieke maanden en jaren verzamelen
+  // Unieke maanden en jaren
   const alleMaanden = Array.from(new Set(rows.map(r => new Date(r.maand_start).getMonth() + 1)))
     .sort()
     .map(m => maandnamenMap[m]);
-  const jaren = Array.from(new Set(rows.map(r => r.jaar))).sort() as number[];
+  const jaren = Array.from(new Set(rows.map(r => r.jaar))).sort()) as number[];
 
-  // Draaitabel opbouwen
+  // Draaitabel en waardes
   const perMaand: Record<string, Record<number, number>> = {};
   const alleWaarden: number[] = [];
   rows.forEach(({ jaar, maand_start, totaal }) => {
-    const maandIndex = new Date(maand_start).getMonth() + 1;
-    const maand = maandnamenMap[maandIndex];
+    const mIndex = new Date(maand_start).getMonth() + 1;
+    const maand = maandnamenMap[mIndex];
     perMaand[maand] = perMaand[maand] || {};
     perMaand[maand][jaar] = totaal;
     alleWaarden.push(totaal);
   });
 
-  // Kleurfunctie
+  // Pastel kleurfunctie over gehele dataset
   const min = Math.min(...alleWaarden);
   const max = Math.max(...alleWaarden);
   const getColorStyle = (value: number) => {
@@ -69,10 +69,10 @@ export default function MaandomzetPage() {
   const maandGemiddelden: Record<string, number> = {};
   alleMaanden.forEach(m => {
     const vals = jaren.map(j => perMaand[m]?.[j] || 0);
-    maandGemiddelden[m] = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+    maandGemiddelden[m] = Math.round(vals.reduce((a,b) => a + b, 0) / vals.length);
   });
 
-  // Render
+  // Render UI
   return (
     <div className="p-6">
       <Link href="/admin/rapportage" className="text-sm underline text-blue-600">← Terug naar Rapportage</Link>
