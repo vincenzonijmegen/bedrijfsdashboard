@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     const tijdelijkeDatums: string[] = [];
     await new Promise((resolve, reject) => {
       Readable.from(buffer)
-        .pipe(csv.parse({ delimiter: ';', fromLine: 1 }))
+        .pipe(csv.parse({ delimiter: ';', fromLine: 1, columns: false }))
         .on('data', (cols: string[]) => {
           const datum = cols[0]?.trim();
           if (parseDatumNL(datum)) tijdelijkeDatums.push(datum);
