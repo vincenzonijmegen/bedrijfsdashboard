@@ -1,10 +1,11 @@
 // Bestand: src/app/admin/rapportage/maandomzet/page.tsx
 import Link from 'next/link';
 import { dbRapportage } from '@/lib/dbRapportage';
-import { useEffect } from 'react';
-import { mutate } from 'swr';
 
 'use client';
+
+import { useEffect } from 'react';
+import { mutate } from 'swr';
 
 export default async function MaandomzetPage() {
   useEffect(() => {
@@ -81,10 +82,11 @@ export default async function MaandomzetPage() {
     <Link href="/admin/rapportage" className="text-sm underline text-blue-600">← Terug naar Rapportage</Link>
       {/* Huidige jaar bijgewerkt t/m laatste omzetdatum */}
       <p className="text-sm text-gray-600 mb-4">
-        Huidige jaar bijgewerkt t/m {new Date(
-          (await dbRapportage.query(`SELECT MAX(datum) AS max_datum FROM rapportage.omzet`))
-            .rows[0].max_datum
-        ).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
+        Huidige jaar bijgewerkt t/m {maxDatum?.toLocaleDateString('nl-NL', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        })}
       </p>
 
       <table className="w-full border border-gray-400">
