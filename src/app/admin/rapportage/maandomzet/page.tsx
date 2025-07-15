@@ -14,7 +14,7 @@ export default function MaandomzetPage() {
   }, []);
 
   // Ophalen via SWR
-  const { data, error } = useSWR('/api/rapportage/maandomzet', fetcher);
+  const { data, error } = useSWR('/api/rapportage/maandomzet', fetcher, { revalidateOnMount: true });
 
   if (error) return <div className="p-6 text-red-600">Fout bij laden van maandomzet.</div>;
   if (!data) return <div className="p-6">Bezig met laden...</div>;
