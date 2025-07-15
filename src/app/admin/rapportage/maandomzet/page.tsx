@@ -1,8 +1,15 @@
 // Bestand: src/app/admin/rapportage/maandomzet/page.tsx
 import Link from 'next/link';
 import { dbRapportage } from '@/lib/dbRapportage';
+import { useEffect } from 'react';
+import { mutate } from 'swr';
+
+'use client';
 
 export default async function MaandomzetPage() {
+  useEffect(() => {
+    mutate('/api/rapportage/maandomzet');
+  }, []);
   const resultaat = await dbRapportage.query(`
     SELECT 
       EXTRACT(YEAR FROM datum) AS jaar,

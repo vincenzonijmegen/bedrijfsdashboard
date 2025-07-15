@@ -2,6 +2,8 @@
 import { dbRapportage } from '@/lib/dbRapportage';
 import { NextResponse } from 'next/server';
 
+
+
 export async function GET() {
   try {
     const omzet = await dbRapportage.query(`
@@ -20,3 +22,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Fout bij ophalen maandomzet' }, { status: 500 });
   }
 }
+
+
+
+
