@@ -72,23 +72,31 @@ export default function MaandomzetPage() {
             {jaren.map(j => (
               <th key={j} className="px-2 py-1 border text-right">{j}</th>
             ))}
+            <th className="px-2 py-1 border text-right">Gem.</th>
           </tr>
         </thead>
         <tbody>
-          {alleMaanden.map(maand => (
-            <tr key={maand}>
-              <td className="border p-1 font-medium capitalize">{maand}</td>
-              {jaren.map(j => {
-                const val = perMaand[maand]?.[j] || 0;
-                const style = val > 0 ? getColorStyle(val) : {};
-                return (
-                  <td key={j} className="border px-2 py-1 text-right" style={style}>
-                    {val.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
+          {alleMaanden.map(maand => {
+              const vals = jaren.map(j => perMaand[maand]?.[j] || 0);
+              const avgRow = vals.length > 0 ? Math.round(vals.reduce((a,b) => a+b,0) / vals.length) : 0;
+              return (
+                <tr key={maand}>
+                  <td className="border p-1 font-medium capitalize">{maand}</td>
+                  {jaren.map(j => {
+                    const val = perMaand[maand]?.[j] || 0;
+                    const style = val > 0 ? getColorStyle(val) : {};
+                    return (
+                      <td key={j} className="border px-2 py-1 text-right" style={style}>
+                        {val.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
+                      </td>
+                    );
+                  })}
+                  <td className="border px-2 py-1 text-right font-semibold">
+                    {avgRow.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
                   </td>
-                );
-              })}
-            </tr>
-          ))}
+                </tr>
+              );
+            })}
         </tbody>
                 <tfoot>
           <tr className="bg-gray-200 font-semibold">
