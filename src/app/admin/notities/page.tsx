@@ -21,7 +21,7 @@ interface Notitie {
 
 export default function NotitieblokPagina() {
   // Rubrieken ophalen
-  const { data: rubrieken = [] } = useSWR<Rubriek[]>('/api/notities/rubrieken', fetcher, { revalidateOnMount: true });
+  const { data: rubrieken = [] } = useSWR<Rubriek[]>('/api/notities', fetcher, { revalidateOnMount: true });
   const [selRubriek, setSelRubriek] = useState<Rubriek | null>(null);
   // Notities per rubriek
   const { data: notities = [] } = useSWR<Notitie[]>(
