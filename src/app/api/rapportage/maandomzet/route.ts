@@ -1,9 +1,8 @@
 // Bestand: src/app/api/rapportage/maandomzet/route.ts
-import { dbRapportage } from '@/lib/dbRapportage';
-import { NextResponse } from 'next/server';
-
 export const dynamic = 'force-dynamic';
 
+import { dbRapportage } from '@/lib/dbRapportage';
+import { NextResponse } from 'next/server';
 
 export async function GET() {
   try {
