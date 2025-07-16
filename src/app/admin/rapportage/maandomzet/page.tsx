@@ -31,14 +31,14 @@ export default function MaandomzetPage() {
     9: 'september', 10: 'oktober', 11: 'november', 12: 'december'
   };
 
-  const alleMaanden = Array.from(new Set(rows.map(r => new Date(r.maand_start).getMonth() + 1)))
+    const alleMaanden = Array.from(new Set(parsedRows.map(r => new Date(r.maand_start).getMonth() + 1)))
     .sort()
     .map(m => maandnamenMap[m]);
-  const jaren = Array.from(new Set(rows.map(r => r.jaar))).sort() as number[];
+  const jaren = Array.from(new Set(parsedRows.map(r => r.jaar))).sort() as number[];
 
   const perMaand: Record<string, Record<number, number>> = {};
   const alleWaarden: number[] = [];
-  rows.forEach(({ jaar, maand_start, totaal }) => {
+  parsedRows.forEach(({ jaar, maand_start, totaal }) => {
     const mIndex = new Date(maand_start).getMonth() + 1;
     const maand = maandnamenMap[mIndex];
     perMaand[maand] = perMaand[maand] || {};
@@ -90,12 +90,12 @@ export default function MaandomzetPage() {
             </tr>
           ))}
         </tbody>
-        <tfoot>
+                <tfoot>
           <tr className="bg-gray-200 font-semibold">
             <td className="border p-1">Totaal per jaar</td>
             {jaren.map(j => (
               <td key={`totaal-${j}`} className="px-2 py-1 border text-right">
-                {rows
+                {parsedRows
                   .filter(r => r.jaar === j)
                   .reduce((sum, r) => sum + r.totaal, 0)
                   .toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
@@ -105,11 +105,10 @@ export default function MaandomzetPage() {
           <tr className="bg-gray-200 font-semibold">
             <td className="border p-1">Gemiddelde per maand</td>
             {jaren.map(j => {
-              const total = rows
+              const total = parsedRows
                 .filter(r => r.jaar === j)
                 .reduce((sum, r) => sum + r.totaal, 0);
-              const count = alleMaanden.length;
-              const avg = count > 0 ? Math.round(total / count) : 0;
+              const avg = jaren.length > 0 ? Math.round(total / alleMaanden.length) : 0;
               return (
                 <td key={`gem-${j}`} className="px-2 py-1 border text-right">
                   {avg.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
