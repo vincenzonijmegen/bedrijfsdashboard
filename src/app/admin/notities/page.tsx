@@ -81,6 +81,7 @@ export default function NotitieblokPagina() {
               </div>
               <div
                 className="p-3 h-32 overflow-auto"
+                title={n.tekst}
                 contentEditable
                 suppressContentEditableWarning
                 defaultValue={n.tekst}
