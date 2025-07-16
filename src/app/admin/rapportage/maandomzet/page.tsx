@@ -88,7 +88,36 @@ export default function MaandomzetPage() {
             </tr>
           ))}
         </tbody>
+        <tfoot>
+          <tr className="bg-gray-200 font-semibold">
+            <td className="border p-1">Totaal per jaar</td>
+            {jaren.map(j => (
+              <td key={`totaal-${j}`} className="px-2 py-1 border text-right">
+                {rows
+                  .filter(r => r.jaar === j)
+                  .reduce((sum, r) => sum + r.totaal, 0)
+                  .toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
+              </td>
+            ))}
+          </tr>
+          <tr className="bg-gray-200 font-semibold">
+            <td className="border p-1">Gemiddelde per maand</td>
+            {jaren.map(j => {
+              const total = rows
+                .filter(r => r.jaar === j)
+                .reduce((sum, r) => sum + r.totaal, 0);
+              const count = alleMaanden.length;
+              const avg = count > 0 ? Math.round(total / count) : 0;
+              return (
+                <td key={`gem-${j}`} className="px-2 py-1 border text-right">
+                  {avg.toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
+                </td>
+              );
+            })}
+          </tr>
+        </tfoot>
       </table>
+    </div>
     </div>
   );
 }
