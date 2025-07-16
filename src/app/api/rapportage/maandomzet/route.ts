@@ -1,5 +1,6 @@
 // Bestand: src/app/api/rapportage/maandomzet/route.ts
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 import { dbRapportage } from '@/lib/dbRapportage';
 import { NextResponse } from 'next/server';
