@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useEffect } from 'react';
 import useSWR, { mutate } from 'swr';
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(res => res.json());
 
 export default function MaandomzetPage() {
   // Forceer data-verversing bij openen
