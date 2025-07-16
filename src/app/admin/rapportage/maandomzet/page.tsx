@@ -21,6 +21,8 @@ export default function MaandomzetPage() {
 
   interface Row { jaar: number; maand_start: string; totaal: number }
   const rows = data.rows as Row[];
+  // zorg dat totaal numeriek is (komt als string vanuit db)
+  const parsedRows = rows.map(r => ({ jaar: r.jaar, maand_start: r.maand_start, totaal: Number(r.totaal) }));
   const maxDatum = new Date(data.max_datum);
 
   const maandnamenMap: Record<number, string> = {
