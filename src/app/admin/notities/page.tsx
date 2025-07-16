@@ -11,6 +11,13 @@ const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(res => r
 interface Rubriek { id: number; naam: string; }
 interface Notitie { id: number; rubriek_id: number; tekst: string; volgorde: number; }
 
+// Functie om HTML-tags te strippen voor de title-tooltip
+const stripHTML = (html: string) => {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || '';
+};
+
 export default function NotitieblokPagina() {
   // Rubrieken ophalen en sorteren
   const { data: rubrieken = [], mutate: mutateRubrieken } = useSWR<Rubriek[]>('/api/notities', fetcher, { revalidateOnMount: true });
@@ -80,8 +87,9 @@ export default function NotitieblokPagina() {
                 <button onClick={() => deleteNotitie(n.id)} className="ml-auto text-red-500">🗑️</button>
               </div>
               <div
-                className="p-3 h-32 overflow-auto"
-                title={n.tekst}
+                className="p-3 w-full min-h-[8rem] resize-y overflow-auto"
+                style={{ resize: 'vertical' }}
+                title={stripHTML(n.tekst)}
                 contentEditable
                 suppressContentEditableWarning
                 defaultValue={n.tekst}
@@ -100,7 +108,8 @@ export default function NotitieblokPagina() {
           </div>
           <div
             ref={newRef}
-            className="mt-1 p-3 h-32 border rounded overflow-auto"
+            className="mt-1 p-3 w-full min-h-[8rem] resize-y border rounded overflow-auto"
+            style={{ resize: 'vertical' }}
             contentEditable
             suppressContentEditableWarning
             onInput={e => setNewNotitieHtml((e.currentTarget as HTMLDivElement).innerHTML)}
