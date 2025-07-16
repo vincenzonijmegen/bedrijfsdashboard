@@ -47,7 +47,7 @@ export default function NotitieblokPagina() {
     await fetch('/api/notities', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, tekst: html })
+      body: JSON.stringify({ id, tekst: html, type: 'notitie' })
     });
   };
 
@@ -75,8 +75,8 @@ export default function NotitieblokPagina() {
           {notities.map(n => (
             <div key={n.id} className="relative border rounded">
               <div className="bg-gray-100 p-1 flex gap-2">
-                <button onClick={() => execCommand('bold')} className="font-bold">B</button>
-                <button onClick={() => execCommand('italic')} className="italic">I</button>
+                <button onMouseDown={e => { e.preventDefault(); execCommand('bold'); }}  className="font-bold">B</button>
+                <button onMouseDown={e => { e.preventDefault(); execCommand('italic'); }}  className="italic">I</button>
                 <button onClick={() => deleteNotitie(n.id)} className="ml-auto text-red-500">🗑️</button>
               </div>
               <div
