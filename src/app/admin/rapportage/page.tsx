@@ -19,7 +19,7 @@ const rapportages = [
 export default function RapportageOverzicht() {
   return (
     <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Rapportages</h1>
+      <h1 className="text-2xl font-bold">Rapportagedashboard Vincenzo</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {rapportages.map((r) => (
           <Link href={r.link} key={r.titel}>
