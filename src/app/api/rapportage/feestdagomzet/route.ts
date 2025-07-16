@@ -51,6 +51,7 @@ export async function GET(req: Request) {
         meivakantie dag 7
         meivakantie dag 8
         meivakantie dag 9
+        dag voor Zomerfeesten
         Zomerfeesten dag 1
         Zomerfeesten dag 2
         Zomerfeesten dag 3
