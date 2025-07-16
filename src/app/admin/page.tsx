@@ -99,7 +99,7 @@ export default function AdminDashboard() {
 
       <Section title="📘 Management" color="blue">
         <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} />
-        <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={IceCream} />
+        <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={CheckSquare} />
         <LinkCard href="/admin/suikervrij" label="Suikervrij productie" color="blue" Icon={IceCream} />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} />
       </Section>
