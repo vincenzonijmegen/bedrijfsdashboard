@@ -20,28 +20,20 @@ interface Notitie {
 }
 
 export default function NotitieblokPagina() {
-  // Rubrieken ophalen
-  const { data: rubrieken = [] } = useSWR<Rubriek[]>('/api/notities', fetcher, { revalidateOnMount: true });
+  const { data: rubrieken = [], mutate: mutateRubrieken } = useSWR<Rubriek[]>('/api/notities', fetcher, { revalidateOnMount: true });
   const [selRubriek, setSelRubriek] = useState<Rubriek | null>(null);
-  // Notities per rubriek
-  const { data: notities = [] } = useSWR<Notitie[]>(
+  const { data: notities = [], mutate: mutateNotities } = useSWR<Notitie[]>(
     selRubriek ? `/api/notities?rubriek_id=${selRubriek.id}` : null,
     fetcher,
     { revalidateOnMount: true }
   );
 
-  // Local state for new entries
   const [newRubriekName, setNewRubriekName] = useState('');
   const [newNotitieTekst, setNewNotitieTekst] = useState('');
 
-  // Select eerste rubriek bij laden
   useEffect(() => {
     if (rubrieken.length > 0 && !selRubriek) setSelRubriek(rubrieken[0]);
   }, [rubrieken]);
-
-  // CRUD-functies
-  const reloadRubrieken = () => fetch('/api/notities', { cache: 'no-store' }).then(() => {});
-  const reloadNotities = () => fetch(`/api/notities?rubriek_id=${selRubriek?.id}`, { cache: 'no-store' }).then(() => {});
 
   const addRubriek = async () => {
     if (!newRubriekName.trim()) return;
@@ -51,7 +43,32 @@ export default function NotitieblokPagina() {
       body: JSON.stringify({ naam: newRubriekName.trim() })
     });
     setNewRubriekName('');
-    reloadRubrieken();
+    mutateRubrieken();
+  };
+
+  const editRubriek = async (r: Rubriek) => {
+    const nieuw = prompt('Nieuwe naam voor rubriek:', r.naam);
+    if (nieuw && nieuw.trim() && nieuw !== r.naam) {
+      await fetch('/api/notities', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: r.id, naam: nieuw.trim() })
+      });
+      if (selRubriek?.id === r.id) setSelRubriek({ ...r, naam: nieuw.trim() });
+      mutateRubrieken();
+    }
+  };
+
+  const deleteRubriek = async (r: Rubriek) => {
+    if (confirm(`Weet je zeker dat je rubriek "${r.naam}" wilt verwijderen?`)) {
+      await fetch('/api/notities', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: r.id })
+      });
+      if (selRubriek?.id === r.id) setSelRubriek(null);
+      mutateRubrieken();
+    }
   };
 
   const addNotitie = async () => {
@@ -62,7 +79,7 @@ export default function NotitieblokPagina() {
       body: JSON.stringify({ rubriek_id: selRubriek.id, tekst: newNotitieTekst.trim() })
     });
     setNewNotitieTekst('');
-    reloadNotities();
+    mutateNotities();
   };
 
   return (
@@ -71,13 +88,18 @@ export default function NotitieblokPagina() {
         <Link href="/admin/rapportage" className="text-sm underline text-blue-600">← Terug naar Rapportage</Link>
         <h2 className="text-lg font-semibold">Rubrieken</h2>
         {rubrieken.map(r => (
-          <button
-            key={r.id}
-            onClick={() => setSelRubriek(r)}
-            className={`w-full text-left px-4 py-2 border rounded ${selRubriek?.id === r.id ? 'bg-gray-100 font-semibold' : 'hover:bg-gray-50'}`}
-          >
-            {r.naam}
-          </button>
+          <div key={r.id} className="flex items-center justify-between px-2 py-1 border rounded">
+            <button
+              onClick={() => setSelRubriek(r)}
+              className={`text-left flex-1 ${selRubriek?.id === r.id ? 'font-semibold' : ''}`}
+            >
+              {r.naam}
+            </button>
+            <div className="flex gap-1">
+              <button onClick={() => editRubriek(r)} className="text-blue-500" title="Aanpassen">✎</button>
+              <button onClick={() => deleteRubriek(r)} className="text-red-500" title="Verwijderen">🗑️</button>
+            </div>
+          </div>
         ))}
         <div className="mt-4 flex gap-2">
           <input
@@ -106,7 +128,7 @@ export default function NotitieblokPagina() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: n.id, tekst })
                   });
-                  reloadNotities();
+                  mutateNotities();
                 }
               }}
             />

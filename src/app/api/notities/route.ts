@@ -41,13 +41,31 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const { id, tekst } = await req.json();
-  if (tekst) {
+  const body = await req.json();
+  if (body.naam && body.id) {
+    // rubriek hernoemen
     await dbRapportage.query(
-      `UPDATE rapportage.notities SET tekst=$1 WHERE id=$2`,
-      [tekst, id]
+      `UPDATE rapportage.rubrieken SET naam=$1 WHERE id=$2`,
+      [body.naam, body.id]
     );
     return NextResponse.json({ success: true });
   }
-  return NextResponse.json({ error: 'Niks om te updaten' }, { status: 400 });
+  if (body.tekst && body.id) {
+    // notitie bijwerken (bestaat al)
+    await dbRapportage.query(
+      `UPDATE rapportage.notities SET tekst=$1 WHERE id=$2`,
+      [body.tekst, body.id]
+    );
+    return NextResponse.json({ success: true });
+  }
+  return NextResponse.json({ error: 'Ongeldige payload' }, { status: 400 });
+}
+export async function DELETE(req: Request) {
+  const { id } = await req.json();
+  if (id) {
+    // rubriek verwijderen (cascade zorgt voor notities)
+    await dbRapportage.query(`DELETE FROM rapportage.rubrieken WHERE id=$1`, [id]);
+    return NextResponse.json({ success: true });
+  }
+  return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 }
