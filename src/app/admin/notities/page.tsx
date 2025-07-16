@@ -11,7 +11,8 @@ const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(res => r
 interface Rubriek { id: number; naam: string; }
 interface Notitie { id: number; rubriek_id: number; tekst: string; volgorde: number; }
 
-// Functie om HTML-tags te strippen voor de title-tooltip\const stripHTML = (html: string) => {
+// Functie om HTML-tags te strippen voor de title-tooltip
+const stripHTML = (html: string) => {
   const tmp = document.createElement('div');
   tmp.innerHTML = html;
   return tmp.textContent || tmp.innerText || '';
