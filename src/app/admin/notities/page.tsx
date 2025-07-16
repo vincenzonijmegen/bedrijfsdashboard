@@ -40,12 +40,12 @@ export default function NotitieblokPagina() {
   }, [rubrieken]);
 
   // CRUD-functies
-  const reloadRubrieken = () => fetch('/api/notities/rubrieken', { cache: 'no-store' }).then(() => {});
+  const reloadRubrieken = () => fetch('/api/notities', { cache: 'no-store' }).then(() => {});
   const reloadNotities = () => fetch(`/api/notities?rubriek_id=${selRubriek?.id}`, { cache: 'no-store' }).then(() => {});
 
   const addRubriek = async () => {
     if (!newRubriekName.trim()) return;
-    await fetch('/api/notities/rubrieken', {
+    await fetch('/api/notities', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ naam: newRubriekName.trim() })
