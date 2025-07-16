@@ -106,7 +106,7 @@ export default function NotitieblokPagina() {
     <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* Rubriekenlijst */}
       <div className="col-span-1 space-y-2">
-          <h2 className="text-lg font-semibold">Rubrieken</h2>
+        <h2 className="text-lg font-semibold">Rubrieken</h2>
         {sortedRubrieken.map(r => (
           <div key={r.id} className="flex items-center justify-between px-2 py-1 border rounded">
             <button
@@ -138,7 +138,7 @@ export default function NotitieblokPagina() {
         <div className="space-y-4">
           {notities.map(n => (
             <div key={n.id} className="relative">
-              <textarea
+              <textarea title={n.tekst}
                 className="w-full border rounded p-3 h-32 resize-y"
                 defaultValue={n.tekst}
                 onBlur={async e => {
