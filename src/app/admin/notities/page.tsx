@@ -84,7 +84,7 @@ export default function NotitieblokPagina() {
                 contentEditable
                 suppressContentEditableWarning
                 defaultValue={n.tekst}
-                onBlur={e => updateNotitie(n.id, e.currentTarget.innerHTML)}
+                onBlur={async e => { await updateNotitie(n.id, e.currentTarget.innerHTML); mutateNotities(); }}
                 dangerouslySetInnerHTML={{ __html: n.tekst }}
               />
             </div>
