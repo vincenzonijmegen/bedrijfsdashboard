@@ -69,7 +69,6 @@ export default function NotitieblokPagina() {
   return (
     <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="col-span-1 space-y-2">
-        <Link href="/admin/rapportage" className="text-sm underline text-blue-600">← Terug naar Rapportage</Link>
         <h2 className="text-lg font-semibold">Rubrieken</h2>
         {sortedRubrieken.map(r => (
           <button key={r.id} onClick={() => setSelRubriek(r)} className={`w-full text-left px-4 py-2 border rounded ${selRubriek?.id === r.id ? 'bg-gray-100 font-semibold' : 'hover:bg-gray-50'}`}>{r.naam}</button>
