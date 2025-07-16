@@ -118,6 +118,5 @@ export default function MaandomzetPage() {
         </tfoot>
       </table>
     </div>
-    </div>
   );
 }
