@@ -19,25 +19,21 @@ export default function MaandomzetPage() {
   if (error) return <div className="p-6 text-red-600">Fout bij laden van maandomzet.</div>;
   if (!data) return <div className="p-6">Bezig met laden...</div>;
 
-  // Response structuren
   interface Row { jaar: number; maand_start: string; totaal: number }
   const rows = data.rows as Row[];
   const maxDatum = new Date(data.max_datum);
 
-  // Maandnamen mapping
   const maandnamenMap: Record<number, string> = {
     1: 'januari', 2: 'februari', 3: 'maart', 4: 'april',
     5: 'mei', 6: 'juni', 7: 'juli', 8: 'augustus',
     9: 'september', 10: 'oktober', 11: 'november', 12: 'december'
   };
 
-  // Unieke maanden en jaren
   const alleMaanden = Array.from(new Set(rows.map(r => new Date(r.maand_start).getMonth() + 1)))
     .sort()
     .map(m => maandnamenMap[m]);
   const jaren = Array.from(new Set(rows.map(r => r.jaar))).sort() as number[];
 
-  // Draaitabel en waardes
   const perMaand: Record<string, Record<number, number>> = {};
   const alleWaarden: number[] = [];
   rows.forEach(({ jaar, maand_start, totaal }) => {
@@ -48,7 +44,6 @@ export default function MaandomzetPage() {
     alleWaarden.push(totaal);
   });
 
-  // Pastel kleurfunctie over gehele dataset
   const min = Math.min(...alleWaarden);
   const max = Math.max(...alleWaarden);
   const getColorStyle = (value: number) => {
@@ -60,19 +55,6 @@ export default function MaandomzetPage() {
     return { backgroundColor: `rgb(${r},${g},${b})`, color: '#000', fontWeight: 'bold' } as React.CSSProperties;
   };
 
-  // Jaar totalen en maandgemiddelden
-  const jaarTotalen: Record<number, number> = {};
-  jaren.forEach(j => {
-    jaarTotalen[j] = alleMaanden.reduce((sum, m) => sum + (perMaand[m]?.[j] || 0), 0);
-  });
-
-  const maandGemiddelden: Record<string, number> = {};
-  alleMaanden.forEach(m => {
-    const vals = jaren.map(j => perMaand[m]?.[j] || 0);
-    maandGemiddelden[m] = Math.round(vals.reduce((a,b) => a + b, 0) / vals.length);
-  });
-
-  // Render UI
   return (
     <div className="p-6">
       <Link href="/admin/rapportage" className="text-sm underline text-blue-600">← Terug naar Rapportage</Link>
@@ -88,7 +70,6 @@ export default function MaandomzetPage() {
             {jaren.map(j => (
               <th key={j} className="px-2 py-1 border text-right">{j}</th>
             ))}
-            <th className="px-2 py-1 border text-right">Gem.</th>
           </tr>
         </thead>
         <tbody>
@@ -104,23 +85,9 @@ export default function MaandomzetPage() {
                   </td>
                 );
               })}
-              <td className="border px-2 py-1 text-right font-semibold">
-                {maandGemiddelden[maand].toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
-              </td>
             </tr>
           ))}
         </tbody>
-        <tfoot>
-          <tr className="bg-gray-200 font-semibold">
-            <td className="border p-1">Totaal per jaar</td>
-            {jaren.map(j => (
-              <td key={j} className="px-2 py-1 border text-right">
-                {jaarTotalen[j].toLocaleString('nl-NL', { maximumFractionDigits: 0 })}
-              </td>
-            ))}
-            <td className="px-2 py-1 border text-right">—</td>
-          </tr>
-        </tfoot>
       </table>
     </div>
   );
