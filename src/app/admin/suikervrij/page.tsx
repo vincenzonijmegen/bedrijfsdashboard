@@ -246,6 +246,36 @@ export default function SuikervrijPage() {
     )}
 
   </div>
+  {/* Printvoorbeeld laatste 2 producties per smaak */}
+<div className="mt-10 print:bg-white print:p-6">
+  <h2 className="text-lg font-bold mb-4">Printvoorbeeld – laatste 2 producties per smaak</h2>
+  {smakenlijst.map((smaakNaam) => {
+    const items = lijst
+      .filter((item) => item.smaak === smaakNaam)
+      .sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime())
+      .slice(0, 2); // alleen de laatste 2
+
+    if (items.length === 0) return null;
+
+    return (
+      <div key={smaakNaam} className="mb-4">
+        <h3 className="font-semibold">{smaakNaam}</h3>
+        <ul className="text-sm pl-4 list-disc">
+          {items.map((p) => (
+            <li key={p.id}>
+              {new Date(p.datum).toLocaleDateString("nl-NL")}, {p.aantal} stuks, kleur: {p.kleur}
+              <span
+                className="inline-block w-3 h-3 ml-2 rounded-full align-middle"
+                style={{ backgroundColor: kleurenlijst.find(k => k.naam === p.kleur)?.hexcode || "#ccc" }}
+              ></span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  })}
+</div>
+
 </div>
   );
 }
