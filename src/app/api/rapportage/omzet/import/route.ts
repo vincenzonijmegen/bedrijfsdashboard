@@ -20,13 +20,13 @@ export async function POST() {
     }
 
 const clean = data
-  .filter(row => row.datum && row.tijdstip && row.product && row.aantal && row.verkoopprijs)
+  .filter(row => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag)
   .map(row => ({
-    datum: row.datum,
-    tijdstip: row.tijdstip,
-    product: row.product,
-    aantal: parseInt(row.aantal),
-    eenheidsprijs: parseFloat(row.verkoopprijs)
+    datum: row.Datum,
+    tijdstip: row.Tijd,
+    product: row.Omschrijving,
+    aantal: parseInt(row.Aantal),
+    eenheidsprijs: parseFloat(row.Totaalbedrag.replace(',', '.'))
   }));
 
 
@@ -35,7 +35,8 @@ const clean = data
   return dbRapportage.query(
     `
     INSERT INTO rapportage.omzet (datum, tijdstip, product, aantal, eenheidsprijs)
-    VALUES ($1, $2, $3, $4, $5)    
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT DO NOTHING
     `,
     [item.datum, item.tijdstip, item.product, item.aantal, item.eenheidsprijs]
   );
