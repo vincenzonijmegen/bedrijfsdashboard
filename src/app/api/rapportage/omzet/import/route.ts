@@ -51,6 +51,7 @@ export async function POST() {
           INSERT INTO rapportage.omzet
             (datum, tijdstip, product, aantal, eenheidsprijs)
           VALUES ($1, $2, $3, $4, $5)
+          ON CONFLICT DO NOTHING
           `,
           [
             item.datum,
