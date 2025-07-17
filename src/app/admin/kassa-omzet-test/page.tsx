@@ -8,6 +8,30 @@ import Link from 'next/link';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
+function ImportOmzetTester() {
+  const [status, setStatus] = useState<string>('');
+  const handleImport = async () => {
+    setStatus('Importeren...');
+    try {
+      const res = await fetch('/api/rapportage/omzet/import', { method: 'POST' });
+      const json = await res.json();
+      setStatus('Import resultaat: ' + JSON.stringify(json));
+    } catch (err: any) {
+      setStatus('Fout bij import: ' + err.message);
+    }
+  };
+  return (
+    <div className="mb-8">
+      <h2 className="text-xl font-semibold mb-2">Test Import Omzet</h2>
+      <button
+        onClick={handleImport}
+        className="bg-green-600 text-white px-4 py-2 rounded mb-2"
+      >Start Import</button>
+      {status && <p className="text-sm text-gray-800">{status}</p>}
+    </div>
+  );
+}
+
 export default function KassaOmzetTestPage() {
   // Datum voor dagelijkse totalen
   const [singleDate, setSingleDate] = useState(() => {
@@ -43,6 +67,10 @@ export default function KassaOmzetTestPage() {
     <div className="p-6">
       <Link href="/admin" className="text-sm underline text-blue-600">← Terug naar admin</Link>
       <h1 className="text-2xl font-bold mt-4 mb-4">Test Kassa Omzet API</h1>
+
+      {/* Test import */}
+
+      <ImportOmzetTester />
 
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-2">Totale omzet per dag</h2>
