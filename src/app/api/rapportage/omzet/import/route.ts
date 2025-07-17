@@ -1,4 +1,5 @@
 // src/app/api/rapportage/omzet/import/route.ts
+
 import { dbRapportage } from '@/lib/dbRapportage';
 import { NextResponse } from 'next/server';
 
@@ -8,13 +9,15 @@ export async function POST() {
   const password = process.env.KASSA_PASS!;
 
   try {
-    // 1) Count vóór insert
-    const before = await dbRapportage.query(
-      `SELECT COUNT(*) AS cnt FROM rapportage.omzet`
+    // 1. Haal alle unieke datums op die al in de tabel bestaan
+    const existingDatesRes = await dbRapportage.query(
+      `SELECT DISTINCT datum FROM rapportage.omzet`
     );
-    const countBefore = parseInt(before.rows[0].cnt, 10);
+    const existingDates = new Set(
+      existingDatesRes.rows.map(r => r.datum.toISOString().slice(0, 10))
+    );
 
-    // 2) Ophalen en filteren van externe data
+    // 2. Ophalen en filteren van externe data
     const response = await fetch(apiUrl, {
       headers: {
         Authorization:
@@ -26,6 +29,7 @@ export async function POST() {
       throw new Error('API returned geen array');
     }
 
+    // 3. Opschonen en filteren van records
     const clean = data
       .filter(
         row =>
@@ -41,15 +45,16 @@ export async function POST() {
         product: row.Omschrijving,
         aantal: parseInt(row.Aantal, 10),
         eenheidsprijs: parseFloat(row.Totaalbedrag.replace(',', '.')),
-      }));
+      }))
+      // 4. Alleen nieuwe datums toevoegen
+      .filter(item => !existingDates.has(item.datum));
 
-    // 3) Opslaan (zonder ON CONFLICT, om zeker te zijn)
+    // 5. Insert van gefilterde records
     await Promise.all(
       clean.map(item =>
         dbRapportage.query(
           `
-          INSERT INTO rapportage.omzet
-            (datum, tijdstip, product, aantal, eenheidsprijs)
+          INSERT INTO rapportage.omzet (datum, tijdstip, product, aantal, eenheidsprijs)
           VALUES ($1, $2, $3, $4, $5)
           ON CONFLICT DO NOTHING
           `,
@@ -64,18 +69,7 @@ export async function POST() {
       )
     );
 
-    // 4) Count ná insert
-    const after = await dbRapportage.query(
-      `SELECT COUNT(*) AS cnt FROM rapportage.omzet`
-    );
-    const countAfter = parseInt(after.rows[0].cnt, 10);
-
-    return NextResponse.json({
-      success: true,
-      imported: clean.length,
-      countBefore,
-      countAfter,
-    });
+    return NextResponse.json({ success: true, imported: clean.length });
   } catch (err: any) {
     console.error('Import fout:', err);
     return NextResponse.json(
