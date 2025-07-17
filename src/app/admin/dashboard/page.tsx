@@ -33,7 +33,7 @@ export default function DashboardPage() {
   // Haal de eerste record uit het API-resultaat
   const record = Array.isArray(totalen) ? totalen[0] as Record<string, string> : null;
   const cash = record ? (parseFloat(record.Cash) || 0) : 0;
-  const pin = record ? parseFloat(record.Pin) : 0;
+  const pin = record ? (parseFloat(record.Pin) || 0) : 0;
   const bon = record ? parseFloat(record.Bon) : 0;
   const isvoucher = record ? parseFloat(record.isvoucher) : 0;
   const total = cash + pin + bon;
