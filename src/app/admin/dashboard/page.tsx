@@ -68,7 +68,7 @@ export default function DashboardPage() {
             </div>
             <div className="flex justify-between text-sm text-gray-600">
               <span>Bonnen verkocht</span>
-              <span>{isvoucher.toLocaleString('nl-NL', { minimumFractionDigits: 0 })}</span>
+              <span>€ {isvoucher.toLocaleString('nl-NL', { minimumFractionDigits: 2})}</span>
             </div>
           </div>
         )}
@@ -90,7 +90,7 @@ export default function DashboardPage() {
       </section>
 
       <Link
-        href="/admin/management"
+        href="/admin"
         className="inline-block bg-green-600 text-white px-6 py-2 rounded text-base"
       >
         Ga naar Management Portaal
