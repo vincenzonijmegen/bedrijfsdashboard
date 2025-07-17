@@ -96,7 +96,7 @@ export default function DashboardPage() {
         Ga naar Management Portaal
       </Link>
 
-      {/* Toekomstige widgets: werkinstructies, skills, schoonmaakroutines */}
+      {/* TToekomstige widgets: werkinstructies, skills, schoonmaakroutines */}
     </div>
   );
 }
