@@ -1,41 +1,78 @@
-import { NextRequest, NextResponse } from "next/server";
-import { pool } from "@/lib/db";
+// src/app/api/bestellingen/onderhanden/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { pool } from '@/lib/db';
 
+// GET: Haal de meest recente onderhanden bestelling per leverancier op
 export async function GET(req: NextRequest) {
-  const leverancier = req.nextUrl.searchParams.get("leverancier");
-  if (!leverancier) return NextResponse.json({ error: "Leverancier vereist" }, { status: 400 });
+  const leverancierId = req.nextUrl.searchParams.get('leverancier_id');
+  if (!leverancierId) {
+    return NextResponse.json({ error: 'leverancier_id is verplicht' }, { status: 400 });
+  }
 
   const result = await pool.query(
-    `SELECT * FROM onderhanden_bestellingen WHERE leverancier_id = $1 ORDER BY laatst_bewerkt DESC LIMIT 1`,
-    [leverancier]
+    `
+      SELECT *
+        FROM onderhanden_bestellingen
+       WHERE leverancier_id = $1
+       ORDER BY laatst_bewerkt DESC
+       LIMIT 1
+    `,
+    [leverancierId]
   );
-
   return NextResponse.json(result.rows[0] ?? {});
 }
 
-
+// POST: Atomische insert of increment op product_id
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { leverancier_id, data, referentie } = body;
+  try {
+    const { product_id } = await req.json();
+    if (!product_id) {
+      return NextResponse.json({ error: 'product_id is verplicht' }, { status: 400 });
+    }
 
-  if (!leverancier_id || !data || Object.keys(data).length === 0) {
-    return NextResponse.json({ error: "leverancier_id en data zijn verplicht" }, { status: 400 });
+    const result = await pool.query(
+      `
+      INSERT INTO onderhanden_bestellingen (product_id, aantal, laatst_bewerkt)
+      VALUES ($1, 1, now())
+      ON CONFLICT (product_id)
+      DO UPDATE
+        SET aantal = onderhanden_bestellingen.aantal + 1,
+            laatst_bewerkt = now()
+      RETURNING aantal AS nieuweAantal
+      `,
+      [product_id]
+    );
+
+    return NextResponse.json({ success: true, nieuweAantal: result.rows[0].nieuweaantal });
+  } catch (err: any) {
+    console.error('POST /onderhanden fout:', err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
-
-  await pool.query(`
-    INSERT INTO onderhanden_bestellingen (leverancier_id, data, referentie, laatst_bewerkt)
-    VALUES ($1, $2, $3, now())
-    ON CONFLICT (leverancier_id)
-    DO UPDATE SET data = $2, referentie = $3, laatst_bewerkt = now()
-  `, [leverancier_id, data, referentie]);
-
-  return NextResponse.json({ success: true });
 }
 
+// DELETE: Verwijder onderhanden bestellingen per leverancier of product
 export async function DELETE(req: NextRequest) {
-  const leverancier = req.nextUrl.searchParams.get("leverancier");
-if (!leverancier) return NextResponse.json({ error: "Leverancier vereist" }, { status: 400 });
+  const leverancierId = req.nextUrl.searchParams.get('leverancier_id');
+  const productId = req.nextUrl.searchParams.get('product_id');
 
-await pool.query(`DELETE FROM onderhanden_bestellingen WHERE leverancier_id = $1`, [leverancier]);
-  return NextResponse.json({ success: true });
+  if (leverancierId) {
+    await pool.query(
+      `DELETE FROM onderhanden_bestellingen WHERE leverancier_id = $1`,
+      [leverancierId]
+    );
+    return NextResponse.json({ success: true, message: `Deleted leverancier ${leverancierId}` });
+  }
+
+  if (productId) {
+    await pool.query(
+      `DELETE FROM onderhanden_bestellingen WHERE product_id = $1`,
+      [productId]
+    );
+    return NextResponse.json({ success: true, message: `Deleted product ${productId}` });
+  }
+
+  return NextResponse.json(
+    { error: 'leverancier_id of product_id is verplicht voor DELETE' },
+    { status: 400 }
+  );
 }
