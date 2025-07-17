@@ -2,6 +2,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import useSWR from 'swr';
+const fetcher = (url: string) => fetch(url).then(res => res.json());
 import {
   User,
   Users,
@@ -67,6 +69,11 @@ const LinkCard = ({ href, label, color, Icon }: LinkCardProps) => (
 );
 
 export default function AdminDashboard() {
+  // Dagomzet ophalen via API
+  const { data: totalenData } = useSWR('/api/kassa/omzet?start=' + new Date().toISOString().slice(0,10).split('-').reverse().join('-') + '&totalen=1', fetcher);
+  const totalRecord = Array.isArray(totalenData) ? totalenData[0] : null;
+  const dailyTotal = totalRecord ? (parseFloat(totalRecord.Cash||0) + parseFloat(totalRecord.Pin||0) + parseFloat(totalRecord.Bon||0)) : 0;
+
   return (
     <main className="max-w-6xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-8 text-slate-800">🗂️ Management Portaal</h1>
