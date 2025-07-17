@@ -34,8 +34,8 @@ export default function DashboardPage() {
   const record = Array.isArray(totalen) ? totalen[0] as Record<string, string> : null;
   const cash = record ? (parseFloat(record.Cash) || 0) : 0;
   const pin = record ? (parseFloat(record.Pin) || 0) : 0;
-  const bon = record ? parseFloat(record.Bon) : 0;
-  const isvoucher = record ? parseFloat(record.isvoucher) : 0;
+  const bon = record ? (parseFloat(record.Bon) || 0) : 0;
+  const isvoucher = record ? (parseFloat(record.isvoucher) || 0) : 0;
   const total = cash + pin + bon;
 
   return (
@@ -96,7 +96,7 @@ export default function DashboardPage() {
         Ga naar Management Portaal
       </Link>
 
-      {/* TToekomstige widgets: werkinstructies, skills, schoonmaakroutines */}
+      {/* Toekomstige widgets: werkinstructies, skills, schoonmaakroutines */}
     </div>
   );
 }
