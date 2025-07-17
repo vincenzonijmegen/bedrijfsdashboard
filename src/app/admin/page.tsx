@@ -1,5 +1,7 @@
 "use client";
 
+
+
 import * as React from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
@@ -68,6 +70,17 @@ const LinkCard = ({ href, label, color, Icon }: LinkCardProps) => (
   </Link>
 );
 
+function DailyTotalDisplay() {
+  const today = new Date().toISOString().slice(0,10).split('-').reverse().join('-');
+  const { data } = useSWR('/api/kassa/omzet?start=' + today + '&totalen=1', fetcher);
+  const record = Array.isArray(data) ? data[0] : null;
+  const cash = record ? parseFloat(record.Cash)||0 : 0;
+  const pin = record ? parseFloat(record.Pin)||0 : 0;
+  const bon = record ? parseFloat(record.Bon)||0 : 0;
+  const total = cash + pin + bon;
+  return <span className="text-lg font-semibold">Dagomzet: € {total.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>;
+}
+
 export default function AdminDashboard() {
   // Dagomzet ophalen via API
   const { data: totalenData } = useSWR('/api/kassa/omzet?start=' + new Date().toISOString().slice(0,10).split('-').reverse().join('-') + '&totalen=1', fetcher);
@@ -76,7 +89,12 @@ export default function AdminDashboard() {
 
   return (
     <main className="max-w-6xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-8 text-slate-800">🗂️ Management Portaal</h1>
+      <div className="flex items-center justify-between mb-8">
+  <h1 className="text-2xl font-bold text-slate-800">🗂️ Management Portaal</h1>
+  {/* Dagomzet rechtsonder */}
+  {/* ophalen via SWR */}
+  <DailyTotalDisplay />
+</div>
 
       <Section title="👥 Medewerkers en instructies" color="green">
         <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} />
