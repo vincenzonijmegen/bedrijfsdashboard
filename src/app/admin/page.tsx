@@ -73,28 +73,13 @@ export default function AdminDashboard() {
 
       <Section title="👥 Medewerkers en instructies" color="green">
         <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} />
-        <LinkCard
-          href="/admin/medewerkers/overzicht"
-          label="Gegevens medewerkers"
-          color="green"
-          Icon={Users}
-        />
+        <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="green" Icon={Users} />
         <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="green" Icon={FileText} />
         <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} />
         <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} />
-        <LinkCard
-          href="/admin/instructies"
-          label="Instructies beheren"
-          color="green"
-          Icon={FileText}
-        />
+        <LinkCard href="/admin/instructies" label="Instructies beheren" color="green" Icon={FileText} />
         <LinkCard href="/instructies" label="Instructies medewerkers" color="green" Icon={Eye} />
-        <LinkCard
-          href="/admin/resultaten"
-          label="Toetsresultaten"
-          color="green"
-          Icon={BarChart2}
-        />
+        <LinkCard href="/admin/resultaten" label="Toetsresultaten" color="green" Icon={BarChart2} />
       </Section>
 
       <Section title="📘 Management" color="blue">
@@ -102,81 +87,32 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={CheckSquare} />
         <LinkCard href="/admin/suikervrij" label="Suikervrij productie" color="blue" Icon={IceCream} />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} />
+        <LinkCard href="/admin/kassa-omzet-test" label="TESTPAGINA KASSA" color="blue" Icon={Wrench} />
       </Section>
 
       <Section title="🧠 Skills" color="purple">
-        <LinkCard
-          href="/admin/skills/categorieen"
-          label="Beheer categorieën"
-          color="purple"
-          Icon={Tag}
-        />
+        <LinkCard href="/admin/skills/categorieen" label="Beheer categorieën" color="purple" Icon={Tag} />
         <LinkCard href="/admin/skills" label="Skills beheer" color="purple" Icon={Layers} />
-        <LinkCard
-          href="/admin/skills/toewijzen"
-          label="Skills toewijzen"
-          color="purple"
-          Icon={Activity}
-        />
+        <LinkCard href="/admin/skills/toewijzen" label="Skills toewijzen" color="purple" Icon={Activity} />
         <LinkCard href="/skills" label="Skills medewerkers" color="purple" Icon={Layers} />
       </Section>
 
       <Section title="📅 Planning" color="slate">
         <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} />
-        <LinkCard
-          href="/admin/rapportages/timesheets"
-          label="Klokuren"
-          color="orange"
-          Icon={Clock}
-        />
-        <LinkCard
-          href="/shift-acties"
-          label="Shiftacties & Statistieken"
-          color="orange"
-          Icon={Activity}
-        />
+        <LinkCard href="/admin/rapportages/timesheets" label="Klokuren" color="orange" Icon={Clock} />
+        <LinkCard href="/shift-acties" label="Shiftacties & Statistieken" color="orange" Icon={Activity} />
       </Section>
 
       <Section title="📦 Voorraadbeheer" color="pink">
-        <LinkCard
-          href="/admin/voorraad/artikelen"
-          label="Artikelen beheren"
-          color="pink"
-          Icon={Box}
-        />
-        <LinkCard
-          href="/admin/voorraad/bestelpagina"
-          label="Bestel-app"
-          color="pink"
-          Icon={ShoppingCart}
-        />
+        <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="pink" Icon={Box} />
+        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ShoppingCart} />
       </Section>
 
       <Section title="📊 Rapportages" color="slate">
-        <LinkCard
-          href="/admin/rapportages"
-          label="Omzet & voorraad"
-          color="gray"
-          Icon={CreditCard}
-        />
-        <LinkCard
-          href="/admin/rapportages/medewerkers/overzicht-progressie"
-          label="Medewerkers-voortgang"
-          color="gray"
-          Icon={BarChart2}
-        />
-        <LinkCard
-          href="/admin/rapportage/omzet"
-          label="Inlezen omzet"
-          color="gray"
-          Icon={FileText}
-        />
-        <LinkCard
-          href="/admin/rapportage"
-          label="Rapporten"
-          color="gray"
-          Icon={Archive}
-        />
+        <LinkCard href="/admin/rapportages" label="Omzet & voorraad" color="gray" Icon={CreditCard} />
+        <LinkCard href="/admin/rapportages/medewerkers/overzicht-progressie" label="Medewerkers-voortgang" color="gray" Icon={BarChart2} />
+        <LinkCard href="/admin/rapportage/omzet" label="Inlezen omzet" color="gray" Icon={FileText} />
+        <LinkCard href="/admin/rapportage" label="Rapporten" color="gray" Icon={Archive} />
       </Section>
     </main>
   );
