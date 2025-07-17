@@ -35,8 +35,7 @@ const clean = data
   return dbRapportage.query(
     `
     INSERT INTO rapportage.omzet (datum, tijdstip, product, aantal, eenheidsprijs)
-    VALUES ($1, $2, $3, $4, $5)
-    ON CONFLICT DO NOTHING
+    VALUES ($1, $2, $3, $4, $5)    
     `,
     [item.datum, item.tijdstip, item.product, item.aantal, item.eenheidsprijs]
   );
