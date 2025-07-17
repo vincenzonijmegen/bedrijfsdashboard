@@ -78,7 +78,7 @@ function DailyTotalDisplay() {
   const pin = record ? parseFloat(record.Pin)||0 : 0;
   const bon = record ? parseFloat(record.Bon)||0 : 0;
   const total = cash + pin + bon;
-  return <span className="text-lg font-semibold">Dagomzet: € {total.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>;
+  return <span className="text-lg font-semibold">€ {total.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>;
 }
 
 export default function AdminDashboard() {
@@ -90,10 +90,12 @@ export default function AdminDashboard() {
   return (
     <main className="max-w-6xl mx-auto p-6">
       <div className="flex items-center justify-between mb-8">
-  <h1 className="text-2xl font-bold text-slate-800">🗂️ Management Portaal</h1>
+  <h1 className="text-2xl font-bold text-slate-800">🗂️ Portaal</h1>
   {/* Dagomzet rechtsonder */}
   {/* ophalen via SWR */}
-  <DailyTotalDisplay />
+  <div className="px-4 py-2 bg-gray-100 rounded">
+          <DailyTotalDisplay />
+        </div>
 </div>
 
       <Section title="👥 Medewerkers en instructies" color="green">
