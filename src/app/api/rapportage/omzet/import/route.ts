@@ -50,17 +50,17 @@ export async function POST(req: NextRequest) {
     // 2. Normalize and filter data
     const clean = data
       .filter(
-        row => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag
+        (row: any) => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag
       )
-      .map(row => {
+      .map((row: any) => {
         // Datum expected format 'DD-MM-YYYY' or 'D-M-YYYY'
-        const [d, m, y] = row.Datum.split('-').map(part => part.padStart(2, '0'));
+        const [d, m, y] = row.Datum.split('-').map((part: string) => part.padStart(2, '0'));
         const datum = `${y}-${m}-${d}`; // ISO format
-        const tijdstip = row.Tijd;
-        const product = row.Omschrijving;
-        const aantal = parseInt(row.Aantal.replace(/\D+/g, ''), 10);
+        const tijdstip = row.Tijd as string;
+        const product = row.Omschrijving as string;
+        const aantal = parseInt((row.Aantal as string).replace(/\D+/g, ''), 10);
         const eenheidsprijs = parseFloat(
-          row.Totaalbedrag.replace(/\./g, '').replace(',', '.')
+          (row.Totaalbedrag as string).replace(/\./g, '').replace(',', '.')
         );
         return { datum, tijdstip, product, aantal, eenheidsprijs };
       });
