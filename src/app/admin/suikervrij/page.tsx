@@ -23,27 +23,21 @@ export default function SuikervrijPage() {
   const [nieuweKleur, setNieuweKleur] = useState("");
 
   useEffect(() => {
-    // Fetch initial data
-    fetch("/api/suikervrij/productie")
-      .then((res) => res.json())
-      .then((data) => setLijst(data));
-    fetch("/api/suikervrij/smaken")
-      .then((res) => res.json())
-      .then((data) => {
-        const namen = data.map((d: any) => d.naam);
-        setSmakenlijst(namen);
-        if (!smaak) setSmaak(namen[0] || "");
-      });
-    fetch("/api/suikervrij/kleuren")
-      .then((res) => res.json())
-      .then((data) => {
-        setKleurenlijst(data);
-        if (!kleur) setKleur(data[0]?.naam || "");
-      });
+    // Fetch data
+    fetch("/api/suikervrij/productie").then((res) => res.json()).then(setLijst);
+    fetch("/api/suikervrij/smaken").then((res) => res.json()).then((data) => {
+      const namen = data.map((d: any) => d.naam);
+      setSmakenlijst(namen);
+      if (!smaak) setSmaak(namen[0] || "");
+    });
+    fetch("/api/suikervrij/kleuren").then((res) => res.json()).then((data) => {
+      setKleurenlijst(data);
+      if (!kleur) setKleur(data[0]?.naam || "");
+    });
   }, []);
 
   const toevoegen = async () => {
-    if (!aantal || aantal <= 0) return;
+    if (!aantal) return;
     const res = await fetch("/api/suikervrij/productie", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -54,47 +48,106 @@ export default function SuikervrijPage() {
     setAantal(0);
   };
 
-  const voegSmaakToe = async () => {
-    if (!nieuweSmaak.trim()) return;
-    await fetch("/api/suikervrij/smaken", {
-      method: "POST",
+  const verwijder = async (id: number) => {
+    if (!confirm("Weet je zeker dat je deze productie wilt verwijderen?")) return;
+    await fetch("/api/suikervrij/productie", {
+      method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ naam: nieuweSmaak.trim() }),
+      body: JSON.stringify({ id }),
     });
-    setNieuweSmaak("");
-    const data = await fetch("/api/suikervrij/smaken").then((res) => res.json());
-    setSmakenlijst(data.map((d: any) => d.naam));
+    setLijst((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const voegKleurToe = async () => {
-    if (!nieuweKleur.trim()) return;
-    await fetch("/api/suikervrij/kleuren", {
-      method: "POST",
+  const openEdit = (p: Productie) => setBewerken(p);
+  const saveEdit = async () => {
+    if (!bewerken) return;
+    await fetch("/api/suikervrij/productie", {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ naam: nieuweKleur.trim() }),
+      body: JSON.stringify(bewerken),
     });
-    setNieuweKleur("");
-    const data = await fetch("/api/suikervrij/kleuren").then((res) => res.json());
-    setKleurenlijst(data);
+    const data = await fetch("/api/suikervrij/productie").then((res) => res.json());
+    setLijst(data);
+    setBewerken(null);
   };
 
+  // Print styles and area wrapper
   return (
     <div className="p-6">
-      {/* Global print styles */}
       <style jsx global>{`
         @media print {
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; }
-          .print-area { position: absolute; top: 0; left: 0; width: 100%; padding: 2rem; }
+          .print-area { position: absolute; top: 0; left: 0; width: 100%; padding: 20px; }
           .no-print { display: none; }
         }
       `}</style>
-                            setLijst((prev) => prev.filter((item) => item.id !== p.id));
-                          }
-                        }}
-                      >
-                        🗑️
-                      </button>
+
+      <h1 className="text-xl font-bold mb-4">Productie suikervrij ijs</h1>
+
+      <button onClick={() => window.print()} className="bg-gray-800 text-white px-4 py-2 rounded mb-6 no-print">
+        📄 Print laatst gemaakte producties
+      </button>
+
+      {/* Input section */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div>
+          <label>Smaak</label>
+          <select value={smaak} onChange={(e) => setSmaak(e.target.value)} className="w-full border rounded p-2">
+            {smakenlijst.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label>Datum</label>
+          <input type="date" value={datum} onChange={(e) => setDatum(e.target.value)} className="w-full border rounded p-2" />
+        </div>
+        <div>
+          <label>Aantal</label>
+          <input type="number" value={aantal} onChange={(e) => setAantal(parseInt(e.target.value) || 0)} className="w-full border rounded p-2" />
+        </div>
+        <div>
+          <label>Kleur sticker</label>
+          <select value={kleur} onChange={(e) => setKleur(e.target.value)} className="w-full border rounded p-2">
+            {kleurenlijst.map((k) => (
+              <option key={k.naam} value={k.naam}>{k.naam}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <button onClick={toevoegen} className="bg-blue-600 text-white px-4 py-2 rounded mb-6 no-print">+ Toevoegen</button>
+
+      {/* Table of all productions */}
+      {smakenlijst.map((smaakNaam) => {
+        const items = lijst
+          .filter((p) => p.smaak === smaakNaam)
+          .sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime());
+        if (!items.length) return null;
+        return (
+          <div key={smaakNaam} className="mb-6">
+            <h3 className="font-semibold mb-2">{smaakNaam}</h3>
+            <table className="w-full border text-sm">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="border px-2 py-1">Datum</th>
+                  <th className="border px-2 py-1">Aantal</th>
+                  <th className="border px-2 py-1">Kleur</th>
+                  <th className="border px-2 py-1">Acties</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((p) => (
+                  <tr key={p.id}>
+                    <td className="border px-2 py-1">{new Date(p.datum).toLocaleDateString('nl-NL')}</td>
+                    <td className="border px-2 py-1">{p.aantal}</td>
+                    <td className="border px-2 py-1 flex items-center">
+                      <span className="inline-block w-4 h-4 rounded-full mr-2" style={{ backgroundColor: kleurenlijst.find((k) => k.naam === p.kleur)?.hexcode || '#ccc' }} />
+                      {p.kleur}
+                    </td>
+                    <td className="border px-2 py-1 flex gap-2">
+                      <button onClick={() => openEdit(p)} className="text-blue-600">✏️</button>
+                      <button onClick={() => verwijder(p.id)} className="text-red-600">🗑️</button>
                     </td>
                   </tr>
                 ))}
@@ -104,28 +157,22 @@ export default function SuikervrijPage() {
         );
       })}
 
-      {/* Printvoorbeeld laatste 2 producties per smaak */}
-      <div className="mt-10 print:bg-white print:p-6 print:visible">
-        <h2 className="text-lg font-bold mb-4">Printvoorbeeld – laatste 2 producties per smaak</h2>
+      {/* Print area: last 2 per smaak */}
+      <div className="print-area bg-white">
+        <h2 className="font-bold mb-4">Print – laatste 2 producties per smaak</h2>
         {smakenlijst.map((smaakNaam) => {
           const items = lijst
-            .filter((item) => item.smaak === smaakNaam)
+            .filter((p) => p.smaak === smaakNaam)
             .sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime())
             .slice(0, 2);
-
-          if (items.length === 0) return null;
-
+          if (!items.length) return null;
           return (
             <div key={smaakNaam} className="mb-4">
-              <h3 className="font-semibold mb-1">{smaakNaam}</h3>
-              <ul className="text-sm pl-4 list-disc">
+              <h3 className="font-semibold">{smaakNaam}</h3>
+              <ul className="list-disc pl-4">
                 {items.map((p) => (
                   <li key={p.id}>
-                    {new Date(p.datum).toLocaleDateString("nl-NL")}, {p.aantal} stuks, kleur: {p.kleur}
-                    <span
-                      className="inline-block w-3 h-3 ml-2 rounded-full align-middle"
-                      style={{ backgroundColor: kleurenlijst.find((k) => k.naam === p.kleur)?.hexcode || "#ccc" }}
-                    ></span>
+                    {new Date(p.datum).toLocaleDateString('nl-NL')}, {p.aantal} stuks
                   </li>
                 ))}
               </ul>
@@ -134,11 +181,11 @@ export default function SuikervrijPage() {
         })}
       </div>
 
-      {/* Bewerken modal */}
+      {/* Edit modal */}
       {bewerken && (
-        <div className="fixed inset-0 bg-black bg-opacidade-50 flex items-center justify-center z-50">        
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded shadow-lg w-full max-w-lg">
-            <h2 className="text-lg font-semibold mb-4">Productie bewerken</h2>
+            <h2 className="font-semibold mb-4">Productie bewerken</h2>
             <div className="space-y-4">
               <label className="block">
                 Datum
@@ -159,7 +206,7 @@ export default function SuikervrijPage() {
                 />
               </label>
               <label className="block">
-                Stickerkleur
+                Kleur
                 <select
                   className="w-full border rounded p-2"
                   value={bewerken.kleur}
@@ -171,28 +218,8 @@ export default function SuikervrijPage() {
                 </select>
               </label>
               <div className="flex justify-end gap-2 pt-2">
-                <button
-                  onClick={() => setBewerken(null)}
-                  className="text-gray-600"
-                >
-                  Annuleer
-                </button>
-                <button
-                  className="bg-blue-600 text-white px-4 py-1 rounded"
-                  onClick={async () => {
-                    await fetch("/api/suikervrij/productie", {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify(bewerken),
-                    });
-                    const res = await fetch("/api/suikervrij/productie");
-                    const data = await res.json();
-                    setLijst(data);
-                    setBewerken(null);
-                  }}
-                >
-                  Opslaan
-                </button>
+                <button onClick={() => setBewerken(null)} className="text-gray-600">Annuleer</button>
+                <button onClick={saveEdit} className="bg-blue-600 text-white px-4 py-2 rounded">Opslaan</button>
               </div>
             </div>
           </div>
