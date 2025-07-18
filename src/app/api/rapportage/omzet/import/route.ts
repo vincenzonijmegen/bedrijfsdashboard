@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   const isoStart = normalizeDate(startParam);
   const isoEinde = normalizeDate(eindeParam);
 
-  const baseUrl = process.env.KASSA_API_URL!; // Bijv. https://89.98.65.61/admin/api.php
+  const baseUrl = process.env.KASSA_API_URL!;
   const username = process.env.KASSA_USER!;
   const password = process.env.KASSA_PASS!;
 
@@ -72,7 +72,6 @@ export async function POST(req: NextRequest) {
     const clean = data
       .filter((row: any) => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag)
       .map((row: any) => {
-        // Normalizeer datum
         const datum = normalizeDate(row.Datum as string);
         return {
           datum,
@@ -82,6 +81,25 @@ export async function POST(req: NextRequest) {
           eenheidsprijs: parseFloat((row.Totaalbedrag as string).replace(/\./g, '').replace(',', '.')),
         };
       });
+
+    // Analyse van aangeboden data voor duplicaten:
+    const dateCounts: Record<string, number> = {};
+    clean.forEach(({ datum }) => {
+      dateCounts[datum] = (dateCounts[datum] || 0) + 1;
+    });
+    console.log('Aantal records per datum:', dateCounts);
+
+    const seenKeys = new Set<string>();
+    const duplicateKeys: string[] = [];
+    clean.forEach(({ datum, tijdstip, product }) => {
+      const key = `${datum}|${tijdstip}|${product}`;
+      if (seenKeys.has(key)) {
+        duplicateKeys.push(key);
+      } else {
+        seenKeys.add(key);
+      }
+    });
+    console.log('Gevonden duplicaten binnen data:', duplicateKeys);
 
     // Verwijder bestaande data in de range
     console.log('Verwijder oude records van', isoStart, 'tot', isoEinde);
