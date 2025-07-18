@@ -93,6 +93,9 @@ export default function SuikervrijPage() {
       <button onClick={() => window.print()} className="bg-gray-800 text-white px-4 py-2 rounded mb-6 no-print">
         📄 Print laatst gemaakte producties
       </button>
+      <button onClick={savePdf} className="bg-green-600 text-white px-4 py-2 rounded mb-6 ml-2 no-print">
+        📥 Sla op als PDF
+      </button>
 
       {/* Input section */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
