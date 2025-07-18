@@ -160,6 +160,34 @@ export default function SuikervrijPage() {
         );
       })}
 
+      {/* Print area */}
+      <div className="print-area bg-white">
+        <h2 className="font-bold mb-4">Print – laatste 2 producties per smaak</h2>
+        {smakenlijst.map((smaakNaam) => {
+          const items = lijst.filter((p) => p.smaak === smaakNaam)
+            .sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime())
+            .slice(0, 2);
+          if (!items.length) return null;
+          return (
+            <div key={smaakNaam} className="mb-4">
+              <h3 className="font-semibold mb-1">{smaakNaam}</h3>
+              <ul className="list-disc pl-4">
+                {items.map((p) => (
+                  <li key={p.id} className="mb-1 align-text-baseline">
+                    {new Date(p.datum).toLocaleDateString('nl-NL')}, {p.aantal} stuks,
+                    <span
+                      className="inline-block w-5 h-5 rounded-full ml-2"
+                      style={{ backgroundColor: kleurenlijst.find((k) => k.naam === p.kleur)?.hexcode || '#ccc', verticalAlign: 'text-bottom' }}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Edit modal */}
       {bewerken && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded shadow-lg w-full max-w-lg">
