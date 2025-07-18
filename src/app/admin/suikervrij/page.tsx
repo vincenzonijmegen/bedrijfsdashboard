@@ -176,10 +176,8 @@ export default function SuikervrijPage() {
                   <li key={p.id} className="mb-1 align-text-baseline">
                     {new Date(p.datum).toLocaleDateString('nl-NL')}, {p.aantal} stuks,
                     <span
-                      className="inline-block w-5 h-5 rounded-full ml-2 align-middle"
-                      // grotere badge voor PDF-export
-                    
-                      style={{ backgroundColor: kleurenlijst.find((k) => k.naam === p.kleur)?.hexcode || '#ccc' }}
+                      className="inline-block w-5 h-5 rounded-full ml-2"
+                      style={{ backgroundColor: $2, verticalAlign: 'text-bottom' }}
                     />
                   </li>
                 ))}
