@@ -75,6 +75,8 @@ export default function SuikervrijPage() {
 
   // PDF export via html2pdf.js
   const savePdf = async () => {
+    // @ts-ignore: html2pdf.js has no types
+    const html2pdf = (await import('html2pdf.js')).default;
     const element = document.querySelector('.print-area') as HTMLElement;
     if (!element) return;
     const html2pdf = (await import('html2pdf.js')).default;
