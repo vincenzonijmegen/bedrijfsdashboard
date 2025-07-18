@@ -21,21 +21,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Normalizeer DD-MM-YYYY naar YYYY-MM-DD
+  // Normalizeer DD-MM-YYYY of ISO YYYY-MM-DD naar YYYY-MM-DD
   const normalizeDate = (dateStr: string) => {
-    const parts = dateStr.split('-').map(s => s.padStart(2, '0'));
-    // If already in ISO format YYYY-MM-DD (first part has length 4), return as-is
+    const parts = dateStr.split('-').map((s) => s.padStart(2, '0'));
     if (parts[0].length === 4) {
+      // Al ISO-formaat
       return `${parts[0]}-${parts[1]}-${parts[2]}`;
     }
-    // Else assume DD-MM-YYYY
+    // Anders DD-MM-YYYY
     const [d, m, y] = parts;
     return `${y}-${m}-${d}`;
   };
   const isoStart = normalizeDate(startParam);
   const isoEinde = normalizeDate(eindeParam);
 
-  const baseUrl = process.env.KASSA_API_URL!; // Bijvoorbeeld: https://89.98.65.61/admin/api.php
+  const baseUrl = process.env.KASSA_API_URL!; // Bijv. https://89.98.65.61/admin/api.php
   const username = process.env.KASSA_USER!;
   const password = process.env.KASSA_PASS!;
 
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     console.log('Fetching data from:', dataUrl);
 
     const dataRes = await fetch(dataUrl, {
-      headers: { Authorization: authHeader }
+      headers: { Authorization: authHeader },
     });
     const rawBody = await dataRes.text();
     const contentType = dataRes.headers.get('content-type') || '';
@@ -72,20 +72,18 @@ export async function POST(req: NextRequest) {
     const clean = data
       .filter((row: any) => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag)
       .map((row: any) => {
-        const [day, month, year] = row.Datum.split('-').map((p: string) => p.padStart(2, '0'));
-        const datum = `${year}-${month}-${day}`;
+        // Normalizeer datum
+        const datum = normalizeDate(row.Datum as string);
         return {
           datum,
           tijdstip: row.Tijd as string,
           product: row.Omschrijving as string,
           aantal: parseInt((row.Aantal as string).replace(/\D+/g, ''), 10),
-          eenheidsprijs: parseFloat((row.Totaalbedrag as string).replace(/\./g, '').replace(',', '.'))
+          eenheidsprijs: parseFloat((row.Totaalbedrag as string).replace(/\./g, '').replace(',', '.')),
         };
       });
 
     // Verwijder bestaande data in de range
-    console.log('Verwijder oude records van', isoStart, 'tot', isoEinde);
-        // Verwijder bestaande data in de range
     console.log('Verwijder oude records van', isoStart, 'tot', isoEinde);
     await dbRapportage.query(
       'DELETE FROM rapportage.omzet WHERE datum BETWEEN $1 AND $2',
@@ -103,7 +101,7 @@ export async function POST(req: NextRequest) {
     const values: any[] = [];
     clean.forEach((item, idx) => {
       const off = idx * 5;
-      placeholders.push(`($${off+1}, $${off+2}, $${off+3}, $${off+4}, $${off+5})`);
+      placeholders.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5})`);
       values.push(item.datum, item.tijdstip, item.product, item.aantal, item.eenheidsprijs);
     });
     const insertSQL = `
