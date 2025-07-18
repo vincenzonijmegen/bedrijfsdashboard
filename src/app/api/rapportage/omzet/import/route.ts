@@ -16,71 +16,74 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 1. Externe API call
-  const baseUrl = process.env.KASSA_API_URL!;
-  const apiUrl = `${baseUrl}?start=${encodeURIComponent(start)}&einde=${encodeURIComponent(einde)}`;
+  const baseUrl = process.env.KASSA_API_URL!; // b.v. https://mijn-domein.example.com/admin/api.php
   const username = process.env.KASSA_USER!;
   const password = process.env.KASSA_PASS!;
 
   try {
-    const response = await fetch(apiUrl, {
-      method: 'GET',
+    // 1. Authenticatie via formulier en cookie-opslaan
+    const loginRes = await fetch(baseUrl, {
+      method: 'POST',
       headers: {
-        Authorization: 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64'),
+        'Content-Type': 'application/x-www-form-urlencoded'
       },
+      body: new URLSearchParams({ password })
     });
-    const contentType = response.headers.get('content-type') || '';
-    const text = await response.text();
+    if (!loginRes.ok) {
+      throw new Error(`Login naar kassa-API failed: ${loginRes.status}`);
+    }
 
-    if (!response.ok) {
-      console.error('Fetch error', apiUrl, response.status, text);
-      throw new Error(`API error: ${response.status}`);
+    const cookie = loginRes.headers.get('set-cookie');
+    if (!cookie) {
+      throw new Error('Geen session-cookie ontvangen na login');
+    }
+
+    // 2. Data ophalen met sessie-cookie
+    const dataRes = await fetch(
+      `${baseUrl}?start=${encodeURIComponent(start)}&einde=${encodeURIComponent(einde)}`,
+      {
+        method: 'GET',
+        headers: {
+          Cookie: cookie
+        }
+      }
+    );
+    const contentType = dataRes.headers.get('content-type') || '';
+    const bodyText = await dataRes.text();
+
+    if (!dataRes.ok) {
+      console.error('Data fetch error', dataRes.status, bodyText);
+      throw new Error(`API error: ${dataRes.status}`);
     }
     if (!contentType.includes('application/json')) {
-      console.error('Expected JSON but got:', contentType, text);
+      console.error('Expected JSON but got:', contentType, bodyText);
       throw new Error('Ongeldig antwoord van API: geen JSON');
     }
 
-    let data: any;
-    try {
-      data = JSON.parse(text);
-    } catch (err) {
-      console.error('Invalid JSON response body:', text);
-      throw new Error('API retourneerde ongeldige JSON');
-    }
-
+    const data = JSON.parse(bodyText);
     if (!Array.isArray(data)) {
-      console.error('Invalid payload, expected array:', data);
       throw new Error('API returned geen array');
     }
 
-    // 2. Opruimen en parsen
+    // 3. Opruimen en parsen
     const clean = data
-      .filter(
-        (row) => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag
-      )
-      .map((row) => {
-        const datum = row.Datum;
-        const tijdstip = row.Tijd;
-        const product = row.Omschrijving;
-        const aantal = parseInt(row.Aantal.replace(/\D+/g, ''), 10);
-        const eenheidsprijs = parseFloat(
-          row.Totaalbedrag.replace(/\./g, '').replace(',', '.')
-        );
-        return { datum, tijdstip, product, aantal, eenheidsprijs };
-      });
+      .filter(row => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag)
+      .map(row => ({
+        datum: row.Datum,
+        tijdstip: row.Tijd,
+        product: row.Omschrijving,
+        aantal: parseInt(row.Aantal.replace(/\D+/g, ''), 10),
+        eenheidsprijs: parseFloat(row.Totaalbedrag.replace(/\./g, '').replace(',', '.'))
+      }));
 
-    // 3. Verwijder bestaande records voor deze datums
-    console.log(`Deleting records between ${start} and ${einde}`);
+    // 4. Oude data verwijderen in range
     await dbRapportage.query(
-      `DELETE FROM rapportage.omzet
-       WHERE datum BETWEEN $1 AND $2`,
+      `DELETE FROM rapportage.omzet WHERE datum BETWEEN $1 AND $2`,
       [start, einde]
     );
 
-    // 4. Bulk insert van alle nieuwe records
+    // 5. Bulk insert nieuwe data
     if (clean.length === 0) {
-      console.log('No new records to insert');
       return NextResponse.json({ success: true, imported: 0 });
     }
 
@@ -88,7 +91,7 @@ export async function POST(req: NextRequest) {
     const values: any[] = [];
     clean.forEach((item, i) => {
       const off = i * 5;
-      placeholders.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5})`);
+      placeholders.push(`($${off+1}, $${off+2}, $${off+3}, $${off+4}, $${off+5})`);
       values.push(item.datum, item.tijdstip, item.product, item.aantal, item.eenheidsprijs);
     });
 
@@ -96,7 +99,6 @@ export async function POST(req: NextRequest) {
       INSERT INTO rapportage.omzet (datum, tijdstip, product, aantal, eenheidsprijs)
       VALUES ${placeholders.join(',')}
     `;
-    console.log('Inserting', clean.length, 'records');
     await dbRapportage.query(insertSQL, values);
 
     return NextResponse.json({ success: true, imported: clean.length });
