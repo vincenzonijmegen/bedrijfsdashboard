@@ -88,15 +88,15 @@ export default function SuikervrijPage() {
   return (
     <div className="p-6">
       {/* Global print styles: show print colors */}
-      <style jsx global>{`  
+      <style jsx global>{`
         @page { size: auto; margin: 1in; }
         body { margin: 0; }
-        @media print {  
-          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }  
-          body * { visibility: hidden; }  
-          .print-area, .print-area * { visibility: visible; }  
-          .print-area { position: absolute; top: 1in; left: 1in; width: calc(100% - 2in); padding: 0; } }
-          .no-print { display: none; }
+        .no-print { display: none !important; }
+        @media print {
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body * { visibility: hidden; }
+          .print-area, .print-area * { visibility: visible; }
+          .print-area { position: absolute; top: 1in; left: 1in; width: calc(100% - 2in); margin: 0; padding: 0; }
         }
       `}</style>
 
