@@ -52,7 +52,6 @@ export default function ShiftMailParser() {
       const dateLine = lines.find((l) =>
         l.toLowerCase().startsWith("open dienst:")
       );
-      // dateLine e.g. "Open dienst: 13-08-2025"
       const rawDate = dateLine?.split(/:|\t/)[1]?.trim() || "";
       result.datum = rawDate.match(/\d{2}-\d{2}-\d{4}/)
         ? convertDDMMYYYYtoISO(rawDate.match(/\d{2}-\d{2}-\d{4}/)![0])
@@ -73,6 +72,7 @@ export default function ShiftMailParser() {
     ) {
       // Ruil geaccepteerd
       result.type = "Ruil geaccepteerd";
+      // 'naar' is de accepterende medewerker
       result.naar =
         lines.find((l) => l.toLowerCase().includes("heeft een ruilaanvraag"))
           ?.split(" heeft")[0] || "";
@@ -88,8 +88,8 @@ export default function ShiftMailParser() {
 
         const idxDatum = header.findIndex((h) => h === "datum");
         const idxShift = header.findIndex((h) => h === "dienst");
-        const idxVan = header.findIndex((h) => h === "van");
-        const idxTot = header.findIndex((h) => h === "tot");
+        const idxStart = header.findIndex((h) => h === "van");
+        const idxEnd = header.findIndex((h) => h === "tot");
 
         // Datum: always convert DD-MM-YYYY from table
         if (idxDatum >= 0 && values[idxDatum]) {
@@ -98,10 +98,15 @@ export default function ShiftMailParser() {
             result.datum = convertDDMMYYYYtoISO(raw.match(/\d{2}-\d{2}-\d{4}/)![0]);
           }
         }
+        // Shift name
         if (idxShift >= 0) result.shift = values[idxShift];
-        if (idxVan >= 0) result.van = values[idxVan];
-        if (idxVan >= 0 && idxTot >= 0) {
-          result.tijd = `${values[idxVan]} - ${values[idxTot]}`;
+        // 'van' is the requester: extract from the sentence
+        const ruilLine = lines.find(l => l.toLowerCase().includes("heeft een ruilaanvraag van"));
+        const vanMatch = ruilLine?.match(/van\s+(.*?)\s+voor/i);
+        if (vanMatch) result.van = vanMatch[1];
+        // Tijd
+        if (idxStart >= 0 && idxEnd >= 0) {
+          result.tijd = `${values[idxStart]} - ${values[idxEnd]}`;
         }
       }
     } else {
