@@ -87,7 +87,11 @@ export default function ShiftMailParser() {
         if (idxDatum >= 0 && values[idxDatum]) {
           const raw = values[idxDatum].trim();
           const match = raw.match(/\d{2}-\d{2}-\d{4}/);
-          result.datum = match?.[0] || parseDate(raw);
+                    if (match) {
+            result.datum = parseDate(match[0]);
+          } else {
+            result.datum = parseDate(raw);
+          }
         }
         // Shift, van, tijd
         if (idxShift >= 0) result.shift = values[idxShift];
