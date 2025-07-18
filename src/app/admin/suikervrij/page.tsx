@@ -161,7 +161,7 @@ export default function SuikervrijPage() {
       })}
 
       {/* Print area */}
-      <div className="bg-white">
+      <div className="print-area bg-white">
         <h2 className="font-bold mb-4">Print – laatste 2 producties per smaak</h2>
         {smakenlijst.map((smaakNaam) => {
           const items = lijst.filter((p) => p.smaak === smaakNaam)
