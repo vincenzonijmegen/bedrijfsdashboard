@@ -1,7 +1,7 @@
 // Bestand: src/app/api/kassa/omzet/route.ts
 import { NextResponse } from 'next/server'
 
-const KASSA_BASE = 'https://www.pcadmin.nl/kassaapp/api.php'
+const KASSA_BASE = 'http://192.168.178.191/admin/api.php'
 const KASSA_USER = process.env.KASSA_USER!
 const KASSA_PASS = process.env.KASSA_PASS!
 
