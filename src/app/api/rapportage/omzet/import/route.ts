@@ -9,15 +9,18 @@ export async function POST() {
   const password = process.env.KASSA_PASS!;
 
   try {
-    // 1. Haal alle unieke datums op die al in de tabel bestaan
-    const existingDatesRes = await dbRapportage.query(
-      `SELECT DISTINCT datum FROM rapportage.omzet`
+    // 1. Bestaande records per unieke combinatie ophalen
+    const existingRes = await dbRapportage.query(
+      `SELECT datum, tijdstip, product
+       FROM rapportage.omzet`
     );
-    const existingDates = new Set(
-      existingDatesRes.rows.map(r => r.datum.toISOString().slice(0, 10))
+    const existingSet = new Set(
+      existingRes.rows.map(r =>
+        `${r.datum.toISOString().slice(0, 10)}|${r.tijdstip}|${r.product}`
+      )
     );
 
-    // 2. Ophalen en filteren van externe data
+    // 2. Externe data ophalen
     const response = await fetch(apiUrl, {
       headers: {
         Authorization:
@@ -29,45 +32,56 @@ export async function POST() {
       throw new Error('API returned geen array');
     }
 
-    // 3. Opschonen en filteren van records
+    // 3. Opruimen, parsen en filteren per record
     const clean = data
       .filter(
-        row =>
-          row.Datum &&
-          row.Tijd &&
-          row.Omschrijving &&
-          row.Aantal &&
-          row.Totaalbedrag
+        row => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag
       )
-      .map(row => ({
-        datum: row.Datum,
-        tijdstip: row.Tijd,
-        product: row.Omschrijving,
-        aantal: parseInt(row.Aantal, 10),
-        eenheidsprijs: parseFloat(row.Totaalbedrag.replace(',', '.')),
-      }))
-      // 4. Alleen nieuwe datums toevoegen
-      .filter(item => !existingDates.has(item.datum));
-
-    // 5. Insert van gefilterde records
-    await Promise.all(
-      clean.map(item =>
-        dbRapportage.query(
-          `
-          INSERT INTO rapportage.omzet (datum, tijdstip, product, aantal, eenheidsprijs)
-          VALUES ($1, $2, $3, $4, $5)
-          ON CONFLICT DO NOTHING
-          `,
-          [
-            item.datum,
-            item.tijdstip,
-            item.product,
-            item.aantal,
-            item.eenheidsprijs,
-          ]
+      .map(row => {
+        const datum = row.Datum;
+        const tijdstip = row.Tijd;
+        const product = row.Omschrijving;
+        const aantal = parseInt(row.Aantal.replace(/\D+/g, ''), 10);
+        const eenheidsprijs = parseFloat(
+          row.Totaalbedrag.replace(/\./g, '').replace(',', '.')
+        );
+        return { datum, tijdstip, product, aantal, eenheidsprijs };
+      })
+      .filter(item =>
+        !existingSet.has(
+          `${item.datum}|${item.tijdstip}|${item.product}`
         )
-      )
-    );
+      );
+
+    if (clean.length === 0) {
+      return NextResponse.json({ success: true, imported: 0 });
+    }
+
+    // 4. Batch insert met ON CONFLICT target
+    const valuesPlaceholders: string[] = [];
+    const values: any[] = [];
+
+    clean.forEach((item, idx) => {
+      const offset = idx * 5;
+      valuesPlaceholders.push(
+        `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5})`
+      );
+      values.push(
+        item.datum,
+        item.tijdstip,
+        item.product,
+        item.aantal,
+        item.eenheidsprijs
+      );
+    });
+
+    const insertQuery = `
+      INSERT INTO rapportage.omzet (datum, tijdstip, product, aantal, eenheidsprijs)
+      VALUES ${valuesPlaceholders.join(',')}
+      ON CONFLICT (datum, tijdstip, product) DO NOTHING
+    `;
+
+    await dbRapportage.query(insertQuery, values);
 
     return NextResponse.json({ success: true, imported: clean.length });
   } catch (err: any) {
