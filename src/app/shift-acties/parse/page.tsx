@@ -59,10 +59,8 @@ export default function ShiftMailParser() {
     header.forEach((col, i) => row[col] = values[i] || "");
 
     const datumIndex = header.findIndex(h => h.toLowerCase() === "datum");
-if (datumIndex >= 0) {
-  if (datumIndex >= 0) {
+if (datumIndex >= 0 && values[datumIndex]) {
   result.datum = parseDate(values[datumIndex]);
-}
 }
 
     result.shift = row["dienst"];
