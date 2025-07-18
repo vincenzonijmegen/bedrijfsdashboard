@@ -79,7 +79,6 @@ export default function SuikervrijPage() {
     const html2pdf = (await import('html2pdf.js')).default;
     const element = document.querySelector('.print-area') as HTMLElement;
     if (!element) return;
-    const html2pdf = (await import('html2pdf.js')).default;
     html2pdf()
       .from(element)
       .set({ margin: 0, filename: 'producties.pdf', html2canvas: { scale: 2 } })
