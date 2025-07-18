@@ -8,6 +8,10 @@ const KASSA_USER = process.env.KASSA_USER!;
 const KASSA_PASS = process.env.KASSA_PASS!;
 
 // Normalizeer DD-MM-YYYY of ISO YYYY-MM-DD naar DD-MM-YYYY voor kassa-API
+// Voor zelf-ondertekende certificaten (NIET aanbevolen voor productie)
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+// Normalizeer DD-MM-YYYY of ISO YYYY-MM-DD naar DD-MM-YYYY voor kassa-API
 const normalizeDateParam = (dateStr: string) => {
   const parts = dateStr.split('-').map(s => s.padStart(2, '0'));
   // Als ISO (YYYY-MM-DD)
