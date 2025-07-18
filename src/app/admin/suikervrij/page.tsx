@@ -23,7 +23,6 @@ export default function SuikervrijPage() {
   const [nieuweKleur, setNieuweKleur] = useState("");
 
   useEffect(() => {
-    // Fetch data
     fetch("/api/suikervrij/productie").then((res) => res.json()).then(setLijst);
     fetch("/api/suikervrij/smaken").then((res) => res.json()).then((data) => {
       const namen = data.map((d: any) => d.naam);
@@ -71,7 +70,6 @@ export default function SuikervrijPage() {
     setBewerken(null);
   };
 
-  // Print styles and area wrapper
   return (
     <div className="p-6">
       <style jsx global>{`
@@ -141,13 +139,17 @@ export default function SuikervrijPage() {
                   <tr key={p.id}>
                     <td className="border px-2 py-1">{new Date(p.datum).toLocaleDateString('nl-NL')}</td>
                     <td className="border px-2 py-1">{p.aantal}</td>
-                    <td className="border px-2 py-1 flex items-center">
-                      <span className="inline-block w-4 h-4 rounded-full mr-2" style={{ backgroundColor: kleurenlijst.find((k) => k.naam === p.kleur)?.hexcode || '#ccc' }} />
-                      {p.kleur}
+                    <td className="border px-2 py-1">
+                      <div className="flex items-center">
+                        <span className="inline-block w-4 h-4 rounded-full mr-2" style={{ backgroundColor: kleurenlijst.find((k) => k.naam === p.kleur)?.hexcode || '#ccc' }}></span>
+                        <span>{p.kleur}</span>
+                      </div>
                     </td>
-                    <td className="border px-2 py-1 flex gap-2">
-                      <button onClick={() => openEdit(p)} className="text-blue-600">✏️</button>
-                      <button onClick={() => verwijder(p.id)} className="text-red-600">🗑️</button>
+                    <td className="border px-2 py-1">
+                      <div className="flex gap-2">
+                        <button onClick={() => openEdit(p)} className="text-blue-600">✏️</button>
+                        <button onClick={() => verwijder(p.id)} className="text-red-600">🗑️</button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -171,8 +173,11 @@ export default function SuikervrijPage() {
               <h3 className="font-semibold">{smaakNaam}</h3>
               <ul className="list-disc pl-4">
                 {items.map((p) => (
-                  <li key={p.id}>
-                    {new Date(p.datum).toLocaleDateString('nl-NL')}, {p.aantal} stuks
+                  <li key={p.id} className="flex items-center">
+                    <span>{new Date(p.datum).toLocaleDateString('nl-NL')}</span>,
+                    <span className="ml-1">{p.aantal} stuks</span>,
+                    <span className="inline-block w-3 h-3 ml-2 rounded-full" style={{ backgroundColor: kleurenlijst.find((k) => k.naam === p.kleur)?.hexcode || '#ccc' }}></span>
+                    <span className="ml-1">{p.kleur}</span>
                   </li>
                 ))}
               </ul>
@@ -206,7 +211,7 @@ export default function SuikervrijPage() {
                 />
               </label>
               <label className="block">
-                Kleur
+                Kleur sticker
                 <select
                   className="w-full border rounded p-2"
                   value={bewerken.kleur}
@@ -217,10 +222,10 @@ export default function SuikervrijPage() {
                   ))}
                 </select>
               </label>
-              <div className="flex justify-end gap-2 pt-2">
-                <button onClick={() => setBewerken(null)} className="text-gray-600">Annuleer</button>
-                <button onClick={saveEdit} className="bg-blue-600 text-white px-4 py-2 rounded">Opslaan</button>
-              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <button onClick={() => setBewerken(null)} className="text-gray-600">Annuleer</button>
+              <button onClick={saveEdit} className="bg-blue-600 text-white px-4 py-2 rounded">Opslaan</button>
             </div>
           </div>
         </div>
