@@ -93,7 +93,7 @@ export default function SuikervrijPage() {
       <h1 className="text-xl font-bold mb-4">Productie suikervrij ijs</h1>
 
       
-      <button onClick={savePdf} className="bg-green-600 text-white px-4 py-2 rounded mb-6">
+      <button onClick={savePdf} className="bg-green-600 text-white px-4 py-2 rounded mb-6" id="save-pdf-btn">
         📥 Sla op als PDF
       </button>
 
@@ -161,7 +161,7 @@ export default function SuikervrijPage() {
       })}
 
       {/* Print area */}
-      <div className="print-area bg-white">
+      <div className="bg-white">
         <h2 className="font-bold mb-4">Print – laatste 2 producties per smaak</h2>
         {smakenlijst.map((smaakNaam) => {
           const items = lijst.filter((p) => p.smaak === smaakNaam)
