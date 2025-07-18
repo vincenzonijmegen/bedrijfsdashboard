@@ -24,16 +24,19 @@ export async function POST(req: NextRequest) {
 
   try {
     const response = await fetch(apiUrl, {
+      method: 'GET',
       headers: {
         Authorization:
           'Basic ' + Buffer.from(`${username}:${password}`).toString('base64'),
       },
     });
     if (!response.ok) {
+      console.error('Fetch error', apiUrl, response.status, await response.text());
       throw new Error(`API error: ${response.status}`);
     }
     const data = await response.json();
     if (!Array.isArray(data)) {
+      console.error('Invalid payload', data);
       throw new Error('API returned geen array');
     }
 
@@ -54,7 +57,7 @@ export async function POST(req: NextRequest) {
       });
 
     // 3. Verwijder bestaande records voor deze datums
-    // We gaan ervan uit dat start en einde in ISO YYYY-MM-DD zijn
+    console.log(`Deleting records between ${start} and ${einde}`);
     await dbRapportage.query(
       `DELETE FROM rapportage.omzet
        WHERE datum BETWEEN $1 AND $2`,
@@ -63,6 +66,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Bulk insert van alle nieuwe records
     if (clean.length === 0) {
+      console.log('No new records to insert');
       return NextResponse.json({ success: true, imported: 0 });
     }
 
@@ -78,11 +82,12 @@ export async function POST(req: NextRequest) {
       INSERT INTO rapportage.omzet (datum, tijdstip, product, aantal, eenheidsprijs)
       VALUES ${placeholders.join(',')}
     `;
+    console.log('Inserting', clean.length, 'records');
     await dbRapportage.query(insertSQL, values);
 
     return NextResponse.json({ success: true, imported: clean.length });
   } catch (err: any) {
-    console.error('Import fout:', err);
+    console.error('Import fout:', err.message, err.stack);
     return NextResponse.json(
       { success: false, error: err.message },
       { status: 500 }
