@@ -143,7 +143,7 @@ export default function SuikervrijPage() {
                       <span className="inline-block w-4 h-4 rounded-full mr-2" style={{ backgroundColor: kleurenlijst.find((k) => k.naam === p.kleur)?.hexcode || '#ccc' }}></span>
                       <span>{p.kleur}</span>
                     </td>
-                    <td className="border px-2 py-1 flex gap-2">
+                    <td className="border px-2 py-1 text-center">
                       <button onClick={() => openEdit(p)} className="text-blue-600">✏️</button>
                       <button onClick={() => verwijder(p.id)} className="text-red-600">🗑️</button>
                     </td>
