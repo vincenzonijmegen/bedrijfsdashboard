@@ -91,9 +91,8 @@ export default function SuikervrijPage() {
       <style jsx global>{`
         @page { margin: 1in; }
         body { margin: 0; }
-        @media print {
-          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .no-print { display: none !important; }
+        
+           { display: none !important; }
           body { visibility: hidden; }
           .print-area { visibility: visible; margin: 0; padding: 0; position: relative; top: auto; left: auto; width: auto; }
           .print-area * { visibility: visible; }
@@ -102,9 +101,7 @@ export default function SuikervrijPage() {
 
       <h1 className="text-xl font-bold mb-4">Productie suikervrij ijs</h1>
 
-      <button onClick={() => window.print()} className="bg-gray-800 text-white px-4 py-2 rounded mb-6 no-print">
-        📄 Print laatst gemaakte producties
-      </button>
+      
       <button onClick={savePdf} className="bg-green-600 text-white px-4 py-2 rounded mb-6 ml-2 no-print">
         📥 Sla op als PDF
       </button>
