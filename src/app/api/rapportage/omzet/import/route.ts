@@ -23,7 +23,13 @@ export async function POST(req: NextRequest) {
 
   // Normalizeer DD-MM-YYYY naar YYYY-MM-DD
   const normalizeDate = (dateStr: string) => {
-    const [d, m, y] = dateStr.split('-').map(s => s.padStart(2, '0'));
+    const parts = dateStr.split('-').map(s => s.padStart(2, '0'));
+    // If already in ISO format YYYY-MM-DD (first part has length 4), return as-is
+    if (parts[0].length === 4) {
+      return `${parts[0]}-${parts[1]}-${parts[2]}`;
+    }
+    // Else assume DD-MM-YYYY
+    const [d, m, y] = parts;
     return `${y}-${m}-${d}`;
   };
   const isoStart = normalizeDate(startParam);
