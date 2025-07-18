@@ -59,8 +59,6 @@ export default function NietGoedgekeurdeUren() {
 
   return (
     <div className="p-4 max-w-4xl mx-auto">
-
-
       <h1 className="text-2xl font-bold mb-6">Niet-goedgekeurde uren</h1>
 
       <table className="w-full border border-gray-300 text-sm">
@@ -75,16 +73,24 @@ export default function NietGoedgekeurdeUren() {
           </tr>
         </thead>
         <tbody>
-          {data.map((r) => (
-            <tr key={r.id}>
-              <td className="border px-3 py-2">{format(parseISO(r.date), "dd-MM-yyyy")}</td>
-              <td className="border px-3 py-2">{r.user_name}</td>
-              <td className="border px-3 py-2">{r.starttime}</td>
-              <td className="border px-3 py-2">{r.endtime}</td>
-              <td className="border px-3 py-2">{r.total} uur</td>
-              <td className="border px-3 py-2">{r.status}</td>
-            </tr>
-          ))}
+          {data.map((r) => {
+            const totalNum = parseFloat(r.total);
+            let bgClass = "";
+            if (totalNum === 0) bgClass = "bg-purple-100";
+            else if (totalNum > 0 && totalNum < 2) bgClass = "bg-red-100";
+            else if (totalNum > 7) bgClass = "bg-red-500 text-white";
+
+            return (
+              <tr key={r.id}>
+                <td className="border px-3 py-2">{format(parseISO(r.date), "dd-MM-yyyy", { locale: nl })}</td>
+                <td className="border px-3 py-2">{r.user_name}</td>
+                <td className="border px-3 py-2">{r.starttime}</td>
+                <td className="border px-3 py-2">{r.endtime}</td>
+                <td className={`border px-3 py-2 ${bgClass}`}>{totalNum.toFixed(2)} uur</td>
+                <td className="border px-3 py-2">{r.status}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
