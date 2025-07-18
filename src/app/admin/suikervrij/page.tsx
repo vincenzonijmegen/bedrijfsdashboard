@@ -91,9 +91,11 @@ export default function SuikervrijPage() {
       <style jsx global>{`
         @page { size: auto; margin: 1in; }
         body { margin: 0; }
-        .no-print { display: none !important; }
+        
         @media print {
-          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; 
+          .no-print { display: none !important; }
+        }
           body * { visibility: hidden; }
           .print-area, .print-area * { visibility: visible; }
           .print-area { position: absolute; top: 1in; left: 1in; width: calc(100% - 2in); margin: 0; padding: 0; }
