@@ -121,7 +121,7 @@ export default function AdminDashboard() {
         <LinkCard href="/skills" label="Skills medewerkers" color="purple" Icon={Layers} />
       </Section>
 
-      <Section title="📅 Planning" color="slate">
+      <Section title="📅 Planning" color="orange">
         <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} />
         <LinkCard href="/admin/rapportages/timesheets" label="Klokuren" color="orange" Icon={Clock} />
         <LinkCard href="/shift-acties" label="Shiftacties & Statistieken" color="orange" Icon={Activity} />
