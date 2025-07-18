@@ -12,7 +12,15 @@ export async function POST(req: NextRequest) {
   const einde = searchParams.get('einde');
 
   console.log('Import start:', { start, einde });
-  if (!start || !einde) {
+  // Normalize start/einde for SQL (expect DD-MM-YYYY)
+  const normalize = (dateStr: string) => {
+    const [d, m, y] = dateStr.split('-').map(part => part.padStart(2, '0'));
+    return `${y}-${m}-${d}`;
+  };
+  const isoStart = normalize(start);
+  const isoEinde = normalize(einde);
+
+  if (!start || !einde) { || !einde) {
     console.error('Missing params', { start, einde });
     return NextResponse.json({ success: false, error: 'start of einde ontbreekt' }, { status: 400 });
   }
