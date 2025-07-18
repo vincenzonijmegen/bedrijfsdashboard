@@ -132,10 +132,10 @@ export default function ShiftMailParser() {
   return (
     <div className="max-w-2xl mx-auto p-6">
       <button
-        onClick={() => router.push('/')}
+        onClick={() => router.push('/shift-acties')}
         className="mb-4 text-blue-600 hover:underline"
       >
-        ← Terug naar startpagina
+        ← Terug naar shiftacties
       </button>
       <h1 className="text-xl font-bold mb-4">📬 Mailparser: Shiftactie invoer</h1>
       <textarea
