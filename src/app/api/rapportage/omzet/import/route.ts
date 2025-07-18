@@ -85,6 +85,8 @@ export async function POST(req: NextRequest) {
 
     // Verwijder bestaande data in de range
     console.log('Verwijder oude records van', isoStart, 'tot', isoEinde);
+        // Verwijder bestaande data in de range
+    console.log('Verwijder oude records van', isoStart, 'tot', isoEinde);
     await dbRapportage.query(
       'DELETE FROM rapportage.omzet WHERE datum BETWEEN $1 AND $2',
       [isoStart, isoEinde]
