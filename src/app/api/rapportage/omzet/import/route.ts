@@ -25,10 +25,8 @@ export async function POST(req: NextRequest) {
   const normalizeDate = (dateStr: string) => {
     const parts = dateStr.split('-').map((s) => s.padStart(2, '0'));
     if (parts[0].length === 4) {
-      // Al ISO-formaat
       return `${parts[0]}-${parts[1]}-${parts[2]}`;
     }
-    // Anders DD-MM-YYYY
     const [d, m, y] = parts;
     return `${y}-${m}-${d}`;
   };
@@ -68,38 +66,22 @@ export async function POST(req: NextRequest) {
     }
     console.log('Gedecodeerde items:', data.length);
 
-    // Filter en parse records
+    // Filter en parse records, bereken eenheidsprijs als totaalbedrag / aantal
     const clean = data
       .filter((row: any) => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag)
       .map((row: any) => {
         const datum = normalizeDate(row.Datum as string);
+        const aantal = parseInt((row.Aantal as string).replace(/\D+/g, ''), 10);
+        const totaalBedrag = parseFloat((row.Totaalbedrag as string).replace(/\./g, '').replace(',', '.'));
+        const eenheidsprijs = aantal > 0 ? totaalBedrag / aantal : 0;
         return {
           datum,
           tijdstip: row.Tijd as string,
           product: row.Omschrijving as string,
-          aantal: parseInt((row.Aantal as string).replace(/\D+/g, ''), 10),
-          eenheidsprijs: parseFloat((row.Totaalbedrag as string).replace(/\./g, '').replace(',', '.')),
+          aantal,
+          eenheidsprijs,
         };
       });
-
-    // Analyse van aangeboden data voor duplicaten:
-    const dateCounts: Record<string, number> = {};
-    clean.forEach(({ datum }) => {
-      dateCounts[datum] = (dateCounts[datum] || 0) + 1;
-    });
-    console.log('Aantal records per datum:', dateCounts);
-
-    const seenKeys = new Set<string>();
-    const duplicateKeys: string[] = [];
-    clean.forEach(({ datum, tijdstip, product }) => {
-      const key = `${datum}|${tijdstip}|${product}`;
-      if (seenKeys.has(key)) {
-        duplicateKeys.push(key);
-      } else {
-        seenKeys.add(key);
-      }
-    });
-    console.log('Gevonden duplicaten binnen data:', duplicateKeys);
 
     // Verwijder bestaande data in de range
     console.log('Verwijder oude records van', isoStart, 'tot', isoEinde);
