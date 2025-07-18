@@ -92,10 +92,8 @@ export default function SuikervrijPage() {
 
       <h1 className="text-xl font-bold mb-4">Productie suikervrij ijs</h1>
 
-      <button onClick={() => window.print()} className="bg-gray-800 text-white px-4 py-2 rounded mb-6 no-print">
-        📄 Print laatst gemaakte producties
-      </button>
-      <button onClick={savePdf} className="bg-green-600 text-white px-4 py-2 rounded mb-6 ml-2 no-print">
+      
+      <button onClick={savePdf} className="bg-green-600 text-white px-4 py-2 rounded mb-6">
         📥 Sla op als PDF
       </button>
 
