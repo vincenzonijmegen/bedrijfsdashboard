@@ -2,37 +2,42 @@
 
 import { dbRapportage } from '@/lib/dbRapportage';
 import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 
-export async function POST() {
-  const apiUrl = 'http://89.98.65.61/admin/api.php';
+export async function POST(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const start = searchParams.get('start');
+  const einde = searchParams.get('einde');
+
+  if (!start || !einde) {
+    return NextResponse.json(
+      { success: false, error: 'start of einde ontbreekt' },
+      { status: 400 }
+    );
+  }
+
+  // 1. Externe API call
+  const baseUrl = process.env.KASSA_API_URL!;
+  const apiUrl = `${baseUrl}?start=${encodeURIComponent(start)}&einde=${encodeURIComponent(einde)}`;
   const username = process.env.KASSA_USER!;
   const password = process.env.KASSA_PASS!;
 
   try {
-    // 1. Bestaande records per unieke combinatie ophalen
-    const existingRes = await dbRapportage.query(
-      `SELECT datum, tijdstip, product
-       FROM rapportage.omzet`
-    );
-    const existingSet = new Set(
-      existingRes.rows.map(r =>
-        `${r.datum.toISOString().slice(0, 10)}|${r.tijdstip}|${r.product}`
-      )
-    );
-
-    // 2. Externe data ophalen
     const response = await fetch(apiUrl, {
       headers: {
         Authorization:
           'Basic ' + Buffer.from(`${username}:${password}`).toString('base64'),
       },
     });
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
     const data = await response.json();
     if (!Array.isArray(data)) {
       throw new Error('API returned geen array');
     }
 
-    // 3. Opruimen, parsen en filteren per record
+    // 2. Opruimen en parsen
     const clean = data
       .filter(
         row => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag
@@ -46,42 +51,34 @@ export async function POST() {
           row.Totaalbedrag.replace(/\./g, '').replace(',', '.')
         );
         return { datum, tijdstip, product, aantal, eenheidsprijs };
-      })
-      .filter(item =>
-        !existingSet.has(
-          `${item.datum}|${item.tijdstip}|${item.product}`
-        )
-      );
+      });
 
+    // 3. Verwijder bestaande records voor deze datums
+    // We gaan ervan uit dat start en einde in ISO YYYY-MM-DD zijn
+    await dbRapportage.query(
+      `DELETE FROM rapportage.omzet
+       WHERE datum BETWEEN $1 AND $2`,
+      [start, einde]
+    );
+
+    // 4. Bulk insert van alle nieuwe records
     if (clean.length === 0) {
       return NextResponse.json({ success: true, imported: 0 });
     }
 
-    // 4. Batch insert met ON CONFLICT target
-    const valuesPlaceholders: string[] = [];
+    const placeholders: string[] = [];
     const values: any[] = [];
-
-    clean.forEach((item, idx) => {
-      const offset = idx * 5;
-      valuesPlaceholders.push(
-        `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5})`
-      );
-      values.push(
-        item.datum,
-        item.tijdstip,
-        item.product,
-        item.aantal,
-        item.eenheidsprijs
-      );
+    clean.forEach((item, i) => {
+      const off = i * 5;
+      placeholders.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5})`);
+      values.push(item.datum, item.tijdstip, item.product, item.aantal, item.eenheidsprijs);
     });
 
-    const insertQuery = `
+    const insertSQL = `
       INSERT INTO rapportage.omzet (datum, tijdstip, product, aantal, eenheidsprijs)
-      VALUES ${valuesPlaceholders.join(',')}
-      ON CONFLICT (datum, tijdstip, product) DO NOTHING
+      VALUES ${placeholders.join(',')}
     `;
-
-    await dbRapportage.query(insertQuery, values);
+    await dbRapportage.query(insertSQL, values);
 
     return NextResponse.json({ success: true, imported: clean.length });
   } catch (err: any) {
