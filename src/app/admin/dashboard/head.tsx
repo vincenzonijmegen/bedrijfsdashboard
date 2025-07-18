@@ -9,7 +9,7 @@ export default function Head() {
       <link
         rel="apple-touch-icon"
         sizes="180x180"
-        href="/icons/dashboard-apple-touch-icon.png"
+        href="/icons/apple-touch-icon.png"
       />
       {/* Optioneel eigen favicon voor deze subdir */}
       <link rel="icon" href="/icons/dashboard-favicon.ico" />
