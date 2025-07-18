@@ -26,26 +26,40 @@ export async function POST(req: NextRequest) {
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
-        Authorization:
-          'Basic ' + Buffer.from(`${username}:${password}`).toString('base64'),
+        Authorization: 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64'),
       },
     });
+    const contentType = response.headers.get('content-type') || '';
+    const text = await response.text();
+
     if (!response.ok) {
-      console.error('Fetch error', apiUrl, response.status, await response.text());
+      console.error('Fetch error', apiUrl, response.status, text);
       throw new Error(`API error: ${response.status}`);
     }
-    const data = await response.json();
+    if (!contentType.includes('application/json')) {
+      console.error('Expected JSON but got:', contentType, text);
+      throw new Error('Ongeldig antwoord van API: geen JSON');
+    }
+
+    let data: any;
+    try {
+      data = JSON.parse(text);
+    } catch (err) {
+      console.error('Invalid JSON response body:', text);
+      throw new Error('API retourneerde ongeldige JSON');
+    }
+
     if (!Array.isArray(data)) {
-      console.error('Invalid payload', data);
+      console.error('Invalid payload, expected array:', data);
       throw new Error('API returned geen array');
     }
 
     // 2. Opruimen en parsen
     const clean = data
       .filter(
-        row => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag
+        (row) => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag
       )
-      .map(row => {
+      .map((row) => {
         const datum = row.Datum;
         const tijdstip = row.Tijd;
         const product = row.Omschrijving;
@@ -87,7 +101,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, imported: clean.length });
   } catch (err: any) {
-    console.error('Import fout:', err.message, err.stack);
+    console.error('Import fout:', err.message);
     return NextResponse.json(
       { success: false, error: err.message },
       { status: 500 }
