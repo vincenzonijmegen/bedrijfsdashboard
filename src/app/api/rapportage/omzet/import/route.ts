@@ -4,7 +4,7 @@ import { dbRapportage } from '@/lib/dbRapportage';
 import { NextResponse } from 'next/server';
 
 export async function POST() {
-  const apiUrl = 'http://192.168.178.191/admin/api.php';
+  const apiUrl = 'http://89.98.65.61/admin/api.php';
   const username = process.env.KASSA_USER!;
   const password = process.env.KASSA_PASS!;
 
