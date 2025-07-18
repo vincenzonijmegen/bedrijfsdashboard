@@ -58,7 +58,11 @@ export default function ShiftMailParser() {
     const row: Record<string, string> = {};
     header.forEach((col, i) => row[col] = values[i] || "");
 
-    result.datum = parseDate(row["datum"]);
+    const datumIndex = header.findIndex(h => h.toLowerCase() === "datum");
+if (datumIndex >= 0) {
+  result.datum = parseDate(values[datumIndex]);
+}
+
     result.shift = row["dienst"];
     result.van = row["van"];
     result.tijd = `${row["van"]} - ${row["tot"]}`;
