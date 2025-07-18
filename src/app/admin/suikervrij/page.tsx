@@ -95,7 +95,7 @@ export default function SuikervrijPage() {
           * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }  
           body * { visibility: hidden; }  
           .print-area, .print-area * { visibility: visible; }  
-          .print-area { position: absolute; top: 0; left: 0; width: 100%; padding: 20px; }
+          .print-area { position: absolute; top: 0; left: 0; width: 100%; padding: 0; }
           .no-print { display: none; }
         }
       `}</style>
@@ -187,7 +187,7 @@ export default function SuikervrijPage() {
                 {items.map((p) => (
                   <li key={p.id} className="flex items-center">
                     {new Date(p.datum).toLocaleDateString('nl-NL')}, {p.aantal} stuks,
-                    <span className="inline-block w-3 h-3 ml-2 rounded-full" style={{ backgroundColor: kleurenlijst.find((k) => k.naam === p.kleur)?.hexcode || '#ccc' }}></span>
+                    <span className="inline-block align-middle w-3 h-3 ml-2 rounded-full" style={{ backgroundColor: kleurenlijst.find((k) => k.naam === p.kleur)?.hexcode || '#ccc' }}></span>
                     <span className="ml-1">{p.kleur}</span>
                   </li>
                 ))}
