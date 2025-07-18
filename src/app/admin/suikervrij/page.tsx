@@ -73,6 +73,17 @@ export default function SuikervrijPage() {
     await fetchData();
   };
 
+  // PDF export via html2pdf.js
+  const savePdf = async () => {
+    const element = document.querySelector('.print-area') as HTMLElement;
+    if (!element) return;
+    const html2pdf = (await import('html2pdf.js')).default;
+    html2pdf()
+      .from(element)
+      .set({ margin: 0, filename: 'producties.pdf', html2canvas: { scale: 2 } })
+      .save();
+  };
+
   return (
     <div className="p-6">
       {/* Global print styles: show print colors */}
