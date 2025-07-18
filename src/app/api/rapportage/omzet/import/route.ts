@@ -47,19 +47,32 @@ export async function POST(req: NextRequest) {
       throw new Error('API returned geen array');
     }
 
+    // 2. Normalize and filter data
     const clean = data
-      .filter(row => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag)
-      .map(row => ({
-        datum: row.Datum,
-        tijdstip: row.Tijd,
-        product: row.Omschrijving,
-        aantal: parseInt(row.Aantal.replace(/\D+/g, ''), 10),
-        eenheidsprijs: parseFloat(row.Totaalbedrag.replace(/\./g, '').replace(',', '.'))
-      }));
+      .filter(
+        row => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag
+      )
+      .map(row => {
+        // Datum expected format 'DD-MM-YYYY' or 'D-M-YYYY'
+        const [d, m, y] = row.Datum.split('-').map(part => part.padStart(2, '0'));
+        const datum = `${y}-${m}-${d}`; // ISO format
+        const tijdstip = row.Tijd;
+        const product = row.Omschrijving;
+        const aantal = parseInt(row.Aantal.replace(/\D+/g, ''), 10);
+        const eenheidsprijs = parseFloat(
+          row.Totaalbedrag.replace(/\./g, '').replace(',', '.')
+        );
+        return { datum, tijdstip, product, aantal, eenheidsprijs };
+      });
 
-    console.log('Deleting existing records');
-    await dbRapportage.query('DELETE FROM rapportage.omzet WHERE datum BETWEEN $1 AND $2', [start, einde]);
+    // 3. Delete existing records for this date range
+    console.log('Deleting existing records between', start, 'and', einde);
+    await dbRapportage.query(
+      'DELETE FROM rapportage.omzet WHERE datum BETWEEN $1 AND $2',
+      [start, einde]
+    );
 
+    // 4. Bulk insert new records
     if (clean.length === 0) {
       console.log('No records to insert');
       return NextResponse.json({ success: true, imported: 0 });
@@ -70,7 +83,7 @@ export async function POST(req: NextRequest) {
     const values: any[] = [];
     clean.forEach((item, i) => {
       const off = i * 5;
-      placeholders.push(`($${off+1}, $${off+2}, $${off+3}, $${off+4}, $${off+5})`);
+      placeholders.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5})`);
       values.push(item.datum, item.tijdstip, item.product, item.aantal, item.eenheidsprijs);
     });
 
