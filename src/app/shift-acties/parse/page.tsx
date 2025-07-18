@@ -20,7 +20,10 @@ export default function ShiftMailParser() {
   const [parsed, setParsed] = useState<ParsedActie | null>(null);
 
   const parse = () => {
-    const lines = input.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const lines = input
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
     const mailText = input.toLowerCase();
 
     const result: ParsedActie = {
@@ -34,42 +37,64 @@ export default function ShiftMailParser() {
     };
 
     if (mailText.includes("heeft een open dienst geaccepteerd")) {
+      // Open dienst
       result.type = "Open dienst opgepakt";
-      result.naar = lines.find((l) => l.includes("heeft een open dienst geaccepteerd"))?.split(" heeft")[0] || "";
+      result.naar =
+        lines.find((l) => l.includes("heeft een open dienst geaccepteerd"))
+          ?.split(" heeft")[0] || "";
 
-      // Neem expliciet de regel die begint met "Open dienst:"
-      const dateLine = lines.find((l) => l.toLowerCase().startsWith("open dienst:"));
-      console.log("[DEBUG] Datumregel gevonden:", dateLine);
+      const dateLine = lines.find((l) =>
+        l.toLowerCase().startsWith("open dienst:")
+      );
       result.datum = parseDate(dateLine || "");
 
-      result.tijd = lines.find((l) => l.toLowerCase().startsWith("tijd"))
-        ?.match(/\d{2}:\d{2}\s*-\s*\d{2}:\d{2}/)?.[0] || "";
-      result.shift = lines.find((l) => l.toLowerCase().startsWith("dienst"))
-        ?.split(/:|\t/)[1]?.trim() || "";
-      result.van = "";
-    } else if (mailText.includes("heeft een ruilaanvraag") && mailText.includes("geaccepteerd")) {
-  result.type = "Ruil geaccepteerd";
-  result.naar = lines.find((l) => l.toLowerCase().includes("heeft een ruilaanvraag"))?.split(" heeft")[0] || "";
+      result.tijd =
+        lines
+          .find((l) => l.toLowerCase().startsWith("tijd"))
+          ?.match(/\d{2}:\d{2}\s*-\s*\d{2}:\d{2}/)?.[0] || "";
+      result.shift =
+        lines
+          .find((l) => l.toLowerCase().startsWith("dienst"))
+          ?.split(/:|\t/)[1]
+          ?.trim() || "";
+    } else if (
+      mailText.includes("heeft een ruilaanvraag") &&
+      mailText.includes("geaccepteerd")
+    ) {
+      // Ruil geaccepteerd
+      result.type = "Ruil geaccepteerd";
+      result.naar =
+        lines.find((l) => l.toLowerCase().includes("heeft een ruilaanvraag"))
+          ?.split(" heeft")[0] || "";
 
-  const ruilIdx = lines.findIndex((l) => l.toLowerCase().includes("ruilverzoek"));
-  if (ruilIdx >= 0) {
-    const header = lines[ruilIdx + 1].split(/\t+/).map(h => h.toLowerCase());
-    const values = lines[ruilIdx + 2].split(/\t+/);
-    const row: Record<string, string> = {};
-    header.forEach((col, i) => row[col] = values[i] || "");
+      // Fix: correct closing of findIndex
+      const ruilIdx = lines.findIndex((l) =>
+        l.toLowerCase().includes("ruilverzoek")
+      );
+      if (ruilIdx >= 0) {
+        const header = lines[ruilIdx + 1].split(/\t+/).map((h) =>
+          h.toLowerCase()
+        );
+        const values = lines[ruilIdx + 2].split(/\t+/);
 
-    const datumIndex = header.findIndex(h => h.toLowerCase() === "datum");
-if (datumIndex >= 0 && values[datumIndex]) {
-  const rawDatum = values[datumIndex].trim();
-  result.datum = rawDatum.match(/\d{2}-\d{2}-\d{4}/)?.[0] || parseDate(rawDatum);
-}
+        // Zoek kolomindexen
+        const idxDatum = header.findIndex((h) => h === "datum");
+        const idxShift = header.findIndex((h) => h === "dienst");
+        const idxVan = header.findIndex((h) => h === "van");
+        const idxTot = header.findIndex((h) => h === "tot");
 
-
-    result.shift = row["dienst"];
-    result.van = row["van"];
-    result.tijd = `${row["van"]} - ${row["tot"]}`;
-  }
-
+        // Datum: eerst regex, anders fallback parseDate
+        if (idxDatum >= 0 && values[idxDatum]) {
+          const raw = values[idxDatum].trim();
+          const match = raw.match(/\d{2}-\d{2}-\d{4}/);
+          result.datum = match?.[0] || parseDate(raw);
+        }
+        // Shift, van, tijd
+        if (idxShift >= 0) result.shift = values[idxShift];
+        if (idxVan >= 0) result.van = values[idxVan];
+        if (idxVan >= 0 && idxTot >= 0)
+          result.tijd = `${values[idxVan]} - ${values[idxTot]}`;
+      }
     } else {
       alert("Onbekend e-mailformaat");
       return;
@@ -81,22 +106,32 @@ if (datumIndex >= 0 && values[datumIndex]) {
 
   const parseDate = (line: string) => {
     if (!line) return "";
-
     const maandnamen: Record<string, number> = {
-      jan: 0, januari: 0,
-      feb: 1, februari: 1,
-      mrt: 2, maart: 2,
-      apr: 3, april: 3,
-      mei: 4, may: 4,
-      jun: 5, juni: 5,
-      jul: 6, juli: 6,
-      aug: 7, augustus: 7,
-      sep: 8, september: 8,
-      okt: 9, october: 9, oct: 9,
-      nov: 10, november: 10,
-      dec: 11, december: 11,
+      jan: 0,
+      januari: 0,
+      feb: 1,
+      februari: 1,
+      mrt: 2,
+      maart: 2,
+      apr: 3,
+      april: 3,
+      mei: 4,
+      may: 4,
+      jun: 5,
+      juni: 5,
+      jul: 6,
+      juli: 6,
+      aug: 7,
+      augustus: 7,
+      sep: 8,
+      september: 8,
+      okt: 9,
+      october: 9,
+      nov: 10,
+      november: 10,
+      dec: 11,
+      december: 11,
     };
-
     const cleaned = line
       .toLowerCase()
       .replace(/^.*:/, "")
@@ -104,27 +139,21 @@ if (datumIndex >= 0 && values[datumIndex]) {
       .replace(/[.,]/g, "")
       .replace(/ +/g, " ")
       .trim();
-
     const parts = cleaned.split(" ");
     if (parts.length !== 3) return "";
-
     const [dayStr, maandNaam, jaarStr] = parts;
     const day = parseInt(dayStr, 10);
     const year = parseInt(jaarStr, 10);
-    const maand = maandnamen[maandNaam] !== undefined
-      ? maandnamen[maandNaam]
-      : maandnamen[maandNaam.slice(0, 3)];
-
+    const maand =
+      maandnamen[maandNaam] !== undefined
+        ? maandnamen[maandNaam]
+        : maandnamen[maandNaam.slice(0, 3)];
     if (maand === undefined || isNaN(day) || isNaN(year)) return "";
-
-    // Maak datum in lokale tijd
     const d = new Date(year, maand, day);
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
-    const iso = `${yyyy}-${mm}-${dd}`;
-    console.log("[DEBUG] parseDate resultaat:", iso);
-    return iso;
+    return `${yyyy}-${mm}-${dd}`;
   };
 
   const sendToDatabase = async () => {
@@ -140,7 +169,10 @@ if (datumIndex >= 0 && values[datumIndex]) {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <button onClick={() => router.push('/')} className="mb-4 text-blue-600 hover:underline">
+      <button
+        onClick={() => router.push('/')}
+        className="mb-4 text-blue-600 hover:underline"
+      >
         ← Terug naar startpagina
       </button>
       <h1 className="text-xl font-bold mb-4">📬 Mailparser: Shiftactie invoer</h1>
@@ -150,21 +182,28 @@ if (datumIndex >= 0 && values[datumIndex]) {
         value={input}
         onChange={(e) => setInput(e.target.value)}
       />
-
       <div className="flex gap-4 my-4">
-        <button onClick={parse} className="bg-blue-600 text-white px-4 py-2 rounded">
+        <button
+          onClick={parse}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
           Parser uitvoeren
         </button>
         {parsed && (
-          <button onClick={sendToDatabase} className="bg-green-600 text-white px-4 py-2 rounded">
+          <button
+            onClick={sendToDatabase}
+            className="bg-green-600 text-white px-4 py-2 rounded"
+          >
             ➕ Voeg toe aan database
           </button>
         )}
       </div>
-
       {parsed && (
         <div className="mt-4">
-          <button onClick={() => router.push('/')} className="mb-4 text-blue-600 hover:underline">
+          <button
+            onClick={() => router.push('/')}
+            className="mb-4 text-blue-600 hover:underline"
+          >
             ← Terug naar startpagina
           </button>
           <pre className="bg-gray-100 p-4 text-sm rounded">
