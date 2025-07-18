@@ -14,6 +14,12 @@ interface ParsedActie {
   bron_email: string;
 }
 
+// Helper: convert DD-MM-YYYY to ISO YYYY-MM-DD
+const convertDDMMYYYYtoISO = (raw: string): string => {
+  const [d, m, y] = raw.split('-');
+  return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+};
+
 export default function ShiftMailParser() {
   const router = useRouter();
   const [input, setInput] = useState("");
@@ -37,7 +43,7 @@ export default function ShiftMailParser() {
     };
 
     if (mailText.includes("heeft een open dienst geaccepteerd")) {
-      // Open dienst
+      // Open dienst opgepakt
       result.type = "Open dienst opgepakt";
       result.naar =
         lines.find((l) => l.includes("heeft een open dienst geaccepteerd"))
@@ -46,7 +52,11 @@ export default function ShiftMailParser() {
       const dateLine = lines.find((l) =>
         l.toLowerCase().startsWith("open dienst:")
       );
-      result.datum = parseDate(dateLine || "");
+      // dateLine e.g. "Open dienst: 13-08-2025"
+      const rawDate = dateLine?.split(/:|\t/)[1]?.trim() || "";
+      result.datum = rawDate.match(/\d{2}-\d{2}-\d{4}/)
+        ? convertDDMMYYYYtoISO(rawDate.match(/\d{2}-\d{2}-\d{4}/)![0])
+        : "";
 
       result.tijd =
         lines
@@ -67,7 +77,6 @@ export default function ShiftMailParser() {
         lines.find((l) => l.toLowerCase().includes("heeft een ruilaanvraag"))
           ?.split(" heeft")[0] || "";
 
-      // Fix: correct closing of findIndex
       const ruilIdx = lines.findIndex((l) =>
         l.toLowerCase().includes("ruilverzoek")
       );
@@ -77,27 +86,23 @@ export default function ShiftMailParser() {
         );
         const values = lines[ruilIdx + 2].split(/\t+/);
 
-        // Zoek kolomindexen
         const idxDatum = header.findIndex((h) => h === "datum");
         const idxShift = header.findIndex((h) => h === "dienst");
         const idxVan = header.findIndex((h) => h === "van");
         const idxTot = header.findIndex((h) => h === "tot");
 
-        // Datum: eerst regex, anders fallback parseDate
+        // Datum: always convert DD-MM-YYYY from table
         if (idxDatum >= 0 && values[idxDatum]) {
           const raw = values[idxDatum].trim();
-          const match = raw.match(/\d{2}-\d{2}-\d{4}/);
-                    if (match) {
-            result.datum = parseDate(match[0]);
-          } else {
-            result.datum = parseDate(raw);
+          if (/\d{2}-\d{2}-\d{4}/.test(raw)) {
+            result.datum = convertDDMMYYYYtoISO(raw.match(/\d{2}-\d{2}-\d{4}/)![0]);
           }
         }
-        // Shift, van, tijd
         if (idxShift >= 0) result.shift = values[idxShift];
         if (idxVan >= 0) result.van = values[idxVan];
-        if (idxVan >= 0 && idxTot >= 0)
+        if (idxVan >= 0 && idxTot >= 0) {
           result.tijd = `${values[idxVan]} - ${values[idxTot]}`;
+        }
       }
     } else {
       alert("Onbekend e-mailformaat");
@@ -106,58 +111,6 @@ export default function ShiftMailParser() {
 
     console.log("[DEBUG] Geparse resultaat:", result);
     setParsed(result);
-  };
-
-  const parseDate = (line: string) => {
-    if (!line) return "";
-    const maandnamen: Record<string, number> = {
-      jan: 0,
-      januari: 0,
-      feb: 1,
-      februari: 1,
-      mrt: 2,
-      maart: 2,
-      apr: 3,
-      april: 3,
-      mei: 4,
-      may: 4,
-      jun: 5,
-      juni: 5,
-      jul: 6,
-      juli: 6,
-      aug: 7,
-      augustus: 7,
-      sep: 8,
-      september: 8,
-      okt: 9,
-      october: 9,
-      nov: 10,
-      november: 10,
-      dec: 11,
-      december: 11,
-    };
-    const cleaned = line
-      .toLowerCase()
-      .replace(/^.*:/, "")
-      .replace(/\b(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\b/gi, "")
-      .replace(/[.,]/g, "")
-      .replace(/ +/g, " ")
-      .trim();
-    const parts = cleaned.split(" ");
-    if (parts.length !== 3) return "";
-    const [dayStr, maandNaam, jaarStr] = parts;
-    const day = parseInt(dayStr, 10);
-    const year = parseInt(jaarStr, 10);
-    const maand =
-      maandnamen[maandNaam] !== undefined
-        ? maandnamen[maandNaam]
-        : maandnamen[maandNaam.slice(0, 3)];
-    if (maand === undefined || isNaN(day) || isNaN(year)) return "";
-    const d = new Date(year, maand, day);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
   };
 
   const sendToDatabase = async () => {
