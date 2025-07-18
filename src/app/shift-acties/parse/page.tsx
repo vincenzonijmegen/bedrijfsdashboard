@@ -100,10 +100,13 @@ export default function ShiftMailParser() {
         }
         // Shift name
         if (idxShift >= 0) result.shift = values[idxShift];
-        // 'van' is the requester: extract from the sentence
-        const ruilLine = lines.find(l => l.toLowerCase().includes("heeft een ruilaanvraag van"));
-        const vanMatch = ruilLine?.match(/van\s+(.*?)\s+voor/i);
-        if (vanMatch) result.van = vanMatch[1];
+        // 'van' is de requester: haal de naam tussen 'van' en 'voor'
+const ruilLine = lines.find(l => l.toLowerCase().includes("heeft een ruilaanvraag"));
+const vanMatch = ruilLine?.match(/heeft een ruilaanvraag van\s+(.*?)\s+voor/i);
+if (vanMatch) {
+  result.van = vanMatch[1].trim();
+}
+
         // Tijd
         if (idxStart >= 0 && idxEnd >= 0) {
           result.tijd = `${values[idxStart]} - ${values[idxEnd]}`;
