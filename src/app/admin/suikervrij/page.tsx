@@ -173,10 +173,12 @@ export default function SuikervrijPage() {
               <h3 className="font-semibold">{smaakNaam}</h3>
               <ul className="list-disc pl-4">
                 {items.map((p) => (
-                  <li key={p.id} className="flex items-center">
-                    {new Date(p.datum).toLocaleDateString('nl-NL')}, {p.aantal} stuks,
-                    <span className="inline-block align-middle w-3 h-3 ml-2 rounded-full" style={{ backgroundColor: kleurenlijst.find((k) => k.naam === p.kleur)?.hexcode || '#ccc' }}></span>
-                    <span className="ml-1">{p.kleur}</span>
+                  <li key={p.id}>  
+                    {new Date(p.datum).toLocaleDateString('nl-NL')}, {p.aantal} stuks,  
+                    <span  
+                      className="inline-block text-white text-xs px-2 py-0.5 rounded align-middle ml-2"  
+                      style={{ backgroundColor: kleurenlijst.find((k) => k.naam === p.kleur)?.hexcode || '#ccc' }}  
+                    >{p.kleur}</span>  
                   </li>
                 ))}
               </ul>
