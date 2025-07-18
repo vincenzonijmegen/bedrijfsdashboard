@@ -9,23 +9,26 @@ export async function POST(req: NextRequest) {
   const start = searchParams.get('start');
   const einde = searchParams.get('einde');
 
+  console.log('Import start:', { start, einde });
   if (!start || !einde) {
+    console.error('Missing params', { start, einde });
     return NextResponse.json({ success: false, error: 'start of einde ontbreekt' }, { status: 400 });
   }
 
-  const baseUrl = process.env.KASSA_API_URL!; // https://89.98.65.61/admin/api.php
+  const baseUrl = process.env.KASSA_API_URL!;
   const username = process.env.KASSA_USER!;
   const password = process.env.KASSA_PASS!;
 
   try {
-    // Eenvoudige Basic-auth direct voor data-endpoint
     const dataUrl = `${baseUrl}?start=${encodeURIComponent(start)}&einde=${encodeURIComponent(einde)}`;
     const authHeader = 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64');
+    console.log('Fetching data from:', dataUrl);
 
-    // Fetch data met Basic auth
     const dataRes = await fetch(dataUrl, { headers: { Authorization: authHeader } });
     const bodyText = await dataRes.text();
     const contentType = dataRes.headers.get('content-type') || '';
+
+    console.log('Response status:', dataRes.status, 'content-type:', contentType);
 
     if (!dataRes.ok) {
       console.error('Data fetch failed', dataRes.status, bodyText);
@@ -37,11 +40,11 @@ export async function POST(req: NextRequest) {
     }
 
     const data = JSON.parse(bodyText);
+    console.log('Parsed JSON length:', Array.isArray(data) ? data.length : 'invalid');
     if (!Array.isArray(data)) {
       throw new Error('API returned geen array');
     }
 
-    // Opruimen en parsen
     const clean = data
       .filter(row => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag)
       .map(row => ({
@@ -52,15 +55,15 @@ export async function POST(req: NextRequest) {
         eenheidsprijs: parseFloat(row.Totaalbedrag.replace(/\./g, '').replace(',', '.'))
       }));
 
-    // Oude data verwijderen
-    await dbRapportage.query(
-      'DELETE FROM rapportage.omzet WHERE datum BETWEEN $1 AND $2',
-      [start, einde]
-    );
+    console.log('Deleting existing records');
+    await dbRapportage.query('DELETE FROM rapportage.omzet WHERE datum BETWEEN $1 AND $2', [start, einde]);
 
-    // Bulk insert
-    if (clean.length === 0) return NextResponse.json({ success: true, imported: 0 });
+    if (clean.length === 0) {
+      console.log('No records to insert');
+      return NextResponse.json({ success: true, imported: 0 });
+    }
 
+    console.log('Inserting', clean.length, 'records');
     const placeholders: string[] = [];
     const values: any[] = [];
     clean.forEach((item, i) => {
@@ -75,9 +78,10 @@ export async function POST(req: NextRequest) {
       values
     );
 
+    console.log('Import succeeded');
     return NextResponse.json({ success: true, imported: clean.length });
   } catch (err: any) {
-    console.error('Import fout:', err.message);
+    console.error('Import fout:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
