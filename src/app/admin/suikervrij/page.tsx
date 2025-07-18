@@ -95,7 +95,7 @@ export default function SuikervrijPage() {
           * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }  
           body * { visibility: hidden; }  
           .print-area, .print-area * { visibility: visible; }  
-          .print-area { position: absolute; top: 2in; left: 2in; width: calc(100% - 2in); padding: 0; } }
+          .print-area { position: absolute; top: 3; left: 3; width: 100%; padding: 0; }
           .no-print { display: none; }
         }
       `}</style>
