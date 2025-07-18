@@ -48,20 +48,22 @@ export default function ShiftMailParser() {
         ?.split(/:|\t/)[1]?.trim() || "";
       result.van = "";
     } else if (mailText.includes("heeft een ruilaanvraag") && mailText.includes("geaccepteerd")) {
-      result.type = "Ruil geaccepteerd";
-      result.naar = lines.find((l) => l.toLowerCase().includes("heeft een ruilaanvraag"))?.split(" heeft")[0] || "";
-      result.van = lines.find((l) => l.toLowerCase().startsWith("van"))
-        ?.split(/:|\t/)[1]?.trim() || "";
-      result.tijd = (lines.find((l) => l.toLowerCase().startsWith("van"))
-        ?.split(/:|\t/)[1]?.trim() || "") + " - " +
-        (lines.find((l) => l.toLowerCase().startsWith("tot"))
-        ?.split(/:|\t/)[1]?.trim() || "");
-      result.datum = parseDate(
-        lines.find((l) => l.toLowerCase().startsWith("datum"))
-          ?.split(/:|\t/)[1]?.trim() || ""
-      );
-      result.shift = lines.find((l) => l.toLowerCase().startsWith("dienst"))
-        ?.split(/:|\t/)[1]?.trim() || "";
+  result.type = "Ruil geaccepteerd";
+  result.naar = lines.find((l) => l.toLowerCase().includes("heeft een ruilaanvraag"))?.split(" heeft")[0] || "";
+
+  const ruilIdx = lines.findIndex((l) => l.toLowerCase().includes("ruilverzoek"));
+  if (ruilIdx >= 0) {
+    const header = lines[ruilIdx + 1].split(/\t+/).map(h => h.toLowerCase());
+    const values = lines[ruilIdx + 2].split(/\t+/);
+    const row: Record<string, string> = {};
+    header.forEach((col, i) => row[col] = values[i] || "");
+
+    result.datum = parseDate(row["datum"]);
+    result.shift = row["dienst"];
+    result.van = row["van"];
+    result.tijd = `${row["van"]} - ${row["tot"]}`;
+  }
+
     } else {
       alert("Onbekend e-mailformaat");
       return;
