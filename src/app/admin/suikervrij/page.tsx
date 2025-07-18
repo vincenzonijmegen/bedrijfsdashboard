@@ -81,7 +81,7 @@ export default function SuikervrijPage() {
     if (!element) return;
     html2pdf()
       .from(element)
-      .set({ margin: 0, filename: 'producties.pdf', html2canvas: { scale: 2 } })
+      .set({ margin: [0,0,0,0], filename: 'producties.pdf', jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' }, html2canvas: { scale: 2 } })
       .save();
   };
 
