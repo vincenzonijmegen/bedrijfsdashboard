@@ -4,6 +4,8 @@ import { dbRapportage } from '@/lib/dbRapportage';
 import { NextResponse } from 'next/server';
 import { NextRequest } from 'next/server';
 
+// For self-signed certificates, you can disable SSL verification (not recommended for production)
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const start = searchParams.get('start');
