@@ -91,9 +91,9 @@ export default function AdminDashboard() {
   <h1 className="text-2xl font-bold text-slate-800">🗂️ Portaal</h1>
   {/* Dagomzet rechtsonder */}
   {/* ophalen via SWR */}
-  <div className="px-4 py-2 bg-gray-100 rounded">
+  <Link href="/admin/dashboard" className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200">
           <DailyTotalDisplay />
-        </div>
+        </Link>
 </div>
 
       <Section title="👥 Medewerkers en instructies" color="green">
@@ -112,8 +112,7 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={CheckSquare} />
         <LinkCard href="/admin/suikervrij" label="Suikervrij productie" color="blue" Icon={IceCream} />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} />
-        <LinkCard href="/admin/kassa-omzet-test" label="TESTPAGINA KASSA" color="blue" Icon={Wrench} />
-      </Section>
+        </Section>
 
       <Section title="🧠 Skills" color="purple">
         <LinkCard href="/admin/skills/categorieen" label="Beheer categorieën" color="purple" Icon={Tag} />
@@ -136,7 +135,7 @@ export default function AdminDashboard() {
       <Section title="📊 Rapportages" color="slate">
         <LinkCard href="/admin/rapportages" label="Omzet & voorraad" color="gray" Icon={CreditCard} />
         <LinkCard href="/admin/rapportages/medewerkers/overzicht-progressie" label="Medewerkers-voortgang" color="gray" Icon={BarChart2} />
-        <LinkCard href="/admin/rapportage/omzet" label="Inlezen omzet" color="gray" Icon={FileText} />
+        <LinkCard href="/admin/kassa-omzet-test" label="Omzet inlezen" color="gray" Icon={Wrench} />
         <LinkCard href="/admin/rapportage" label="Rapporten" color="gray" Icon={Archive} />
       </Section>
     </main>
