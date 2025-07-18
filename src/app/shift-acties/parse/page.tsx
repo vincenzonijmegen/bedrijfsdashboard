@@ -60,7 +60,8 @@ export default function ShiftMailParser() {
 
     const datumIndex = header.findIndex(h => h.toLowerCase() === "datum");
 if (datumIndex >= 0 && values[datumIndex]) {
-  result.datum = parseDate(values[datumIndex]);
+  const rawDatum = values[datumIndex].trim();
+result.datum = rawDatum.match(/\d{2}-\d{2}-\d{4}/)?.[0] || parseDate(rawDatum);
 }
 
     result.shift = row["dienst"];
