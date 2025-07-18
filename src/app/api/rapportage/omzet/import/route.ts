@@ -4,7 +4,7 @@ import { dbRapportage } from '@/lib/dbRapportage';
 import { NextResponse } from 'next/server';
 
 export async function POST() {
-  const apiUrl = 'https://www.pcadmin.nl/kassaapp/api.php?start=14-07-2024&einde=15-07-2025';
+  const apiUrl = 'http://192.168.178.191/admin/api.php';
   const username = process.env.KASSA_USER!;
   const password = process.env.KASSA_PASS!;
 
