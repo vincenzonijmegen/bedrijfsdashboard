@@ -4,6 +4,18 @@
 
 import { useState } from "react";
 import useSWR from "swr";
+import { format } from "date-fns";
+import { nl } from "date-fns/locale";
+
+const formatDate = (dateStr: string) => {
+  try {
+    return format(new Date(dateStr), "d MMMM yyyy", { locale: nl });
+  } catch {
+    return dateStr;
+  }
+};
+
+
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -169,12 +181,25 @@ export default function DossierOverzicht() {
             {Array.isArray(verzuim) && verzuim.length > 0 && (
               <ul className="mt-2 space-y-2">
                 {verzuim.map((v) => (
-                  <li key={v.id} className="border p-2 rounded bg-purple-50 flex justify-between items-center">
-                    <div>
-                      <span className="font-medium">{v.van} t/m {v.tot}</span> – {v.opmerking}
-                    </div>
-                    <button onClick={() => verwijderZiekteverzuim(v.id)} className="text-red-500 text-sm">🗑</button>
-                  </li>
+<li key={v.id} className="bg-violet-50 border border-violet-200 p-3 rounded-xl shadow-sm relative">
+  <p className="text-sm">
+    <strong>{formatDate(v.van)}</strong>
+    {v.van !== v.tot && (
+      <>
+        <span> t/m </span>
+        <strong>{formatDate(v.tot)}</strong>
+      </>
+    )}
+    <span> – {v.opmerking}</span>
+  </p>
+  <button
+    onClick={() => verwijderZiekteverzuim(v.id)}
+    className="absolute right-2 top-2 text-red-500 text-sm"
+  >
+    🗑️
+  </button>
+</li>
+
                 ))}
               </ul>
             )}
