@@ -28,7 +28,7 @@ export default function Dagrooster() {
     fetcher
   );
   const { data: timesheetData, error: timesheetError } = useSWR(
-    `/api/shiftbase/timesheets?date=${selectedDate}`,
+    `/api/shiftbase/timesheets?date=${selectedDate}&includeApproved=true`,
     fetcher
   );
 
