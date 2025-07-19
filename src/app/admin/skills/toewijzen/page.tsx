@@ -53,13 +53,12 @@ export default function SkillToewijzen() {
 
   const opslaan = async () => {
     if (!geselecteerd) return;
-    const medewerker = medewerkersAPI.find((m) => m.id === geselecteerd);
+    const medewerker = medewerkersAPI?.find((m) => m.id === geselecteerd);
     const body = {
       sendEmail: mailen,
       emailTekst: `Beste ${medewerker?.naam || "medewerker"},
 
 Je hebt een of meer nieuwe skills toegewezen gekregen die je moet aanleren.
-Vraag je collega's die de skill al beheersen om uitleg.
 
 Bekijk je taken in het systeem en zorg dat je deze leert voor de bijbehorende deadline.
 Als je een skill geleerd hebt, vink deze dan aan zodat dit zichtbaar is voor de leidinggevende.
