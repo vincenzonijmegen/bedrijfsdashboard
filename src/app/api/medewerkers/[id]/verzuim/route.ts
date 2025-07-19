@@ -1,12 +1,9 @@
 // src/app/api/medewerkers/[id]/verzuim/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 // Fetch all ziekteverzuim entries for a specific medewerker_id
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request, { params }) {
   const medewerkerId = params.id;
   const result = await db.query(
     'SELECT * FROM ziekteverzuim WHERE medewerker_id = $1 ORDER BY van DESC',
@@ -16,10 +13,7 @@ export async function GET(
 }
 
 // Add a new ziekteverzuim entry for a specific medewerker_id
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request, { params }) {
   const medewerkerId = params.id;
   const { van, tot, opmerking } = await request.json();
   await db.query(
