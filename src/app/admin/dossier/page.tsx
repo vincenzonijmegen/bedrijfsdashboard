@@ -202,14 +202,12 @@ export default function DossierOverzicht() {
       <div className="flex gap-2 mb-2">
         <input
           type="date"
-          value={v.van}
-          onChange={(e) => (v.van = e.target.value)}
+          value={editVan} onChange={(e) => setEditVan(e.target.value)}
           className="border rounded px-2 py-1"
         />
         <input
           type="date"
-          value={v.tot || ""}
-          onChange={(e) => (v.tot = e.target.value)}
+          value={editTot || ""} onChange={(e) => setEditTot(e.target.value)}
           className="border rounded px-2 py-1"
         />
       </div>
@@ -224,9 +222,8 @@ fetch(`/api/medewerkers/verzuim/${v.id}`, {
   method: "PATCH",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-  van: editVan,
-  tot: editTot?.length > 0 ? editTot : null,
-
+    van: editVan,
+    tot: editTot?.length > 0 ? editTot : null,
     opmerking: editTekst
   })
           }).then(() => {
