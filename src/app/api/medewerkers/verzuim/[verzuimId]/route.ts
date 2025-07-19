@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 // Delete a specific ziekteverzuim entry by its ID
-export async function DELETE(request, context) {
+export async function DELETE(request: Request, context: { params: { verzuimId: string } }) {
   const { verzuimId } = context.params;
   await db.query('DELETE FROM ziekteverzuim WHERE id = $1', [verzuimId]);
   return NextResponse.json({ success: true });
