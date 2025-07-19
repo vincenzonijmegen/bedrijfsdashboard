@@ -2,19 +2,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-export async function DELETE(
-  request: NextRequest,
-  context: { params: { verzuimId: string } }
-): Promise<Response> {
+export async function DELETE(request, context) {
   const verzuimId = context.params.verzuimId;
   await db.query('DELETE FROM ziekteverzuim WHERE id = $1', [verzuimId]);
   return NextResponse.json({ success: true });
 }
 
-export async function PATCH(
-  request: NextRequest,
-  context: { params: { verzuimId: string } }
-): Promise<Response> {
+export async function PATCH(request, context) {
   const verzuimId = context.params.verzuimId;
   const { van, tot, opmerking } = await request.json();
   await db.query(

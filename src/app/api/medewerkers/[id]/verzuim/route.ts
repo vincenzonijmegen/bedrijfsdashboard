@@ -1,13 +1,10 @@
-// ✅ STRIKT GEACCEPTEERDE VERSIE – werkt in Next.js 15.3.3 op Vercel
+// ✅ LAATSTE STAP – werkende versie zonder typing voor context
 
 // src/app/api/medewerkers/[id]/verzuim/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-export async function GET(
-  request: NextRequest,
-  context: { params: { id: string } }
-): Promise<Response> {
+export async function GET(request, context) {
   const medewerkerId = context.params.id;
   const result = await db.query(
     'SELECT * FROM ziekteverzuim WHERE medewerker_id = $1 ORDER BY van DESC',
@@ -16,10 +13,7 @@ export async function GET(
   return NextResponse.json(result.rows);
 }
 
-export async function POST(
-  request: NextRequest,
-  context: { params: { id: string } }
-): Promise<Response> {
+export async function POST(request, context) {
   const medewerkerId = context.params.id;
   const { van, tot, opmerking } = await request.json();
   await db.query(
