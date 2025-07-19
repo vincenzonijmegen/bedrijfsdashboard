@@ -32,6 +32,9 @@ export async function GET(request: Request) {
 
     const result = await response.json();
     const allRosters = result.data || [];
+    // Log unieke datums voor debugging
+    const uniekeDatums = Array.from(new Set(allRosters.map((item: any) => item.Roster.date)));
+    console.log(`Beschikbare rooster-datums in response: ${uniekeDatums.join(', ')}`);
     console.log(`Aantal diensten ontvangen: ${allRosters.length}`);
 
     // Filter lokaal op gekozen datum
