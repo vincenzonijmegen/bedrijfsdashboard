@@ -10,7 +10,9 @@ export async function GET(request: Request) {
     console.log(`Gevraagde datum in API: ${dateParam}`);
 
     // Ophalen van alle rosters
-    const url = 'https://api.shiftbase.com/api/rosters';
+    // Haal rosters op voor hele maand via period
+  const period = dateParam.slice(0,7); // YYYY-MM
+  const url = `https://api.shiftbase.com/api/rosters?period=${period}`;
     console.log(`Shiftbase API URL: ${url}`);
 
     const response = await fetch(url, {
