@@ -9,7 +9,8 @@ export async function GET(request: Request) {
   console.log(`Gevraagde datum in API: ${dateParam}`);
 
   // Shiftbase ondersteunt de ?date= niet betrouwbaar, dus haal alle rosters op
-  const url = 'https://api.shiftbase.com/api/rosters';
+  // Gebruik from/to parameters om specifiek die dag op te halen
+  const url = `https://api.shiftbase.com/api/rosters?from=${dateParam}&to=${dateParam}`;
   console.log(`Shiftbase API URL: ${url}`);
 
   try {
