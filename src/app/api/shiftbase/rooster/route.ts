@@ -2,7 +2,11 @@
 
 import { NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  // Haal datum op uit query, standaard vandaag
+  const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0];
+
   const url = 'https://api.shiftbase.com/api/rosters';
 
   try {
@@ -15,19 +19,20 @@ export async function GET() {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      console.error('Shiftbase API fout:', error);
+      const errorText = await response.text();
+      console.error('Shiftbase API fout:', errorText);
       return NextResponse.json({ error: 'Fout bij ophalen van rooster' }, { status: 500 });
     }
 
     const data = await response.json();
-    // Filter alleen diensten van vandaag
-    const vandaag = new Date().toISOString().split("T")[0];
-    const vandaagRosters = data.data.filter((item: any) => item.Roster.date === vandaag);
+    // Filter op gekozen datum
+    const filtered = data.data.filter((item: any) => item.Roster.date === dateParam);
+    // Sorteer op starttijd
+    filtered.sort((a: any, b: any) => a.Roster.starttime.localeCompare(b.Roster.starttime));
 
-    return NextResponse.json({ data: vandaagRosters });
+    return NextResponse.json({ data: filtered });
   } catch (err) {
-    console.error('Technische fout:', err);
+    console.error('Technische fout bij rooster-oproep:', err);
     return NextResponse.json({ error: 'Technische fout bij rooster-oproep' }, { status: 500 });
   }
 }
