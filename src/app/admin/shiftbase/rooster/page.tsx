@@ -13,6 +13,7 @@ export default function Dagrooster() {
   const formatISO = (date: Date) => date.toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(formatISO(today));
 
+  // Vertaal ISO naar Nederlandse datum met weekdag
   const formatDutchDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString('nl-NL', {
       weekday: 'long',
@@ -21,13 +22,18 @@ export default function Dagrooster() {
       year: 'numeric',
     });
 
-  const { data, error } = useSWR(
+  // Fetch rooster en timesheets
+  const { data: rosterData, error: rosterError } = useSWR(
     `/api/shiftbase/rooster?date=${selectedDate}`,
     fetcher
   );
+  const { data: timesheetData, error: timesheetError } = useSWR(
+    `/api/shiftbase/timesheets?date=${selectedDate}`,
+    fetcher
+  );
 
-  if (error) return <p>Fout bij laden van rooster.</p>;
-  if (!data) return <p>Rooster wordt geladen...</p>;
+  if (rosterError || timesheetError) return <p>Fout bij laden data.</p>;
+  if (!rosterData || !timesheetData) return <p>Gegevens worden geladen...</p>;
 
   // Navigatie knoppen
   const prevDay = () =>
@@ -40,74 +46,75 @@ export default function Dagrooster() {
     );
   const goToday = () => setSelectedDate(formatISO(today));
 
-  // Groepeer op korte shiftnaam
-  const perShift = data.data.reduce((acc: any, item: any) => {
-    const shift = item.Roster.name || "Onbekende shift";
-    if (!acc[shift]) acc[shift] = [];
-    acc[shift].push(item);
+  // Groeperen op korte shiftnaam
+  const perShift = rosterData.data.reduce((acc: any, item: any) => {
+    const shiftKey = item.Roster.name || "Onbekende shift";
+    if (!acc[shiftKey]) acc[shiftKey] = [];
+    acc[shiftKey].push(item);
     return acc;
   }, {});
 
   const gewensteVolgorde = [
-    "S1K", "S1KV", "S1", "S1Z", "S1L", "S1S",
-    "S2K", "S2", "S2L", "S2S",
-    "SPS", "SLW1", "SLW2"
+    "S1K","S1KV","S1","S1Z","S1L","S1S",
+    "S2K","S2","S2L","S2S",
+    "SPS","SLW1","SLW2"
   ];
 
-  // Sorteer en filter op gewenste volgorde
   const gesorteerdeEntries = gewensteVolgorde
     .filter((naam) => perShift[naam])
     .map((naam) => [naam, perShift[naam]] as [string, any[]]);
 
   return (
     <div className="p-4">
-      {/* Header */}
+      {/* Header en datum */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold">Dagrooster</h1>
+        <div>
+          <h1 className="text-xl font-bold">Dagrooster</h1>
+          <p className="font-bold">{formatDutchDate(selectedDate)}</p>
+        </div>
         <div className="flex gap-2">
-          <button onClick={prevDay} className="px-2 py-1 bg-gray-200 rounded">
-            &larr;
-          </button>
-          <button onClick={goToday} className="px-2 py-1 bg-gray-200 rounded">
-            Vandaag
-          </button>
-          <button onClick={nextDay} className="px-2 py-1 bg-gray-200 rounded">
-            &rarr;
-          </button>
+          <button onClick={prevDay} className="px-2 py-1 bg-gray-200 rounded">←</button>
+          <button onClick={goToday} className="px-2 py-1 bg-gray-200 rounded">Vandaag</button>
+          <button onClick={nextDay} className="px-2 py-1 bg-gray-200 rounded">→</button>
         </div>
       </div>
 
-      {/* Datum */}
-      <p className="mb-4 font-bold">
-        {formatDutchDate(selectedDate)}
-      </p>
-
-      {gesorteerdeEntries.map(([shiftNaam, items]) => {
+      {/* Shifts en tijden */}
+      {gesorteerdeEntries.map(([shiftKey, items]) => {
         const kleur = items[0].Roster.color || '#333';
-        const langeNaam = items[0].Shift?.long_name || '';
+        const langeNaam = items[0].Shift?.long_name || shiftKey;
 
         return (
-          <div key={shiftNaam} className="mb-4">
+          <div key={shiftKey} className="mb-3">
             <h2
-              className="text-lg font-semibold mb-1"
-              style={{
-                backgroundColor: kleur,
-                color: 'white',
-                padding: '4px 8px',
-                borderRadius: '6px',
-              }}
+              className="text-lg font-semibold mb-1"  
+              style={{ backgroundColor: kleur, color: 'white', padding: '4px 8px', borderRadius: '6px' }}
             >
               {langeNaam}
             </h2>
-            <ul className="space-y-1">
-              {items.map((i: any) => (
-                <li key={i.Roster.id} className="pl-2">
-                  <span className="font-semibold">
-                    {i.Roster.starttime.slice(0,5)}–{i.Roster.endtime.slice(0,5)}
-                  </span>{' '}
-                  <strong>{i.User?.name || 'Onbekend'}</strong>
-                </li>
-              ))}
+            <ul className="space-y-0.5">
+              {items.map((i: any) => {
+                // Zoek timesheet entry op gebruiker
+                const ts = timesheetData.data.find(
+                  (t: any) => t.user_id === i.Roster.user_id && t.date === selectedDate
+                );
+                const klokIn = ts?.clock_in?.slice(0,5) || '-';
+                const klokUit = ts?.clock_out?.slice(0,5) || '-';
+
+                return (
+                  <li key={i.Roster.id} className="pl-2 flex justify-between">
+                    <span>
+                      <span className="font-semibold">
+                        {i.Roster.starttime.slice(0,5)}–{i.Roster.endtime.slice(0,5)}
+                      </span>{' '}
+                      <strong>{i.User?.name || 'Onbekend'}</strong>
+                    </span>
+                    <span className="text-sm">
+                      In: {klokIn} Uit: {klokUit}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         );
