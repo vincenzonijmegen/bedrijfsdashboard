@@ -1,3 +1,5 @@
+// src/app/api/shiftbase/timesheets/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -8,6 +10,9 @@ export async function GET(req: NextRequest) {
   req.nextUrl.searchParams.forEach((value, key) => {
     url.searchParams.set(key, value);
   });
+
+  // Bepaal of goedgekeurde tijdstempels moeten worden meegegeven
+  const includeApproved = req.nextUrl.searchParams.get('includeApproved') === 'true';
 
   try {
     const res = await fetch(url.toString(), {
@@ -25,6 +30,12 @@ export async function GET(req: NextRequest) {
     }
 
     const data = await res.json();
+    
+    // Standaard alleen pending tonen, tenzij includeApproved=true
+    if (!includeApproved) {
+      data.data = data.data.filter((t: any) => t.Timesheet.status === 'Pending');
+    }
+
     return NextResponse.json(data);
   } catch (err) {
     return NextResponse.json({ error: "Interne fout", details: String(err) }, { status: 500 });
