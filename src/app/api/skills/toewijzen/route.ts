@@ -13,6 +13,14 @@ async function sendSkillUpdateMail(email: string, naam: string, aantal: number) 
     <p>Er ${aantal === 1 ? 'is' : 'zijn'} ${aantal} skill${aantal > 1 ? 's' : ''} aan jou toegewezen.</p>
     <p>Bekijk je skilllijst via het werkinstructieportaal:</p>
     <p><a href="https://werkinstructies-app.vercel.app/skills">Ga naar je dashboard</a></p>
+
+
+    <p>Ga naar je dashboard</p>
+
+    <p>Je hebt een of meer nieuwe skills toegewezen gekregen die je moet aanleren.</p>
+    <p>Bekijk je taken in het systeem en zorg dat je deze leert voor de bijbehorende deadline.</p>
+    <p>Als je een skill geleerd hebt, vink deze dan aan zodat dit zichtbaar is voor de leidinggevende.</p>
+
     <p>Met vriendelijke groet,<br/>IJssalon Vincenzo</p>
   `;
 

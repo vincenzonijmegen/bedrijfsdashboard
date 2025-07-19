@@ -56,18 +56,7 @@ export default function SkillToewijzen() {
     const medewerker = medewerkersAPI?.find((m) => m.id === geselecteerd);
     const body = {
       sendEmail: mailen,
-      emailTekst: `Hallo ${medewerker?.naam || "medewerker"},
-
-Er zijn ${Object.values(toewijzingen).filter(s => s.actief).length} skills aan jou toegewezen.
-Bekijk je skilllijst via het werkinstructieportaal:
-Ga naar je dashboard
-
-Je hebt een of meer nieuwe skills toegewezen gekregen die je moet aanleren.
-Bekijk je taken in het systeem en zorg dat je deze leert voor de bijbehorende deadline.
-Als je een skill geleerd hebt, vink deze dan aan zodat dit zichtbaar is voor de leidinggevende.
-
-Met vriendelijke groet,
-IJssalon Vincenzo`,
+      // emailTekst is verplaatst naar de backend, mag hier weg
       items: Object.entries(toewijzingen)
         .filter(([, val]) => val.actief)
         .map(([skill_id, val]) => ({ medewerker_id: geselecteerd, skill_id, deadline_dagen: val.deadline || 10 }))
