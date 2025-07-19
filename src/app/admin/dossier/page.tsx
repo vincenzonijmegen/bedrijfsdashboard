@@ -94,11 +94,11 @@ export default function DossierOverzicht() {
   };
 
   const voegZiekteverzuimToe = async () => {
-    if (!van || !tot || !geselecteerde) return;
+    if (!van || !geselecteerde) return;
     await fetch(`/api/medewerkers/${geselecteerde.email}/verzuim`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ van, tot, opmerking: opmerkingZiekte })
+      body: JSON.stringify({ van, tot: tot?.length > 0 ? tot : null, opmerking: opmerkingZiekte })
     });
     setVan("");
     setTot("");
