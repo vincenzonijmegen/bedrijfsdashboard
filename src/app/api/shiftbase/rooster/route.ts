@@ -4,16 +4,8 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    // Haal datum op uit query of standaard vandaag
-    const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0];
-    console.log(`Gevraagde datum in API: ${dateParam}`);
-
-    // Ophalen van alle rosters
-    // Haal rosters op voor hele maand via period
-  const period = dateParam.slice(0,7); // YYYY-MM
-  const url = `https://api.shiftbase.com/api/rosters?period=${period}`;
-    console.log(`Shiftbase API URL: ${url}`);
+    const url = 'https://api.shiftbase.com/api/rosters';
+    console.log(`Proxy Shiftbase rosters API: ${url}`);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -31,20 +23,8 @@ export async function GET(request: Request) {
     }
 
     const result = await response.json();
-    const allRosters = result.data || [];
-    // Log unieke datums voor debugging
-    const uniekeDatums = Array.from(new Set(allRosters.map((item: any) => item.Roster.date)));
-    console.log(`Beschikbare rooster-datums in response: ${uniekeDatums.join(', ')}`);
-    console.log(`Aantal diensten ontvangen: ${allRosters.length}`);
-
-    // Filter lokaal op gekozen datum
-    const filtered = allRosters.filter((item: any) => item.Roster.date === dateParam);
-    console.log(`Aantal gefilterde diensten voor ${dateParam}: ${filtered.length}`);
-
-    // Sorteer op starttijd
-    filtered.sort((a: any, b: any) => a.Roster.starttime.localeCompare(b.Roster.starttime));
-
-    return NextResponse.json({ data: filtered });
+    // Direct doorsturen van alle rosters
+    return NextResponse.json({ data: result.data });
   } catch (err) {
     console.error('Technische fout bij rooster-oproep:', err);
     return NextResponse.json({ error: 'Technische fout bij rooster-oproep' }, { status: 500 });
