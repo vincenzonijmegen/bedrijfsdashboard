@@ -198,55 +198,77 @@ export default function DossierOverzicht() {
                 {verzuim.map((v) => (
 <li key={v.id} className="bg-violet-50 border border-violet-200 p-3 rounded-xl shadow-sm relative">
   {editId === v.id ? (
-  <>
-    <textarea
-      value={editTekst}
-      onChange={(e) => setEditTekst(e.target.value)}
-      className="w-full border rounded p-1"
-    />
-    <button
-      onClick={() => {
-        fetch(`/api/medewerkers/verzuim/${v.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ van: v.van, tot: v.tot, opmerking: editTekst })
-        }).then(() => {
-          setEditId(null);
-          setEditTekst("");
-          mutateVerzuim();
-        });
-      }}
-      className="text-green-600 mt-1"
-    >
-      💾 Opslaan
-    </button>
-  </>
-) : (
-  <p className="text-sm">
-    <strong>{formatDate(v.van)}</strong>
-    {v.van !== v.tot && (<><span> t/m </span><strong>{formatDate(v.tot)}</strong></>)}
-    <span> – {v.opmerking}</span>
-  </p>
-)}
+    <>
+      <div className="flex gap-2 mb-2">
+        <input
+          type="date"
+          value={v.van}
+          onChange={(e) => (v.van = e.target.value)}
+          className="border rounded px-2 py-1"
+        />
+        <input
+          type="date"
+          value={v.tot || ""}
+          onChange={(e) => (v.tot = e.target.value)}
+          className="border rounded px-2 py-1"
+        />
+      </div>
+      <textarea
+        value={editTekst}
+        onChange={(e) => setEditTekst(e.target.value)}
+        className="w-full border rounded p-1"
+      />
+      <button
+        onClick={() => {
+          fetch(`/api/medewerkers/verzuim/${v.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              van: v.van,
+              tot: v.tot || null,
+              opmerking: editTekst
+            })
+          }).then(() => {
+            setEditId(null);
+            setEditTekst("");
+            mutateVerzuim();
+          });
+        }}
+        className="text-green-600 mt-1"
+      >
+        💾 Opslaan
+      </button>
+    </>
+  ) : (
+    <p className="text-sm">
+      <strong>{formatDate(v.van)}</strong>
+      {v.tot && v.van !== v.tot && (
+        <>
+          <span> t/m </span>
+          <strong>{formatDate(v.tot)}</strong>
+        </>
+      )}
+      <span> – {v.opmerking}</span>
+    </p>
+  )}
 
   <div className="absolute right-2 top-2 flex gap-2 text-sm">
-  <button
-    onClick={() => {
-      setEditId(v.id);
-      setEditTekst(v.opmerking);
-    }}
-    className="text-blue-600"
-  >
-    ✏️
-  </button>
-  <button
-    onClick={() => verwijderZiekteverzuim(v.id)}
-    className="text-red-500"
-  >
-    🗑️
-  </button>
-</div>
-
+    <button
+      onClick={() => {
+        setEditId(v.id);
+        setEditTekst(v.opmerking);
+      }}
+      className="text-blue-600"
+    >
+      ✏️
+    </button>
+    <button
+      onClick={() => verwijderZiekteverzuim(v.id)}
+      className="text-red-500"
+    >
+      🗑️
+    </button>
+  </div>
 </li>
 
                 ))}
