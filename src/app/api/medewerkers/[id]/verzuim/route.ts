@@ -3,9 +3,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 // Fetch all ziekteverzuim entries for a specific medewerker_id
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const medewerkerId = params.id;
+  const result = await db.query(
+    'SELECT * FROM ziekteverzuim WHERE medewerker_id = $1 ORDER BY van DESC',
+    [medewerkerId]
+  );
+  return NextResponse.json(result.rows);
+}
+
 ) {
   const medewerkerId = params.id;
   const result = await db.query(
