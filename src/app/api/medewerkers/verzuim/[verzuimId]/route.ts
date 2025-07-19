@@ -2,23 +2,17 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-// Delete a specific ziekteverzuim entry by its ID
 export async function DELETE(request: Request, context: { params: { verzuimId: string } }) {
-  const { verzuimId } = context.params;
+  const verzuimId = context.params.verzuimId;
   await db.query('DELETE FROM ziekteverzuim WHERE id = $1', [verzuimId]);
   return NextResponse.json({ success: true });
 }
 
-// Update a specific ziekteverzuim entry by its ID
-export async function PATCH(request, context) {
-  const { verzuimId } = context.params;
+export async function PATCH(request: Request, context: { params: { verzuimId: string } }) {
+  const verzuimId = context.params.verzuimId;
   const { van, tot, opmerking } = await request.json();
   await db.query(
-    `UPDATE ziekteverzuim
-       SET van = $1,
-           tot = $2,
-           opmerking = $3
-     WHERE id = $4`,
+    'UPDATE ziekteverzuim SET van = $1, tot = $2, opmerking = $3 WHERE id = $4',
     [van, tot, opmerking, verzuimId]
   );
   return NextResponse.json({ success: true });
