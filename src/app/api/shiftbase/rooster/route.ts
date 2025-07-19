@@ -3,16 +3,16 @@
 import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  // Haal datum op uit query of standaard vandaag
-  const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0];
-  console.log(`Gevraagde datum in API: ${dateParam}`);
-
-  // Gebruik from/to parameters om specifiek die dag op te halen
-  const url = `https://api.shiftbase.com/api/rosters?from=${dateParam}&to=${dateParam}`;
-  console.log(`Shiftbase API URL: ${url}`);
-
   try {
+    const { searchParams } = new URL(request.url);
+    // Haal datum op uit query of standaard vandaag
+    const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0];
+    console.log(`Gevraagde datum in API: ${dateParam}`);
+
+    // Ophalen van alle rosters
+    const url = 'https://api.shiftbase.com/api/rosters';
+    console.log(`Shiftbase API URL: ${url}`);
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -29,13 +29,17 @@ export async function GET(request: Request) {
     }
 
     const result = await response.json();
-    const rosters = result.data || [];
-    console.log(`Aantal diensten ontvangen voor ${dateParam}: ${rosters.length}`);
+    const allRosters = result.data || [];
+    console.log(`Aantal diensten ontvangen: ${allRosters.length}`);
+
+    // Filter lokaal op gekozen datum
+    const filtered = allRosters.filter((item: any) => item.Roster.date === dateParam);
+    console.log(`Aantal gefilterde diensten voor ${dateParam}: ${filtered.length}`);
 
     // Sorteer op starttijd
-    rosters.sort((a: any, b: any) => a.Roster.starttime.localeCompare(b.Roster.starttime));
+    filtered.sort((a: any, b: any) => a.Roster.starttime.localeCompare(b.Roster.starttime));
 
-    return NextResponse.json({ data: rosters });
+    return NextResponse.json({ data: filtered });
   } catch (err) {
     console.error('Technische fout bij rooster-oproep:', err);
     return NextResponse.json({ error: 'Technische fout bij rooster-oproep' }, { status: 500 });
