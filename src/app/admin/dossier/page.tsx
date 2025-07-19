@@ -224,8 +224,9 @@ fetch(`/api/medewerkers/verzuim/${v.id}`, {
   method: "PATCH",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
-    van: v.van,
-    tot: v.tot?.length > 0 ? v.tot : null,
+  van: editVan,
+  tot: editTot?.length > 0 ? editTot : null,
+
     opmerking: editTekst
   })
           }).then(() => {
