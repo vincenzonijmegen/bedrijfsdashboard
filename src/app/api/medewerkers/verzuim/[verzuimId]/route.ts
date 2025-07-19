@@ -1,3 +1,5 @@
+// ✅ Correct getypte versie voor PATCH en DELETE
+
 // src/app/api/medewerkers/verzuim/[verzuimId]/route.ts
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
