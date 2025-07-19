@@ -167,45 +167,7 @@ export default function DossierOverzicht() {
             </button>
             {success && <p className="text-green-600 mt-2">Upload voltooid</p>}
           </div>
-
-          {/* Ziekteverzuim invoer */}
-          <div className="my-6">
-            <h2 className="font-semibold mb-2">Ziekteverzuim</h2>
-            <div className="flex gap-2 items-center mb-2">
-              <input type="date" value={van} onChange={e => setVan(e.target.value)} className="border rounded px-2 py-1" />
-              <span>t/m</span>
-              <input type="date" value={tot} onChange={e => setTot(e.target.value)} className="border rounded px-2 py-1" />
-              <input type="text" value={opmerkingZiekte} onChange={e => setOpmerkingZiekte(e.target.value)} placeholder="Toelichting" className="border rounded px-2 py-1 flex-1" />
-              <button onClick={voegZiekteverzuimToe} className="bg-blue-600 text-white px-3 py-1 rounded">➕ Toevoegen</button>
-            </div>
-            {Array.isArray(verzuim) && verzuim.length > 0 && (
-              <ul className="mt-2 space-y-2">
-                {verzuim.map((v) => (
-<li key={v.id} className="bg-violet-50 border border-violet-200 p-3 rounded-xl shadow-sm relative">
-  <p className="text-sm">
-    <strong>{formatDate(v.van)}</strong>
-    {v.van !== v.tot && (
-      <>
-        <span> t/m </span>
-        <strong>{formatDate(v.tot)}</strong>
-      </>
-    )}
-    <span> – {v.opmerking}</span>
-  </p>
-  <button
-    onClick={() => verwijderZiekteverzuim(v.id)}
-    className="absolute right-2 top-2 text-red-500 text-sm"
-  >
-    🗑️
-  </button>
-</li>
-
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* Documenten */}
+{/* Documenten */}
           {documenten?.length > 0 && (
             <div className="mt-6">
               <h2 className="font-semibold mb-2">Documenten</h2>
@@ -221,6 +183,66 @@ export default function DossierOverzicht() {
               ))}
             </div>
           )}
+          {/* Ziekteverzuim invoer */}
+          <div className="my-6">
+            <h2 className="font-semibold mb-2">Ziekteverzuim</h2>
+            <div className="flex gap-2 items-center mb-2">
+              <input type="date" value={van} onChange={e => setVan(e.target.value)} className="border rounded px-2 py-1" />
+              <span>t/m</span>
+              <input type="date" value={tot} onChange={e => setTot(e.target.value)} className="border rounded px-2 py-1" />
+              <input type="text" value={opmerkingZiekte} onChange={e => setOpmerkingZiekte(e.target.value)} placeholder="Toelichting" className="border rounded px-2 py-1 flex-1" />
+              <button onClick={voegZiekteverzuimToe} className="bg-blue-600 text-white px-3 py-1 rounded">➕ Toevoegen</button>
+            </div>
+            {Array.isArray(verzuim) && verzuim.length > 0 && (
+              <ul className="mt-2 space-y-2">
+                {verzuim.map((v) => (
+<li key={v.id} className="bg-violet-50 border border-violet-200 p-3 rounded-xl shadow-sm relative">
+  {editId === v.id ? (
+  <>
+    <textarea
+      value={editTekst}
+      onChange={(e) => setEditTekst(e.target.value)}
+      className="w-full border rounded p-1"
+    />
+    <button
+      onClick={() => {
+        fetch(`/api/medewerkers/verzuim/${v.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ van: v.van, tot: v.tot, opmerking: editTekst })
+        }).then(() => {
+          setEditId(null);
+          setEditTekst("");
+          mutateVerzuim();
+        });
+      }}
+      className="text-green-600 mt-1"
+    >
+      💾 Opslaan
+    </button>
+  </>
+) : (
+  <p className="text-sm">
+    <strong>{formatDate(v.van)}</strong>
+    {v.van !== v.tot && (<><span> t/m </span><strong>{formatDate(v.tot)}</strong></>)}
+    <span> – {v.opmerking}</span>
+  </p>
+)}
+
+  <button
+    onClick={() => verwijderZiekteverzuim(v.id)}
+    className="absolute right-2 top-2 text-red-500 text-sm"
+  >
+    🗑️
+  </button>
+</li>
+
+                ))}
+              </ul>
+            )}
+          </div>
+
+          
 
           {/* Opmerkingen */}
           {opmerkingen?.length > 0 && (
@@ -229,13 +251,7 @@ export default function DossierOverzicht() {
               <div className="space-y-3">
                 {opmerkingen.map((o: { id: number; tekst: string; datum: string }, i: number) => (
                   <div key={o.id} className="bg-gray-100 border border-gray-300 p-3 rounded shadow-sm relative">
-  <div className="text-sm text-gray-600 mb-1">
-    {new Date(o.datum).toLocaleDateString("nl-NL", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "2-digit"
-    })}
-  </div>
+  
 
   {editId === o.id ? (
     <>
