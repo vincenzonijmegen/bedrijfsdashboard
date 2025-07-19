@@ -15,10 +15,6 @@ const formatDate = (dateStr: string) => {
   }
 };
 
-const [editVan, setEditVan] = useState("");
-const [editTot, setEditTot] = useState("");
-
-
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 interface Medewerker {
@@ -34,6 +30,8 @@ interface Ziekteverzuim {
 }
 
 export default function DossierOverzicht() {
+  const [editVan, setEditVan] = useState("");
+  const [editTot, setEditTot] = useState("");
   const [email, setEmail] = useState("");
   const [tekst, setTekst] = useState("");
   const [file, setFile] = useState<File | null>(null);
