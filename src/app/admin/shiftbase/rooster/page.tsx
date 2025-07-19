@@ -12,7 +12,7 @@ export default function DagroosterVandaag() {
   if (error) return <p>Fout bij laden van rooster.</p>;
   if (!data) return <p>Rooster wordt geladen...</p>;
 
-  // Groepeer op shiftnaam
+  // Groepeer op korte shiftnaam
   const perShift = data.data.reduce((acc: any, item: any) => {
     const shift = item.Roster.name || "Onbekende shift";
     if (!acc[shift]) acc[shift] = [];
@@ -35,10 +35,9 @@ export default function DagroosterVandaag() {
     <div className="p-4">
       <h1 className="text-xl font-bold mb-4">Dagrooster vandaag</h1>
       {gesorteerdeEntries.map(([shiftNaam, items]) => {
-        // Bepaal begin- en eindtijd voor weergave
-        const startTijden = items.map((i) => i.Roster.starttime).sort();
-        const eindTijden = items.map((i) => i.Roster.endtime).sort();
         const kleur = items[0].Roster.color || '#333';
+        // gebruik lange naam uit Shift.long_name
+        const langeNaam = items[0].Shift?.long_name || '';
 
         return (
           <div key={shiftNaam} className="mb-6">
@@ -51,12 +50,12 @@ export default function DagroosterVandaag() {
                 borderRadius: '6px'
               }}
             >
-              {shiftNaam} ({startTijden[0]}–{eindTijden[eindTijden.length - 1]})
+              {shiftNaam} {langeNaam && `- ${langeNaam}`}
             </h2>
             <ul className="space-y-1">
               {items.map((i: any) => (
                 <li key={i.Roster.id} className="pl-2">
-                  {i.User?.name || 'Onbekend'}
+                  {i.Roster.starttime.slice(0,5)}–{i.Roster.endtime.slice(0,5)} {i.User?.name || 'Onbekend'}
                 </li>
               ))}
             </ul>
