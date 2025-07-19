@@ -12,7 +12,7 @@ export default function DagroosterVandaag() {
   if (error) return <p>Fout bij laden van rooster.</p>;
   if (!data) return <p>Rooster wordt geladen...</p>;
 
-  // Groepeer op shiftnaam (bijv. "S1", "S2K", etc.)
+  // Groepeer op shiftnaam
   const perShift = data.data.reduce((acc: any, item: any) => {
     const shift = item.Roster.name || "Onbekende shift";
     if (!acc[shift]) acc[shift] = [];
@@ -20,13 +20,24 @@ export default function DagroosterVandaag() {
     return acc;
   }, {});
 
+  const gewensteVolgorde = [
+    "S1K", "S1KV", "S1", "S1Z", "S1L", "S1S",
+    "S2K", "S2", "S2L", "S2S",
+    "SPS", "SLW1", "SLW2"
+  ];
+
+  // Sorteer en filter op gewenste volgorde
+  const gesorteerdeEntries = gewensteVolgorde
+    .filter((naam) => perShift[naam])
+    .map((naam) => [naam, perShift[naam]] as [string, any[]]);
+
   return (
     <div className="p-4">
       <h1 className="text-xl font-bold mb-4">Dagrooster vandaag</h1>
-      {Object.entries(perShift).map(([shiftNaam, group]: [string, unknown]) => {
-        const items = group as any[];
-        const startTijden = items.map(i => i.Roster.starttime).sort();
-        const eindTijden = items.map(i => i.Roster.endtime).sort();
+      {gesorteerdeEntries.map(([shiftNaam, items]) => {
+        // Bepaal begin- en eindtijd voor weergave
+        const startTijden = items.map((i) => i.Roster.starttime).sort();
+        const eindTijden = items.map((i) => i.Roster.endtime).sort();
         const kleur = items[0].Roster.color || '#333';
 
         return (
@@ -44,7 +55,9 @@ export default function DagroosterVandaag() {
             </h2>
             <ul className="space-y-1">
               {items.map((i: any) => (
-                <li key={i.Roster.id} className="pl-2">{i.User?.name || 'Onbekend'}</li>
+                <li key={i.Roster.id} className="pl-2">
+                  {i.User?.name || 'Onbekend'}
+                </li>
               ))}
             </ul>
           </div>
