@@ -4,14 +4,11 @@
 //   context: NextRequestContext
 // OF je importeert expliciet het type zoals hieronder:
 
+// src/app/api/medewerkers/[id]/verzuim/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-interface ContextParams {
-  params: { id: string };
-}
-
-export async function GET(request: NextRequest, context: ContextParams) {
+export async function GET(request: NextRequest, context: { params: { id: string } }) {
   const medewerkerId = context.params.id;
   const result = await db.query(
     'SELECT * FROM ziekteverzuim WHERE medewerker_id = $1 ORDER BY van DESC',
@@ -20,7 +17,7 @@ export async function GET(request: NextRequest, context: ContextParams) {
   return NextResponse.json(result.rows);
 }
 
-export async function POST(request: NextRequest, context: ContextParams) {
+export async function POST(request: NextRequest, context: { params: { id: string } }) {
   const medewerkerId = context.params.id;
   const { van, tot, opmerking } = await request.json();
   await db.query(
@@ -29,3 +26,4 @@ export async function POST(request: NextRequest, context: ContextParams) {
   );
   return NextResponse.json({ success: true });
 }
+
