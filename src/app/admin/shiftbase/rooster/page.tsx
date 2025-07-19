@@ -77,15 +77,9 @@ export default function Dagrooster() {
           <p className="font-bold">{formatDutchDate(selectedDate)}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={prevDay} className="px-2 py-1 bg-gray-200 rounded">
-            ←
-          </button>
-          <button onClick={goToday} className="px-2 py-1 bg-gray-200 rounded">
-            Vandaag
-          </button>
-          <button onClick={nextDay} className="px-2 py-1 bg-gray-200 rounded">
-            →
-          </button>
+          <button onClick={prevDay} className="px-2 py-1 bg-gray-200 rounded">←</button>
+          <button onClick={goToday} className="px-2 py-1 bg-gray-200 rounded">Vandaag</button>
+          <button onClick={nextDay} className="px-2 py-1 bg-gray-200 rounded">→</button>
         </div>
       </div>
 
@@ -104,14 +98,16 @@ export default function Dagrooster() {
             </h2>
             <ul className="space-y-0.5">
               {items.map((i: any) => {
-                // Zoek timesheet entry op gebruiker (Timesheet object uit API)
-                const tsEntry = timesheetData.data.find(
+                // Zoek timesheet entry op gebruiker
+                const tsWrapper = timesheetData.data.find(
                   (t: any) =>
-                    t.user_id === i.Roster.user_id &&
-                    t.date === selectedDate
+                    t.Timesheet.user_id === i.Roster.user_id &&
+                    t.Timesheet.date === selectedDate
                 );
-                const klokIn = tsEntry?.clock_in?.slice(0,5) || '-';
-                const klokUit = tsEntry?.clock_out?.slice(0,5) || '-';
+                const ts = tsWrapper?.Timesheet;
+                // Haal clocked_in en clocked_out tijden
+                const klokIn = ts?.clocked_in?.split(' ')[1].slice(0,5) || '-';
+                const klokUit = ts?.clocked_out?.split(' ')[1].slice(0,5) || '-';
 
                 return (
                   <li key={i.Roster.id} className="pl-2 flex justify-between">
