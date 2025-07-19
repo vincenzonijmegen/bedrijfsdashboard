@@ -8,8 +8,8 @@ export async function GET() {
     const result = await db.query(
       `SELECT z.id, z.van, z.tot, z.opmerking, m.naam as medewerker_naam
        FROM ziekteverzuim z
-       JOIN medewerkers m ON z.medewerker_id = m.id
-       ORDER BY z.van DESC`
+       JOIN medewerkers m ON z.medewerker_id = m.id AND m.naam IS NOT NULL
+       ORDER BY m.naam ASC, z.van DESC`
     );
     return NextResponse.json(result.rows);
   } catch (error) {
