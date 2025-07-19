@@ -8,8 +8,8 @@ export async function GET(request: Request) {
   const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0];
   console.log(`Gevraagde datum in API: ${dateParam}`);
 
-  // Shiftbase API ondersteunt date-range via from/to
-  const url = `https://api.shiftbase.com/api/rosters?from=${dateParam}&to=${dateParam}`;
+  // Fetch alle rosters, filter lokaal op datumParam
+  const url = 'https://api.shiftbase.com/api/rosters';
   console.log(`Shiftbase API URL: ${url}`);
 
   try {
@@ -28,11 +28,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Fout bij ophalen van rooster' }, { status: 500 });
     }
 
-    const data = await response.json();
-    console.log(`Aantal diensten ontvangen: ${data.data.length}`);
+    const result = await response.json();
+    const allRosters = result.data || [];
+    console.log(`Aantal diensten ontvangen: ${allRosters.length}`);
 
-    // Lokaal filteren op gekozen datum
-    const filtered = data.data.filter((item: any) => item.Roster.date === dateParam);
+    // Filter op gekozen datum
+    const filtered = allRosters.filter((item: any) => item.Roster.date === dateParam);
     console.log(`Aantal gefilterde diensten voor ${dateParam}: ${filtered.length}`);
 
     // Sorteer op starttijd
