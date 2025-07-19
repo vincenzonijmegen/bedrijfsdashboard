@@ -25,7 +25,16 @@ interface VerzuimItem {
 }
 
 export default function ZiekteverzuimRapportage() {
-  const { data: verzuim } = useSWR<VerzuimItem[]>('/api/admin/rapportage/ziekteverzuim', fetcher);
+  const { data: verzuim } = useSWR<VerzuimItem[]>(
+    "/api/admin/rapportage/ziekteverzuim",
+    fetcher
+  );
+
+  const gegroepeerd: { [naam: string]: VerzuimItem[] } = {};
+  verzuim?.forEach((v) => {
+    if (!gegroepeerd[v.medewerker_naam]) gegroepeerd[v.medewerker_naam] = [];
+    gegroepeerd[v.medewerker_naam].push(v);
+  });
 
   return (
     <div className="p-4">
@@ -36,28 +45,33 @@ export default function ZiekteverzuimRapportage() {
       ) : verzuim.length === 0 ? (
         <p>Geen meldingen gevonden.</p>
       ) : (
-        <table className="w-full border border-gray-300">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="text-left p-2">Medewerker</th>
-              <th className="text-left p-2">Van</th>
-              <th className="text-left p-2">Tot</th>
-              <th className="text-left p-2">Status</th>
-              <th className="text-left p-2">Opmerking</th>
-            </tr>
-          </thead>
-          <tbody>
-            {verzuim.map((v) => (
-              <tr key={v.id} className="border-t">
-                <td className="p-2">{v.medewerker_naam}</td>
-                <td className="p-2">{formatDate(v.van)}</td>
-                <td className="p-2">{v.tot ? formatDate(v.tot) : '-'}</td>
-                <td className="p-2">{!v.tot ? '🟥 Nog ziekgemeld' : '✅ Afgerond'}</td>
-                <td className="p-2">{v.opmerking}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        Object.entries(gegroepeerd).map(([naam, meldingen]) => (
+          <div key={naam} className="mb-6">
+            <h2 className="text-lg font-semibold mb-2">{naam}</h2>
+            <table className="w-full border border-gray-300">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="text-left p-2">Van</th>
+                  <th className="text-left p-2">Tot</th>
+                  <th className="text-left p-2">Status</th>
+                  <th className="text-left p-2">Opmerking</th>
+                </tr>
+              </thead>
+              <tbody>
+                {meldingen.map((v) => (
+                  <tr key={v.id} className="border-t">
+                    <td className="p-2">{formatDate(v.van)}</td>
+                    <td className="p-2">{v.tot ? formatDate(v.tot) : "-"}</td>
+                    <td className="p-2">
+                      {!v.tot ? "🟥 Nog ziekgemeld" : "✅ Afgerond"}
+                    </td>
+                    <td className="p-2">{v.opmerking}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))
       )}
     </div>
   );
