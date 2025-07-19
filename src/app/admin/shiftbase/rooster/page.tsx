@@ -104,14 +104,14 @@ export default function Dagrooster() {
             </h2>
             <ul className="space-y-0.5">
               {items.map((i: any) => {
-                // Zoek timesheet entry op gebruiker (Timesheet nested object)
+                // Zoek timesheet entry op gebruiker (Timesheet object uit API)
                 const tsEntry = timesheetData.data.find(
                   (t: any) =>
-                    t.Timesheet.user_id === i.Roster.user_id &&
-                    t.Timesheet.date === selectedDate
+                    t.user_id === i.Roster.user_id &&
+                    t.date === selectedDate
                 );
-                const klokIn = tsEntry?.Timesheet.clock_in?.slice(0,5) || '-';
-                const klokUit = tsEntry?.Timesheet.clock_out?.slice(0,5) || '-';
+                const klokIn = tsEntry?.clock_in?.slice(0,5) || '-';
+                const klokUit = tsEntry?.clock_out?.slice(0,5) || '-';
 
                 return (
                   <li key={i.Roster.id} className="pl-2 flex justify-between">
