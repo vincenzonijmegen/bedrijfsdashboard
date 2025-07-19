@@ -246,7 +246,7 @@ fetch(`/api/medewerkers/verzuim/${v.id}`, {
           <strong>{formatDate(v.tot)}</strong>
         </>
       )}
-      <span> – {v.opmerking}</span>
+      {!v.tot && <span className='ml-2 inline-block text-xs text-red-600 font-semibold bg-red-100 px-2 py-0.5 rounded'>nog ziekgemeld</span>}<span> – {v.opmerking}</span>
     </p>
   )}
 
