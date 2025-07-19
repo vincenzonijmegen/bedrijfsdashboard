@@ -20,8 +20,8 @@ export async function POST(request: any, context: any) {
     const email = context.params.id;
     const { van, tot, opmerking } = await request.json();
 
-    if (!van || !tot) {
-      return NextResponse.json({ error: 'Ongeldige invoer: ontbrekende datum' }, { status: 400 });
+    if (!van) {
+      return NextResponse.json({ error: 'Ongeldige invoer: ontbrekende startdatum' }, { status: 400 });
     }
 
     const result = await db.query('SELECT id FROM medewerkers WHERE email = $1', [email]);
@@ -32,7 +32,7 @@ export async function POST(request: any, context: any) {
 
     await db.query(
       'INSERT INTO ziekteverzuim (medewerker_id, van, tot, opmerking) VALUES ($1, $2, $3, $4)',
-      [medewerkerId, van, tot, opmerking || '']
+      [medewerkerId, van, tot || null, opmerking || '']
     );
 
     return NextResponse.json({ success: true });
