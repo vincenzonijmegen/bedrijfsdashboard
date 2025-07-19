@@ -23,7 +23,8 @@ export default function DagroosterVandaag() {
   return (
     <div className="p-4">
       <h1 className="text-xl font-bold mb-4">Dagrooster vandaag</h1>
-      {Object.entries(perShift).map(([shiftNaam, items]) => (
+      {Object.entries(perShift).map(([shiftNaam, group]: [string, unknown]) => {
+        const items = group as any[];
         <div key={shiftNaam} className="mb-6">
           {(() => {
             const startTijden = items.map(i => i.Roster.starttime).sort();
