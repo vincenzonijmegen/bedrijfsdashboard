@@ -25,7 +25,7 @@ interface VerzuimItem {
 }
 
 export default function ZiekteverzuimRapportage() {
-  const { data: verzuim } = useSWR<VerzuimItem[]>('/api/admin/rapportages/ziekteverzuim', fetcher);
+  const { data: verzuim } = useSWR<VerzuimItem[]>('/api/admin/rapportage/ziekteverzuim', fetcher);
 
   return (
     <div className="p-4">
