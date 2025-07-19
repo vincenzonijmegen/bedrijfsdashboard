@@ -8,10 +8,8 @@ export async function GET(request: Request) {
   const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0];
   console.log(`Gevraagde datum in API: ${dateParam}`);
 
-  // Shiftbase ondersteunt de ?date= niet betrouwbaar, dus haal alle rosters op
-  // Gebruik from/to parameters om specifiek die dag op te halen
-  // Haal alle rosters op; filter lokaal op datum
-  const url = 'https://api.shiftbase.com/api/rosters';
+  // Shiftbase API ondersteunt date-range via from/to
+  const url = `https://api.shiftbase.com/api/rosters?from=${dateParam}&to=${dateParam}`;
   console.log(`Shiftbase API URL: ${url}`);
 
   try {
