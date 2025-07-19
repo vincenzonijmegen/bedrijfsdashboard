@@ -1,42 +1,41 @@
-// src/app/api/shiftbase/timesheets/route.ts
+// src/app/api/shiftbase/rooster/route.ts
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 
-export async function GET(req: NextRequest) {
-  const apiKey = process.env.SHIFTBASE_API_KEY;
-  const url = new URL("https://api.shiftbase.com/api/timesheets");
-
-  // Voeg query parameters toe aan de externe URL (bijv. min_date, max_date)
-  req.nextUrl.searchParams.forEach((value, key) => {
-    url.searchParams.set(key, value);
-  });
-
-  // Bepaal of historische (goedgekeurde) kloktijden meegegeven moeten worden
-  const includeApproved = req.nextUrl.searchParams.get('includeApproved') === 'true';
-
+export async function GET(request: Request) {
   try {
-    const res = await fetch(url.toString(), {
-      headers: {
-        Authorization: `API ${apiKey}`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    });
+    const { searchParams } = new URL(request.url);
+    // Haal datum op uit query of standaard vandaag
+    const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0];
+    console.log(`Gevraagde datum in API: ${dateParam}`);
 
-    if (!res.ok) {
-      const msg = await res.text();
-      return NextResponse.json({ error: "Shiftbase fout", details: msg }, { status: res.status });
+    // Vraag Shiftbase API aan met from/to parameters om specifieke dag op te halen
+    // Gebruik min_date en max_date volgens Shiftbase-doku voor bereik
+    const url = `https://api.shiftbase.com/api/rosters?min_date=${dateParam}&max_date=${dateParam}`;
+    console.log(`Shiftbase API URL: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        Authorization: `API ${process.env.SHIFTBASE_API_KEY ?? ''}`,
+      },
+    });
+    console.log(`Shiftbase response status: ${response.status}`);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Shiftbase API fout:', errorText);
+      return NextResponse.json({ error: 'Fout bij ophalen van rooster' }, { status: 500 });
     }
 
-    const data = await res.json();
+    const result = await response.json();
+    const rosters = result.data || [];
+    console.log(`Aantal diensten ontvangen voor ${dateParam}: ${rosters.length}`);
 
-    // Filter op status: standaard alleen 'Pending'; met includeApproved=true ook 'Approved'
-    const allowedStatuses = includeApproved ? ['Pending', 'Approved'] : ['Pending'];
-    data.data = data.data.filter((t: any) => allowedStatuses.includes(t.Timesheet.status));
-
-    return NextResponse.json(data);
+    return NextResponse.json({ data: rosters });
   } catch (err) {
-    return NextResponse.json({ error: "Interne fout", details: String(err) }, { status: 500 });
+    console.error('Technische fout bij rooster-oproep:', err);
+    return NextResponse.json({ error: 'Technische fout bij rooster-oproep' }, { status: 500 });
   }
 }
