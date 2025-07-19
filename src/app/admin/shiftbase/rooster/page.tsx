@@ -50,12 +50,12 @@ export default function DagroosterVandaag() {
                 borderRadius: '6px'
               }}
             >
-              {shiftNaam} {langeNaam && `- ${langeNaam}`}
+              {langeNaam}
             </h2>
             <ul className="space-y-1">
               {items.map((i: any) => (
                 <li key={i.Roster.id} className="pl-2">
-                  {i.Roster.starttime.slice(0,5)}–{i.Roster.endtime.slice(0,5)} {i.User?.name || 'Onbekend'}
+                  {i.Roster.starttime.slice(0,5)}–{i.Roster.endtime.slice(0,5)} <strong>{i.User?.name || 'Onbekend'}</strong>
                 </li>
               ))}
             </ul>
