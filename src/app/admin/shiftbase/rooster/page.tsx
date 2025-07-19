@@ -13,6 +13,8 @@ export default function Dagrooster() {
   const formatISO = (date: Date) => date.toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(formatISO(today));
 
+  const formatDutchDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
   const { data, error } = useSWR(
     `/api/shiftbase/rooster?date=${selectedDate}`,
     fetcher
@@ -56,7 +58,7 @@ export default function Dagrooster() {
           <button onClick={nextDay} className="px-2 py-1 bg-gray-200 rounded">&rarr;</button>
         </div>
       </div>
-      <p className="mb-4">Datum: {selectedDate}</p>
+      <p className="mb-4">{formatDutchDate(selectedDate)}</p>
 
       {gesorteerdeEntries.map(([shiftNaam, items]) => {
         const kleur = items[0].Roster.color || '#333';
