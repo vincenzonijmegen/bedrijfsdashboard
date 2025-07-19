@@ -15,6 +15,8 @@ const formatDate = (dateStr: string) => {
   }
 };
 
+const [editVan, setEditVan] = useState("");
+const [editTot, setEditTot] = useState("");
 
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -257,6 +259,8 @@ fetch(`/api/medewerkers/verzuim/${v.id}`, {
       onClick={() => {
         setEditId(v.id);
         setEditTekst(v.opmerking);
+        setEditVan(v.van);
+        setEditTot(v.tot);
       }}
       className="text-blue-600"
     >
