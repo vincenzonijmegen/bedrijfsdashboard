@@ -229,45 +229,47 @@ export default function DossierOverzicht() {
               <div className="space-y-3">
                 {opmerkingen.map((o: { id: number; tekst: string; datum: string }, i: number) => (
                   <div key={o.id} className="bg-gray-100 border border-gray-300 p-3 rounded shadow-sm relative">
-                    <div className="text-sm text-gray-600 mb-1">
-                      {new Date(o.datum).toLocaleDateString("nl-NL", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "2-digit"
-                      })}
-                    </div>
+  <div className="text-sm text-gray-600 mb-1">
+    {new Date(o.datum).toLocaleDateString("nl-NL", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit"
+    })}
+  </div>
 
-                    {editId === o.id ? (
-                      <>
-                        <textarea
-                          value={editTekst}
-                          onChange={(e) => setEditTekst(e.target.value)}
-                          className="w-full border rounded p-1"
-                        />
-                        <button onClick={() => bewerkOpmerking(o.id)} className="text-green-600 mt-1">💾 Opslaan</button>
-                      </>
-                    ) : (
-                      <div>{o.tekst}</div>
-                    )}
+  {editId === o.id ? (
+    <>
+      <textarea
+        value={editTekst}
+        onChange={(e) => setEditTekst(e.target.value)}
+        className="w-full border rounded p-1"
+      />
+      <button onClick={() => bewerkOpmerking(o.id)} className="text-green-600 mt-1">💾 Opslaan</button>
+    </>
+  ) : (
+    <p className="text-sm">
+      <strong>{formatDate(o.datum)}</strong> – {o.tekst}
+    </p>
+  )}
 
-                    <div className="absolute top-2 right-2 flex gap-2 text-sm">
-                      <button
-                        onClick={() => {
-                          setEditId(o.id);
-                          setEditTekst(o.tekst);
-                        }}
-                        className="text-blue-600"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => verwijderOpmerking(o.id)}
-                        className="text-red-600"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
+  <div className="absolute top-2 right-2 flex gap-2 text-sm">
+    <button
+      onClick={() => {
+        setEditId(o.id);
+        setEditTekst(o.tekst);
+      }}
+      className="text-blue-600"
+    >
+      ✏️
+    </button>
+    <button
+      onClick={() => verwijderOpmerking(o.id)}
+      className="text-red-600"
+    >
+      🗑️
+    </button>
+  </div>
+</div>
                 ))}
               </div>
             </div>
