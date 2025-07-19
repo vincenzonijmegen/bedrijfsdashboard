@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   // Haal datum op uit query, standaard vandaag
   const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0];
 
-  const url = `https://api.shiftbase.com/api/rosters?date=${dateParam}`;
+  const url = 'https://api.shiftbase.com/api/rosters';
 
   try {
     const response = await fetch(url, {
