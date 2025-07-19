@@ -4,8 +4,14 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   try {
-    const url = 'https://api.shiftbase.com/api/rosters';
-    console.log(`Proxy Shiftbase rosters API: ${url}`);
+    const { searchParams } = new URL(request.url);
+    // Haal datum op uit query of standaard vandaag
+    const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0];
+    console.log(`Gevraagde datum in API: ${dateParam}`);
+
+    // Vraag Shiftbase API aan met from/to parameters om specifieke dag op te halen
+    const url = `https://api.shiftbase.com/api/rosters?from=${dateParam}&to=${dateParam}`;
+    console.log(`Shiftbase API URL: ${url}`);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -23,8 +29,10 @@ export async function GET(request: Request) {
     }
 
     const result = await response.json();
-    // Direct doorsturen van alle rosters
-    return NextResponse.json({ data: result.data });
+    const rosters = result.data || [];
+    console.log(`Aantal diensten ontvangen voor ${dateParam}: ${rosters.length}`);
+
+    return NextResponse.json({ data: rosters });
   } catch (err) {
     console.error('Technische fout bij rooster-oproep:', err);
     return NextResponse.json({ error: 'Technische fout bij rooster-oproep' }, { status: 500 });
