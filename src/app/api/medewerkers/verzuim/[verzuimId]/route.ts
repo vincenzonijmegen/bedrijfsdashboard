@@ -3,24 +3,15 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 // Delete a specific ziekteverzuim entry by its ID
-export async function DELETE(
-  request: Request,
-  { params }: { params: { verzuimId: string } }
-) {
-  const { verzuimId } = params;
-  await db.query(
-    'DELETE FROM ziekteverzuim WHERE id = $1',
-    [verzuimId]
-  );
+export async function DELETE(request, context) {
+  const { verzuimId } = context.params;
+  await db.query('DELETE FROM ziekteverzuim WHERE id = $1', [verzuimId]);
   return NextResponse.json({ success: true });
 }
 
 // Update a specific ziekteverzuim entry by its ID
-export async function PATCH(
-  request: Request,
-  { params }: { params: { verzuimId: string } }
-) {
-  const { verzuimId } = params;
+export async function PATCH(request, context) {
+  const { verzuimId } = context.params;
   const { van, tot, opmerking } = await request.json();
   await db.query(
     `UPDATE ziekteverzuim
