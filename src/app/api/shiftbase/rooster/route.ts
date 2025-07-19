@@ -10,7 +10,8 @@ export async function GET(request: Request) {
     console.log(`Gevraagde datum in API: ${dateParam}`);
 
     // Vraag Shiftbase API aan met from/to parameters om specifieke dag op te halen
-    const url = `https://api.shiftbase.com/api/rosters?from=${dateParam}&to=${dateParam}`;
+    // Gebruik min_date en max_date volgens Shiftbase-doku voor bereik
+    const url = `https://api.shiftbase.com/api/rosters?min_date=${dateParam}&max_date=${dateParam}`;
     console.log(`Shiftbase API URL: ${url}`);
 
     const response = await fetch(url, {
