@@ -8,8 +8,8 @@ export async function GET(request: Request) {
   const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0];
   console.log(`Gevraagde datum in API: ${dateParam}`);
 
-  // Fetch alle rosters, filter lokaal op datumParam
-  const url = 'https://api.shiftbase.com/api/rosters';
+  // Gebruik from/to parameters om specifiek die dag op te halen
+  const url = `https://api.shiftbase.com/api/rosters?from=${dateParam}&to=${dateParam}`;
   console.log(`Shiftbase API URL: ${url}`);
 
   try {
@@ -29,17 +29,13 @@ export async function GET(request: Request) {
     }
 
     const result = await response.json();
-    const allRosters = result.data || [];
-    console.log(`Aantal diensten ontvangen: ${allRosters.length}`);
-
-    // Filter op gekozen datum
-    const filtered = allRosters.filter((item: any) => item.Roster.date === dateParam);
-    console.log(`Aantal gefilterde diensten voor ${dateParam}: ${filtered.length}`);
+    const rosters = result.data || [];
+    console.log(`Aantal diensten ontvangen voor ${dateParam}: ${rosters.length}`);
 
     // Sorteer op starttijd
-    filtered.sort((a: any, b: any) => a.Roster.starttime.localeCompare(b.Roster.starttime));
+    rosters.sort((a: any, b: any) => a.Roster.starttime.localeCompare(b.Roster.starttime));
 
-    return NextResponse.json({ data: filtered });
+    return NextResponse.json({ data: rosters });
   } catch (err) {
     console.error('Technische fout bij rooster-oproep:', err);
     return NextResponse.json({ error: 'Technische fout bij rooster-oproep' }, { status: 500 });
