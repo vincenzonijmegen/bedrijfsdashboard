@@ -52,7 +52,7 @@ export default function ZiekteverzuimRapportage() {
           return aOpen ? -1 : 1;
         }).map(([naam, meldingen]) => (
           <div key={naam} className="mb-6">
-            <h2 className="text-lg font-semibold mb-2">{naam} <span className="text-sm text-gray-500">({meldingen.length} meldingen)</span></h2>
+            <h2 className="text-lg font-semibold mb-2">{naam} ({meldingen.length})</h2>
             <table className="w-full border border-gray-300">
               <thead>
                 <tr className="bg-gray-100">
