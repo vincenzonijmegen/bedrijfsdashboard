@@ -25,32 +25,31 @@ export default function DagroosterVandaag() {
       <h1 className="text-xl font-bold mb-4">Dagrooster vandaag</h1>
       {Object.entries(perShift).map(([shiftNaam, group]: [string, unknown]) => {
         const items = group as any[];
-        <div key={shiftNaam} className="mb-6">
-          {(() => {
-            const startTijden = items.map(i => i.Roster.starttime).sort();
-            const eindTijden = items.map(i => i.Roster.endtime).sort();
-            const kleur = items[0].Roster.color || '#333';
-            return (
-              <h2
-                className="text-lg font-semibold mb-2"
-                style={{
-                  backgroundColor: kleur,
-                  color: 'white',
-                  padding: '4px 8px',
-                  borderRadius: '6px'
-                }}
-              >
-                {shiftNaam} ({startTijden[0]}–{eindTijden[eindTijden.length - 1]})
-              </h2>
-            );
-          })()}
-          <ul className="space-y-1">
-            {items.map((i: any) => (
-              <li key={i.Roster.id} className="pl-2">{i.User?.name || 'Onbekend'}</li>
-            ))}
-          </ul>
-        </div>
-      ))}
+        const startTijden = items.map(i => i.Roster.starttime).sort();
+        const eindTijden = items.map(i => i.Roster.endtime).sort();
+        const kleur = items[0].Roster.color || '#333';
+
+        return (
+          <div key={shiftNaam} className="mb-6">
+            <h2
+              className="text-lg font-semibold mb-2"
+              style={{
+                backgroundColor: kleur,
+                color: 'white',
+                padding: '4px 8px',
+                borderRadius: '6px'
+              }}
+            >
+              {shiftNaam} ({startTijden[0]}–{eindTijden[eindTijden.length - 1]})
+            </h2>
+            <ul className="space-y-1">
+              {items.map((i: any) => (
+                <li key={i.Roster.id} className="pl-2">{i.User?.name || 'Onbekend'}</li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
     </div>
   );
 }
