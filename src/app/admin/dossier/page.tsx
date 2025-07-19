@@ -229,12 +229,24 @@ export default function DossierOverzicht() {
   </p>
 )}
 
+  <div className="absolute right-2 top-2 flex gap-2 text-sm">
+  <button
+    onClick={() => {
+      setEditId(v.id);
+      setEditTekst(v.opmerking);
+    }}
+    className="text-blue-600"
+  >
+    ✏️
+  </button>
   <button
     onClick={() => verwijderZiekteverzuim(v.id)}
-    className="absolute right-2 top-2 text-red-500 text-sm"
+    className="text-red-500"
   >
     🗑️
   </button>
+</div>
+
 </li>
 
                 ))}
