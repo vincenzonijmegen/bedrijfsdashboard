@@ -40,8 +40,6 @@ export default function DashboardPage() {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
-
       <section className="mb-8">
         <h2 className="text-xl font-semibold mb-4">Dagomzet</h2>
 
