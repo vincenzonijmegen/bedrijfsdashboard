@@ -1,3 +1,5 @@
+// src/app/admin/dossier
+
 "use client";
 
 import { useState } from "react";
@@ -10,6 +12,13 @@ interface Medewerker {
   naam: string;
 }
 
+interface Ziekteverzuim {
+  id: number;
+  van: string;
+  tot: string;
+  opmerking: string;
+}
+
 export default function DossierOverzicht() {
   const [email, setEmail] = useState("");
   const [tekst, setTekst] = useState("");
@@ -19,6 +28,10 @@ export default function DossierOverzicht() {
   const [editId, setEditId] = useState<number | null>(null);
   const [editTekst, setEditTekst] = useState("");
 
+  const [van, setVan] = useState("");
+  const [tot, setTot] = useState("");
+  const [opmerkingZiekte, setOpmerkingZiekte] = useState("");
+
   const { data: opmerkingen, mutate } = useSWR(
     email ? `/api/dossier/opmerkingen?email=${email}` : null,
     fetcher
@@ -27,6 +40,10 @@ export default function DossierOverzicht() {
   const { data: documenten } = useSWR(email ? `/api/dossier/document?email=${email}` : null, fetcher);
 
   const geselecteerde = medewerkers?.find((m) => m.email === email);
+  const { data: verzuim, mutate: mutateVerzuim } = useSWR<Ziekteverzuim[]>(
+    geselecteerde ? `/api/medewerkers/${geselecteerde.email}/verzuim` : null,
+    fetcher
+  );
 
   const voegToe = async () => {
     if (!email || !tekst.trim()) return;
@@ -62,6 +79,24 @@ export default function DossierOverzicht() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     }
+  };
+
+  const voegZiekteverzuimToe = async () => {
+    if (!van || !tot || !geselecteerde) return;
+    await fetch(`/api/medewerkers/${geselecteerde.email}/verzuim`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ van, tot, opmerking: opmerkingZiekte })
+    });
+    setVan("");
+    setTot("");
+    setOpmerkingZiekte("");
+    mutateVerzuim();
+  };
+
+  const verwijderZiekteverzuim = async (id: number) => {
+    await fetch(`/api/medewerkers/verzuim/${id}`, { method: "DELETE" });
+    mutateVerzuim();
   };
 
   const verwijderOpmerking = async (id: number) => {
@@ -121,6 +156,31 @@ export default function DossierOverzicht() {
             {success && <p className="text-green-600 mt-2">Upload voltooid</p>}
           </div>
 
+          {/* Ziekteverzuim invoer */}
+          <div className="my-6">
+            <h2 className="font-semibold mb-2">Ziekteverzuim</h2>
+            <div className="flex gap-2 items-center mb-2">
+              <input type="date" value={van} onChange={e => setVan(e.target.value)} className="border rounded px-2 py-1" />
+              <span>t/m</span>
+              <input type="date" value={tot} onChange={e => setTot(e.target.value)} className="border rounded px-2 py-1" />
+              <input type="text" value={opmerkingZiekte} onChange={e => setOpmerkingZiekte(e.target.value)} placeholder="Toelichting" className="border rounded px-2 py-1 flex-1" />
+              <button onClick={voegZiekteverzuimToe} className="bg-blue-600 text-white px-3 py-1 rounded">➕ Toevoegen</button>
+            </div>
+            {Array.isArray(verzuim) && verzuim.length > 0 && (
+              <ul className="mt-2 space-y-2">
+                {verzuim.map((v) => (
+                  <li key={v.id} className="border p-2 rounded bg-purple-50 flex justify-between items-center">
+                    <div>
+                      <span className="font-medium">{v.van} t/m {v.tot}</span> – {v.opmerking}
+                    </div>
+                    <button onClick={() => verwijderZiekteverzuim(v.id)} className="text-red-500 text-sm">🗑</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Documenten */}
           {documenten?.length > 0 && (
             <div className="mt-6">
               <h2 className="font-semibold mb-2">Documenten</h2>
@@ -137,6 +197,7 @@ export default function DossierOverzicht() {
             </div>
           )}
 
+          {/* Opmerkingen */}
           {opmerkingen?.length > 0 && (
             <div className="mt-6">
               <h2 className="font-semibold mb-2">Opmerkingen</h2>
