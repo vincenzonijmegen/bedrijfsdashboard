@@ -45,9 +45,14 @@ export default function ZiekteverzuimRapportage() {
       ) : verzuim.length === 0 ? (
         <p>Geen meldingen gevonden.</p>
       ) : (
-        Object.entries(gegroepeerd).map(([naam, meldingen]) => (
+        Object.entries(gegroepeerd).sort(([aNaam, aM], [bNaam, bM]) => {
+          const aOpen = aM.some((m) => !m.tot);
+          const bOpen = bM.some((m) => !m.tot);
+          if (aOpen === bOpen) return aNaam.localeCompare(bNaam);
+          return aOpen ? -1 : 1;
+        }).map(([naam, meldingen]) => (
           <div key={naam} className="mb-6">
-            <h2 className="text-lg font-semibold mb-2">{naam}</h2>
+            <h2 className="text-lg font-semibold mb-2">{naam} <span className="text-sm text-gray-500">({meldingen.length} meldingen)</span></h2>
             <table className="w-full border border-gray-300">
               <thead>
                 <tr className="bg-gray-100">
