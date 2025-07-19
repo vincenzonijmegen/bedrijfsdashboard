@@ -2,8 +2,8 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-export async function GET(request: Request, context: { params: { id: string } }) {
-  const medewerkerId = context.params.id;
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const medewerkerId = params.id;
   const result = await db.query(
     'SELECT * FROM ziekteverzuim WHERE medewerker_id = $1 ORDER BY van DESC',
     [medewerkerId]
@@ -11,8 +11,8 @@ export async function GET(request: Request, context: { params: { id: string } })
   return NextResponse.json(result.rows);
 }
 
-export async function POST(request: Request, context: { params: { id: string } }) {
-  const medewerkerId = context.params.id;
+export async function POST(request: Request, { params }: { params: { id: string } }) {
+  const medewerkerId = params.id;
   const { van, tot, opmerking } = await request.json();
   await db.query(
     'INSERT INTO ziekteverzuim (medewerker_id, van, tot, opmerking) VALUES ($1, $2, $3, $4)',
