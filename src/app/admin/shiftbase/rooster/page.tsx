@@ -38,11 +38,15 @@ export default function Dagrooster() {
   // Navigatie knoppen
   const prevDay = () =>
     setSelectedDate(
-      formatISO(new Date(new Date(selectedDate).setDate(new Date(selectedDate).getDate() - 1)))
+      formatISO(
+        new Date(new Date(selectedDate).setDate(new Date(selectedDate).getDate() - 1))
+      )
     );
   const nextDay = () =>
     setSelectedDate(
-      formatISO(new Date(new Date(selectedDate).setDate(new Date(selectedDate).getDate() + 1)))
+      formatISO(
+        new Date(new Date(selectedDate).setDate(new Date(selectedDate).getDate() + 1))
+      )
     );
   const goToday = () => setSelectedDate(formatISO(today));
 
@@ -73,9 +77,15 @@ export default function Dagrooster() {
           <p className="font-bold">{formatDutchDate(selectedDate)}</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={prevDay} className="px-2 py-1 bg-gray-200 rounded">←</button>
-          <button onClick={goToday} className="px-2 py-1 bg-gray-200 rounded">Vandaag</button>
-          <button onClick={nextDay} className="px-2 py-1 bg-gray-200 rounded">→</button>
+          <button onClick={prevDay} className="px-2 py-1 bg-gray-200 rounded">
+            ←
+          </button>
+          <button onClick={goToday} className="px-2 py-1 bg-gray-200 rounded">
+            Vandaag
+          </button>
+          <button onClick={nextDay} className="px-2 py-1 bg-gray-200 rounded">
+            →
+          </button>
         </div>
       </div>
 
@@ -87,19 +97,21 @@ export default function Dagrooster() {
         return (
           <div key={shiftKey} className="mb-3">
             <h2
-              className="text-lg font-semibold mb-1"  
+              className="text-lg font-semibold mb-1"
               style={{ backgroundColor: kleur, color: 'white', padding: '4px 8px', borderRadius: '6px' }}
             >
               {langeNaam}
             </h2>
             <ul className="space-y-0.5">
               {items.map((i: any) => {
-                // Zoek timesheet entry op gebruiker
-                const ts = timesheetData.data.find(
-                  (t: any) => t.user_id === i.Roster.user_id && t.date === selectedDate
+                // Zoek timesheet entry op gebruiker (Timesheet nested object)
+                const tsEntry = timesheetData.data.find(
+                  (t: any) =>
+                    t.Timesheet.user_id === i.Roster.user_id &&
+                    t.Timesheet.date === selectedDate
                 );
-                const klokIn = ts?.clock_in?.slice(0,5) || '-';
-                const klokUit = ts?.clock_out?.slice(0,5) || '-';
+                const klokIn = tsEntry?.Timesheet.clock_in?.slice(0,5) || '-';
+                const klokUit = tsEntry?.Timesheet.clock_out?.slice(0,5) || '-';
 
                 return (
                   <li key={i.Roster.id} className="pl-2 flex justify-between">
