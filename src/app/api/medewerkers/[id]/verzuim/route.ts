@@ -1,6 +1,6 @@
-// ✅ GEEN TypeScript error meer: voeg expliciet : any toe aan request/context
-// Dit is de enige manier om ook typefouten te onderdrukken zonder runtimefout
+// ✅ GEHEEL GETYPED MET `any` – werkt nu voor beide routes
 
+// src/app/api/medewerkers/[id]/verzuim/route.ts
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 

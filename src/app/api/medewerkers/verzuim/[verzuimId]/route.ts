@@ -1,14 +1,14 @@
 // src/app/api/medewerkers/verzuim/[verzuimId]/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-export async function DELETE(request, context) {
+export async function DELETE(request: any, context: any) {
   const verzuimId = context.params.verzuimId;
   await db.query('DELETE FROM ziekteverzuim WHERE id = $1', [verzuimId]);
   return NextResponse.json({ success: true });
 }
 
-export async function PATCH(request, context) {
+export async function PATCH(request: any, context: any) {
   const verzuimId = context.params.verzuimId;
   const { van, tot, opmerking } = await request.json();
   await db.query(
