@@ -220,14 +220,14 @@ export default function DossierOverzicht() {
       />
       <button
         onClick={() => {
-          fetch(`/api/medewerkers/verzuim/${v.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              van: v.van,
-              tot: v.tot || null,
-              opmerking: editTekst
-            })
+fetch(`/api/medewerkers/verzuim/${v.id}`, {
+  method: "PATCH",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    van: v.van,
+    tot: v.tot?.length > 0 ? v.tot : null,
+    opmerking: editTekst
+  })
           }).then(() => {
             setEditId(null);
             setEditTekst("");

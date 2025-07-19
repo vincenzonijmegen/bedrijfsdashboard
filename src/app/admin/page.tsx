@@ -133,7 +133,7 @@ export default function AdminDashboard() {
       </Section>
 
       <Section title="📊 Rapportages" color="slate">
-        <LinkCard href="/admin/rapportages" label="Ziekteverzuim" color="gray" Icon={CreditCard} />
+        <LinkCard href="/admin/rapportages/ziekteverzuim" label="Ziekteverzuim" color="gray" Icon={CreditCard} />
         <LinkCard href="/admin/rapportages/medewerkers/overzicht-progressie" label="Medewerkers-voortgang" color="gray" Icon={BarChart2} />
         <LinkCard href="/admin/kassa-omzet-test" label="Omzet inlezen" color="gray" Icon={Wrench} />
         <LinkCard href="/admin/rapportage" label="Financiële Rapporten" color="gray" Icon={Archive} />
