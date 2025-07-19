@@ -122,6 +122,7 @@ export default function AdminDashboard() {
       </Section>
 
       <Section title="📅 Planning" color="orange">
+        <LinkCard href="/admin/shiftbase/rooster" label="Rooster van vandaag" color="orange" Icon={CalendarDays} />
         <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} />
         <LinkCard href="/admin/rapportages/timesheets" label="Klokuren" color="orange" Icon={Clock} />
         <LinkCard href="/shift-acties" label="Shiftacties & Statistieken" color="orange" Icon={Activity} />
