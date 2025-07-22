@@ -17,16 +17,14 @@ export async function POST(req: NextRequest) {
   // Verwijder BOM
   content = content.replace(/\uFEFF/, '');
 
-  // Parse CSV
+  // Parse CSV (komma als delimiter, punten voor decimalen)
   let records: any[];
   try {
     records = parse(content, {
       columns: true,
       skip_empty_lines: true,
       delimiter: ',',
-      trim: true,
-      relax_column_count: true,
-      relax_quotes: true
+      trim: true
     }) as any[];
   } catch (err) {
     return NextResponse.json({ error: 'Fout bij parseren CSV: ' + String(err) }, { status: 400 });
@@ -34,15 +32,21 @@ export async function POST(req: NextRequest) {
 
   // Map naar transacties
   const txs = records.map((r: any) => {
-    const value_date = r['Value Date'] ?? '';
+    // Verwerk waarde-datum (DD.MM.YYYY of DD.MM.YYYY HH:mm)
+    const rawDate = (r['Value Date'] ?? '').split(' ')[0];
+    const [day, month, year] = rawDate.split('.');
+    const value_date = year && month && day
+      ? `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      : null;
+
     const rawDebit = r['Debit'] ?? '';
     const rawCredit = r['Credit'] ?? '';
     const amount = rawDebit
       ? parseFloat(String(rawDebit).replace(/\./g, '').replace(/,/, '.'))
       : -parseFloat(String(rawCredit).replace(/\./g, '').replace(/,/, '.'));
 
-    const typeField = r['Type'] ? String(r['Type']).trim() : '';
-    const descField = r['Description'] ? String(r['Description']).trim() : '';
+    const typeField = String(r['Type'] ?? '').trim();
+    const descField = String(r['Description'] ?? '').trim();
 
     let ledger = '9999';
     if (typeField.startsWith('BIJ')) ledger = '1111';
@@ -52,9 +56,9 @@ export async function POST(req: NextRequest) {
 
     return {
       value_date,
-      ordered_via: r['Ordered Via'] ?? '',
+      ordered_via: String(r['Ordered Via'] ?? '').trim(),
       transaction_type: typeField,
-      reference_number: r['Reference Number'] ?? '',
+      reference_number: String(r['Reference Number'] ?? '').trim(),
       description: descField,
       amount,
       ledger_account: ledger,
