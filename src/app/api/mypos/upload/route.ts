@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
 
   // Lees bestand en verwijder BOM
   const buffer = await file.arrayBuffer();
-  let content = Buffer.from(buffer).toString('utf-8').replace(/\uFEFF/, '');
+  const content = Buffer.from(buffer).toString('utf-8').replace(/\uFEFF/, '');
 
   // Parse CSV zonder header (vanaf regel 2), comma als delimiter
   let rows: string[][];
