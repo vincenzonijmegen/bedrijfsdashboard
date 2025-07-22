@@ -1,17 +1,19 @@
-// src/app/api/shiftbase/timesheets/route.ts
+// src/app/api/shiftbase/rooster/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   const apiKey = process.env.SHIFTBASE_API_KEY;
-  const url = new URL("https://api.shiftbase.com/api/timesheets");
+  // Base endpoint for fetching rosters
+  const url = new URL("https://api.shiftbase.com/api/rosters");
 
-  // Voeg query parameters toe aan de externe URL (bijv. min_date, max_date)
+  // Forward any query parameters (e.g., date or period) to Shiftbase
   req.nextUrl.searchParams.forEach((value, key) => {
     url.searchParams.set(key, value);
   });
 
   try {
+    // Fetch roster data from Shiftbase
     const res = await fetch(url.toString(), {
       headers: {
         Authorization: `API ${apiKey}`,
@@ -22,17 +24,20 @@ export async function GET(req: NextRequest) {
     });
 
     if (!res.ok) {
-      const msg = await res.text();
-      return NextResponse.json({ error: "Shiftbase fout", details: msg }, { status: res.status });
+      const details = await res.text();
+      return NextResponse.json(
+        { error: "Shiftbase fout bij ophalen roosters", details },
+        { status: res.status }
+      );
     }
 
     const data = await res.json();
-
-    // Toon alle kloktijden, inclusief "Approved" (historisch) en "Pending"
-    // Verwijder filtering zodat de front-end zowel historische als actieve tijden ontvangt
-
+    // Return full roster payload; front-end will filter/display per date
     return NextResponse.json(data);
   } catch (err) {
-    return NextResponse.json({ error: "Interne fout", details: String(err) }, { status: 500 });
+    return NextResponse.json(
+      { error: "Interne serverfout in roster-route", details: String(err) },
+      { status: 500 }
+    );
   }
 }
