@@ -96,6 +96,18 @@ export default function AdminDashboard() {
         </Link>
 </div>
 
+      <Section title="👥 Meest gebruikte onderdelen" color="slate">
+        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="slate" Icon={ShoppingCart} />
+        <LinkCard href="/admin/shiftbase/rooster" label="Rooster per dag" color="slate" Icon={CalendarDays} />
+        <LinkCard href="/open-diensten" label="Open Shifts" color="slate" Icon={CalendarDays} />
+        <LinkCard href="/admin/dossier" label="Dossiers" color="slate" Icon={Folder} />
+        <LinkCard href="/admin/acties" label="Actielijsten" color="slate" Icon={CheckSquare} />
+        <LinkCard href="/admin/notities" label="Notities" color="slate" Icon={CheckSquare} />
+        <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="slate" Icon={Wrench} />
+        <LinkCard href="/admin/rapportage" label="Financiële Rapporten" color="slate" Icon={Archive} />
+      </Section>
+
+
       <Section title="👥 Medewerkers en instructies" color="green">
         <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} />
         <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="green" Icon={Users} />
