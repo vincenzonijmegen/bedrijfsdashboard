@@ -5,30 +5,28 @@ import { parse } from 'csv-parse/sync';
 import { db } from '@/lib/db';
 
 export async function POST(req: NextRequest) {
-  // Expect multipart/form-data with a 'file' field
   const form = await req.formData();
   const file = form.get('file');
   if (!file || typeof file === 'string') {
     return NextResponse.json({ error: 'Geen CSV-bestand geüpload.' }, { status: 400 });
   }
 
-  // Read file content
+  // Lees bestand
   const buffer = await file.arrayBuffer();
   let content = Buffer.from(buffer).toString('utf-8');
-  // Remove BOM if present
+  // Verwijder BOM
   content = content.replace(/\uFEFF/, '');
-  // Strip enclosing quotes from each line if entire line is wrapped in quotes
-  content = content.split(/\r?\n/)
-    .map(line => line.replace(/^"|"$/g, ''))
-    .join('\n');
 
   let records;
   try {
-    // Parse CSV using default quoting to handle commas inside quotes
+    // Parse CSV met relax opties voor quotes en kolom telling
     records = parse(content, {
       columns: true,
       skip_empty_lines: true,
-      delimiter: ','
+      delimiter: ',',
+      trim: true,
+      relax_column_count: true,
+      relax_quotes: true
     });
   } catch (err) {
     return NextResponse.json({ error: 'Fout bij parseren CSV: ' + String(err) }, { status: 400 });
@@ -60,7 +58,7 @@ export async function POST(req: NextRequest) {
     };
   });
 
-  // Insert in database via raw SQL
+  // Insert in database
   for (const tx of txs) {
     await db.query(
       `INSERT INTO mypos_transactions
