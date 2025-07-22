@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
 
   // Lees bestand en verwijder BOM
   const buffer = await file.arrayBuffer();
-  const content = Buffer.from(buffer).toString('utf-8').replace(/\uFEFF/, '');
+  let content = Buffer.from(buffer).toString('utf-8');
+  content = content.replace(/^\uFEFF/, '');
 
   // Parse CSV zonder header (vanaf regel 2), comma als delimiter
   let rows: string[][];
@@ -32,34 +33,34 @@ export async function POST(req: NextRequest) {
   // Map naar transacties (kolommen: 0: Value Date, 2: Type, 4: Description, 6: Debit, 7: Credit)
   const txs = rows.map(row => {
     const rawDate = row[0] || '';
-    // Support dates like dd.mm.yyyy or dd-mm-yyyy, optionally with time suffix
+    // Support dates like dd.mm.yyyy or dd-mm-yyyy, eventueel met tijdsdeel
     const dateMatch = rawDate.match(/(\d{1,2})[\.\-/](\d{1,2})[\.\-/](\d{4})/);
     const value_date = dateMatch
-      ? `${dateMatch[3]}-${dateMatch[2].padStart(2, '0')}-${dateMatch[1].padStart(2, '0')}`
+      ? `${dateMatch[3]}-${dateMatch[2].padStart(2,'0')}-${dateMatch[1].padStart(2,'0')}`
       : null;
 
     const typeField = row[2] ?? '';
     const descField = row[4] ?? '';
     const rawDebit = row[6] ?? '';
     const rawCredit = row[7] ?? '';
+    // Parse amount; decimal separator is '.'
     const amount = rawDebit
-      ? parseFloat(rawDebit.replace(/\./g, '').replace(/,/, '.'))
-      : -parseFloat(rawCredit.replace(/\./g, '').replace(/,/, '.'));
+      ? parseFloat(rawDebit)
+      : rawCredit
+        ? -parseFloat(rawCredit)
+        : 0;
 
+    // Bepaal grootboekrekening
     let ledger = '9999';
     if (typeField.startsWith('BIJ')) ledger = '1111';
-    else if (typeField.includes('Fee')) ledger = '2222';
+    else if (typeField.toLowerCase().includes('fee')) ledger = '2222';
     else if (descField.toLowerCase().includes('overboeking')) ledger = '3333';
     else ledger = '4444';
 
-    return {
-      value_date,
-      transaction_type: typeField,
-      description: descField,
-      amount,
-      ledger_account: ledger,
-    };
-  }).filter(tx => tx.value_date !== null && !isNaN(tx.amount));
+    return { value_date, transaction_type: typeField, description: descField, amount, ledger_account: ledger };
+  })
+  // Filter alleen geldige records
+  .filter(tx => tx.value_date !== null && !isNaN(tx.amount));
 
   // Insert in database
   try {
