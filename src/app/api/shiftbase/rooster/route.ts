@@ -1,41 +1,38 @@
-// src/app/api/shiftbase/rooster/route.ts
+// src/app/api/shiftbase/timesheets/route.ts
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: Request) {
+export async function GET(req: NextRequest) {
+  const apiKey = process.env.SHIFTBASE_API_KEY;
+  const url = new URL("https://api.shiftbase.com/api/timesheets");
+
+  // Voeg query parameters toe aan de externe URL (bijv. min_date, max_date)
+  req.nextUrl.searchParams.forEach((value, key) => {
+    url.searchParams.set(key, value);
+  });
+
   try {
-    const { searchParams } = new URL(request.url);
-    // Haal datum op uit query of standaard vandaag
-    const dateParam = searchParams.get('date') || new Date().toISOString().split('T')[0];
-    console.log(`Gevraagde datum in API: ${dateParam}`);
-
-    // Vraag Shiftbase API aan met from/to parameters om specifieke dag op te halen
-    // Gebruik min_date en max_date volgens Shiftbase-doku voor bereik
-    const url = `https://api.shiftbase.com/api/rosters?min_date=${dateParam}&max_date=${dateParam}`;
-    console.log(`Shiftbase API URL: ${url}`);
-
-    const response = await fetch(url, {
-      method: 'GET',
+    const res = await fetch(url.toString(), {
       headers: {
-        Accept: 'application/json',
-        Authorization: `API ${process.env.SHIFTBASE_API_KEY ?? ''}`,
+        Authorization: `API ${apiKey}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
       },
+      cache: "no-store",
     });
-    console.log(`Shiftbase response status: ${response.status}`);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Shiftbase API fout:', errorText);
-      return NextResponse.json({ error: 'Fout bij ophalen van rooster' }, { status: 500 });
+    if (!res.ok) {
+      const msg = await res.text();
+      return NextResponse.json({ error: "Shiftbase fout", details: msg }, { status: res.status });
     }
 
-    const result = await response.json();
-    const rosters = result.data || [];
-    console.log(`Aantal diensten ontvangen voor ${dateParam}: ${rosters.length}`);
+    const data = await res.json();
 
-    return NextResponse.json({ data: rosters });
+    // Toon alle kloktijden, inclusief "Approved" (historisch) en "Pending"
+    // Verwijder filtering zodat de front-end zowel historische als actieve tijden ontvangt
+
+    return NextResponse.json(data);
   } catch (err) {
-    console.error('Technische fout bij rooster-oproep:', err);
-    return NextResponse.json({ error: 'Technische fout bij rooster-oproep' }, { status: 500 });
+    return NextResponse.json({ error: "Interne fout", details: String(err) }, { status: 500 });
   }
 }
