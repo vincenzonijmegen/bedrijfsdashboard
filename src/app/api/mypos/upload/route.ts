@@ -17,66 +17,65 @@ export async function POST(req: NextRequest) {
   // Verwijder BOM
   content = content.replace(/\uFEFF/, '');
 
-  // Parse CSV (komma als delimiter, punten voor decimalen)
+  // Parse CSV met semikolon als delimiter en alleen benodigde kolommen
   let records: any[];
   try {
     records = parse(content, {
       columns: true,
       skip_empty_lines: true,
-      delimiter: ',',
-      trim: true
+      delimiter: ';',
+      trim: true,
+      relax_column_count: true
     }) as any[];
   } catch (err) {
     return NextResponse.json({ error: 'Fout bij parseren CSV: ' + String(err) }, { status: 400 });
   }
 
-  // Map naar transacties
-  const txs = records.map((r: any) => {
-    // Verwerk waarde-datum (DD.MM.YYYY of DD.MM.YYYY HH:mm)
-    const rawDate = (r['Value Date'] ?? '').split(' ')[0];
-    const [day, month, year] = rawDate.split('.');
-    const value_date = year && month && day
-      ? `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-      : null;
+  // Map naar transacties (alleen relevante velden)
+  const txs = records
+    .filter(r => r['Value Date'])
+    .map((r: any) => {
+      // Verwerk waarde-datum (DD.MM.YYYY of DD.MM.YYYY HH:mm)
+      const rawDate = (r['Value Date'] ?? '').split(' ')[0];
+      const [day, month, year] = rawDate.split('.');
+      const value_date = year && month && day
+        ? `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+        : null;
 
-    const rawDebit = r['Debit'] ?? '';
-    const rawCredit = r['Credit'] ?? '';
-    const amount = rawDebit
-      ? parseFloat(String(rawDebit).replace(/\./g, '').replace(/,/, '.'))
-      : -parseFloat(String(rawCredit).replace(/\./g, '').replace(/,/, '.'));
+      const rawDebit = r['Debit'] ?? '';
+      const rawCredit = r['Credit'] ?? '';
+      const amount = rawDebit
+        ? parseFloat(rawDebit.replace(/\./g, '').replace(/,/, '.'))
+        : -parseFloat(rawCredit.replace(/\./g, '').replace(/,/, '.'));
 
-    const typeField = String(r['Type'] ?? '').trim();
-    const descField = String(r['Description'] ?? '').trim();
+      const typeField = String(r['Type'] ?? '').trim();
+      const descField = String(r['Description'] ?? '').trim();
 
-    let ledger = '9999';
-    if (typeField.startsWith('BIJ')) ledger = '1111';
-    else if (typeField.includes('Fee')) ledger = '2222';
-    else if (descField.toLowerCase().includes('overboeking')) ledger = '3333';
-    else ledger = '4444';
+      let ledger = '9999';
+      if (typeField.startsWith('BIJ')) ledger = '1111';
+      else if (typeField.includes('Fee')) ledger = '2222';
+      else if (descField.toLowerCase().includes('overboeking')) ledger = '3333';
+      else ledger = '4444';
 
-    return {
-      value_date,
-      ordered_via: String(r['Ordered Via'] ?? '').trim(),
-      transaction_type: typeField,
-      reference_number: String(r['Reference Number'] ?? '').trim(),
-      description: descField,
-      amount,
-      ledger_account: ledger,
-    };
-  });
+      return {
+        value_date,
+        transaction_type: typeField,
+        description: descField,
+        amount,
+        ledger_account: ledger,
+      };
+    });
 
   // Insert in database
   try {
     for (const tx of txs) {
       await db.query(
         `INSERT INTO mypos_transactions
-         (value_date, ordered_via, transaction_type, reference_number, description, amount, ledger_account)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+         (value_date, transaction_type, description, amount, ledger_account)
+         VALUES ($1, $2, $3, $4, $5)`,
         [
           tx.value_date,
-          tx.ordered_via,
           tx.transaction_type,
-          tx.reference_number,
           tx.description,
           tx.amount,
           tx.ledger_account,
