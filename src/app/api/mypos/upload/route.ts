@@ -11,60 +11,54 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Geen CSV-bestand geüpload.' }, { status: 400 });
   }
 
-  // Lees bestand
+  // Lees bestand en verwijder BOM
   const buffer = await file.arrayBuffer();
-  let content = Buffer.from(buffer).toString('utf-8');
-  // Verwijder BOM
-  content = content.replace(/\uFEFF/, '');
+  let content = Buffer.from(buffer).toString('utf-8').replace(/\uFEFF/, '');
 
-  // Parse CSV met comma als delimiter en alleen benodigde kolommen
-  let records: any[];
+  // Parse CSV zonder header (vanaf regel 2), comma als delimiter
+  let rows: string[][];
   try {
-    records = parse(content, {
-      columns: true,
-      skip_empty_lines: true,
+    rows = parse(content, {
       delimiter: ',',
+      skip_empty_lines: true,
+      from_line: 2,
+      relax_column_count: true,
       trim: true,
-      relax_column_count: true
-    }) as any[];
+    });
   } catch (err) {
     return NextResponse.json({ error: 'Fout bij parseren CSV: ' + String(err) }, { status: 400 });
   }
 
-  // Map naar transacties (alleen relevante velden)
-  const txs = records
-    .filter(r => r['Value Date'])
-    .map((r: any) => {
-      // Verwerk waarde-datum (DD.MM.YYYY of DD.MM.YYYY HH:mm)
-      const rawDate = (r['Value Date'] ?? '').split(' ')[0];
-      const [day, month, year] = rawDate.split('.');
-      const value_date = year && month && day
-        ? `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-        : null;
+  // Map naar transacties (kolommen: 0: Value Date, 2: Type, 4: Description, 6: Debit, 7: Credit)
+  const txs = rows.map(row => {
+    const rawDate = row[0] || '';
+    const [day, month, year] = rawDate.split(' ')[0].split('.');
+    const value_date = year && month && day
+      ? `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`
+      : null;
 
-      const rawDebit = r['Debit'] ?? '';
-      const rawCredit = r['Credit'] ?? '';
-      const amount = rawDebit
-        ? parseFloat(rawDebit.replace(/\./g, '').replace(/,/, '.'))
-        : -parseFloat(rawCredit.replace(/\./g, '').replace(/,/, '.'));
+    const typeField = row[2] ?? '';
+    const descField = row[4] ?? '';
+    const rawDebit = row[6] ?? '';
+    const rawCredit = row[7] ?? '';
+    const amount = rawDebit
+      ? parseFloat(rawDebit.replace(/\./g,'').replace(/,/,'.'))
+      : -parseFloat(rawCredit.replace(/\./g,'').replace(/,/,'.'));
 
-      const typeField = String(r['Type'] ?? '').trim();
-      const descField = String(r['Description'] ?? '').trim();
+    let ledger = '9999';
+    if (typeField.startsWith('BIJ')) ledger = '1111';
+    else if (typeField.includes('Fee')) ledger = '2222';
+    else if (descField.toLowerCase().includes('overboeking')) ledger = '3333';
+    else ledger = '4444';
 
-      let ledger = '9999';
-      if (typeField.startsWith('BIJ')) ledger = '1111';
-      else if (typeField.includes('Fee')) ledger = '2222';
-      else if (descField.toLowerCase().includes('overboeking')) ledger = '3333';
-      else ledger = '4444';
-
-      return {
-        value_date,
-        transaction_type: typeField,
-        description: descField,
-        amount,
-        ledger_account: ledger,
-      };
-    });
+    return {
+      value_date,
+      transaction_type: typeField,
+      description: descField,
+      amount,
+      ledger_account: ledger,
+    };
+  }).filter(tx => tx.value_date && !isNaN(tx.amount));
 
   // Insert in database
   try {
@@ -73,13 +67,7 @@ export async function POST(req: NextRequest) {
         `INSERT INTO mypos_transactions
          (value_date, transaction_type, description, amount, ledger_account)
          VALUES ($1, $2, $3, $4, $5)`,
-        [
-          tx.value_date,
-          tx.transaction_type,
-          tx.description,
-          tx.amount,
-          tx.ledger_account,
-        ]
+        [tx.value_date, tx.transaction_type, tx.description, tx.amount, tx.ledger_account]
       );
     }
   } catch (err) {
