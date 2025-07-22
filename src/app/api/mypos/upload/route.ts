@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Haal grootboekkoppelingen op uit juiste tabel
-  let grootboekMap: Record<string, string> = {};
+  const grootboekMap: Record<string, string> = {};
   try {
     const result = await db.query(`SELECT type_code, gl_rekening FROM mypos_gl_accounts`);
     for (const row of result.rows) {
