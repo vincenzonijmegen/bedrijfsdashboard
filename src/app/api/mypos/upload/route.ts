@@ -17,13 +17,13 @@ export async function POST(req: NextRequest) {
   // Verwijder BOM
   content = content.replace(/\uFEFF/, '');
 
-  // Parse CSV met semikolon als delimiter en alleen benodigde kolommen
+  // Parse CSV met comma als delimiter en alleen benodigde kolommen
   let records: any[];
   try {
     records = parse(content, {
       columns: true,
       skip_empty_lines: true,
-      delimiter: ';',
+      delimiter: ',',
       trim: true,
       relax_column_count: true
     }) as any[];
