@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Kon XLSX-bestand niet lezen: " + String(err) }, { status: 400 });
   }
 
-  // Haal grootboekkoppelingen op uit juiste tabel
+  // Haal grootboekkoppelingen op
   const grootboekMap: Record<string, string> = {};
   try {
     const result = await db.query(`SELECT type_code, gl_rekening FROM mypos_gl_accounts`);
@@ -71,14 +71,16 @@ export async function POST(req: NextRequest) {
     })
     .filter(tx => tx.value_date && !isNaN(tx.amount));
 
-  // 🚀 BULK INSERT
+  // 🚀 BULK INSERT IN BATCHES
+  const BATCH_SIZE = 500;
   try {
-    if (txs.length > 0) {
+    for (let i = 0; i < txs.length; i += BATCH_SIZE) {
+      const batch = txs.slice(i, i + BATCH_SIZE);
       const values: any[] = [];
       const placeholders: string[] = [];
 
-      txs.forEach((tx, i) => {
-        const idx = i * 5;
+      batch.forEach((tx, j) => {
+        const idx = j * 5;
         placeholders.push(`($${idx + 1}, $${idx + 2}, $${idx + 3}, $${idx + 4}, $${idx + 5})`);
         values.push(tx.value_date, tx.transaction_type, tx.description, tx.amount, tx.ledger_account);
       });
