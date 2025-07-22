@@ -32,9 +32,10 @@ export async function POST(req: NextRequest) {
   // Map naar transacties (kolommen: 0: Value Date, 2: Type, 4: Description, 6: Debit, 7: Credit)
   const txs = rows.map(row => {
     const rawDate = row[0] || '';
-    const [day, month, year] = rawDate.split(' ')[0].split('.');
-    const value_date = year && month && day
-      ? `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')}`
+    // Support dates like dd.mm.yyyy or dd-mm-yyyy, optionally with time suffix
+    const dateMatch = rawDate.match(/(\d{1,2})[\.\-/](\d{1,2})[\.\-/](\d{4})/);
+    const value_date = dateMatch
+      ? `${dateMatch[3]}-${dateMatch[2].padStart(2, '0')}-${dateMatch[1].padStart(2, '0')}`
       : null;
 
     const typeField = row[2] ?? '';
@@ -42,8 +43,8 @@ export async function POST(req: NextRequest) {
     const rawDebit = row[6] ?? '';
     const rawCredit = row[7] ?? '';
     const amount = rawDebit
-      ? parseFloat(rawDebit.replace(/\./g,'').replace(/,/,'.'))
-      : -parseFloat(rawCredit.replace(/\./g,'').replace(/,/,'.'));
+      ? parseFloat(rawDebit.replace(/\./g, '').replace(/,/, '.'))
+      : -parseFloat(rawCredit.replace(/\./g, '').replace(/,/, '.'));
 
     let ledger = '9999';
     if (typeField.startsWith('BIJ')) ledger = '1111';
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
       amount,
       ledger_account: ledger,
     };
-  }).filter(tx => tx.value_date && !isNaN(tx.amount));
+  }).filter(tx => tx.value_date !== null && !isNaN(tx.amount));
 
   // Insert in database
   try {
