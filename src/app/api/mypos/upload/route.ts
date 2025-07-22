@@ -17,9 +17,9 @@ export async function POST(req: NextRequest) {
   // Verwijder BOM
   content = content.replace(/\uFEFF/, '');
 
-  let records;
+  // Parse CSV met relax opties voor quotes en kolom telling
+  let records: any[];
   try {
-    // Parse CSV met relax opties voor quotes en kolom telling
     records = parse(content, {
       columns: true,
       skip_empty_lines: true,
@@ -27,53 +27,60 @@ export async function POST(req: NextRequest) {
       trim: true,
       relax_column_count: true,
       relax_quotes: true
-    });
+    }) as any[];
   } catch (err) {
     return NextResponse.json({ error: 'Fout bij parseren CSV: ' + String(err) }, { status: 400 });
   }
 
   // Map naar transacties
   const txs = records.map((r: any) => {
-    const date = r['Value Date'];
-    const rawDebit = r['Debit'] || '';
-    const rawCredit = r['Credit'] || '';
+    const date = r['Value Date'] ?? '';
+    const rawDebit = r['Debit'] ?? '';
+    const rawCredit = r['Credit'] ?? '';
     const amount = rawDebit
-      ? parseFloat(rawDebit.replace(/\./g, '').replace(/,/, '.'))
-      : -parseFloat(rawCredit.replace(/\./g, '').replace(/,/, '.'));
+      ? parseFloat(String(rawDebit).replace(/\./g, '').replace(/,/, '.'))
+      : -parseFloat(String(rawCredit).replace(/\./g, '').replace(/,/, '.'));
+
+    const typeField = r['Type'] ? String(r['Type']).trim() : '';
+    const descField = r['Description'] ? String(r['Description']).trim() : '';
 
     let ledger = '9999';
-    if (r['Type'].startsWith('BIJ')) ledger = '1111';
-    else if (r['Type'].includes('Fee')) ledger = '2222';
-    else if (r['Description'].toLowerCase().includes('overboeking')) ledger = '3333';
+    if (typeField.startsWith('BIJ')) ledger = '1111';
+    else if (typeField.includes('Fee')) ledger = '2222';
+    else if (descField.toLowerCase().includes('overboeking')) ledger = '3333';
     else ledger = '4444';
 
     return {
       date,
-      ordered_via: r['Ordered Via'] || '',
-      type: r['Type'],
-      reference: r['Reference Number'],
-      description: r['Description'],
+      ordered_via: r['Ordered Via'] ?? '',
+      type: typeField,
+      reference: r['Reference Number'] ?? '',
+      description: descField,
       amount,
       ledger_account: ledger,
     };
   });
 
   // Insert in database
-  for (const tx of txs) {
-    await db.query(
-      `INSERT INTO mypos_transactions
-       (date, ordered_via, type, reference, description, amount, ledger_account)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [
-        tx.date,
-        tx.ordered_via,
-        tx.type,
-        tx.reference,
-        tx.description,
-        tx.amount,
-        tx.ledger_account,
-      ]
-    );
+  try {
+    for (const tx of txs) {
+      await db.query(
+        `INSERT INTO mypos_transactions
+         (date, ordered_via, type, reference, description, amount, ledger_account)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          tx.date,
+          tx.ordered_via,
+          tx.type,
+          tx.reference,
+          tx.description,
+          tx.amount,
+          tx.ledger_account,
+        ]
+      );
+    }
+  } catch (err) {
+    return NextResponse.json({ error: 'Fout bij insert in DB: ' + String(err) }, { status: 500 });
   }
 
   return NextResponse.json({ success: true, imported: txs.length });
