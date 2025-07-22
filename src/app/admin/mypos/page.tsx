@@ -25,10 +25,10 @@ export default function MyPOSImportPage() {
 
   return (
     <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">MyPOS CSV Importeren</h1>
+      <h1 className="text-xl font-bold mb-4">MyPOS XLS Importeren</h1>
       <input
         type="file"
-        accept=".csv"
+        accept=".xlsx"
         onChange={(e) => setFile(e.target.files?.[0] ?? null)}
       />
       <button
@@ -36,7 +36,7 @@ export default function MyPOSImportPage() {
         className="ml-2 px-3 py-1 bg-blue-600 text-white rounded"
         disabled={!file || loading}
       >
-        {loading ? 'Uploading...' : 'Upload CSV'}
+        {loading ? 'Uploading...' : 'Upload XLSX'}
       </button>
       {message && <p className="mt-4">{message}</p>}
     </div>

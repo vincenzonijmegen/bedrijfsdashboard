@@ -1,57 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
-import { parse } from "csv-parse/sync";
+import * as XLSX from "xlsx";
 import { db } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
   const form = await req.formData();
   const file = form.get("file");
   if (!file || typeof file === "string") {
-    return NextResponse.json({ error: "Geen CSV-bestand geüpload." }, { status: 400 });
+    return NextResponse.json({ error: "Geen bestand geüpload." }, { status: 400 });
   }
 
-  const buffer = await file.arrayBuffer();
-  let content = Buffer.from(buffer).toString("utf-8");
-  content = content.replace(/^\uFEFF/, ""); // Verwijder BOM
+  const buffer = Buffer.from(await file.arrayBuffer());
 
-  // Split ruwe inhoud in regels
-  const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
-
-  // Sla de header over (eerste regel)
-  const dataLines = lines.slice(1);
-
-  // Parse elke regel afzonderlijk
-  let rows: string[][] = [];
+  // Probeer het Excelbestand te lezen
+  let rows: any[] = [];
   try {
-    rows = dataLines.map(line => parse(line, {
-      delimiter: ',',
-      quote: '"',
-      relax_column_count: true,
-      trim: true,
-    })[0]); // parse() geeft een array van records, we nemen de eerste
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const json = XLSX.utils.sheet_to_json(sheet); // kolomnamen blijven behouden
+    rows = Array.isArray(json) ? json : [];
   } catch (err) {
-    return NextResponse.json({ error: "Fout bij parseren CSV-regels: " + String(err) }, { status: 400 });
+    return NextResponse.json({ error: "Kon XLSX-bestand niet lezen: " + String(err) }, { status: 400 });
   }
 
-  // Verwerk de rijen
   const txs = rows
-    .filter(row => row.length >= 8 && row[0])
-    .map(row => {
-      const rawDate = row[0] || '';
-      const dateMatch = rawDate.match(/(\d{1,2})[\.\-/](\d{1,2})[\.\-/](\d{4})/);
-      const value_date = dateMatch
-        ? `${dateMatch[3]}-${dateMatch[2].padStart(2, "0")}-${dateMatch[1].padStart(2, "0")}`
+    .filter((row) => row["Value Date"] && (row["Debit"] || row["Credit"]))
+    .map((row) => {
+      // Datum omzetten naar YYYY-MM-DD
+      const rawDate = row["Value Date"].toString();
+      const match = rawDate.match(/(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})/);
+      const value_date = match
+        ? `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`
         : null;
 
-      const typeField = row[2] ?? '';
-      const descField = row[4] ?? '';
-      const rawDebit = row[6]?.replace(',', '.') ?? '';
-      const rawCredit = row[7]?.replace(',', '.') ?? '';
-
-      const amount = rawDebit
-        ? parseFloat(rawDebit)
-        : rawCredit
-          ? -parseFloat(rawCredit)
-          : 0;
+      const typeField = row["Type"] ?? "";
+      const descField = row["Description"] ?? "";
+      const debit = parseFloat((row["Debit"] ?? 0).toString());
+      const credit = parseFloat((row["Credit"] ?? 0).toString());
+      const amount = debit > 0 ? debit : credit > 0 ? -credit : 0;
 
       let ledger = "9999";
       if (typeField.startsWith("BIJ")) ledger = "1111";
@@ -67,9 +53,9 @@ export async function POST(req: NextRequest) {
         ledger_account: ledger,
       };
     })
-    .filter(tx => tx.value_date !== null && !isNaN(tx.amount));
+    .filter((tx) => tx.value_date !== null && !isNaN(tx.amount));
 
-  // Voeg toe aan database
+  // Voeg transacties toe aan de database
   try {
     for (const tx of txs) {
       await db.query(
