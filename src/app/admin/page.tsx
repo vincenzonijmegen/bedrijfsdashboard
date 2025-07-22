@@ -150,6 +150,8 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/rapportages/medewerkers/overzicht-progressie" label="Medewerkers-voortgang" color="gray" Icon={BarChart2} />
         <LinkCard href="/admin/kassa-omzet-test" label="Omzet inlezen" color="gray" Icon={Wrench} />
         <LinkCard href="/admin/rapportage" label="Financiële Rapporten" color="gray" Icon={Archive} />
+        <LinkCard href="/admin/mypos" label="Inlezen maandbestanden myPOS" color="gray" Icon={Archive} />
+        <LinkCard href="/admin/mypos/boeking" label="Boekingsdocument myPOS=>snelstart" color="gray" Icon={Archive} />
       </Section>
     </main>
   );
