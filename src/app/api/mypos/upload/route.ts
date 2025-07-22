@@ -31,14 +31,12 @@ export async function POST(req: NextRequest) {
   // Map naar transacties
   const txs = records.map((r: any) => {
     const date = r['Value Date'];
-    // Amount: gebruik Debit als positief, anders Credit als negatief
     const rawDebit = r['Debit'] || '';
     const rawCredit = r['Credit'] || '';
     const amount = rawDebit
       ? parseFloat(rawDebit)
       : -parseFloat(rawCredit);
 
-    // Categorie & grootboek-mapping
     let ledger = '9999';
     if (r['Type'].startsWith('BIJ')) ledger = '1111';
     else if (r['Type'].includes('Fee')) ledger = '2222';
@@ -56,12 +54,23 @@ export async function POST(req: NextRequest) {
     };
   });
 
-  // Insert in database
+  // Insert in database via raw SQL
   for (const tx of txs) {
-    await db.mypos_transactions.create({ data: tx });
+    await db.query(
+      `INSERT INTO mypos_transactions
+       (date, ordered_via, type, reference, description, amount, ledger_account)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        tx.date,
+        tx.ordered_via,
+        tx.type,
+        tx.reference,
+        tx.description,
+        tx.amount,
+        tx.ledger_account,
+      ]
+    );
   }
 
   return NextResponse.json({ success: true, imported: txs.length });
 }
-
-
