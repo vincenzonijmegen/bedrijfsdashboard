@@ -17,15 +17,18 @@ export async function POST(req: NextRequest) {
   let content = Buffer.from(buffer).toString('utf-8');
   // Remove BOM if present
   content = content.replace(/\uFEFF/, '');
+  // Strip enclosing quotes from each line if entire line is wrapped in quotes
+  content = content.split(/\r?\n/)
+    .map(line => line.replace(/^"|"$/g, ''))
+    .join('\n');
 
-  // Parse CSV (separator: comma, disable quoting to handle lines wrapped in quotes)
   let records;
   try {
+    // Parse CSV using default quoting to handle commas inside quotes
     records = parse(content, {
       columns: true,
       skip_empty_lines: true,
-      delimiter: ',',
-      quote: ''
+      delimiter: ','
     });
   } catch (err) {
     return NextResponse.json({ error: 'Fout bij parseren CSV: ' + String(err) }, { status: 400 });
@@ -37,8 +40,8 @@ export async function POST(req: NextRequest) {
     const rawDebit = r['Debit'] || '';
     const rawCredit = r['Credit'] || '';
     const amount = rawDebit
-      ? parseFloat(rawDebit)
-      : -parseFloat(rawCredit);
+      ? parseFloat(rawDebit.replace(/\./g, '').replace(/,/, '.'))
+      : -parseFloat(rawCredit.replace(/\./g, '').replace(/,/, '.'));
 
     let ledger = '9999';
     if (r['Type'].startsWith('BIJ')) ledger = '1111';
