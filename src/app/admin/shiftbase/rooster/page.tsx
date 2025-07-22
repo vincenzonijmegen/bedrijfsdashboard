@@ -50,6 +50,9 @@ export default function Dagrooster() {
     );
   const goToday = () => setSelectedDate(formatISO(today));
 
+  // Check of geselecteerde dag vandaag is
+  const isToday = selectedDate === formatISO(today);
+
   // Groeperen op korte shiftnaam
   const perShift = rosterData.data.reduce((acc: any, item: any) => {
     const shiftKey = item.Roster.name || "Onbekende shift";
@@ -98,27 +101,28 @@ export default function Dagrooster() {
             </h2>
             <ul className="space-y-0.5">
               {items.map((i: any) => {
-                // Zoek timesheet entry op gebruiker
-                const tsWrapper = timesheetData.data.find(
-                  (t: any) =>
-                    t.Timesheet.user_id === i.Roster.user_id &&
-                    t.Timesheet.date === selectedDate
-                );
-                const ts = tsWrapper?.Timesheet;
-                // Haal clocked_in en clocked_out tijden
-                const klokIn = ts?.clocked_in?.split(' ')[1].slice(0,5) || '-';
-                const klokUit = ts?.clocked_out?.split(' ')[1].slice(0,5) || '-';
-
-                // Bepaal statuskleur
-                let statusClass = '';
-                if (tsWrapper) {
-                  if (ts?.clocked_in && ts?.clocked_out) {
-                    statusClass = 'bg-green-100 text-green-800';
+                // Haal alleen clockinformatie als vandaag
+                let klokInfo = null;
+                if (isToday) {
+                  const tsWrapper = timesheetData.data.find(
+                    (t: any) =>
+                      t.Timesheet.user_id === i.Roster.user_id &&
+                      t.Timesheet.date === selectedDate
+                  );
+                  const ts = tsWrapper?.Timesheet;
+                  const klokIn = ts?.clocked_in?.split(' ')[1].slice(0,5) || '-';
+                  const klokUit = ts?.clocked_out?.split(' ')[1].slice(0,5) || '-';
+                  let statusClass = '';
+                  if (tsWrapper) {
+                    statusClass = ts?.clocked_in && ts?.clocked_out
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-orange-100 text-orange-800';
                   } else {
-                    statusClass = 'bg-orange-100 text-orange-800';
+                    statusClass = 'bg-red-100 text-red-800';
                   }
-                } else {
-                  statusClass = 'bg-red-100 text-red-800';
+                  klokInfo = (
+                    <span className={`${statusClass} px-1 rounded text-sm`}>In: {klokIn} Uit: {klokUit}</span>
+                  );
                 }
 
                 return (
@@ -129,9 +133,7 @@ export default function Dagrooster() {
                       </span>{' '}
                       <strong>{i.User?.name || 'Onbekend'}</strong>
                     </span>
-                    <span className={`${statusClass} px-1 rounded text-sm`}>
-                      In: {klokIn} Uit: {klokUit}
-                    </span>
+                    {klokInfo}
                   </li>
                 );
               })}
