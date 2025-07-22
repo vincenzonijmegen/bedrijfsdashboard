@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Haal grootboekkoppelingen op uit juiste tabel
-  const grootboekMap: Record<string, string> = {};
+  let grootboekMap: Record<string, string> = {};
   try {
     const result = await db.query(`SELECT type_code, gl_rekening FROM mypos_gl_accounts`);
     for (const row of result.rows) {
@@ -48,7 +48,6 @@ export async function POST(req: NextRequest) {
       const credit = parseFloat((row["Credit"] ?? 0).toString());
       const amount = credit > 0 ? credit : debit > 0 ? -debit : 0;
 
-      // Bepaal grootboekcode
       let grootboekcode = "ONBEKEND";
       if (typeField.toLowerCase().includes("fee")) {
         grootboekcode = "AF";
@@ -60,7 +59,6 @@ export async function POST(req: NextRequest) {
         grootboekcode = "BI";
       }
 
-      // Zoek rekeningnummer
       const ledger_account = grootboekMap[grootboekcode] ?? "0000";
 
       return {
@@ -73,18 +71,28 @@ export async function POST(req: NextRequest) {
     })
     .filter(tx => tx.value_date && !isNaN(tx.amount));
 
-  // Sla op in database
+  // 🚀 BULK INSERT
   try {
-    for (const tx of txs) {
-      await db.query(
-        `INSERT INTO mypos_transactions
-         (value_date, transaction_type, description, amount, ledger_account)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [tx.value_date, tx.transaction_type, tx.description, tx.amount, tx.ledger_account]
-      );
+    if (txs.length > 0) {
+      const values: any[] = [];
+      const placeholders: string[] = [];
+
+      txs.forEach((tx, i) => {
+        const idx = i * 5;
+        placeholders.push(`($${idx + 1}, $${idx + 2}, $${idx + 3}, $${idx + 4}, $${idx + 5})`);
+        values.push(tx.value_date, tx.transaction_type, tx.description, tx.amount, tx.ledger_account);
+      });
+
+      const query = `
+        INSERT INTO mypos_transactions
+        (value_date, transaction_type, description, amount, ledger_account)
+        VALUES ${placeholders.join(", ")}
+      `;
+
+      await db.query(query, values);
     }
   } catch (err) {
-    return NextResponse.json({ error: "Fout bij insert in DB: " + String(err) }, { status: 500 });
+    return NextResponse.json({ error: "Fout bij bulk insert in DB: " + String(err) }, { status: 500 });
   }
 
   return NextResponse.json({ success: true, imported: txs.length });
