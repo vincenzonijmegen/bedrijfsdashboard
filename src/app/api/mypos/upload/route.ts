@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   // Haal grootboekkoppelingen op uit database
   const grootboekMap: Record<string, string> = {};
   try {
-    const result = await db.query(`SELECT type_code, gl_rekening FROM grootboekcodes`);
+    const result = await db.query(`SELECT type_code, gl_rekening FROM mypos_gl_accounts`);
     for (const row of result.rows) {
       grootboekMap[row.type_code] = row.gl_rekening;
     }
