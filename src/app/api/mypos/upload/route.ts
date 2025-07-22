@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   // Verwijder BOM
   content = content.replace(/\uFEFF/, '');
 
-  // Parse CSV met relax opties voor quotes en kolom telling
+  // Parse CSV
   let records: any[];
   try {
     records = parse(content, {
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
   // Map naar transacties
   const txs = records.map((r: any) => {
-    const date = r['Value Date'] ?? '';
+    const value_date = r['Value Date'] ?? '';
     const rawDebit = r['Debit'] ?? '';
     const rawCredit = r['Credit'] ?? '';
     const amount = rawDebit
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     else ledger = '4444';
 
     return {
-      date,
+      value_date,
       ordered_via: r['Ordered Via'] ?? '',
       type: typeField,
       reference: r['Reference Number'] ?? '',
@@ -66,10 +66,10 @@ export async function POST(req: NextRequest) {
     for (const tx of txs) {
       await db.query(
         `INSERT INTO mypos_transactions
-         (date, ordered_via, type, reference, description, amount, ledger_account)
+         (value_date, ordered_via, type, reference, description, amount, ledger_account)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
-          tx.date,
+          tx.value_date,
           tx.ordered_via,
           tx.type,
           tx.reference,
