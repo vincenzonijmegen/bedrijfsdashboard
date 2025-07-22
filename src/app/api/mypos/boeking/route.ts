@@ -9,25 +9,23 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Ongeldige maandparameter. Gebruik formaat YYYY-MM." }, { status: 400 });
   }
 
-  const [jaar, maandNummer] = maand.split("-");
-  const beginDatum = `${jaar}-${maandNummer}-01`;
-  const eindDatum = `${jaar}-${maandNummer}-31`; // ruimschoots genoeg voor alle maanden
+  const beginDatum = `${maand}-01`;
 
-  // Haal alle transacties op binnen deze maand
+  // Haal alle transacties op voor deze maand
   let transacties;
   try {
     const result = await db.query(
       `SELECT ledger_account, amount
        FROM mypos_transactions
-       WHERE value_date BETWEEN $1 AND $2`,
-      [beginDatum, eindDatum]
+       WHERE DATE_TRUNC('month', value_date) = DATE_TRUNC('month', $1::date)`,
+      [beginDatum]
     );
     transacties = result.rows;
   } catch (err) {
     return NextResponse.json({ error: "Fout bij ophalen transacties: " + String(err) }, { status: 500 });
   }
 
-  // Groepeer bedragen per grootboekrekening
+  // Sommeer bedragen per grootboekrekening
   const totalen: Record<string, number> = {};
   for (const tx of transacties) {
     const rekening = tx.ledger_account;
@@ -41,7 +39,7 @@ export async function GET(req: NextRequest) {
   const nettoOmzet = brutoOmzet / 1.09;
   const btwBedrag = brutoOmzet - nettoOmzet;
 
-  // Opbouwen van regels
+  // Opbouw van regels
   const regels = [];
 
   if (brutoOmzet > 0) {
@@ -71,7 +69,7 @@ export async function GET(req: NextRequest) {
       bedrag: parseFloat(totalen["1223"].toFixed(2)),
     });
 
-  // Saldo (controlebedrag)
+  // Saldo berekening
   const saldo = regels.reduce((sum, r) => sum + r.bedrag, 0);
 
   return NextResponse.json({
