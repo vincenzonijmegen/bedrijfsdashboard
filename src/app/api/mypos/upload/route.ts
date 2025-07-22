@@ -14,15 +14,18 @@ export async function POST(req: NextRequest) {
 
   // Read file content
   const buffer = await file.arrayBuffer();
-  const content = Buffer.from(buffer).toString('utf-8');
+  let content = Buffer.from(buffer).toString('utf-8');
+  // Remove BOM if present
+  content = content.replace(/\uFEFF/, '');
 
-  // Parse CSV (separator: comma, decimal point: dot)
+  // Parse CSV (separator: comma, disable quoting to handle lines wrapped in quotes)
   let records;
   try {
     records = parse(content, {
       columns: true,
       skip_empty_lines: true,
       delimiter: ',',
+      quote: ''
     });
   } catch (err) {
     return NextResponse.json({ error: 'Fout bij parseren CSV: ' + String(err) }, { status: 400 });
