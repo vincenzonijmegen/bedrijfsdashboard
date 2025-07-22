@@ -6,13 +6,10 @@ export async function GET(req: NextRequest) {
   const apiKey = process.env.SHIFTBASE_API_KEY;
   const url = new URL("https://api.shiftbase.com/api/timesheets");
 
-  // Voeg query parameters toe aan de externe URL
+  // Voeg query parameters toe aan de externe URL (bijv. min_date, max_date)
   req.nextUrl.searchParams.forEach((value, key) => {
     url.searchParams.set(key, value);
   });
-
-  // Bepaal of goedgekeurde tijdstempels moeten worden meegegeven
-  const includeApproved = req.nextUrl.searchParams.get('includeApproved') === 'true';
 
   try {
     const res = await fetch(url.toString(), {
@@ -30,11 +27,9 @@ export async function GET(req: NextRequest) {
     }
 
     const data = await res.json();
-    
-    // Standaard alleen pending tonen, tenzij includeApproved=true
-    if (!includeApproved) {
-      data.data = data.data.filter((t: any) => t.Timesheet.status === 'Pending');
-    }
+
+    // Toon alle kloktijden, inclusief "Approved" (historisch) en "Pending"
+    // Verwijder filtering zodat de front-end zowel historische als actieve tijden ontvangt
 
     return NextResponse.json(data);
   } catch (err) {
