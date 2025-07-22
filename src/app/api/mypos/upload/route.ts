@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       value_date,
       ordered_via: r['Ordered Via'] ?? '',
       transaction_type: typeField,
-      reference: r['Reference Number'] ?? '',
+      reference_number: r['Reference Number'] ?? '',
       description: descField,
       amount,
       ledger_account: ledger,
@@ -66,13 +66,13 @@ export async function POST(req: NextRequest) {
     for (const tx of txs) {
       await db.query(
         `INSERT INTO mypos_transactions
-         (value_date, ordered_via, transaction_type, reference, description, amount, ledger_account)
+         (value_date, ordered_via, transaction_type, reference_number, description, amount, ledger_account)
          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
         [
           tx.value_date,
           tx.ordered_via,
           tx.transaction_type,
-          tx.reference,
+          tx.reference_number,
           tx.description,
           tx.amount,
           tx.ledger_account,
