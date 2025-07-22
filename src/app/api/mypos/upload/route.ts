@@ -21,8 +21,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Kon XLSX-bestand niet lezen: " + String(err) }, { status: 400 });
   }
 
-  // Haal grootboekkoppelingen op uit database
-  const grootboekMap: Record<string, string> = {};
+  // Haal grootboekkoppelingen op uit juiste tabel
+  let grootboekMap: Record<string, string> = {};
   try {
     const result = await db.query(`SELECT type_code, gl_rekening FROM mypos_gl_accounts`);
     for (const row of result.rows) {
@@ -32,11 +32,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Fout bij ophalen grootboekcodes: " + String(err) }, { status: 500 });
   }
 
-  // Verwerk rijen
+  // Verwerk transacties
   const txs = rows
     .filter(row => row["Value Date"] && (row["Debit"] || row["Credit"]))
     .map(row => {
-      // Datum converteren naar YYYY-MM-DD
       const rawDate = row["Value Date"].toString();
       const match = rawDate.match(/(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})/);
       const value_date = match
@@ -61,7 +60,7 @@ export async function POST(req: NextRequest) {
         grootboekcode = "BI";
       }
 
-      // Zoek grootboekrekening
+      // Zoek rekeningnummer
       const ledger_account = grootboekMap[grootboekcode] ?? "0000";
 
       return {
@@ -74,7 +73,7 @@ export async function POST(req: NextRequest) {
     })
     .filter(tx => tx.value_date && !isNaN(tx.amount));
 
-  // Opslaan in database
+  // Sla op in database
   try {
     for (const tx of txs) {
       await db.query(
