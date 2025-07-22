@@ -11,22 +11,32 @@ export async function POST(req: NextRequest) {
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  // Probeer het Excelbestand te lezen
+  // Lees Excelbestand
   let rows: any[] = [];
   try {
     const workbook = XLSX.read(buffer, { type: "buffer" });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const json = XLSX.utils.sheet_to_json(sheet); // kolomnamen blijven behouden
-    rows = Array.isArray(json) ? json : [];
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    rows = XLSX.utils.sheet_to_json(sheet);
   } catch (err) {
     return NextResponse.json({ error: "Kon XLSX-bestand niet lezen: " + String(err) }, { status: 400 });
   }
 
+  // Haal grootboekkoppelingen op uit database
+  let grootboekMap: Record<string, string> = {};
+  try {
+    const result = await db.query(`SELECT type_code, gl_rekening FROM grootboekcodes`);
+    for (const row of result.rows) {
+      grootboekMap[row.type_code] = row.gl_rekening;
+    }
+  } catch (err) {
+    return NextResponse.json({ error: "Fout bij ophalen grootboekcodes: " + String(err) }, { status: 500 });
+  }
+
+  // Verwerk rijen
   const txs = rows
-    .filter((row) => row["Value Date"] && (row["Debit"] || row["Credit"]))
-    .map((row) => {
-      // Datum omzetten naar YYYY-MM-DD
+    .filter(row => row["Value Date"] && (row["Debit"] || row["Credit"]))
+    .map(row => {
+      // Datum converteren naar YYYY-MM-DD
       const rawDate = row["Value Date"].toString();
       const match = rawDate.match(/(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})/);
       const value_date = match
@@ -37,25 +47,34 @@ export async function POST(req: NextRequest) {
       const descField = row["Description"] ?? "";
       const debit = parseFloat((row["Debit"] ?? 0).toString());
       const credit = parseFloat((row["Credit"] ?? 0).toString());
-      const amount = debit > 0 ? debit : credit > 0 ? -credit : 0;
+      const amount = credit > 0 ? credit : debit > 0 ? -debit : 0;
 
-      let ledger = "9999";
-      if (typeField.startsWith("BIJ")) ledger = "1111";
-      else if (typeField.toLowerCase().includes("fee")) ledger = "2222";
-      else if (descField.toLowerCase().includes("overboeking")) ledger = "3333";
-      else ledger = "4444";
+      // Bepaal grootboekcode
+      let grootboekcode = "ONBEKEND";
+      if (typeField.toLowerCase().includes("fee")) {
+        grootboekcode = "AF";
+      } else if (typeField.toLowerCase().includes("online payment")) {
+        grootboekcode = "CR";
+      } else if (typeField.toLowerCase().includes("outgoing bank transfer")) {
+        grootboekcode = "OV";
+      } else if (typeField.toLowerCase().includes("payment")) {
+        grootboekcode = "BI";
+      }
+
+      // Zoek grootboekrekening
+      const ledger_account = grootboekMap[grootboekcode] ?? "0000";
 
       return {
         value_date,
         transaction_type: typeField,
         description: descField,
         amount,
-        ledger_account: ledger,
+        ledger_account,
       };
     })
-    .filter((tx) => tx.value_date !== null && !isNaN(tx.amount));
+    .filter(tx => tx.value_date && !isNaN(tx.amount));
 
-  // Voeg transacties toe aan de database
+  // Opslaan in database
   try {
     for (const tx of txs) {
       await db.query(
