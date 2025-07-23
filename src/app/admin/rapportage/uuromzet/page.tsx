@@ -9,8 +9,8 @@ type DagUurOmzet = {
 };
 
 export default function UurOmzetPage() {
-  const [start, setStart] = useState(() => new Date().toISOString().substring(0, 10));
-  const [end, setEnd] = useState(() => new Date().toISOString().substring(0, 10));
+  const [start, setStart] = useState(() => new Date().toISOString().slice(0, 10));
+  const [end, setEnd] = useState(() => new Date().toISOString().slice(0, 10));
   const [data, setData] = useState<DagUurOmzet[]>([]);
   const [uren, setUren] = useState<string[]>([]);
   const [dagen, setDagen] = useState<string[]>([]);
@@ -27,6 +27,12 @@ export default function UurOmzetPage() {
   }, [start, end]);
 
   const maxOmzet = Math.max(...data.map(d => d.omzet), 1);
+
+  // Vooruitberekende totalen
+  const kolomTotalen = uren.map(uur =>
+    data.filter(d => d.uur === uur).reduce((sum, d) => sum + d.omzet, 0)
+  );
+  const totaalAll = kolomTotalen.reduce((sum, v) => sum + v, 0);
 
   return (
     <div className="p-6 max-w-full">
@@ -53,7 +59,6 @@ export default function UurOmzetPage() {
         </label>
       </div>
 
-      {/* Tabel met totalen */}
       <div className="overflow-auto mb-12">
         <table className="text-sm border border-collapse w-full">
           <thead className="bg-gray-100 sticky top-0 z-10">
@@ -69,21 +74,23 @@ export default function UurOmzetPage() {
           </thead>
           <tbody>
             {dagen.map(dag => {
+              // bereken per-uur waarden als getallen
               const bedragen = uren.map(uur => {
-                const m = data.find(d => d.dag === dag && d.uur === uur);
-                return m?.omzet ?? 0;
+                const found = data.find(d => d.dag === dag && d.uur === uur);
+                return found?.omzet ?? 0;
               });
-              const rijTotaal = bedragen.reduce((s, x) => s + x, 0);
+              const rijTotaal = bedragen.reduce((sum, x) => sum + x, 0);
+
               return (
                 <tr key={dag}>
                   <td className="border px-2 py-1 font-medium whitespace-nowrap">{dag}</td>
-                  {bedragen.map((omzet, i) => (
-                    <td key={i} className="border px-2 py-1 text-right">
-                      {omzet > 0 ? `€ ${omzet.toLocaleString("nl-NL")}` : "-"}
+                  {bedragen.map((omzet, idx) => (
+                    <td key={idx} className="border px-2 py-1 text-right">
+                      {omzet > 0 ? `€ ${omzet.toLocaleString('nl-NL')}` : '-'}
                     </td>
                   ))}
                   <td className="border px-2 py-1 text-right font-semibold">
-                    {rijTotaal > 0 ? `€ ${rijTotaal.toLocaleString("nl-NL")}` : "-"}
+                    {rijTotaal > 0 ? `€ ${rijTotaal.toLocaleString('nl-NL')}` : '-'}
                   </td>
                 </tr>
               );
@@ -92,27 +99,20 @@ export default function UurOmzetPage() {
           <tfoot className="bg-gray-100 font-semibold">
             <tr>
               <td className="border px-2 py-1">Totaal</td>
-              {uren.map(uur => {
-                const kolomTotaal = data
-                  .filter(d => d.uur === uur)
-                  .reduce((s, d) => s + d.omzet, 0);
-                return (
-                  <td key={uur} className="border px-2 py-1 text-right">
-                    {kolomTotaal > 0 ? `€ ${kolomTotaal.toLocaleString("nl-NL")}` : "-"}
-                  </td>
-                );
-              })}
+              {kolomTotalen.map((totaal, idx) => (
+                <td key={idx} className="border px-2 py-1 text-right">
+                  {totaal > 0 ? `€ ${totaal.toLocaleString('nl-NL')}` : '-'}
+                </td>
+              ))}
               <td className="border px-2 py-1 text-right">
-                {data.reduce((s, d) => s + d.omzet, 0) > 0
-                  ? `€ ${data.reduce((s, d) => s + d.omzet, 0).toLocaleString("nl-NL")}`
-                  : "-"}
+                {totaalAll > 0 ? `€ ${totaalAll.toLocaleString('nl-NL')}` : '-'}
               </td>
             </tr>
           </tfoot>
         </table>
       </div>
 
-      {/* Heatmap via CSS Grid met data */}
+      {/* Heatmap */}
       {dagen.length > 0 && uren.length > 0 && (
         <>
           <h2 className="text-lg font-semibold mb-2">Heatmap</h2>
@@ -138,19 +138,20 @@ export default function UurOmzetPage() {
                 {dag}
               </div>,
               ...uren.map(uur => {
-                const m = data.find(d => d.dag === dag && d.uur === uur);
-                const omzet = m?.omzet ?? 0;
+                const found = data.find(d => d.dag === dag && d.uur === uur);
+                const omzet = found?.omzet ?? 0;
                 const alpha = omzet === 0 ? 0.05 : Math.min(1, omzet / maxOmzet);
-                const bg = omzet === 0 ? "#f0f0f0" : `rgba(13,60,97,${alpha})`;
+                const bg = omzet === 0 ? '#f0f0f0' : `rgba(13,60,97,${alpha})`;
                 const kleur = omzet / maxOmzet > 0.6 ? 'white' : 'black';
+
                 return (
                   <div
                     key={`${dag}-${uur}`}
                     className="border-b border-r text-center text-sm px-2 py-1 font-medium"
                     style={{ backgroundColor: bg, color: kleur }}
-                    title={m ? `€ ${omzet.toLocaleString("nl-NL")}` : "geen omzet"}
+                    title={found ? `€ ${omzet.toLocaleString('nl-NL')}` : 'geen omzet'}
                   >
-                    {omzet > 0 ? `€ ${omzet.toLocaleString("nl-NL")}` : "-"}
+                    {omzet > 0 ? `€ ${omzet.toLocaleString('nl-NL')}` : '-'}
                   </div>
                 );
               })
