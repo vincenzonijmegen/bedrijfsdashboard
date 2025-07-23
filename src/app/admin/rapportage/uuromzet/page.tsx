@@ -8,7 +8,6 @@ import {
   YAxis,
   Tooltip,
   Cell,
-  Rectangle,
   ZAxis,
 } from "recharts";
 
@@ -37,6 +36,8 @@ export default function UurOmzetPage() {
         setUren(uniekeUren);
       });
   }, [start, end]);
+
+  const maxOmzet = Math.max(...data.map(d => d.omzet), 1); // vermijd delen door 0
 
   return (
     <div className="p-6 max-w-full">
@@ -82,47 +83,48 @@ export default function UurOmzetPage() {
       {data.length > 0 && (
         <div className="mt-12">
           <h2 className="text-lg font-semibold mb-2">Heatmap</h2>
-          <ResponsiveContainer width="100%" height={dagen.length * 35 + 60}>
-            <ComposedChart
-              layout="vertical"
-              data={dagen.flatMap((dag) =>
-                uren.map((uur) => {
-                  const match = data.find((d) => d.dag === dag && d.uur === uur);
-                  return { dag, uur, omzet: match?.omzet ?? 0 };
-                })
-              )}
-              margin={{ top: 20, right: 20, left: 100, bottom: 20 }}
-            >
-              <XAxis type="number" hide />
-              <YAxis type="category" dataKey="dag" width={90} />
-              <ZAxis type="number" dataKey="omzet" range={[0, 400]} />
-              <Tooltip
-                formatter={(value: number) => `€ ${value.toLocaleString("nl-NL")}`}
-                labelFormatter={(label) => `Datum: ${label}`}
-              />
-              {dagen.flatMap((dag) =>
-                uren.map((uur) => {
-                  const match = data.find((d) => d.dag === dag && d.uur === uur);
-                  const omzet = match?.omzet ?? 0;
-                  const kleur = omzet === 0
-                    ? "#f0f0f0"
-                    : `rgba(0, 123, 255, ${Math.min(1, omzet / 500)})`;
+          <div style={{ width: "100%", overflowX: "auto" }}>
+            <ResponsiveContainer width={Math.max(uren.length * 42, 400)} height={dagen.length * 35 + 60}>
+              <ComposedChart
+                layout="vertical"
+                data={dagen.flatMap((dag) =>
+                  uren.map((uur) => {
+                    const match = data.find((d) => d.dag === dag && d.uur === uur);
+                    return { dag, uur, omzet: match?.omzet ?? 0 };
+                  })
+                )}
+                margin={{ top: 20, right: 20, left: 100, bottom: 20 }}
+              >
+                <XAxis type="number" hide />
+                <YAxis type="category" dataKey="dag" width={90} />
+                <ZAxis type="number" dataKey="omzet" range={[0, maxOmzet]} />
+                <Tooltip
+                  formatter={(value: number) => `€ ${value.toLocaleString("nl-NL")}`}
+                  labelFormatter={(label) => `Datum: ${label}`}
+                />
+                {dagen.flatMap((dag) =>
+                  uren.map((uur) => {
+                    const match = data.find((d) => d.dag === dag && d.uur === uur);
+                    const omzet = match?.omzet ?? 0;
+                    const kleur = omzet === 0
+                      ? "#f0f0f0"
+                      : `rgba(0, 123, 255, ${Math.min(1, omzet / maxOmzet)})`;
 
-                  return (
-                    <Cell
-                      key={`${dag}-${uur}`}
-                      fill={kleur}
-                      x={uren.indexOf(uur) * 40}
-                      y={dagen.indexOf(dag) * 30}
-                      width={40}
-                      height={30}
-                      cursor="pointer"
-                    />
-                  );
-                })
-              )}
-            </ComposedChart>
-          </ResponsiveContainer>
+                    return (
+                      <Cell
+                        key={`${dag}-${uur}`}
+                        fill={kleur}
+                        x={uren.indexOf(uur) * 42}
+                        y={dagen.indexOf(dag) * 35}
+                        width={42}
+                        height={35}
+                      />
+                    );
+                  })
+                )}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
     </div>
