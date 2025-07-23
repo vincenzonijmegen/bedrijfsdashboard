@@ -94,63 +94,60 @@ export default function UurOmzetPage() {
       </div>
 
       {/* Heatmap via CSS Grid */}
-      {dagen.length > 0 && uren.length > 0 && (
-        <>
-          <h2 className="text-lg font-semibold mb-2">Heatmap</h2>
+{dagen.length > 0 && uren.length > 0 && (
+  <>
+    <h2 className="text-lg font-semibold mb-2">Heatmap</h2>
+    <div
+      className="grid border-t border-l"
+      style={{
+        gridTemplateColumns: `150px repeat(${uren.length}, 1fr)`,
+      }}
+    >
+      {/* Header-rij */}
+      <div className="border-b border-r bg-gray-100 px-2 py-1"></div>
+      {uren.map(uur => (
+        <div
+          key={uur}
+          className="border-b border-r text-center text-sm px-2 py-1 bg-gray-100 whitespace-nowrap"
+        >
+          {uur}
+        </div>
+      ))}
+
+      {/* Data-cellen met bedragen */}
+      {dagen.map(dag =>
+        [
           <div
-            className="grid border-t border-l"
-            style={{
-              gridTemplateColumns: `150px repeat(${uren.length}, 1fr)`,
-            }}
+            key={`${dag}-label`}
+            className="border-b border-r px-2 py-1 font-medium whitespace-nowrap"
           >
-            {/* Header-rij: lege cel + uren */}
-            <div className="border-b border-r bg-gray-100 px-2 py-1"></div>
-            {uren.map(uur => (
+            {dag}
+          </div>,
+          ...uren.map(uur => {
+            const match = data.find(d => d.dag === dag && d.uur === uur);
+            const omzet = match?.omzet ?? 0;
+            const alpha = omzet === 0 ? 0.05 : Math.min(1, omzet / maxOmzet);
+            const bg = omzet === 0
+              ? "#f0f0f0"
+              : `rgba(13, 60, 97, ${alpha})`;
+
+            return (
               <div
-                key={uur}
-                className="border-b border-r text-center text-sm px-2 py-1 bg-gray-100 whitespace-nowrap"
+                key={`${dag}-${uur}`}
+                className="border-b border-r text-center text-sm px-2 py-1 font-medium"
+                style={{ backgroundColor: bg, color: omzet / maxOmzet > 0.6 ? 'white' : 'black' }}
+                title={match ? `€ ${omzet.toLocaleString("nl-NL")}` : "geen omzet"}
               >
-                {uur}
+                {match ? `€ ${omzet.toLocaleString("nl-NL")}` : "-"}
               </div>
-            ))}
-
-            {/* Data-cellen */}
-            {dagen.map(dag =>
-              // eerste kolom: dag
-              [
-                <div
-                  key={`${dag}-label`}
-                  className="border-b border-r px-2 py-1 font-medium whitespace-nowrap"
-                >
-                  {dag}
-                </div>,
-                // vervolgens uren per dag
-                ...uren.map(uur => {
-                  const match = data.find(d => d.dag === dag && d.uur === uur);
-                  const omzet = match?.omzet ?? 0;
-                  // kleurintensiteit: 0→light gray, max→dark blue
-                  const alpha = omzet === 0 ? 0.05 : Math.min(1, omzet / maxOmzet);
-                  const bg = omzet === 0
-                    ? "#f0f0f0"
-                    : `rgba(13, 60, 97, ${alpha})`;
-
-                  return (
-                    <div
-                      key={`${dag}-${uur}`}
-                      className="border-b border-r text-right text-sm px-2 py-1"
-                      style={{ backgroundColor: bg }}
-                      title={match ? `€ ${omzet.toLocaleString("nl-NL")}` : "geen omzet"}
-                    >
-                      {/* optioneel: toon getal in heatmap */}
-                      {/* match ? omzet.toLocaleString("nl-NL") : "" */}
-                    </div>
-                  );
-                })
-              ]
-            )}
-          </div>
-        </>
+            );
+          })
+        ]
       )}
+    </div>
+  </>
+)}
+
     </div>
   );
 }
