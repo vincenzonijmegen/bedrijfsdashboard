@@ -11,19 +11,13 @@ export async function GET(request: Request) {
     );
   }
 
-  const url = new URL("https://api.shiftbase.com/api/rosters");
   const { searchParams } = new URL(request.url);
+  const datum = searchParams.get('datum');  // verwacht "YYYY-MM-DD"
 
-  // Ondersteun 'datum' query als periodStart & periodEnd
-  const datum = searchParams.get('datum');
+  const url = new URL("https://api.shiftbase.com/api/rosters");
   if (datum) {
     url.searchParams.set('periodStart', datum);
     url.searchParams.set('periodEnd', datum);
-  } else {
-    // Forward overige query parameters direct
-    searchParams.forEach((value, key) => {
-      url.searchParams.set(key, value);
-    });
   }
 
   try {
@@ -47,7 +41,7 @@ export async function GET(request: Request) {
     return NextResponse.json(data);
   } catch (err) {
     return NextResponse.json(
-      { error: 'Interne serverfout in roster-route', details: String(err) },
+      { error: 'Interne serverfout in rooster-route', details: String(err) },
       { status: 500 }
     );
   }
