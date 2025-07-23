@@ -26,7 +26,7 @@ export default function RoosterPage() {
   }, [selectedDate]);
 
   const { data, error } = useSWR<ShiftItem[]>(
-    `/api/shiftbase/rooster?datum=${selectedDate}`,
+    () => `/api/shiftbase/rooster?datum=${selectedDate}`,
     fetcher
   );
 
