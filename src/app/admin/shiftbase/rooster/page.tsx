@@ -24,7 +24,7 @@ export default function Dagrooster() {
 
   // Fetch rooster en timesheets
   const { data: rosterData, error: rosterError } = useSWR(
-    `/api/shiftbase/rooster?date=${selectedDate}`,
+    `/api/shiftbase/rooster?datum=${selectedDate}`,
     fetcher
   );
   const { data: timesheetData, error: timesheetError } = useSWR(
