@@ -1,42 +1,53 @@
 // src/app/api/shiftbase/rooster/route.ts
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function GET(request: Request) {
   const apiKey = process.env.SHIFTBASE_API_KEY;
-  // Base endpoint for fetching rosters
-  const url = new URL("https://api.shiftbase.com/api/rosters");
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: 'SHIFTBASE_API_KEY is niet ingesteld' },
+      { status: 500 }
+    );
+  }
 
-  // Forward any query parameters (e.g., date or period) to Shiftbase
-  req.nextUrl.searchParams.forEach((value, key) => {
-    url.searchParams.set(key, value);
-  });
+  const url = new URL("https://api.shiftbase.com/api/rosters");
+  const { searchParams } = new URL(request.url);
+
+  // Ondersteun 'datum' query als periodStart & periodEnd
+  const datum = searchParams.get('datum');
+  if (datum) {
+    url.searchParams.set('periodStart', datum);
+    url.searchParams.set('periodEnd', datum);
+  } else {
+    // Forward overige query parameters direct
+    searchParams.forEach((value, key) => {
+      url.searchParams.set(key, value);
+    });
+  }
 
   try {
-    // Fetch roster data from Shiftbase
     const res = await fetch(url.toString(), {
       headers: {
-        Authorization: `API ${apiKey}`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
       },
-      cache: "no-store",
+      cache: 'no-store',
     });
 
     if (!res.ok) {
       const details = await res.text();
       return NextResponse.json(
-        { error: "Shiftbase fout bij ophalen roosters", details },
+        { error: 'Shiftbase fout bij ophalen roosters', details },
         { status: res.status }
       );
     }
 
     const data = await res.json();
-    // Return full roster payload; front-end will filter/display per date
     return NextResponse.json(data);
   } catch (err) {
     return NextResponse.json(
-      { error: "Interne serverfout in roster-route", details: String(err) },
+      { error: 'Interne serverfout in roster-route', details: String(err) },
       { status: 500 }
     );
   }
