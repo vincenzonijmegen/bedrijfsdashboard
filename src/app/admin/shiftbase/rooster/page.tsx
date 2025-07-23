@@ -97,7 +97,7 @@ export default function RoosterPage() {
                     <span className="font-semibold">
                       {item.Roster.starttime.slice(0,5)}–{item.Roster.endtime.slice(0,5)}
                     </span>{' '}
-                    <strong>{item.User?.name || 'Onbekend'}</strong>
+                    <strong>{item.User?.name || 'Onbekend'}</strong>{selectedDate === formatISO(today) && (<span className='ml-2 px-1 rounded text-sm bg-gray-100 text-gray-700'>⏱ In: -- Uit: --</span>)}
                   </span>
                 </li>
               ))}
