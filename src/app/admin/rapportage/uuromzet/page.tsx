@@ -1,6 +1,16 @@
 "use client";
 
+import React from "react";  // ← voeg dit toe
 import { useEffect, useState } from "react";
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell,
+  ZAxis,
+} from "recharts";
 
 type DagUurOmzet = {
   dag: string;
