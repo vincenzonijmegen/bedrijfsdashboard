@@ -1,16 +1,6 @@
 "use client";
 
-import React from "react";  // ← voeg dit toe
 import { useEffect, useState } from "react";
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Cell,
-  ZAxis,
-} from "recharts";
 
 type DagUurOmzet = {
   dag: string;
@@ -38,25 +28,6 @@ export default function UurOmzetPage() {
 
   const maxOmzet = Math.max(...data.map(d => d.omzet), 1);
 
-  // bereken totalen per dag (rij) en per uur (kolom)
-  const dagTotalen: Record<string, number> = {};
-  dagen.forEach(dag => {
-    dagTotalen[dag] = uren.reduce((sum, uur) => {
-      const match = data.find(d => d.dag === dag && d.uur === uur);
-      return sum + (match?.omzet ?? 0);
-    }, 0);
-  });
-
-  const uurTotalen: Record<string, number> = {};
-  uren.forEach(uur => {
-    uurTotalen[uur] = dagen.reduce((sum, dag) => {
-      const match = data.find(d => d.dag === dag && d.uur === uur);
-      return sum + (match?.omzet ?? 0);
-    }, 0);
-  });
-
-  const grandTotal = Object.values(dagTotalen).reduce((sum, v) => sum + v, 0);
-
   return (
     <div className="p-6 max-w-full">
       <h1 className="text-2xl font-bold mb-4">Uur-omzet per dag</h1>
@@ -82,20 +53,73 @@ export default function UurOmzetPage() {
         </label>
       </div>
 
-      {/* Tabelweergave (optioneel) */}
-      {/* ... je bestaande tabel hier ... */}
+      {/* Tabel met totalen */}
+      <div className="overflow-auto mb-12">
+        <table className="text-sm border border-collapse w-full">
+          <thead className="bg-gray-100 sticky top-0 z-10">
+            <tr>
+              <th className="border px-2 py-1 text-left">Datum</th>
+              {uren.map(uur => (
+                <th key={uur} className="border px-2 py-1 text-center whitespace-nowrap">
+                  {uur}
+                </th>
+              ))}
+              <th className="border px-2 py-1 text-right whitespace-nowrap">Totaal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {dagen.map(dag => {
+              const bedragen = uren.map(uur => {
+                const m = data.find(d => d.dag === dag && d.uur === uur);
+                return m?.omzet ?? 0;
+              });
+              const rijTotaal = bedragen.reduce((s, x) => s + x, 0);
+              return (
+                <tr key={dag}>
+                  <td className="border px-2 py-1 font-medium whitespace-nowrap">{dag}</td>
+                  {bedragen.map((omzet, i) => (
+                    <td key={i} className="border px-2 py-1 text-right">
+                      {omzet > 0 ? `€ ${omzet.toLocaleString("nl-NL")}` : "-"}
+                    </td>
+                  ))}
+                  <td className="border px-2 py-1 text-right font-semibold">
+                    {rijTotaal > 0 ? `€ ${rijTotaal.toLocaleString("nl-NL")}` : "-"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot className="bg-gray-100 font-semibold">
+            <tr>
+              <td className="border px-2 py-1">Totaal</td>
+              {uren.map(uur => {
+                const kolomTotaal = data
+                  .filter(d => d.uur === uur)
+                  .reduce((s, d) => s + d.omzet, 0);
+                return (
+                  <td key={uur} className="border px-2 py-1 text-right">
+                    {kolomTotaal > 0 ? `€ ${kolomTotaal.toLocaleString("nl-NL")}` : "-"}
+                  </td>
+                );
+              })}
+              <td className="border px-2 py-1 text-right">
+                {data.reduce((s, d) => s + d.omzet, 0) > 0
+                  ? `€ ${data.reduce((s, d) => s + d.omzet, 0).toLocaleString("nl-NL")}`
+                  : "-"}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
 
-      {/* Heatmap via CSS Grid met totalen */}
+      {/* Heatmap via CSS Grid met data */}
       {dagen.length > 0 && uren.length > 0 && (
         <>
           <h2 className="text-lg font-semibold mb-2">Heatmap</h2>
           <div
             className="grid border-t border-l"
-            style={{
-              gridTemplateColumns: `150px repeat(${uren.length}, 1fr) 1fr`,
-            }}
+            style={{ gridTemplateColumns: `150px repeat(${uren.length}, 1fr)` }}
           >
-            {/* Header-rij */}
             <div className="border-b border-r bg-gray-100 px-2 py-1"></div>
             {uren.map(uur => (
               <div
@@ -105,54 +129,32 @@ export default function UurOmzetPage() {
                 {uur}
               </div>
             ))}
-            <div className="border-b px-2 py-1 font-semibold bg-gray-100 text-center">Totaal</div>
 
-            {/* Data-rijen + dagtotalen */}
-            {dagen.map(dag => (
-              <React.Fragment key={dag}>
-                {/* eerste cel: datum */}
-                <div className="border-b border-r px-2 py-1 font-medium whitespace-nowrap">
-                  {dag}
-                </div>
-                {/* omzetcellen */}
-                {uren.map(uur => {
-                  const match = data.find(d => d.dag === dag && d.uur === uur);
-                  const omzet = match?.omzet ?? 0;
-                  const alpha = omzet === 0 ? 0.05 : Math.min(1, omzet / maxOmzet);
-                  const bg = omzet === 0 ? "#f0f0f0" : `rgba(13, 60, 97, ${alpha})`;
-                  const color = omzet / maxOmzet > 0.6 ? "white" : "black";
-
-                  return (
-                    <div
-                      key={`${dag}-${uur}`}
-                      className="border-b border-r text-center text-sm px-2 py-1 font-medium"
-                      style={{ backgroundColor: bg, color }}
-                      title={match ? `€ ${omzet.toLocaleString("nl-NL")}` : "geen omzet"}
-                    >
-                      {match ? `${omzet.toLocaleString("nl-NL")}` : "-"}
-                    </div>
-                  );
-                })}
-                {/* dagtotaal */}
-                <div className="border-b px-2 py-1 font-semibold text-center whitespace-nowrap">
-                  {dagTotalen[dag].toLocaleString("nl-NL")}
-                </div>
-              </React.Fragment>
-            ))}
-
-            {/* Footer: kolomtotaal + grand total */}
-            <div className="border-r px-2 py-1 font-semibold bg-gray-100 text-center">Totaal</div>
-            {uren.map(uur => (
+            {dagen.map(dag => [
               <div
-                key={`tot-${uur}`}
-                className="border-r px-2 py-1 font-semibold bg-gray-100 text-center whitespace-nowrap"
+                key={`${dag}-label`}
+                className="border-b border-r px-2 py-1 font-medium whitespace-nowrap"
               >
-                {uurTotalen[uur].toLocaleString("nl-NL")}
-              </div>
-            ))}
-            <div className="px-2 py-1 font-bold bg-gray-100 text-center whitespace-nowrap">
-              {grandTotal.toLocaleString("nl-NL")}
-            </div>
+                {dag}
+              </div>,
+              ...uren.map(uur => {
+                const m = data.find(d => d.dag === dag && d.uur === uur);
+                const omzet = m?.omzet ?? 0;
+                const alpha = omzet === 0 ? 0.05 : Math.min(1, omzet / maxOmzet);
+                const bg = omzet === 0 ? "#f0f0f0" : `rgba(13,60,97,${alpha})`;
+                const kleur = omzet / maxOmzet > 0.6 ? 'white' : 'black';
+                return (
+                  <div
+                    key={`${dag}-${uur}`}
+                    className="border-b border-r text-center text-sm px-2 py-1 font-medium"
+                    style={{ backgroundColor: bg, color: kleur }}
+                    title={m ? `€ ${omzet.toLocaleString("nl-NL")}` : "geen omzet"}
+                  >
+                    {omzet > 0 ? `€ ${omzet.toLocaleString("nl-NL")}` : "-"}
+                  </div>
+                );
+              })
+            ])}
           </div>
         </>
       )}
