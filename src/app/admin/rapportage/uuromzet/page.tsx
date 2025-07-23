@@ -187,7 +187,7 @@ export default function UurOmzetPage() {
                 {totaal > 0 ? `€ ${totaal.toLocaleString('nl-NL')}` : '-'}
               </div>
             ))}
-            <div className="border-b border-r text-right text-sm px-2 py-1 font-semibold">
+            <div className="border-b border-r text-right text-sm px-2 py-1 font-semibold whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis">
               {totaalAll > 0 ? `€ ${totaalAll.toLocaleString('nl-NL')}` : '-'}
             </div>
           </div>
