@@ -68,6 +68,8 @@ export default function RoosterPage() {
         <button onClick={() => changeDay(-1)} className="px-2 py-1 bg-gray-200 rounded">←</button>
         <input
           type="date"
+          min="2024-01-01"
+          max="2026-12-31"
           value={selectedDate}
           onChange={e => setSelectedDate(e.target.value)}
           className="border px-2 py-1 rounded"
@@ -75,7 +77,7 @@ export default function RoosterPage() {
         <button onClick={() => changeDay(1)} className="px-2 py-1 bg-gray-200 rounded">→</button>
       </div>
 
-      <h1 className="text-xl font-bold mb-2">Rooster voor {selectedDate}</h1>
+      <h1 className="text-xl font-bold mb-2">Rooster voor {new Date(selectedDate).toLocaleDateString('nl-NL', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric' })}</h1>
 
       {order.length === 0 ? (
         <p>Geen shifts gevonden voor deze dag.</p>
