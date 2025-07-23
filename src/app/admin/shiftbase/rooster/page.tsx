@@ -16,21 +16,20 @@ type ShiftItem = {
   User?: { name: string };
 };
 
-type RosterResponse = {
-  data: ShiftItem[];
-};
+
 
 export default function RoosterPage() {
   const today = new Date();
   const formatISO = (d: Date) => d.toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(formatISO(today));
 
-  const { data: rosterResponse, error } = useSWR<RosterResponse>(
+  const { data: rosterData, error } = useSWR<ShiftItem[]>(
     `/api/shiftbase/rooster?datum=${selectedDate}`,
     fetcher
   );
 
-  const rosterData = rosterResponse?.data || [];
+  const rosterData = rosterData || [];  // direct array from API
+
 
   // Navigate days
   const changeDay = (offset: number) => {
