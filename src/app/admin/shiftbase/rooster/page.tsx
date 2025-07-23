@@ -21,17 +21,27 @@ export default function Dagrooster() {
       year: 'numeric',
     });
 
-  // Fetch rooster via dynamic route (error-handling inline)
-  const { data: rosterData } = useSWR(
+  // Fetch rooster via static route
+  const { data: rosterData, error: rosterError } = useSWR(
     `/api/shiftbase/rooster?datum=${selectedDate}`,
     fetcher
   );
-  const { data: timesheetData } = useSWR(
+  const { data: timesheetData, error: timesheetError } = useSWR(
     `/api/shiftbase/timesheets?date=${selectedDate}&includeApproved=true`,
     fetcher
   );
 
-  if (!rosterData || !timesheetData) return <p>Gegevens worden geladen...</p>;
+  // Fouten en loading handlen
+  if (rosterError || timesheetError) {
+    console.error(rosterError || timesheetError);
+    return <p>Er is een fout opgetreden bij het laden van het rooster.</p>;
+  }
+  if (!rosterData || !timesheetData) {
+    return <p>Gegevens worden geladen...</p>;
+  }
+
+  // Bescherm de data-array
+  const rosterItems = Array.isArray(rosterData.data) ? rosterData.data : [];
 
   // Navigatie knoppen
   const prevDay = () => setSelectedDate(
@@ -42,12 +52,11 @@ export default function Dagrooster() {
   );
   const goToday = () => setSelectedDate(formatISO(today));
 
-  // Check of geselecteerde dag vandaag is
   const isToday = selectedDate === formatISO(today);
 
-  // Groeperen op korte shiftnaam
-  const perShift = rosterData.data.reduce((acc: any, item: any) => {
-    const shiftKey = item.Roster.name || "Onbekende shift";
+  // Groeperen op shift
+  const perShift = rosterItems.reduce((acc: any, item: any) => {
+    const shiftKey = item.Roster?.name || "Onbekende shift";
     if (!acc[shiftKey]) acc[shiftKey] = [];
     acc[shiftKey].push(item);
     return acc;
@@ -59,8 +68,8 @@ export default function Dagrooster() {
     "SPS","SLW1","SLW2"
   ];
   const gesorteerdeEntries = gewensteVolgorde
-    .filter((naam) => perShift[naam])
-    .map((naam) => [naam, perShift[naam]] as [string, any[]]);
+    .filter(naam => perShift[naam]?.length)
+    .map(naam => [naam, perShift[naam]] as [string, any[]]);
 
   return (
     <div className="p-4">
@@ -69,6 +78,7 @@ export default function Dagrooster() {
           ← Terug naar Rapportage
         </Link>
       </p>
+
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-bold">Dagrooster</h1>
@@ -80,9 +90,10 @@ export default function Dagrooster() {
           <button onClick={nextDay} className="px-2 py-1 bg-gray-200 rounded">→</button>
         </div>
       </div>
+
       {gesorteerdeEntries.map(([shiftKey, items]) => {
-        const kleur = items[0].Roster.color || '#333';
-        const langeNaam = items[0].Shift?.long_name || shiftKey;
+        const kleur = items[0]?.Roster?.color || '#333';
+        const langeNaam = items[0]?.Shift?.long_name || shiftKey;
         return (
           <div key={shiftKey} className="mb-3">
             <h2
@@ -97,12 +108,12 @@ export default function Dagrooster() {
                 if (isToday) {
                   const tsWrapper = timesheetData.data.find(
                     (t: any) =>
-                      t.Timesheet.user_id === i.Roster.user_id &&
+                      t.Timesheet.user_id === i.Roster?.user_id &&
                       t.Timesheet.date === selectedDate
                   );
                   const ts = tsWrapper?.Timesheet;
-                  const klokIn = ts?.clocked_in?.split(' ')[1].slice(0,5) || '-';
-                  const klokUit = ts?.clocked_out?.split(' ')[1].slice(0,5) || '-';
+                  const klokIn = ts?.clocked_in?.split(' ')[1]?.slice(0,5) || '-';
+                  const klokUit = ts?.clocked_out?.split(' ')[1]?.slice(0,5) || '-';
                   const statusClass = tsWrapper
                     ? ts?.clocked_in && ts?.clocked_out
                       ? 'bg-green-100 text-green-800'
@@ -113,10 +124,10 @@ export default function Dagrooster() {
                   );
                 }
                 return (
-                  <li key={i.Roster.id} className="pl-2 flex justify-between">
+                  <li key={i.Roster?.id} className="pl-2 flex justify-between">
                     <span>
                       <span className="font-semibold">
-                        {i.Roster.starttime.slice(0,5)}–{i.Roster.endtime.slice(0,5)}
+                        {i.Roster?.starttime?.slice(0,5)}–{i.Roster?.endtime?.slice(0,5)}
                       </span>{' '}
                       <strong>{i.User?.name || 'Onbekend'}</strong>
                     </span>
