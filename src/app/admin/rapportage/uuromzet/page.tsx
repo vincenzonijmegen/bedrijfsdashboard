@@ -26,15 +26,13 @@ export default function UurOmzetPage() {
       });
   }, [start, end]);
 
-  // Bepaal maximale omzet (minimaal 1 om delen door 0 te voorkomen)
   const maxOmzet = Math.max(...data.map(d => d.omzet), 1);
 
-  // Bereken kolomtotalen en totaal van alles
   const kolomTotalen = uren.map(uur =>
     data.filter(d => d.uur === uur)
-        .reduce((sum, d) => sum + d.omzet, 0)
+        .reduce((sum, d) => sum + Number(d.omzet), 0)
   );
-  const totaalAll = kolomTotalen.reduce((sum, v) => sum + v, 0);
+  const totaalAll = kolomTotalen.map(Number).reduce((sum, v) => sum + v, 0);
 
   return (
     <div className="p-6 max-w-full">
@@ -77,12 +75,10 @@ export default function UurOmzetPage() {
           </thead>
           <tbody>
             {dagen.map(dag => {
-              // Bereken per-uur-waarden
               const bedragen = uren.map(uur => {
                 const found = data.find(d => d.dag === dag && d.uur === uur);
-                return found ? found.omzet : 0;
+                return found ? Number(found.omzet) : 0;
               });
-              // Rij-totaal
               const rijTotaal = bedragen.reduce((sum, x) => sum + x, 0);
 
               return (
@@ -111,7 +107,7 @@ export default function UurOmzetPage() {
                   key={idx}
                   className="border px-2 py-1 text-right"
                 >
-                  {totaal > 0 ? `€ ${totaal.toLocaleString('nl-NL')}` : '-'}
+                  {Number(totaal) > 0 ? `€ ${Number(totaal).toLocaleString('nl-NL')}` : '-'}
                 </td>
               ))}
               <td className="border px-2 py-1 text-right">
@@ -122,7 +118,6 @@ export default function UurOmzetPage() {
         </table>
       </div>
 
-      {/* Heatmap via CSS Grid */}
       {dagen.length > 0 && uren.length > 0 && (
         <>
           <h2 className="text-lg font-semibold mb-2">Heatmap</h2>
@@ -130,7 +125,6 @@ export default function UurOmzetPage() {
             className="grid border-t border-l"
             style={{ gridTemplateColumns: `150px repeat(${uren.length}, 1fr)` }}
           >
-            {/* Header */}
             <div className="border-b border-r bg-gray-100 px-2 py-1" />
             {uren.map(uur => (
               <div
@@ -141,7 +135,6 @@ export default function UurOmzetPage() {
               </div>
             ))}
 
-            {/* Cellen */}
             {dagen.flatMap(dag => [
               <div
                 key={`${dag}-label`}
@@ -151,7 +144,7 @@ export default function UurOmzetPage() {
               </div>,
               ...uren.map(uur => {
                 const found = data.find(d => d.dag === dag && d.uur === uur);
-                const omzet = found ? found.omzet : 0;
+                const omzet = found ? Number(found.omzet) : 0;
                 const alpha = omzet === 0 ? 0.05 : Math.min(1, omzet / maxOmzet);
                 const bg = omzet === 0 ? '#f0f0f0' : `rgba(13,60,97,${alpha})`;
                 const kleur = omzet / maxOmzet > 0.6 ? 'white' : 'black';
