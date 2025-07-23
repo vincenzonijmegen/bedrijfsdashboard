@@ -161,7 +161,7 @@ export default function UurOmzetPage() {
                   return (
                     <div
                       key={`${dag}-${uren[idx]}`}
-                      className="border-b border-r text-center text-sm px-2 py-1 font-medium whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis"
+                      className="border-b border-r text-center text-xs px-1 py-1 font-medium whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis"
                       style={{ backgroundColor: bg, color: kleur }}
                       title={`€ ${omzet.toLocaleString('nl-NL')}`}
                     >
@@ -171,7 +171,7 @@ export default function UurOmzetPage() {
                 }),
                 <div
                   key={`${dag}-total`}
-                  className="border-b border-r text-center text-sm px-2 py-1 font-semibold"
+                  className="border-b border-r text-center text-xs px-1 py-1 font-semibold"
                 >
                   {rijTotaal > 0 ? `€ ${rijTotaal.toLocaleString('nl-NL')}` : '-'}
                 </div>
@@ -182,12 +182,12 @@ export default function UurOmzetPage() {
             {kolomTotalen.map((totaal, idx) => (
               <div
                 key={`footer-${idx}`}
-                className="border-b border-r text-right text-sm px-2 py-1 font-semibold whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis"
+                className="border-b border-r text-right text-xs px-1 py-1 font-semibold whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis"
               >
                 {totaal > 0 ? `€ ${totaal.toLocaleString('nl-NL')}` : '-'}
               </div>
             ))}
-            <div className="border-b border-r text-right text-sm px-2 py-1 font-semibold whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis">
+            <div className="border-b border-r text-right text-xs px-1 py-1 font-semibold">
               {totaalAll > 0 ? `€ ${totaalAll.toLocaleString('nl-NL')}` : '-'}
             </div>
           </div>
