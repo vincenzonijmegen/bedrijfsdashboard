@@ -22,7 +22,7 @@ type ShiftItem = {
   id: string;
   Roster: { starttime: string; endtime: string; name: string; color?: string; user_id: string };
   Shift?: { long_name: string };
-  User?: { name: string };
+User?: { id: string; name: string };
 };
 
 export default function RoosterPage() {
@@ -113,7 +113,7 @@ export default function RoosterPage() {
                     </span>{' '}
                     <strong>{item.User?.name || 'Onbekend'}</strong>{selectedDate === formatISO(today) && (() => {
                       const entry = Array.isArray(timesheetData)
-                      ? timesheetData.find(t => t.Timesheet.user_id === item.id)
+                      ? timesheetData.find(t => t.Timesheet.user_id === item.User?.id)
                       : undefined;
 
                       const inTijd = entry?.Timesheet.clocked_in?.split(' ')[1]?.slice(0,5) || '--';
