@@ -25,6 +25,15 @@ export default function RoosterPage() {
     `/api/shiftbase/rooster?datum=${selectedDate}`,
     fetcher
   );
+  const rosterData = data || [];
+
+  // Debug logging on data/error change
+  useEffect(() => {
+    console.debug('[RoosterPage] selectedDate:', selectedDate, 'data:', data, 'error:', error);
+  }, [selectedDate, data, error]);<ShiftItem[]>(
+    `/api/shiftbase/rooster?datum=${selectedDate}`,
+    fetcher
+  );
   console.log('Fetched roster data:', data, 'error:', error);
 
   const rosterData = data || [];
