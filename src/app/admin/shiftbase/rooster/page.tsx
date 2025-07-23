@@ -48,7 +48,13 @@ export default function RoosterPage() {
     return acc;
   }, {});
 
-  const order = Object.keys(perShift);
+  const gewensteVolgorde = [
+    "S1K", "S1KV", "S1", "S1Z", "S1L", "S1S",
+    "S2K", "S2", "S2L", "S2S",
+    "SPS", "SLW1", "SLW2"
+  ];
+  const order = gewensteVolgorde.filter(naam => perShift[naam])
+    .concat(Object.keys(perShift).filter(naam => !gewensteVolgorde.includes(naam)));
 
   return (
     <div className="p-4">
