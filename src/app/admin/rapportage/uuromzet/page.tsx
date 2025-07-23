@@ -26,8 +26,26 @@ export default function UurOmzetPage() {
       });
   }, [start, end]);
 
-  // maximale omzet in de selectie (minimaal 1 om delen door 0 te voorkomen)
   const maxOmzet = Math.max(...data.map(d => d.omzet), 1);
+
+  // bereken totalen per dag (rij) en per uur (kolom)
+  const dagTotalen: Record<string, number> = {};
+  dagen.forEach(dag => {
+    dagTotalen[dag] = uren.reduce((sum, uur) => {
+      const match = data.find(d => d.dag === dag && d.uur === uur);
+      return sum + (match?.omzet ?? 0);
+    }, 0);
+  });
+
+  const uurTotalen: Record<string, number> = {};
+  uren.forEach(uur => {
+    uurTotalen[uur] = dagen.reduce((sum, dag) => {
+      const match = data.find(d => d.dag === dag && d.uur === uur);
+      return sum + (match?.omzet ?? 0);
+    }, 0);
+  });
+
+  const grandTotal = Object.values(dagTotalen).reduce((sum, v) => sum + v, 0);
 
   return (
     <div className="p-6 max-w-full">
@@ -54,100 +72,80 @@ export default function UurOmzetPage() {
         </label>
       </div>
 
-      {/* Tabelweergave */}
-      <div className="overflow-auto mb-12">
-        <table className="text-sm border border-collapse w-full">
-          <thead className="bg-gray-100 sticky top-0 z-10">
-            <tr>
-              <th className="border px-2 py-1 text-left">Datum</th>
-              {uren.map(uur => (
-                <th
-                  key={uur}
-                  className="border px-2 py-1 text-center whitespace-nowrap"
-                >
-                  {uur}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
+      {/* Tabelweergave (optioneel) */}
+      {/* ... je bestaande tabel hier ... */}
+
+      {/* Heatmap via CSS Grid met totalen */}
+      {dagen.length > 0 && uren.length > 0 && (
+        <>
+          <h2 className="text-lg font-semibold mb-2">Heatmap</h2>
+          <div
+            className="grid border-t border-l"
+            style={{
+              gridTemplateColumns: `150px repeat(${uren.length}, 1fr) 1fr`,
+            }}
+          >
+            {/* Header-rij */}
+            <div className="border-b border-r bg-gray-100 px-2 py-1"></div>
+            {uren.map(uur => (
+              <div
+                key={uur}
+                className="border-b border-r text-center text-sm px-2 py-1 bg-gray-100 whitespace-nowrap"
+              >
+                {uur}
+              </div>
+            ))}
+            <div className="border-b px-2 py-1 font-semibold bg-gray-100 text-center">Totaal</div>
+
+            {/* Data-rijen + dagtotalen */}
             {dagen.map(dag => (
-              <tr key={dag}>
-                <td className="border px-2 py-1 font-medium whitespace-nowrap">
+              <React.Fragment key={dag}>
+                {/* eerste cel: datum */}
+                <div className="border-b border-r px-2 py-1 font-medium whitespace-nowrap">
                   {dag}
-                </td>
+                </div>
+                {/* omzetcellen */}
                 {uren.map(uur => {
                   const match = data.find(d => d.dag === dag && d.uur === uur);
+                  const omzet = match?.omzet ?? 0;
+                  const alpha = omzet === 0 ? 0.05 : Math.min(1, omzet / maxOmzet);
+                  const bg = omzet === 0 ? "#f0f0f0" : `rgba(13, 60, 97, ${alpha})`;
+                  const color = omzet / maxOmzet > 0.6 ? "white" : "black";
+
                   return (
-                    <td
-                      key={uur}
-                      className="border px-2 py-1 text-right"
+                    <div
+                      key={`${dag}-${uur}`}
+                      className="border-b border-r text-center text-sm px-2 py-1 font-medium"
+                      style={{ backgroundColor: bg, color }}
+                      title={match ? `€ ${omzet.toLocaleString("nl-NL")}` : "geen omzet"}
                     >
-                      {match ? `€ ${match.omzet.toLocaleString("nl-NL")}` : "-"}
-                    </td>
+                      {match ? `${omzet.toLocaleString("nl-NL")}` : "-"}
+                    </div>
                   );
                 })}
-              </tr>
+                {/* dagtotaal */}
+                <div className="border-b px-2 py-1 font-semibold text-center whitespace-nowrap">
+                  {dagTotalen[dag].toLocaleString("nl-NL")}
+                </div>
+              </React.Fragment>
             ))}
-          </tbody>
-        </table>
-      </div>
 
-      {/* Heatmap via CSS Grid */}
-{dagen.length > 0 && uren.length > 0 && (
-  <>
-    <h2 className="text-lg font-semibold mb-2">Heatmap</h2>
-    <div
-      className="grid border-t border-l"
-      style={{
-        gridTemplateColumns: `150px repeat(${uren.length}, 1fr)`,
-      }}
-    >
-      {/* Header-rij */}
-      <div className="border-b border-r bg-gray-100 px-2 py-1"></div>
-      {uren.map(uur => (
-        <div
-          key={uur}
-          className="border-b border-r text-center text-sm px-2 py-1 bg-gray-100 whitespace-nowrap"
-        >
-          {uur}
-        </div>
-      ))}
-
-      {/* Data-cellen met bedragen */}
-      {dagen.map(dag =>
-        [
-          <div
-            key={`${dag}-label`}
-            className="border-b border-r px-2 py-1 font-medium whitespace-nowrap"
-          >
-            {dag}
-          </div>,
-          ...uren.map(uur => {
-            const match = data.find(d => d.dag === dag && d.uur === uur);
-            const omzet = match?.omzet ?? 0;
-            const alpha = omzet === 0 ? 0.05 : Math.min(1, omzet / maxOmzet);
-            const bg = omzet === 0
-              ? "#f0f0f0"
-              : `rgba(13, 60, 97, ${alpha})`;
-
-            return (
+            {/* Footer: kolomtotaal + grand total */}
+            <div className="border-r px-2 py-1 font-semibold bg-gray-100 text-center">Totaal</div>
+            {uren.map(uur => (
               <div
-                key={`${dag}-${uur}`}
-                className="border-b border-r text-center text-sm px-2 py-1 font-medium"
-                style={{ backgroundColor: bg, color: omzet / maxOmzet > 0.6 ? 'white' : 'black' }}
-                title={match ? `€ ${omzet.toLocaleString("nl-NL")}` : "geen omzet"}
+                key={`tot-${uur}`}
+                className="border-r px-2 py-1 font-semibold bg-gray-100 text-center whitespace-nowrap"
               >
-                {match ? `€ ${omzet.toLocaleString("nl-NL")}` : "-"}
+                {uurTotalen[uur].toLocaleString("nl-NL")}
               </div>
-            );
-          })
-        ]
+            ))}
+            <div className="px-2 py-1 font-bold bg-gray-100 text-center whitespace-nowrap">
+              {grandTotal.toLocaleString("nl-NL")}
+            </div>
+          </div>
+        </>
       )}
-    </div>
-  </>
-)}
-
     </div>
   );
 }
