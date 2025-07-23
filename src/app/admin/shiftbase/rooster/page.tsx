@@ -23,7 +23,12 @@ export default function RoosterPage() {
   const formatISO = (d: Date) => d.toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(formatISO(today));
 
-  const { data: rosterData, error } = useSWR<ShiftItem[]>(
+  const { data, error } = useSWR<ShiftItem[]>(
+    `/api/shiftbase/rooster?datum=${selectedDate}`,
+    fetcher
+  );
+
+  const rosterData = data || [];[]>(
     `/api/shiftbase/rooster?datum=${selectedDate}`,
     fetcher
   );
@@ -39,6 +44,7 @@ export default function RoosterPage() {
   };
 
   if (error) return <p className="p-4 text-red-600">Fout: {error.message}</p>;
+  if (!data) return <p className="p-4">Laden…</p>;
   if (!rosterResponse) return <p className="p-4">Laden…</p>;
 
   // Group per Roster.name
