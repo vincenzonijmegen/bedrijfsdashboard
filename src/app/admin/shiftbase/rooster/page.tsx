@@ -113,7 +113,7 @@ export default function RoosterPage() {
                     </span>{' '}
                     <strong>{item.User?.name || 'Onbekend'}</strong>{selectedDate === formatISO(today) && (() => {
                       const entry = Array.isArray(timesheetData)
-                      ? timesheetData.find(t => t.Timesheet.user_id === item.Roster.user_id)
+                      ? timesheetData.find(t => t.Timesheet.user_id === item.id)
                       : undefined;
 
                       const inTijd = entry?.Timesheet.clocked_in?.split(' ')[1]?.slice(0,5) || '--';
