@@ -112,10 +112,9 @@ export default function RoosterPage() {
                       {item.Roster.starttime.slice(0,5)}–{item.Roster.endtime.slice(0,5)}
                     </span>{' '}
                     <strong>{item.User?.name || 'Onbekend'}</strong>{selectedDate === formatISO(today) && (() => {
-                      const entry = Array.isArray(timesheetData)
-                      ? timesheetData.find(t => t.Timesheet.user_id === item.Roster.user_id)
-                      : undefined;
-
+                    const entry = Array.isArray(timesheetData)
+                    ? timesheetData.find(t => t.Timesheet.user_id === item.Roster.user_id)
+                    : undefined;
                       const inTijd = entry?.Timesheet.clocked_in?.split(' ')[1]?.slice(0,5) || '--';
                       const uitTijd = entry?.Timesheet.clocked_out?.split(' ')[1]?.slice(0,5) || '--';
                       const klasse = entry ? (entry.Timesheet.clocked_in && entry.Timesheet.clocked_out ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800') : 'bg-red-100 text-red-800';
