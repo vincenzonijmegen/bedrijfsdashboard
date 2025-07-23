@@ -1,5 +1,7 @@
+// ===========================
+// File: src/app/admin/shiftbase/rooster/page.tsx
+// ===========================
 "use client";
-
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -14,7 +16,6 @@ export default function RoosterPage() {
   const formatISO = (d: Date) => d.toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(formatISO(today));
 
-  // Fetch roster using 'datum' query param
   const { data: rosterData, error: rosterError } = useSWR(
     `/api/shiftbase/rooster?datum=${selectedDate}`,
     fetcher
@@ -23,7 +24,6 @@ export default function RoosterPage() {
   if (rosterError) return <p>Fout: {rosterError.message}</p>;
   if (!rosterData) return <p>Rooster laden...</p>;
 
-  // Navigation handlers
   const changeDay = (offset: number) => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + offset);
@@ -45,9 +45,9 @@ export default function RoosterPage() {
 
       <h2 className="text-lg font-semibold mb-2">Rooster voor {selectedDate}</h2>
       <ul>
-        {rosterData.map((shift: any) => (
+        {Array.isArray(rosterData) && rosterData.map((shift: any) => (
           <li key={shift.id} className="mb-1">
-            {shift.startTime} - {shift.endTime}: {shift.user.name}
+            {shift.Roster.starttime.slice(0,5)} - {shift.Roster.endtime.slice(0,5)}: {shift.User?.name || 'Onbekend'}
           </li>
         ))}
       </ul>

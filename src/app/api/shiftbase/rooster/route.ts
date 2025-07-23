@@ -1,18 +1,10 @@
+// ===========================
+// File: src/app/api/shiftbase/rooster/route.ts
+// ===========================
 import { NextResponse } from "next/server";
 
-// src/app/api/shiftbase/rooster/route.ts
 export async function GET(request: Request) {
-  // Haal server-side API-key op
-  const apiKey = process.env.SHIFTBASE_API_KEY;
-  if (!apiKey) {
-    console.error("SHIFTBASE_API_KEY ontbreekt in env-vars!");
-    return NextResponse.json(
-      { error: 'SHIFTBASE_API_KEY is niet ingesteld' },
-      { status: 500 }
-    );
-  }
-
-  // Lees query-param 'datum' (YYYY-MM-DD)
+  // Haal datum op
   const { searchParams } = new URL(request.url);
   const datum = searchParams.get('datum');
   if (!datum) {
@@ -22,49 +14,45 @@ export async function GET(request: Request) {
     );
   }
 
-  // Bouw Shiftbase API URL met geselecteerde datum
+  // API key
+  const apiKey = process.env.SHIFTBASE_API_KEY;
+  if (!apiKey) {
+    console.error('SHIFTBASE_API_KEY niet ingesteld');
+    return NextResponse.json(
+      { error: 'SHIFTBASE_API_KEY ontbreekt' },
+      { status: 500 }
+    );
+  }
+
+  // Bouw URL
   const url = new URL('https://api.shiftbase.com/api/rosters');
   url.searchParams.set('periodStart', datum);
   url.searchParams.set('periodEnd', datum);
 
-  try {
-    // Server-side fetch met de Bearer header
-    const res = await fetch(url.toString(), {
-      headers: {
-        Authorization: `API ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    if (!res.ok) {
-      const details = await res.text();
-      console.error('Shiftbase API error:', res.status, details);
-      return NextResponse.json(
-        { error: 'Shiftbase fout bij ophalen roosters', details },
-        { status: res.status }
-      );
-    }
-
-    const data = await res.json();
-    // Shiftbase retourneert meestal { data: [...] }
-    if (data && Array.isArray((data as any).data)) {
-      return NextResponse.json((data as any).data);
-    }
-    // Of gewoon een array
-    if (Array.isArray(data)) {
-      return NextResponse.json(data);
-    }
-    console.error('Ongeldige Shiftbase-response, verwacht array of {data:Array}', data);
+  // Fetch
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `API ${apiKey}` },
+    cache: 'no-store',
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    console.error('Shiftbase error:', res.status, text);
     return NextResponse.json(
-      { error: 'Ongeldige Shiftbase-response, verwacht array', received: data },
-      { status: 502 }
-    );
-  } catch (err) {
-    console.error('Interne serverfout in rooster-route:', err);
-    return NextResponse.json(
-      { error: 'Interne serverfout', details: String(err) },
-      { status: 500 }
+      { error: 'Shiftbase fout', details: text },
+      { status: res.status }
     );
   }
+  // Parse JSON
+  let data;
+  try {
+    const json = JSON.parse(text);
+    data = Array.isArray(json) ? json : json.data;
+  } catch {
+    console.error('JSON parse fout:', text);
+    return NextResponse.json(
+      { error: 'Ongeldige JSON in response' },
+      { status: 502 }
+    );
+  }
+  return NextResponse.json(data);
 }
