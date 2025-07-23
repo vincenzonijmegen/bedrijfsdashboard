@@ -40,8 +40,8 @@ export default function RoosterPage() {
   );
 
   const { data: timesheetData } = useSWR<TimesheetEntry[]>(
-    selectedDate === formatISO(today) ? `/api/shiftbase/timesheets?date=${selectedDate}&includeApproved=true` : null,
-    fetcher
+  selectedDate === formatISO(today) ? `/api/shiftbase/timesheets?min_date=${selectedDate}&max_date=${selectedDate}&status=Approved` : null,
+  fetcher
   );
 
   const rosterData = data || [];
