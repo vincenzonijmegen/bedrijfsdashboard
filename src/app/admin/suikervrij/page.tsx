@@ -94,7 +94,7 @@ export default function SuikervrijPage() {
 
       
       <button onClick={savePdf} className="bg-green-600 text-white px-4 py-2 rounded mb-6" id="save-pdf-btn">
-        📥 PDF laatste 3 producties
+        📥 PDF laatste 4 producties
       </button>
 
       {/* Input section */}

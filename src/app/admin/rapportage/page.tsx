@@ -8,6 +8,11 @@ const rapportages = [
     beschrijving: 'Toon de totale omzet per maand en per jaar in een overzicht.',
     link: '/admin/rapportage/maandomzet',
   },
+      {
+    titel: 'Omzet per uur per dag',
+    beschrijving: 'Toon omzet per uur per dag op te kiezen periode.',
+    link: '/admin/rapportage/uuromzet',
+  },
     {
     titel: 'Omzet Feestdagen',
     beschrijving: 'Toon omzet op feestdagen een overzicht.',
