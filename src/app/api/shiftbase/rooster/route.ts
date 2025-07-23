@@ -47,14 +47,19 @@ export async function GET(request: Request) {
     }
 
     const data = await res.json();
-    if (!Array.isArray(data)) {
-      console.error('Verwacht array van roosters, maar kreeg:', typeof data);
-      return NextResponse.json(
-        { error: 'Ongeldige Shiftbase-response (geen array)' },
-        { status: 502 }
-      );
+    // Shiftbase retourneert meestal { data: [...] }
+    if (data && Array.isArray((data as any).data)) {
+      return NextResponse.json((data as any).data);
     }
-    return NextResponse.json(data);
+    // Of gewoon een array
+    if (Array.isArray(data)) {
+      return NextResponse.json(data);
+    }
+    console.error('Ongeldige Shiftbase-response, verwacht array of {data:Array}', data);
+    return NextResponse.json(
+      { error: 'Ongeldige Shiftbase-response, verwacht array', received: data },
+      { status: 502 }
+    );
   } catch (err) {
     console.error('Interne serverfout in rooster-route:', err);
     return NextResponse.json(
