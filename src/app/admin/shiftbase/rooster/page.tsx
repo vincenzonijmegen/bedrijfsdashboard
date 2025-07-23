@@ -1,15 +1,11 @@
+// src/app/admin/shiftbase/rooster/page.tsx
+
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import useSWR from "swr";
 
-const fetcher = async (url: string) => {
-  const res = await fetch(url);
-  const text = await res.text();
-  if (!res.ok) throw new Error(`${res.status}:${text}`);
-  return JSON.parse(text);
-};
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function Dagrooster() {
   // Datum selecteren
@@ -26,47 +22,37 @@ export default function Dagrooster() {
       year: 'numeric',
     });
 
-  // Fetch rooster via static route
+  // Fetch rooster en timesheets
   const { data: rosterData, error: rosterError } = useSWR(
-    `/api/shiftbase/rooster?datum=${selectedDate}`,
+    `/api/shiftbase/rooster?date=${selectedDate}`,
     fetcher
   );
   const { data: timesheetData, error: timesheetError } = useSWR(
-    `/api/shiftbase/timesheets?date=${selectedDate}&includeApproved=true`,
+    `/api/shiftbase/timesheets?date=${selectedDate}`,
     fetcher
   );
 
-  // Fouten en loading handlen
-  if (rosterError || timesheetError) {
-    console.error(rosterError || timesheetError);
-    // Specifieke 401 handling
-    const err = (rosterError || timesheetError) as Error;
-    if (err.message.startsWith('401')) {
-      return <p>Niet geautoriseerd: controleer je API-sleutel voor Shiftbase.</p>;
-    }
-    return <p>Er is een fout opgetreden bij het laden van het rooster.</p>;
-  }
-if (!rosterData || !timesheetData) {
-    return <p>Gegevens worden geladen...</p>;
-  }
-
-  // Bescherm de data-array
-  const rosterItems = Array.isArray(rosterData.data) ? rosterData.data : [];
+  if (rosterError || timesheetError) return <p>Fout bij laden data.</p>;
+  if (!rosterData || !timesheetData) return <p>Gegevens worden geladen...</p>;
 
   // Navigatie knoppen
-  const prevDay = () => setSelectedDate(
-    formatISO(new Date(new Date(selectedDate).setDate(new Date(selectedDate).getDate() - 1)))
-  );
-  const nextDay = () => setSelectedDate(
-    formatISO(new Date(new Date(selectedDate).setDate(new Date(selectedDate).getDate() + 1)))
-  );
+  const prevDay = () =>
+    setSelectedDate(
+      formatISO(
+        new Date(new Date(selectedDate).setDate(new Date(selectedDate).getDate() - 1))
+      )
+    );
+  const nextDay = () =>
+    setSelectedDate(
+      formatISO(
+        new Date(new Date(selectedDate).setDate(new Date(selectedDate).getDate() + 1))
+      )
+    );
   const goToday = () => setSelectedDate(formatISO(today));
 
-  const isToday = selectedDate === formatISO(today);
-
-  // Groeperen op shift
-  const perShift = rosterItems.reduce((acc: any, item: any) => {
-    const shiftKey = item.Roster?.name || "Onbekende shift";
+  // Groeperen op korte shiftnaam
+  const perShift = rosterData.data.reduce((acc: any, item: any) => {
+    const shiftKey = item.Roster.name || "Onbekende shift";
     if (!acc[shiftKey]) acc[shiftKey] = [];
     acc[shiftKey].push(item);
     return acc;
@@ -77,18 +63,14 @@ if (!rosterData || !timesheetData) {
     "S2K","S2","S2L","S2S",
     "SPS","SLW1","SLW2"
   ];
+
   const gesorteerdeEntries = gewensteVolgorde
-    .filter(naam => perShift[naam]?.length)
-    .map(naam => [naam, perShift[naam]] as [string, any[]]);
+    .filter((naam) => perShift[naam])
+    .map((naam) => [naam, perShift[naam]] as [string, any[]]);
 
   return (
     <div className="p-4">
-      <p className="mb-4">
-        <Link href="/admin/rapportage" className="text-sm underline text-blue-600">
-          ← Terug naar Rapportage
-        </Link>
-      </p>
-
+      {/* Header en datum */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-bold">Dagrooster</h1>
@@ -101,9 +83,11 @@ if (!rosterData || !timesheetData) {
         </div>
       </div>
 
+      {/* Shifts en tijden */}
       {gesorteerdeEntries.map(([shiftKey, items]) => {
-        const kleur = items[0]?.Roster?.color || '#333';
-        const langeNaam = items[0]?.Shift?.long_name || shiftKey;
+        const kleur = items[0].Roster.color || '#333';
+        const langeNaam = items[0].Shift?.long_name || shiftKey;
+
         return (
           <div key={shiftKey} className="mb-3">
             <h2
@@ -114,34 +98,40 @@ if (!rosterData || !timesheetData) {
             </h2>
             <ul className="space-y-0.5">
               {items.map((i: any) => {
-                let klokInfo = null;
-                if (isToday) {
-                  const tsWrapper = timesheetData.data.find(
-                    (t: any) =>
-                      t.Timesheet.user_id === i.Roster?.user_id &&
-                      t.Timesheet.date === selectedDate
-                  );
-                  const ts = tsWrapper?.Timesheet;
-                  const klokIn = ts?.clocked_in?.split(' ')[1]?.slice(0,5) || '-';
-                  const klokUit = ts?.clocked_out?.split(' ')[1]?.slice(0,5) || '-';
-                  const statusClass = tsWrapper
-                    ? ts?.clocked_in && ts?.clocked_out
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-orange-100 text-orange-800'
-                    : 'bg-red-100 text-red-800';
-                  klokInfo = (
-                    <span className={`${statusClass} px-1 rounded text-sm`}>In: {klokIn} Uit: {klokUit}</span>
-                  );
+                // Zoek timesheet entry op gebruiker
+                const tsWrapper = timesheetData.data.find(
+                  (t: any) =>
+                    t.Timesheet.user_id === i.Roster.user_id &&
+                    t.Timesheet.date === selectedDate
+                );
+                const ts = tsWrapper?.Timesheet;
+                // Haal clocked_in en clocked_out tijden
+                const klokIn = ts?.clocked_in?.split(' ')[1].slice(0,5) || '-';
+                const klokUit = ts?.clocked_out?.split(' ')[1].slice(0,5) || '-';
+
+                // Bepaal statuskleur
+                let statusClass = '';
+                if (tsWrapper) {
+                  if (ts?.clocked_in && ts?.clocked_out) {
+                    statusClass = 'bg-green-100 text-green-800';
+                  } else {
+                    statusClass = 'bg-orange-100 text-orange-800';
+                  }
+                } else {
+                  statusClass = 'bg-red-100 text-red-800';
                 }
+
                 return (
-                  <li key={i.Roster?.id} className="pl-2 flex justify-between">
+                  <li key={i.Roster.id} className="pl-2 flex justify-between">
                     <span>
                       <span className="font-semibold">
-                        {i.Roster?.starttime?.slice(0,5)}–{i.Roster?.endtime?.slice(0,5)}
+                        {i.Roster.starttime.slice(0,5)}–{i.Roster.endtime.slice(0,5)}
                       </span>{' '}
                       <strong>{i.User?.name || 'Onbekend'}</strong>
                     </span>
-                    {klokInfo}
+                    <span className={`${statusClass} px-1 rounded text-sm`}>
+                      In: {klokIn} Uit: {klokUit}
+                    </span>
                   </li>
                 );
               })}
