@@ -1,6 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Cell,
+  Rectangle,
+  ZAxis,
+} from "recharts";
 
 type DagUurOmzet = {
   dag: string;
@@ -21,8 +31,6 @@ export default function UurOmzetPage() {
       .then(res => res.json())
       .then((rows: DagUurOmzet[]) => {
         setData(rows);
-
-        // Unieke dagen en uren extraheren
         const uniekeDagen = [...new Set(rows.map(r => r.dag))];
         const uniekeUren = [...new Set(rows.map(r => r.uur))].sort();
         setDagen(uniekeDagen);
@@ -70,6 +78,53 @@ export default function UurOmzetPage() {
           </tbody>
         </table>
       </div>
+
+      {data.length > 0 && (
+        <div className="mt-12">
+          <h2 className="text-lg font-semibold mb-2">Heatmap</h2>
+          <ResponsiveContainer width="100%" height={dagen.length * 35 + 60}>
+            <ComposedChart
+              layout="vertical"
+              data={dagen.flatMap((dag) =>
+                uren.map((uur) => {
+                  const match = data.find((d) => d.dag === dag && d.uur === uur);
+                  return { dag, uur, omzet: match?.omzet ?? 0 };
+                })
+              )}
+              margin={{ top: 20, right: 20, left: 100, bottom: 20 }}
+            >
+              <XAxis type="number" hide />
+              <YAxis type="category" dataKey="dag" width={90} />
+              <ZAxis type="number" dataKey="omzet" range={[0, 400]} />
+              <Tooltip
+                formatter={(value: number) => `€ ${value.toLocaleString("nl-NL")}`}
+                labelFormatter={(label) => `Datum: ${label}`}
+              />
+              {dagen.flatMap((dag) =>
+                uren.map((uur) => {
+                  const match = data.find((d) => d.dag === dag && d.uur === uur);
+                  const omzet = match?.omzet ?? 0;
+                  const kleur = omzet === 0
+                    ? "#f0f0f0"
+                    : `rgba(0, 123, 255, ${Math.min(1, omzet / 500)})`;
+
+                  return (
+                    <Cell
+                      key={`${dag}-${uur}`}
+                      fill={kleur}
+                      x={uren.indexOf(uur) * 40}
+                      y={dagen.indexOf(dag) * 30}
+                      width={40}
+                      height={30}
+                      cursor="pointer"
+                    />
+                  );
+                })
+              )}
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }
