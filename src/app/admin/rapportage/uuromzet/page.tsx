@@ -63,7 +63,7 @@ export default function UurOmzetPage() {
       </div>
 
       <div className="overflow-auto mb-12">
-        <table className="text-sm border border-collapse w-full">
+        <table className="table-auto text-sm border border-collapse w-full">
           <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
               <th className="border px-2 py-1 text-left">Datum</th>
@@ -115,7 +115,7 @@ export default function UurOmzetPage() {
                   {Number(totaal) > 0 ? `€ ${Number(totaal).toLocaleString('nl-NL')}` : '-'}
                 </td>
               ))}
-              <td className="border px-2 py-1 text-right">
+              <td className="border px-2 py-1 text-right whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis">
                 {totaalAll > 0 ? `€ ${totaalAll.toLocaleString('nl-NL')}` : '-'}
               </td>
             </tr>
@@ -161,7 +161,7 @@ export default function UurOmzetPage() {
                   return (
                     <div
                       key={`${dag}-${uren[idx]}`}
-                      className="border-b border-r text-center text-sm px-2 py-1 font-medium"
+                      className="border-b border-r text-center text-sm px-2 py-1 font-medium whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis"
                       style={{ backgroundColor: bg, color: kleur }}
                       title={`€ ${omzet.toLocaleString('nl-NL')}`}
                     >
@@ -182,7 +182,7 @@ export default function UurOmzetPage() {
             {kolomTotalen.map((totaal, idx) => (
               <div
                 key={`footer-${idx}`}
-                className="border-b border-r text-right text-sm px-2 py-1 font-semibold"
+                className="border-b border-r text-right text-sm px-2 py-1 font-semibold whitespace-nowrap max-w-[90px] overflow-hidden text-ellipsis"
               >
                 {totaal > 0 ? `€ ${totaal.toLocaleString('nl-NL')}` : '-'}
               </div>
