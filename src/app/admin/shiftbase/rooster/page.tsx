@@ -25,6 +25,8 @@ export default function RoosterPage() {
     `/api/shiftbase/rooster?datum=${selectedDate}`,
     fetcher
   );
+  console.log('Fetched roster data:', data, 'error:', error);
+
   const rosterData = data || [];
 
   const changeDay = (offset: number) => {
