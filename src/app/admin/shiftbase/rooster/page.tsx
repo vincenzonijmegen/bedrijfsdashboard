@@ -1,5 +1,3 @@
-// src/app/admin/shiftbase/rooster/page.tsx
-
 "use client";
 
 import { useState } from "react";
@@ -22,9 +20,9 @@ export default function Dagrooster() {
       year: 'numeric',
     });
 
-  // Fetch rooster en timesheets
+  // Fetch rooster via dynamic route
   const { data: rosterData, error: rosterError } = useSWR(
-    `/api/shiftbase/rooster?date=${selectedDate}`,
+    `/api/shiftbase/rooster/${selectedDate}`,
     fetcher
   );
   const { data: timesheetData, error: timesheetError } = useSWR(
@@ -101,7 +99,6 @@ export default function Dagrooster() {
             </h2>
             <ul className="space-y-0.5">
               {items.map((i: any) => {
-                // Haal alleen clockinformatie als vandaag
                 let klokInfo = null;
                 if (isToday) {
                   const tsWrapper = timesheetData.data.find(
