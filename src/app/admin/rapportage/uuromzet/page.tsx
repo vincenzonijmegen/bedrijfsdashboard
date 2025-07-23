@@ -1,15 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  ResponsiveContainer,
-  ComposedChart,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Cell,
-  ZAxis,
-} from "recharts";
 
 type DagUurOmzet = {
   dag: string;
@@ -30,14 +21,13 @@ export default function UurOmzetPage() {
       .then(res => res.json())
       .then((rows: DagUurOmzet[]) => {
         setData(rows);
-        const uniekeDagen = [...new Set(rows.map(r => r.dag))];
-        const uniekeUren = [...new Set(rows.map(r => r.uur))].sort();
-        setDagen(uniekeDagen);
-        setUren(uniekeUren);
+        setDagen([...new Set(rows.map(r => r.dag))]);
+        setUren([...new Set(rows.map(r => r.uur))].sort());
       });
   }, [start, end]);
 
-  const maxOmzet = Math.max(...data.map(d => d.omzet), 1); // vermijd delen door 0
+  // maximale omzet in de selectie (minimaal 1 om delen door 0 te voorkomen)
+  const maxOmzet = Math.max(...data.map(d => d.omzet), 1);
 
   return (
     <div className="p-6 max-w-full">
@@ -45,31 +35,54 @@ export default function UurOmzetPage() {
 
       <div className="flex gap-4 items-center mb-6">
         <label>
-          Van: <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className="border px-2 py-1 rounded" />
+          Van:{" "}
+          <input
+            type="date"
+            value={start}
+            onChange={e => setStart(e.target.value)}
+            className="border px-2 py-1 rounded"
+          />
         </label>
         <label>
-          Tot: <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className="border px-2 py-1 rounded" />
+          Tot:{" "}
+          <input
+            type="date"
+            value={end}
+            onChange={e => setEnd(e.target.value)}
+            className="border px-2 py-1 rounded"
+          />
         </label>
       </div>
 
-      <div className="overflow-auto">
+      {/* Tabelweergave */}
+      <div className="overflow-auto mb-12">
         <table className="text-sm border border-collapse w-full">
           <thead className="bg-gray-100 sticky top-0 z-10">
             <tr>
               <th className="border px-2 py-1 text-left">Datum</th>
-              {uren.map((uur) => (
-                <th key={uur} className="border px-2 py-1 text-center whitespace-nowrap">{uur}</th>
+              {uren.map(uur => (
+                <th
+                  key={uur}
+                  className="border px-2 py-1 text-center whitespace-nowrap"
+                >
+                  {uur}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {dagen.map((dag) => (
+            {dagen.map(dag => (
               <tr key={dag}>
-                <td className="border px-2 py-1 font-medium whitespace-nowrap">{dag}</td>
-                {uren.map((uur) => {
+                <td className="border px-2 py-1 font-medium whitespace-nowrap">
+                  {dag}
+                </td>
+                {uren.map(uur => {
                   const match = data.find(d => d.dag === dag && d.uur === uur);
                   return (
-                    <td key={uur} className="border px-2 py-1 text-right">
+                    <td
+                      key={uur}
+                      className="border px-2 py-1 text-right"
+                    >
                       {match ? `€ ${match.omzet.toLocaleString("nl-NL")}` : "-"}
                     </td>
                   );
@@ -80,52 +93,63 @@ export default function UurOmzetPage() {
         </table>
       </div>
 
-      {data.length > 0 && (
-        <div className="mt-12">
+      {/* Heatmap via CSS Grid */}
+      {dagen.length > 0 && uren.length > 0 && (
+        <>
           <h2 className="text-lg font-semibold mb-2">Heatmap</h2>
-          <div style={{ width: "100%", overflowX: "auto" }}>
-            <ResponsiveContainer width={Math.max(uren.length * 42, 400)} height={dagen.length * 35 + 60}>
-              <ComposedChart
-                layout="vertical"
-                data={dagen.flatMap((dag) =>
-                  uren.map((uur) => {
-                    const match = data.find((d) => d.dag === dag && d.uur === uur);
-                    return { dag, uur, omzet: match?.omzet ?? 0 };
-                  })
-                )}
-                margin={{ top: 20, right: 20, left: 100, bottom: 20 }}
+          <div
+            className="grid border-t border-l"
+            style={{
+              gridTemplateColumns: `150px repeat(${uren.length}, 1fr)`,
+            }}
+          >
+            {/* Header-rij: lege cel + uren */}
+            <div className="border-b border-r bg-gray-100 px-2 py-1"></div>
+            {uren.map(uur => (
+              <div
+                key={uur}
+                className="border-b border-r text-center text-sm px-2 py-1 bg-gray-100 whitespace-nowrap"
               >
-                <XAxis type="number" hide />
-                <YAxis type="category" dataKey="dag" width={90} />
-                <ZAxis type="number" dataKey="omzet" range={[0, maxOmzet]} />
-                <Tooltip
-                  formatter={(value: number) => `€ ${value.toLocaleString("nl-NL")}`}
-                  labelFormatter={(label) => `Datum: ${label}`}
-                />
-                {dagen.flatMap((dag) =>
-                  uren.map((uur) => {
-                    const match = data.find((d) => d.dag === dag && d.uur === uur);
-                    const omzet = match?.omzet ?? 0;
-                    const kleur = omzet === 0
-                      ? "#f0f0f0"
-                      : `rgba(0, 123, 255, ${Math.min(1, omzet / maxOmzet)})`;
+                {uur}
+              </div>
+            ))}
 
-                    return (
-                      <Cell
-                        key={`${dag}-${uur}`}
-                        fill={kleur}
-                        x={uren.indexOf(uur) * 42}
-                        y={dagen.indexOf(dag) * 35}
-                        width={42}
-                        height={35}
-                      />
-                    );
-                  })
-                )}
-              </ComposedChart>
-            </ResponsiveContainer>
+            {/* Data-cellen */}
+            {dagen.map(dag =>
+              // eerste kolom: dag
+              [
+                <div
+                  key={`${dag}-label`}
+                  className="border-b border-r px-2 py-1 font-medium whitespace-nowrap"
+                >
+                  {dag}
+                </div>,
+                // vervolgens uren per dag
+                ...uren.map(uur => {
+                  const match = data.find(d => d.dag === dag && d.uur === uur);
+                  const omzet = match?.omzet ?? 0;
+                  // kleurintensiteit: 0→light gray, max→dark blue
+                  const alpha = omzet === 0 ? 0.05 : Math.min(1, omzet / maxOmzet);
+                  const bg = omzet === 0
+                    ? "#f0f0f0"
+                    : `rgba(13, 60, 97, ${alpha})`;
+
+                  return (
+                    <div
+                      key={`${dag}-${uur}`}
+                      className="border-b border-r text-right text-sm px-2 py-1"
+                      style={{ backgroundColor: bg }}
+                      title={match ? `€ ${omzet.toLocaleString("nl-NL")}` : "geen omzet"}
+                    >
+                      {/* optioneel: toon getal in heatmap */}
+                      {/* match ? omzet.toLocaleString("nl-NL") : "" */}
+                    </div>
+                  );
+                })
+              ]
+            )}
           </div>
-        </div>
+        </>
       )}
     </div>
   );
