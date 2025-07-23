@@ -9,6 +9,15 @@ import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
+interface TimesheetEntry {
+  Timesheet: {
+    user_id: string;
+    date: string;
+    clocked_in: string | null;
+    clocked_out: string | null;
+  };
+}
+
 type ShiftItem = {
   id: string;
   Roster: { starttime: string; endtime: string; name: string; color?: string; user_id: string };
@@ -27,6 +36,11 @@ export default function RoosterPage() {
 
   const { data, error } = useSWR<ShiftItem[]>(
     () => `/api/shiftbase/rooster?datum=${selectedDate}`,
+    fetcher
+  );
+
+  const { data: timesheetData } = useSWR<TimesheetEntry[]>(
+    selectedDate === formatISO(today) ? `/api/shiftbase/timesheets?date=${selectedDate}&includeApproved=true` : null,
     fetcher
   );
 
@@ -97,7 +111,13 @@ export default function RoosterPage() {
                     <span className="font-semibold">
                       {item.Roster.starttime.slice(0,5)}–{item.Roster.endtime.slice(0,5)}
                     </span>{' '}
-                    <strong>{item.User?.name || 'Onbekend'}</strong>{selectedDate === formatISO(today) && (<span className='ml-2 px-1 rounded text-sm bg-gray-100 text-gray-700'>⏱ In: -- Uit: --</span>)}
+                    <strong>{item.User?.name || 'Onbekend'}</strong>{selectedDate === formatISO(today) && (() => {
+                      const entry = timesheetData?.find(t => t.Timesheet.user_id === item.Roster.user_id);
+                      const inTijd = entry?.Timesheet.clocked_in?.split(' ')[1]?.slice(0,5) || '--';
+                      const uitTijd = entry?.Timesheet.clocked_out?.split(' ')[1]?.slice(0,5) || '--';
+                      const klasse = entry ? (entry.Timesheet.clocked_in && entry.Timesheet.clocked_out ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800') : 'bg-red-100 text-red-800';
+                      return <span className={`ml-2 px-1 rounded text-sm ${klasse}`}>⏱ In: {inTijd} Uit: {uitTijd}</span>;
+                    })()}
                   </span>
                 </li>
               ))}
