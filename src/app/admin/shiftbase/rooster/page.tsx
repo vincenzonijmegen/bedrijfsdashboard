@@ -4,7 +4,12 @@ import { useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  const text = await res.text();
+  if (!res.ok) throw new Error(`${res.status}:${text}`);
+  return JSON.parse(text);
+};
 
 export default function Dagrooster() {
   // Datum selecteren
@@ -34,9 +39,14 @@ export default function Dagrooster() {
   // Fouten en loading handlen
   if (rosterError || timesheetError) {
     console.error(rosterError || timesheetError);
+    // Specifieke 401 handling
+    const err = (rosterError || timesheetError) as Error;
+    if (err.message.startsWith('401')) {
+      return <p>Niet geautoriseerd: controleer je API-sleutel voor Shiftbase.</p>;
+    }
     return <p>Er is een fout opgetreden bij het laden van het rooster.</p>;
   }
-  if (!rosterData || !timesheetData) {
+if (!rosterData || !timesheetData) {
     return <p>Gegevens worden geladen...</p>;
   }
 
