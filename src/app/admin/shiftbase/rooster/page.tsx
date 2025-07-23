@@ -25,9 +25,6 @@ export default function RoosterPage() {
     `/api/shiftbase/rooster?datum=${selectedDate}`,
     fetcher
   );
-    `/api/shiftbase/rooster?datum=${selectedDate}`,
-    fetcher
-  );
   
 
   const rosterData = data || [];
