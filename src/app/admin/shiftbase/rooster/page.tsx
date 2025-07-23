@@ -109,18 +109,6 @@ export default function Dagrooster() {
                 const klokIn = ts?.clocked_in?.split(' ')[1].slice(0,5) || '-';
                 const klokUit = ts?.clocked_out?.split(' ')[1].slice(0,5) || '-';
 
-                // Bepaal statuskleur
-                let statusClass = '';
-                if (tsWrapper) {
-                  if (ts?.clocked_in && ts?.clocked_out) {
-                    statusClass = 'bg-green-100 text-green-800';
-                  } else {
-                    statusClass = 'bg-orange-100 text-orange-800';
-                  }
-                } else {
-                  statusClass = 'bg-red-100 text-red-800';
-                }
-
                 return (
                   <li key={i.Roster.id} className="pl-2 flex justify-between">
                     <span>
@@ -129,7 +117,7 @@ export default function Dagrooster() {
                       </span>{' '}
                       <strong>{i.User?.name || 'Onbekend'}</strong>
                     </span>
-                    <span className={`${statusClass} px-1 rounded text-sm`}>
+                    <span className="text-sm">
                       In: {klokIn} Uit: {klokUit}
                     </span>
                   </li>
