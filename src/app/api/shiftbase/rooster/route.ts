@@ -47,7 +47,13 @@ export async function GET(request: Request) {
     }
 
     const data = await res.json();
-    // Data is een array van shifts
+    if (!Array.isArray(data)) {
+      console.error('Verwacht array van roosters, maar kreeg:', typeof data);
+      return NextResponse.json(
+        { error: 'Ongeldige Shiftbase-response (geen array)' },
+        { status: 502 }
+      );
+    }
     return NextResponse.json(data);
   } catch (err) {
     console.error('Interne serverfout in rooster-route:', err);
