@@ -29,13 +29,13 @@ export async function GET(request: Request) {
 
   try {
     // Server-side fetch met de Bearer header
-    const res = await fetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store',
-    });
+const res = await fetch(url.toString(), {
+  headers: {
+    Authorization: `API ${apiKey}`,
+    'Content-Type': 'application/json',
+  },
+  cache: 'no-store',
+});
 
     if (!res.ok) {
       const details = await res.text();
