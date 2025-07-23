@@ -3,7 +3,7 @@
 // ===========================
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 
@@ -16,8 +16,6 @@ type ShiftItem = {
   User?: { name: string };
 };
 
-
-
 export default function RoosterPage() {
   const today = new Date();
   const formatISO = (d: Date) => d.toISOString().split('T')[0];
@@ -27,16 +25,8 @@ export default function RoosterPage() {
     `/api/shiftbase/rooster?datum=${selectedDate}`,
     fetcher
   );
+  const rosterData = data || [];
 
-  const rosterData = data || [];[]>(
-    `/api/shiftbase/rooster?datum=${selectedDate}`,
-    fetcher
-  );
-
-  const rosterData = rosterData || [];  // direct array from API
-
-
-  // Navigate days
   const changeDay = (offset: number) => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + offset);
@@ -45,12 +35,10 @@ export default function RoosterPage() {
 
   if (error) return <p className="p-4 text-red-600">Fout: {error.message}</p>;
   if (!data) return <p className="p-4">Laden…</p>;
-  if (!rosterResponse) return <p className="p-4">Laden…</p>;
 
-  // Group per Roster.name
   const perShift = rosterData.reduce((acc: Record<string, ShiftItem[]>, item) => {
     const key = item.Roster.name;
-    acc[key] = acc[key] || [];
+    if (!acc[key]) acc[key] = [];
     acc[key].push(item);
     return acc;
   }, {});
@@ -78,28 +66,32 @@ export default function RoosterPage() {
 
       <h1 className="text-xl font-bold mb-2">Rooster voor {selectedDate}</h1>
 
-      {order.map(shiftName => (
-        <div key={shiftName} className="mb-6">
-          <h2
-            className="text-lg font-semibold mb-1 px-2 rounded"
-            style={{ backgroundColor: perShift[shiftName][0].Roster.color || '#334', color: 'white' }}
-          >
-            {perShift[shiftName][0].Shift?.long_name || shiftName}
-          </h2>
-          <ul className="pl-4 list-disc">
-            {perShift[shiftName].map(item => (
-              <li key={item.id} className="mb-1 flex justify-between">
-                <span>
-                  <span className="font-semibold">
-                    {item.Roster.starttime.slice(0,5)}–{item.Roster.endtime.slice(0,5)}
-                  </span>{' '}
-                  <strong>{item.User?.name || 'Onbekend'}</strong>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+      {order.length === 0 ? (
+        <p>Geen shifts gevonden voor deze dag.</p>
+      ) : (
+        order.map(shiftName => (
+          <div key={shiftName} className="mb-6">
+            <h2
+              className="text-lg font-semibold mb-1 px-2 rounded"
+              style={{ backgroundColor: perShift[shiftName][0].Roster.color || '#334', color: 'white' }}
+            >
+              {perShift[shiftName][0].Shift?.long_name || shiftName}
+            </h2>
+            <ul className="pl-4 list-disc">
+              {perShift[shiftName].map(item => (
+                <li key={item.id} className="mb-1 flex justify-between">
+                  <span>
+                    <span className="font-semibold">
+                      {item.Roster.starttime.slice(0,5)}–{item.Roster.endtime.slice(0,5)}
+                    </span>{' '}
+                    <strong>{item.User?.name || 'Onbekend'}</strong>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      )}
     </div>
   );
 }
