@@ -115,9 +115,8 @@ export default function RoosterPage() {
                       const entry = Array.isArray(timesheetData)
                       ? timesheetData.find(t => t.Timesheet.user_id === item.Roster.user_id)
                       : undefined;
-
-                      const inTijd = entry?.Timesheet.clocked_in?.split(' ')[1]?.slice(0,5) || '--';
-                      const uitTijd = entry?.Timesheet.clocked_out?.split(' ')[1]?.slice(0,5) || '--';
+                      const inTijd = entry?.Timesheet.clocked_in?.substring(11, 16) || '--';
+                      const uitTijd = entry?.Timesheet.clocked_out?.substring(11, 16) || '--';
                       const klasse = entry ? (entry.Timesheet.clocked_in && entry.Timesheet.clocked_out ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800') : 'bg-red-100 text-red-800';
                       return <span className={`ml-2 px-1 rounded text-sm ${klasse}`}>⏱ In: {inTijd} Uit: {uitTijd}</span>;
                     })()}
