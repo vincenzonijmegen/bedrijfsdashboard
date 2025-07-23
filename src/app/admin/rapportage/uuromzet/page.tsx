@@ -2,6 +2,11 @@
 
 import { useEffect, useState } from "react";
 
+const weekdagNL = (datumStr: string) => {
+  const dag = new Date(datumStr);
+  return dag.toLocaleDateString("nl-NL", { weekday: "short", day: "2-digit", month: "2-digit" });
+};
+
 type DagUurOmzet = {
   dag: string;
   uur: string;
@@ -83,7 +88,7 @@ export default function UurOmzetPage() {
 
               return (
                 <tr key={dag}>
-                  <td className="border px-2 py-1 font-medium whitespace-nowrap">{dag}</td>
+                  <td className="border px-2 py-1 font-medium whitespace-nowrap">{weekdagNL(dag)}</td>
                   {bedragen.map((omzet, idx) => (
                     <td
                       key={idx}
@@ -123,7 +128,7 @@ export default function UurOmzetPage() {
           <h2 className="text-lg font-semibold mb-2">Heatmap</h2>
           <div
             className="grid border-t border-l"
-            style={{ gridTemplateColumns: `150px repeat(${uren.length}, 1fr)` }}
+            style={{ gridTemplateColumns: `150px repeat(${uren.length + 1}, 1fr)` }}
           >
             <div className="border-b border-r bg-gray-100 px-2 py-1" />
             {uren.map(uur => (
@@ -134,33 +139,57 @@ export default function UurOmzetPage() {
                 {uur}
               </div>
             ))}
+            <div className="border-b border-r text-center text-sm px-2 py-1 bg-gray-100 font-semibold">Totaal</div>
 
-            {dagen.flatMap(dag => [
-              <div
-                key={`${dag}-label`}
-                className="border-b border-r px-2 py-1 font-medium whitespace-nowrap"
-              >
-                {dag}
-              </div>,
-              ...uren.map(uur => {
+            {dagen.map(dag => {
+              const bedragen = uren.map(uur => {
                 const found = data.find(d => d.dag === dag && d.uur === uur);
-                const omzet = found ? Number(found.omzet) : 0;
-                const alpha = omzet === 0 ? 0.05 : Math.min(1, omzet / maxOmzet);
-                const bg = omzet === 0 ? '#f0f0f0' : `rgba(13,60,97,${alpha})`;
-                const kleur = omzet / maxOmzet > 0.6 ? 'white' : 'black';
+                return found ? Number(found.omzet) : 0;
+              });
+              const rijTotaal = bedragen.reduce((sum, x) => sum + x, 0);
+              return [
+                <div
+                  key={`${dag}-label`}
+                  className="border-b border-r px-2 py-1 font-medium whitespace-nowrap"
+                >
+                  {weekdagNL(dag)}
+                </div>,
+                ...bedragen.map((omzet, idx) => {
+                  const alpha = omzet === 0 ? 0.05 : Math.min(1, omzet / maxOmzet);
+                  const bg = omzet === 0 ? '#f0f0f0' : `rgba(13,60,97,${alpha})`;
+                  const kleur = omzet / maxOmzet > 0.6 ? 'white' : 'black';
+                  return (
+                    <div
+                      key={`${dag}-${uren[idx]}`}
+                      className="border-b border-r text-center text-sm px-2 py-1 font-medium"
+                      style={{ backgroundColor: bg, color: kleur }}
+                      title={`€ ${omzet.toLocaleString('nl-NL')}`}
+                    >
+                      {omzet > 0 ? `€ ${omzet.toLocaleString('nl-NL')}` : '-'}
+                    </div>
+                  );
+                }),
+                <div
+                  key={`${dag}-total`}
+                  className="border-b border-r text-center text-sm px-2 py-1 font-semibold"
+                >
+                  {rijTotaal > 0 ? `€ ${rijTotaal.toLocaleString('nl-NL')}` : '-'}
+                </div>
+              ];
+            })}
 
-                return (
-                  <div
-                    key={`${dag}-${uur}`}
-                    className="border-b border-r text-center text-sm px-2 py-1 font-medium"
-                    style={{ backgroundColor: bg, color: kleur }}
-                    title={found ? `€ ${omzet.toLocaleString('nl-NL')}` : 'geen omzet'}
-                  >
-                    {omzet > 0 ? `€ ${omzet.toLocaleString('nl-NL')}` : '-'}
-                  </div>
-                );
-              })
-            ])}
+            <div className="border-b border-r font-semibold px-2 py-1">Totaal</div>
+            {kolomTotalen.map((totaal, idx) => (
+              <div
+                key={`footer-${idx}`}
+                className="border-b border-r text-right text-sm px-2 py-1 font-semibold"
+              >
+                {totaal > 0 ? `€ ${totaal.toLocaleString('nl-NL')}` : '-'}
+              </div>
+            ))}
+            <div className="border-b border-r text-right text-sm px-2 py-1 font-semibold">
+              {totaalAll > 0 ? `€ ${totaalAll.toLocaleString('nl-NL')}` : '-'}
+            </div>
           </div>
         </>
       )}
