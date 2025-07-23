@@ -3,7 +3,7 @@
 // ===========================
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 
@@ -21,11 +21,14 @@ export default function RoosterPage() {
   const formatISO = (d: Date) => d.toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(formatISO(today));
 
+  useEffect(() => {
+    console.log("[DEBUG] Geselecteerde datum gewijzigd:", selectedDate);
+  }, [selectedDate]);
+
   const { data, error } = useSWR<ShiftItem[]>(
     `/api/shiftbase/rooster?datum=${selectedDate}`,
     fetcher
   );
-  
 
   const rosterData = data || [];
 
