@@ -26,8 +26,8 @@ export async function GET(request: Request) {
 
   // Bouw URL
   const url = new URL('https://api.shiftbase.com/api/rosters');
-  url.searchParams.set('periodStart', datum);
-  url.searchParams.set('periodEnd', datum);
+url.searchParams.set('periodStart', `${datum}T00:00:00`);
+url.searchParams.set('periodEnd', `${datum}T23:59:59`);
 
   // Fetch
   const res = await fetch(url.toString(), {
