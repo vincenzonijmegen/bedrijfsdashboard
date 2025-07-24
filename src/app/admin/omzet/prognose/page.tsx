@@ -93,27 +93,24 @@ export default function PrognosePage() {
                 </td>
                 {data.map((m) => {
                   const raw = fn(m);
+                  const isRealisatieDag = label === 'omzet/dag' && rowIndex === 7;
+                  let cellClass = `px-2 py-1 text-right ${isHeader(label) ? 'font-bold' : 'font-mono'}`;
+                  if (!isHeader(label) && raw !== null && isRealisatieDag) {
+                    cellClass += raw > m.prognosePerDag ? ' text-green-600' : ' text-red-600';
+                  }
                   if (raw === null || raw === 0) {
                     return (
-                      <td
-                        key={m.maand + label}
-                        className={`px-2 py-1 text-right ${
-                          isHeader(label) ? "font-bold" : "font-mono"
-                        }`}
-                      >
-                        {isHeader(label) ? maandNamen[m.maand - 3] : '\u00A0'}
+                      <td key={m.maand + label} className={cellClass}>
+                        {isHeader(label) ? maandNamen[m.maand - 3] : ' '}
                       </td>
                     );
                   }
-                  let display: string;
-                  if (label === "dagen") {
-                    display = Math.round(raw).toLocaleString("nl-NL");
-                  } else if (label === "voor/achter in dagen") {
-                    display = raw
-                      .toLocaleString("nl-NL", {
-                        minimumFractionDigits: 1,
-                        maximumFractionDigits: 1,
-                      });
+                  return (
+                    <td key={m.maand + label} className={cellClass}>
+                      {display}
+                    </td>
+                  );
+                });
                   } else if (label.includes("%")) {
                     display = `${Math.round(raw * 100)}%`;
                   } else {
@@ -124,7 +121,13 @@ export default function PrognosePage() {
                   return (
                     <td
                       key={m.maand + label}
-                      className="px-2 py-1 text-right"
+                      className={`px-2 py-1 text-right ${!isHeader(label) && raw !== null
+                        ? raw > 0
+                          ? "text-green-600"
+                          : raw < 0
+                          ? "text-red-600"
+                          : ""
+                        : ""}`}
                     >
                       {display}
                     </td>
