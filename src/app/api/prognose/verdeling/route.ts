@@ -5,14 +5,10 @@ export async function GET() {
   try {
     const result = await db.query(`
   WITH geldige_jaren AS (
-    SELECT jaar
-    FROM (
-      SELECT EXTRACT(YEAR FROM datum)::int AS jaar, COUNT(DISTINCT EXTRACT(MONTH FROM datum)) AS maanden
-      FROM rapportage.omzet
-      WHERE datum >= '2022-01-01'
-      GROUP BY jaar
-    ) AS sub
-    WHERE maanden = 12
+    SELECT DISTINCT EXTRACT(YEAR FROM datum)::int AS jaar
+    FROM rapportage.omzet
+    WHERE datum >= '2022-01-01'
+      AND EXTRACT(YEAR FROM datum)::int < EXTRACT(YEAR FROM CURRENT_DATE)::int
   ),
   maandomzet AS (
     SELECT
@@ -39,12 +35,14 @@ export async function GET() {
     JOIN jaaromzet j ON m.jaar = j.jaar
   )
   SELECT
-    maand,
-    ROUND(AVG(maand_percentage)::numeric, 5) AS gemiddelde_maandverdeling
-  FROM verdeling
-  GROUP BY maand
-  ORDER BY maand;
+    v.maand,
+    ROUND(AVG(v.maand_percentage)::numeric, 5) AS percentage,
+    COUNT(DISTINCT v.jaar) AS aantal_jaren
+  FROM verdeling v
+  GROUP BY v.maand
+  ORDER BY v.maand;
 `);
+
  // Extract hoeveel unieke jaren zijn gebruikt (gelijk voor elke rij)
     const aantalJaren = result.rows[0]?.aantal_jaren || 0;
 
