@@ -178,6 +178,12 @@ export default function PrognosePage() {
           </tbody>
         </table>
       </div>
+      {/* Summary below table */}
+      <div className="mt-4 text-sm">
+        <p>
+          Gedaan <strong>{omzetPercent}%</strong> van de omzet in <strong>{dagenPercent}%</strong> van de dagen
+        </p>
+      </div>
     </main>
   );
 }
