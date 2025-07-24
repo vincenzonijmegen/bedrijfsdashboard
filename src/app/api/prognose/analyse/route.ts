@@ -36,8 +36,7 @@ export async function GET() {
         SELECT jaar, SUM(omzet_maand) AS omzet_jaar FROM maandomzet GROUP BY jaar
       ),
       verdeling AS (
-        SELECT m.jaar, m.maand,
-        (m.omzet_maand / j.omzet_jaar)::numeric AS maand_percentage
+        SELECT m.maand, (m.omzet_maand / j.omzet_jaar)::numeric AS maand_percentage
         FROM maandomzet m
         JOIN jaaromzet j ON m.jaar = j.jaar
       )
@@ -53,15 +52,16 @@ export async function GET() {
     });
 
     // Stap 3: Haal realisatie per maand
+    const currentYear = new Date().getFullYear();
     const realisatieRes = await db.query(`
       SELECT EXTRACT(MONTH FROM datum)::int AS maand,
              COUNT(DISTINCT datum) AS dagen,
              SUM(aantal * eenheidsprijs) AS omzet
       FROM rapportage.omzet
-      WHERE EXTRACT(YEAR FROM datum)::int = EXTRACT(YEAR FROM CURRENT_DATE)::int
+      WHERE EXTRACT(YEAR FROM datum)::int = $1
       GROUP BY maand
       ORDER BY maand;
-    `);
+    `, [currentYear]);
 
     const realisatieMap: Record<number, { dagen: number; omzet: number }> = {};
     realisatieRes.rows.forEach((r) => {
@@ -73,39 +73,35 @@ export async function GET() {
 
     // Stap 4: Combineer per maand (maart t/m september)
     const maanden = [3, 4, 5, 6, 7, 8, 9];
-    let cumulatiefPlus = 0;
-    let cumulatiefPrognose = 0;
     let cumulatiefRealisatie = 0;
 
-    // totaal van alle resterende prognoses (lopend + toekomst)
-    // totaal van alle resterende prognoses (lopend + toekomst)
-
-
-    const huidigeMaand = new Date().getMonth() + 1;
-    let totaalPrognoseRest = 0;
-let totaalGerealiseerd = 0;
     const resultaten = maanden.map((maand) => {
-      const maandPercentage = maandverdeling[maand] || 0;
-      const prognoseOmzet = Math.round(maandPercentage * jaaromzet);
-      const prognoseDagen = new Date(2025, maand, 0).getDate();
+      // Bereken prognose-omzet en dagen
+      const percentage = maandverdeling[maand] || 0;
+      const prognoseOmzet = Math.round(percentage * jaaromzet);
+      const prognoseDagen = new Date(currentYear, maand, 0).getDate();
       const prognosePerDag = prognoseOmzet / prognoseDagen;
 
-      const realisatie = realisatieMap[maand] || { dagen: 0, omzet: 0 };
-      const realisatiePerDag = realisatie.dagen > 0 ? realisatie.omzet / realisatie.dagen : null;
+      // Gerealiseerde data
+      const real = realisatieMap[maand] || { dagen: 0, omzet: 0 };
+      const realisatiePerDag = real.dagen > 0 ? real.omzet / real.dagen : null;
 
-      const todoOmzet = prognoseOmzet - realisatie.omzet;
-      const todoDagen = Math.max(prognoseDagen - realisatie.dagen, 0);
+      // Accumuleer gerealiseerde omzet
+      cumulatiefRealisatie += real.omzet;
+
+      // Bereken forecast voor resterende maanden
+      const forecastRest = maanden
+        .filter((m) => m > maand)
+        .reduce((sum, m2) => sum + Math.round((maandverdeling[m2] || 0) * jaaromzet), 0);
+
+      // JrPrognose obv omzet to date = gerealiseerd + forecastRest
+      const jrPrognoseObvTotNu = cumulatiefRealisatie + forecastRest;
+
+      // Overige kolommen
+      const todoOmzet = prognoseOmzet - real.omzet;
+      const todoDagen = Math.max(prognoseDagen - real.dagen, 0);
       const todoPerDag = todoDagen > 0 ? todoOmzet / todoDagen : null;
-      const prognoseHuidig = realisatiePerDag !== null ? realisatiePerDag * prognoseDagen : 0;
-      const prognoseRest = maand === huidigeMaand ? prognosePerDag * todoDagen : maand > huidigeMaand ? prognoseOmzet : 0;
-      totaalPrognoseRest += prognoseRest;
-      const plusmin = prognoseHuidig - prognoseOmzet;
-
-      cumulatiefPlus += plusmin;
-      cumulatiefPrognose += prognoseOmzet;
-      cumulatiefRealisatie += realisatie.omzet;
-      totaalGerealiseerd += realisatie.omzet;
-
+      const plusmin = (realisatiePerDag !== null ? realisatiePerDag * prognoseDagen : 0) - prognoseOmzet;
       const voorAchterInDagen = prognosePerDag > 0 ? plusmin / prognosePerDag : null;
       const procentueel = prognoseOmzet > 0 ? plusmin / prognoseOmzet : null;
 
@@ -114,25 +110,20 @@ let totaalGerealiseerd = 0;
         prognoseOmzet,
         prognoseDagen,
         prognosePerDag,
-
-        realisatieOmzet: realisatie.omzet,
-        realisatieDagen: realisatie.dagen,
+        realisatieOmzet: real.omzet,
+        realisatieDagen: real.dagen,
         realisatiePerDag,
-
         todoOmzet,
         todoDagen,
         todoPerDag,
-
-        prognoseHuidig,
+        prognoseHuidig: realisatiePerDag !== null ? realisatiePerDag * prognoseDagen : 0,
         plusmin,
-        cumulatiefPlus,
-        cumulatiefPrognose,
+        cumulatiefPlus: 0,        // kan optioneel uit frontend afgeleid worden
+        cumulatiefPrognose: 0,    // idem
         cumulatiefRealisatie,
-
         voorAchterInDagen,
         procentueel,
-        jrPrognoseObvTotNu: totaalGerealiseerd + totaalPrognoseRest
-
+        jrPrognoseObvTotNu,
       };
     });
 
