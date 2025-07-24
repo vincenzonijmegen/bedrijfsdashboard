@@ -60,7 +60,7 @@ export default function PrognosePage() {
             </tr>
           </thead>
           <tbody>
-            {[
+            {([
               ["Prognose omzet", (m: MaandData) => m.prognoseOmzet],
               ["Prognose dagen", (m: MaandData) => m.prognoseDagen],
               ["Prognose €/dag", (m: MaandData) => m.prognosePerDag],
@@ -79,15 +79,15 @@ export default function PrognosePage() {
               ["Prognose cumulatief", (m: MaandData) => m.cumulatiefPrognose],
               ["Realisatie cumulatief", (m: MaandData) => m.cumulatiefRealisatie],
               ["% plus min", (m: MaandData) => m.procentueel],
-            ].map(([label, fn]) => (
-              <tr key={label as string} className="border-t">
+            ] as [string, (m: MaandData) => number | null][]).map(([label, fn]) => (
+              <tr key={label} className="border-t">
                 <td className="font-medium px-2 py-1 text-left whitespace-nowrap">{label}</td>
                 {data.map((m) => (
                   <td key={m.maand + label} className="px-2 py-1 text-right font-mono">
                     {fn(m) === null
                       ? "-"
                       : typeof fn(m) === "number"
-                      ? label.toString().includes("%")
+                      ? label.includes("%")
                         ? `${Math.round(100 * (fn(m) as number))}%`
                         : (fn(m) as number).toLocaleString("nl-NL", {
                             style: "currency",
