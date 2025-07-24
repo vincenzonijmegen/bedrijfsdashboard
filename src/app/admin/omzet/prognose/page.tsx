@@ -117,8 +117,8 @@ export default function PrognosePage() {
                       display = raw!.toLocaleString("nl-NL", { maximumFractionDigits: 0 });
                     }
                   }
-                  let cellClass = "px-2 py-1 text-right font-mono";
-                  if (isHeaderLabel(label)) cellClass = "px-2 py-1 text-right font-bold";
+                  let cellClass = "px-2 py-1 text-right font-mono border";
+                  if (isHeaderLabel(label)) cellClass = "px-2 py-1 text-right font-bold border";
                   if (label === "omzet/dag" && rowIdx === 7 && raw !== null) {
                     cellClass += raw > (m.prognosePerDag || 0)
                       ? " bg-green-100"
