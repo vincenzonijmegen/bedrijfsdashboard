@@ -90,9 +90,18 @@ export async function GET() {
       cumulatiefRealisatie += real.omzet;
 
       // Bereken forecast voor resterende maanden
-      const forecastRest = maanden
-        .filter((m) => m > maand)
-        .reduce((sum, m2) => sum + Math.round((maandverdeling[m2] || 0) * jaaromzet), 0);
+      const forecastRest = maanden.reduce((sum, m2) => {
+        if (m2 === maand) {
+          // resterende dagen van huidige maand
+          const restOmzetHuidige = Math.round(prognosePerDag * todoDagen);
+          return sum + restOmzetHuidige;
+        } else if (m2 > maand) {
+          // volledige prognose van toekomstige maanden
+          const fullMonthForecast = Math.round((maandverdeling[m2] || 0) * jaaromzet);
+          return sum + fullMonthForecast;
+        }
+        return sum;
+      }, 0);
 
       // JrPrognose obv omzet to date = gerealiseerd + forecastRest
       const jrPrognoseObvTotNu = cumulatiefRealisatie + forecastRest;
