@@ -65,10 +65,10 @@ export default function PrognosePage() {
     ["dagen", (m) => m.todoDagen],
     ["omzet/dag", (m) => m.todoPerDag],
     ["PROGNOSES", () => null],
-    ["Prognose obv huidig", (m) => m.prognoseHuidig],
-    ["Prognose plusmin", (m) => m.plusmin],
-    ["Jrprgn. obv omzet to date", (m) => m.jrPrognoseObvTotNu],
-    ["Realisatie cumulatief", (m) => m.cumulatiefRealisatie],
+    ["prognose obv huidig", (m) => m.prognoseHuidig],
+    ["prognose plusmin", (m) => m.plusmin],
+    ["prognose obv omzet to date", (m) => m.jrPrognoseObvTotNu],
+    ["realisatie cumulatief", (m) => m.cumulatiefRealisatie],
   ];
 
   return (
@@ -154,7 +154,7 @@ export default function PrognosePage() {
                         } else if (rowIdx <= 7) {
                           totOm = data.reduce((s, m) => s + m.realisatieOmzet, 0);
                           totDg = data.reduce((s, m) => s + m.realisatieDagen, 0);
-                        } else if (rowIdx <= 11) {
+                        } else if (rowIdx <= 12) {
                           totOm = data.reduce((s, m) => s + m.todoOmzet, 0);
                           totDg = data.reduce((s, m) => s + m.todoDagen, 0);
                         } else {
