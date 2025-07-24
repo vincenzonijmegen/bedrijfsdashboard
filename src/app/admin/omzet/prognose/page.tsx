@@ -41,6 +41,10 @@ export default function PrognosePage() {
       });
   }, []);
 
+  // helper om de koprĳen te markeren
+  const isHeader = (label: string) =>
+    label === "REALISATIE" || label === "TO-DO" || label === "PROGNOSES" || label === "PROGNOSE";
+
   return (
     <main className="p-6">
       <h1 className="text-2xl font-bold mb-6">Omzetprognose overzicht</h1>
@@ -53,9 +57,11 @@ export default function PrognosePage() {
         <table className="table-auto border border-collapse w-full text-sm">
           <thead className="bg-gray-200">
             <tr>
-              <th className="px-2 py-1 text-left">PROGNOSE</th>
+              <th className="font-bold px-2 py-1 text-left">PROGNOSE</th>
               {data.map((m) => (
-                <th key={"prognose-" + m.maand} className="px-2 py-1 text-right">{maandNamen[m.maand - 3]}</th>
+                <th key={"prognose-" + m.maand} className="font-bold px-2 py-1 text-right">
+                  {maandNamen[m.maand - 3]}
+                </th>
               ))}
             </tr>
           </thead>
@@ -72,29 +78,48 @@ export default function PrognosePage() {
               ["omzet", (m: MaandData) => m.todoOmzet],
               ["dagen", (m: MaandData) => m.todoDagen],
               ["omzet/dag", (m: MaandData) => m.todoPerDag],
-              ["Voor/achter in dagen", (m: MaandData) => m.voorAchterInDagen],
-              ["% plus min", (m: MaandData) => m.procentueel],
               ["PROGNOSES", () => null],
               ["Prognose obv huidig", (m: MaandData) => m.prognoseHuidig],
               ["Prognose plusmin", (m: MaandData) => m.plusmin],
               ["Jrprgn. obv omzet to date", (m: MaandData) => m.jrPrognoseObvTotNu],
               ["Realisatie cumulatief", (m: MaandData) => m.cumulatiefRealisatie],
-              
-
             ] as [string, (m: MaandData) => number | null][]).map(([label, fn]) => (
-              <tr key={label} className={(label === "REALISATIE" || label === "TO-DO" || label === "PROGNOSES" ) ? "bg-gray-200" : "border-t"}>
-                <td className="font-medium px-2 py-1 text-left whitespace-nowrap">{label}</td>
+              <tr
+                key={label}
+                className={isHeader(label) ? "bg-gray-200" : "border-t"}
+              >
+                <td
+                  className={`${
+                    isHeader(label) ? "font-bold" : "font-medium"
+                  } px-2 py-1 text-left whitespace-nowrap`}
+                >
+                  {label}
+                </td>
                 {data.map((m) => {
                   const value = fn(m);
                   return (
-                    <td key={m.maand + label} className="px-2 py-1 text-right font-mono">
+                    <td
+                      key={m.maand + label}
+                      className="px-2 py-1 text-right font-mono"
+                    >
                       {value === null
-                        ? (label === "REALISATIE" || label === "TO-DO" || label === "PROGNOSES") ? maandNamen[m.maand - 3] : "-"
+                        ? isHeader(label)
+                          ? maandNamen[m.maand - 3]
+                          : "-"
                         : typeof value === "number"
-                        ? label === "dagen" ? Math.round(value).toLocaleString("nl-NL") : label === "Voor/achter in dagen" ? value.toLocaleString("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+                        ? label === "dagen"
+                          ? Math.round(value).toLocaleString("nl-NL")
+                          : label === "Voor/achter in dagen"
+                          ? value.toLocaleString("nl-NL", {
+                              minimumFractionDigits: 1,
+                              maximumFractionDigits: 1,
+                            })
                           : label.includes("%")
                           ? `${Math.round(100 * value)}%`
-                          : value.toLocaleString("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+                          : value.toLocaleString("nl-NL", {
+                              minimumFractionDigits: 1,
+                              maximumFractionDigits: 1,
+                            })
                         : value}
                     </td>
                   );
