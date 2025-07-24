@@ -77,8 +77,12 @@ export async function GET() {
     let cumulatiefPrognose = 0;
     let cumulatiefRealisatie = 0;
 
-    let totaalPrognoseRest = 0;
+    // totaal van alle resterende prognoses (lopend + toekomst)
+    // totaal van alle resterende prognoses (lopend + toekomst)
 
+
+    const huidigeMaand = new Date().getMonth() + 1;
+    let totaalPrognoseRest = 0;
     const resultaten = maanden.map((maand) => {
       const maandPercentage = maandverdeling[maand] || 0;
       const prognoseOmzet = Math.round(maandPercentage * jaaromzet);
@@ -92,7 +96,7 @@ export async function GET() {
       const todoDagen = Math.max(prognoseDagen - realisatie.dagen, 0);
       const todoPerDag = todoDagen > 0 ? todoOmzet / todoDagen : null;
       const prognoseHuidig = realisatiePerDag !== null ? realisatiePerDag * prognoseDagen : 0;
-      const prognoseRest = realisatiePerDag !== null && todoDagen > 0 ? realisatiePerDag * todoDagen : 0;
+      const prognoseRest = maand === huidigeMaand ? prognosePerDag * todoDagen : maand > huidigeMaand ? prognoseOmzet : 0;
       totaalPrognoseRest += prognoseRest;
       const plusmin = prognoseHuidig - prognoseOmzet;
 
