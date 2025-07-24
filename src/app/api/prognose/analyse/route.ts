@@ -53,15 +53,16 @@ export async function GET() {
 
     // Stap 3: Haal realisatie per maand
     const currentYear = new Date().getFullYear();
-    const realisatieRes = await db.query(`
-      SELECT EXTRACT(MONTH FROM datum)::int AS maand,
-             COUNT(DISTINCT datum) AS dagen,
-             SUM(aantal * eenheidsprijs) AS omzet
-      FROM rapportage.omzet
-      WHERE EXTRACT(YEAR FROM datum)::int = $1
-      GROUP BY maand
-      ORDER BY maand;
-    `, [currentYear]);
+    const realisatieRes = await db.query(
+      `SELECT EXTRACT(MONTH FROM datum)::int AS maand,
+              COUNT(DISTINCT datum) AS dagen,
+              SUM(aantal * eenheidsprijs) AS omzet
+       FROM rapportage.omzet
+       WHERE EXTRACT(YEAR FROM datum)::int = $1
+       GROUP BY maand
+       ORDER BY maand;`,
+      [currentYear]
+    );
 
     const realisatieMap: Record<number, { dagen: number; omzet: number }> = {};
     realisatieRes.rows.forEach((r) => {
@@ -88,20 +89,17 @@ export async function GET() {
 
       // Accumuleer gerealiseerde omzet
       cumulatiefRealisatie += real.omzet;
-      // Bereken todo voor huidige maand
-      const todoOmzet = prognoseOmzet - real.omzet;
-      const todoDagen = Math.max(prognoseDagen - real.dagen, 0);
-      // Bepaal todo voor huidige maand (nodig voor forecastRest)
+
       // Bereken forecast voor resterende maanden
       const forecastRest = maanden.reduce((sum, m2) => {
         if (m2 === maand) {
           // resterende dagen van huidige maand
-          const restOmzetHuidige = Math.round(prognosePerDag * todoDagen);
-          return sum + restOmzetHuidige;
+          const todoDagen = Math.max(prognoseDagen - real.dagen, 0);
+          return sum + Math.round(prognosePerDag * todoDagen);
         } else if (m2 > maand) {
-          // volledige prognose van toekomstige maanden
-          const fullMonthForecast = Math.round((maandverdeling[m2] || 0) * jaaromzet);
-          return sum + fullMonthForecast;
+          // volledige prognose van toekomstige maand
+          const fullForecast = Math.round((maandverdeling[m2] || 0) * jaaromzet);
+          return sum + fullForecast;
         }
         return sum;
       }, 0);
@@ -130,8 +128,8 @@ export async function GET() {
         todoPerDag,
         prognoseHuidig: realisatiePerDag !== null ? realisatiePerDag * prognoseDagen : 0,
         plusmin,
-        cumulatiefPlus: 0,        // kan optioneel uit frontend afgeleid worden
-        cumulatiefPrognose: 0,    // idem
+        cumulatiefPlus: 0,
+        cumulatiefPrognose: 0,
         cumulatiefRealisatie,
         voorAchterInDagen,
         procentueel,
