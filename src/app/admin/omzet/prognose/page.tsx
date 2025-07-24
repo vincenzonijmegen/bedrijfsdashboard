@@ -124,7 +124,7 @@ export default function PrognosePage() {
                       ? " bg-green-100"
                       : " bg-red-100";
                   }
-                  // kleur prognose plusmin cellen
+                                    // kleur prognose plusmin cellen
                   if (label === "prognose plusmin" && raw !== null) {
                     cellClass += raw > 0 ? " bg-green-100" : " bg-red-100";
                   }
