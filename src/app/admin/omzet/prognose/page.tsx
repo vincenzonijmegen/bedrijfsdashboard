@@ -73,18 +73,16 @@ export default function PrognosePage() {
               ["dagen", (m: MaandData) => m.todoDagen],
               ["omzet/dag", (m: MaandData) => m.todoPerDag],
               ["Voor/achter in dagen", (m: MaandData) => m.voorAchterInDagen],
-              ["Omzet plus min cumul.", (m: MaandData) => m.cumulatiefPlus],
               ["% plus min", (m: MaandData) => m.procentueel],
               ["PROGNOSES", () => null],
               ["Prognose obv huidig", (m: MaandData) => m.prognoseHuidig],
               ["Prognose plusmin", (m: MaandData) => m.plusmin],
               ["Jrprgn. obv omzet to date", (m: MaandData) => m.jrPrognoseObvTotNu],
-              ["Prognose cumulatief", (m: MaandData) => m.cumulatiefPrognose],
               ["Realisatie cumulatief", (m: MaandData) => m.cumulatiefRealisatie],
               
 
             ] as [string, (m: MaandData) => number | null][]).map(([label, fn]) => (
-              <tr key={label} className={(label === "REALISATIE" || label === "TO-DO") ? "bg-gray-200" : "border-t"}>
+              <tr key={label} className={(label === "REALISATIE" || label === "TO-DO" || label === "PROGNOSES" ) ? "bg-gray-200" : "border-t"}>
                 <td className="font-medium px-2 py-1 text-left whitespace-nowrap">{label}</td>
                 {data.map((m) => {
                   const value = fn(m);
