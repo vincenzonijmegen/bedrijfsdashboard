@@ -47,6 +47,13 @@ export default function PrognosePage() {
       });
   }, []);
 
+  // Totals for summary below table
+  const totalRealisatieOmzet = data.reduce((sum, m) => sum + m.realisatieOmzet, 0);
+  const totalRealisatieDagen = data.reduce((sum, m) => sum + m.realisatieDagen, 0);
+  const totalPrognoseDagen = data.reduce((sum, m) => sum + m.prognoseDagen, 0);
+  const omzetPercent = jaaromzet > 0 ? Math.round((totalRealisatieOmzet / jaaromzet) * 100) : 0;
+  const dagenPercent = totalPrognoseDagen > 0 ? Math.round((totalRealisatieDagen / totalPrognoseDagen) * 100) : 0;
+
   const isHeaderLabel = (label: string) =>
     ["PROGNOSE", "REALISATIE", "TO-DO", "PROGNOSES"].includes(label.toUpperCase());
 
