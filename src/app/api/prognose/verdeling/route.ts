@@ -44,7 +44,19 @@ export async function GET() {
 `);
 
  // Extract hoeveel unieke jaren zijn gebruikt (gelijk voor elke rij)
-    const aantalJaren = result.rows[0]?.aantal_jaren || 0;
+ const vorigJaar = new Date().getFullYear() - 1;
+const totaalVorigJaar = await db.query(`
+  SELECT SUM(aantal * eenheidsprijs) AS totaal
+  FROM rapportage.omzet
+  WHERE EXTRACT(YEAR FROM datum)::int = $1
+`, [vorigJaar]);
+
+const omzetVorigJaar = Number(totaalVorigJaar.rows[0]?.totaal || 0);
+const groeibedrag = Math.round(omzetVorigJaar * 1.03);
+   
+ 
+ 
+ const aantalJaren = result.rows[0]?.aantal_jaren || 0;
 
     const verdeling = result.rows.map((r: any) => ({
       maand: Number(r.maand),
@@ -57,7 +69,11 @@ export async function GET() {
 
 
 
-    return NextResponse.json({ jaren: aantalJaren, verdeling });
+return NextResponse.json({
+  jaren: aantalJaren,
+  verdeling,
+  omzetPrognose: groeibedrag
+});
   } catch (error) {
     console.error("Fout bij ophalen maandverdeling:", error);
     return NextResponse.json({ error: "Fout bij ophalen maandverdeling" }, { status: 500 });
