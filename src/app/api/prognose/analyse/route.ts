@@ -88,7 +88,7 @@ export async function GET() {
 
       // Accumuleer gerealiseerde omzet
       cumulatiefRealisatie += real.omzet;
-
+      // Bepaal todo voor huidige maand (nodig voor forecastRest)
       // Bereken forecast voor resterende maanden
       const forecastRest = maanden.reduce((sum, m2) => {
         if (m2 === maand) {
