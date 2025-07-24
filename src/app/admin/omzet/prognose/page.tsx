@@ -89,13 +89,17 @@ export default function PrognosePage() {
                 })}
               </tr>
             ))}
+          </tbody>
 
-            <tr className="bg-gray-200">
+          <thead className="bg-gray-200">
+            <tr>
               <th className="px-2 py-1 text-left">REALISATIE</th>
               {data.map((m) => (
                 <th key={"realisatie-" + m.maand} className="px-2 py-1 text-right">{maandNamen[m.maand - 3]}</th>
               ))}
             </tr>
+          </thead>
+          <tbody>
             {([
               ["omzet", (m: MaandData) => m.realisatieOmzet],
               ["dagen", (m: MaandData) => m.realisatieDagen],
