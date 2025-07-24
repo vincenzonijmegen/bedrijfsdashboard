@@ -65,10 +65,10 @@ export default function PrognosePage() {
     ["dagen", (m) => m.todoDagen],
     ["omzet/dag", (m) => m.todoPerDag],
     ["PROGNOSES", () => null],
-    ["Prognose obv huidig", (m) => m.prognoseHuidig],
-    ["Prognose plusmin", (m) => m.plusmin],
-    ["Jrprgn. obv omzet to date", (m) => m.jrPrognoseObvTotNu],
-    ["Realisatie cumulatief", (m) => m.cumulatiefRealisatie],
+    ["prognose obv huidig", (m) => m.prognoseHuidig],
+    ["prognose plusmin", (m) => m.plusmin],
+    ["jaarprognose obv omzet tot vandaag", (m) => m.jrPrognoseObvTotNu],
+    ["realisatie cumulatief", (m) => m.cumulatiefRealisatie],
   ];
 
   return (
@@ -100,6 +100,8 @@ export default function PrognosePage() {
                   let display = "";
                   if (isHeaderLabel(label)) {
                     display = maandNamen[m.maand - 3];
+                  } else if (label === "Prognose plusmin" && m.prognoseHuidig <= 0) {
+                    display = "";
                   } else if (
                     raw === null ||
                     (raw === 0 && !(label === "omzet/dag" && rowIdx >= 11))
