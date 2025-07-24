@@ -154,7 +154,7 @@ export default function PrognosePage() {
                         } else if (rowIdx <= 7) {
                           totOm = data.reduce((s, m) => s + m.realisatieOmzet, 0);
                           totDg = data.reduce((s, m) => s + m.realisatieDagen, 0);
-                        } else if (rowIdx <= 11) {
+                        } else if (rowIdx <= 12) {
                           totOm = data.reduce((s, m) => s + m.todoOmzet, 0);
                           totDg = data.reduce((s, m) => s + m.todoDagen, 0);
                         } else {
