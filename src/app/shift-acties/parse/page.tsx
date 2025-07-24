@@ -49,13 +49,12 @@ export default function ShiftMailParser() {
         lines.find((l) => l.includes("heeft een open dienst geaccepteerd"))
           ?.split(" heeft")[0] || "";
 
-      const dateLine = lines.find((l) =>
-        l.toLowerCase().startsWith("open dienst:")
-      );
-      const rawDate = dateLine?.split(/:|\t/)[1]?.trim() || "";
-      result.datum = rawDate.match(/\d{2}-\d{2}-\d{4}/)
-        ? convertDDMMYYYYtoISO(rawDate.match(/\d{2}-\d{2}-\d{4}/)![0])
-        : "";
+const dateLine = lines.find(l =>
+  l.toLowerCase().startsWith("open dienst:")
+);
+const dateMatch = dateLine?.match(/\d{2}-\d{2}-\d{4}/);
+result.datum = dateMatch ? convertDDMMYYYYtoISO(dateMatch[0]) : "";
+
 
       result.tijd =
         lines

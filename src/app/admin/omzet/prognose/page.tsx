@@ -80,7 +80,6 @@ export default function PrognosePage() {
     ["prognose obv huidig", (m) => m.prognoseHuidig],
     ["prognose plusmin", (m) => m.plusmin],
     ["prognose obv omzet to date", (m) => m.jrPrognoseObvTotNu],
-    ["realisatie cumulatief", (m) => m.cumulatiefRealisatie],
   ];
 
   return (
