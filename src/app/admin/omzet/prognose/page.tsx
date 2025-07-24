@@ -69,13 +69,13 @@ export default function PrognosePage() {
       <h1 className="text-2xl font-bold mb-6">Omzetprognose overzicht</h1>
 
       <p className="mb-4 text-gray-600">
-        Jaaromzet: <strong>€ {jaaromzet.toLocaleString("nl-NL", {maximumFractionDigits:0})}</strong>
+        Jaaromzet: <strong>€ {jaaromzet.toLocaleString("nl-NL", { maximumFractionDigits: 0 })}</strong>
       </p>
 
       <div className="overflow-auto">
         <table className="table-auto border border-collapse w-full text-sm">
           <tbody>
-            {rows.map(([label, fn]) => (
+            {rows.map(([label, fn], rowIndex) => (
               <tr key={label} className={isHeader(label) ? "bg-gray-200" : "border-t"}>
                 <td className={`${isHeader(label) ? "font-bold" : "font-medium"} px-2 py-1 text-left whitespace-nowrap`}>
                   {label}
@@ -86,7 +86,8 @@ export default function PrognosePage() {
                     return (
                       <td
                         key={m.maand + label}
-                        className={`px-2 py-1 text-right ${isHeader(label) ? "font-bold" : "font-mono"}`}>
+                        className={`px-2 py-1 text-right ${isHeader(label) ? "font-bold" : "font-mono"}`}
+                      >
                         {isHeader(label) ? maandNamen[m.maand - 3] : '\u00A0'}
                       </td>
                     );
@@ -106,25 +107,35 @@ export default function PrognosePage() {
                   );
                 })}
                 <td className="px-2 py-1 text-right font-bold">
-  {label === 'omzet'
-    ? '€ ' + data.reduce((sum, m) => sum + (fn(m) || 0), 0).toLocaleString('nl-NL', { maximumFractionDigits: 0 })
-    : label === 'dagen'
-    ? data.reduce((sum, m) => sum + (fn(m) || 0), 0)
-    : label === 'omzet/dag'
-    ? (() => {
-        const values = data.map(m => fn(m)).filter(v => v !== null && v !== 0) as number[];
-        if (label === 'dagen') {
-          // For realisatie, compute total omzet / total dagen
-          const totalOmzet = data.reduce((sum, m) => sum + (fn(m) || 0), 0);
-          const totalDagen = data.reduce((sum, m) => sum + ((m.realisatieDagen) || 0), 0);
-          return totalDagen > 0 ? Math.round(totalOmzet / totalDagen).toLocaleString('nl-NL') : '0';
-        }
-        const sum = values.reduce((s, v) => s + v, 0);
-        const avg = Math.round(sum / values.length);
-        return avg.toLocaleString('nl-NL');
-      })()
-    : ''}
-</td>
+                  {label === 'omzet'
+                    ? '€ ' + data.reduce((sum, m) => sum + (fn(m) || 0), 0).toLocaleString('nl-NL', { maximumFractionDigits: 0 })
+                    : label === 'dagen'
+                    ? data.reduce((sum, m) => sum + (fn(m) || 0), 0)
+                    : label === 'omzet/dag'
+                    ? (() => {
+                        let totalOmzet = 0;
+                        let totalDagen = 0;
+                        if (rowIndex <= 3) {
+                          // PROGNOSE block rows 1-3
+                          totalOmzet = data.reduce((s, m) => s + m.prognoseOmzet, 0);
+                          totalDagen = data.reduce((s, m) => s + m.prognoseDagen, 0);
+                        } else if (rowIndex <= 7) {
+                          // REALISATIE block rows 5-7
+                          totalOmzet = data.reduce((s, m) => s + m.realisatieOmzet, 0);
+                          totalDagen = data.reduce((s, m) => s + m.realisatieDagen, 0);
+                        } else if (rowIndex <= 11) {
+                          // TO-DO block rows 9-11
+                          totalOmzet = data.reduce((s, m) => s + m.todoOmzet, 0);
+                          totalDagen = data.reduce((s, m) => s + m.todoDagen, 0);
+                        } else {
+                          return '';
+                        }
+                        return totalDagen > 0
+                          ? Math.round(totalOmzet / totalDagen).toLocaleString('nl-NL')
+                          : '';
+                      })()
+                    : ''}
+                </td>
               </tr>
             ))}
           </tbody>
