@@ -126,7 +126,7 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ resultaten, jaaromzet });
+    return NextResponse.json({ resultaten, jaaromzet, vorigJaarOmzet });
   } catch(e) {
     console.error("Fout in analyse API:", e);
     return NextResponse.json({ error: "Fout in analyse API" }, { status: 500 });
