@@ -83,6 +83,7 @@ export async function GET() {
 
     const huidigeMaand = new Date().getMonth() + 1;
     let totaalPrognoseRest = 0;
+let totaalGerealiseerd = 0;
     const resultaten = maanden.map((maand) => {
       const maandPercentage = maandverdeling[maand] || 0;
       const prognoseOmzet = Math.round(maandPercentage * jaaromzet);
@@ -103,6 +104,7 @@ export async function GET() {
       cumulatiefPlus += plusmin;
       cumulatiefPrognose += prognoseOmzet;
       cumulatiefRealisatie += realisatie.omzet;
+      totaalGerealiseerd += realisatie.omzet;
 
       const voorAchterInDagen = prognosePerDag > 0 ? plusmin / prognosePerDag : null;
       const procentueel = prognoseOmzet > 0 ? plusmin / prognoseOmzet : null;
@@ -129,7 +131,7 @@ export async function GET() {
 
         voorAchterInDagen,
         procentueel,
-        jrPrognoseObvTotNu: cumulatiefRealisatie + totaalPrognoseRest
+        jrPrognoseObvTotNu: totaalGerealiseerd + totaalPrognoseRest
 
       };
     });
