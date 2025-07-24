@@ -90,7 +90,7 @@ export async function GET() {
       const todoDagen = Math.max(prognoseDagen - realisatie.dagen, 0);
       const todoPerDag = todoDagen > 0 ? todoOmzet / todoDagen : null;
       const prognoseHuidig = realisatiePerDag !== null ? realisatiePerDag * prognoseDagen : 0;
-      const plusmin = realisatie.omzet - prognoseOmzet;
+      const plusmin = prognoseHuidig - prognoseOmzet;
 
       cumulatiefPlus += plusmin;
       cumulatiefPrognose += prognoseOmzet;

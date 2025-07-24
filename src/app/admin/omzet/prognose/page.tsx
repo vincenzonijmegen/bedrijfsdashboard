@@ -18,8 +18,8 @@ interface MaandData {
   todoOmzet: number;
   todoDagen: number;
   todoPerDag: number | null;
-  prognoseHuidig: number;
-  plusmin: number;
+  prognoseHuidig: number; // realisatiePerDag * prognoseDagen
+  plusmin: number; // prognoseHuidig - prognoseOmzet
   cumulatiefPlus: number;
   cumulatiefPrognose: number;
   cumulatiefRealisatie: number;
