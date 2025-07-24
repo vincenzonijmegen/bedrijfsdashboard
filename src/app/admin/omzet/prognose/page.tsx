@@ -92,15 +92,11 @@ export default function PrognosePage() {
                       {value === null
                         ? (label === "REALISATIE" || label === "TO-DO") ? maandNamen[m.maand - 3] : "-"
                         : typeof value === "number"
-                        ? label === "dagen"
+                        ? label === "dagen" || label === "Voor/achter in dagen"
                           ? Math.round(value).toLocaleString("nl-NL")
                           : label.includes("%")
                           ? `${Math.round(100 * value)}%`
-                          : value.toLocaleString("nl-NL", {
-                              style: "currency",
-                              currency: "EUR",
-                              maximumFractionDigits: 0,
-                            })
+                          : value.toLocaleString("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
                         : value}
                     </td>
                   );
