@@ -163,7 +163,7 @@ export default function PrognosePage() {
                             (s, m) => s + m.realisatieDagen,
                             0
                           );
-                        } else if (rowIndex <= 11) {
+                        } else if (rowIndex <= 12) {
                           totalOmzet = data.reduce(
                             (s, m) => s + m.todoOmzet,
                             0
