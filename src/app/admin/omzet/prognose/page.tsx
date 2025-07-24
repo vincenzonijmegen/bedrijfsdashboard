@@ -91,7 +91,7 @@ export default function PrognosePage() {
                   return (
                     <td key={m.maand + label} className="px-2 py-1 text-right font-mono">
                       {value === null
-                        ? (label === "REALISATIE" || label === "TO-DO") ? maandNamen[m.maand - 3] : "-"
+                        ? (label === "REALISATIE" || label === "TO-DO" || label === "PROGNOSES") ? maandNamen[m.maand - 3] : "-"
                         : typeof value === "number"
                         ? label === "dagen" ? Math.round(value).toLocaleString("nl-NL") : label === "Voor/achter in dagen" ? value.toLocaleString("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
                           : label.includes("%")
