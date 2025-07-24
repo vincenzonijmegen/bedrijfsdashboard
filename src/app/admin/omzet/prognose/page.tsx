@@ -51,9 +51,9 @@ export default function PrognosePage() {
 
       <div className="overflow-auto">
         <table className="table-auto border border-collapse w-full text-sm">
-          <thead className="bg-gray-100">
+          <thead className="bg-gray-200">
             <tr>
-              <th className="px-2 py-1 text-left">Categorie</th>
+              <th className="px-2 py-1 text-left">PROGNOSE</th>
               {data.map((m) => (
                 <th key={m.maand} className="px-2 py-1 text-right">{maandNamen[m.maand - 3]}</th>
               ))}
@@ -61,9 +61,9 @@ export default function PrognosePage() {
           </thead>
           <tbody>
             {([
-              ["Prognose omzet", (m: MaandData) => m.prognoseOmzet],
-              ["Prognose dagen", (m: MaandData) => m.prognoseDagen],
-              ["Prognose €/dag", (m: MaandData) => m.prognosePerDag],
+              ["omzet", (m: MaandData) => m.prognoseOmzet],
+              ["dagen", (m: MaandData) => m.prognoseDagen],
+              ["omzet/dag", (m: MaandData) => m.prognosePerDag],
               ["Realisatie omzet", (m: MaandData) => m.realisatieOmzet],
               ["Realisatie dagen", (m: MaandData) => m.realisatieDagen],
               ["Realisatie €/dag", (m: MaandData) => m.realisatiePerDag],
