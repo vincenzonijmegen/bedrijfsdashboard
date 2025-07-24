@@ -1,4 +1,3 @@
-// app/shift-acties/parse/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -49,22 +48,36 @@ export default function ShiftMailParser() {
         lines.find((l) => l.includes("heeft een open dienst geaccepteerd"))
           ?.split(" heeft")[0] || "";
 
-const dateLine = lines.find(l =>
-  l.toLowerCase().startsWith("open dienst:")
-);
-const dateMatch = dateLine?.match(/\d{2}-\d{2}-\d{4}/);
-result.datum = dateMatch ? convertDDMMYYYYtoISO(dateMatch[0]) : "";
+      // Table parsing: datum, dienst, tijden
+      const openIdx = lines.findIndex((l) => l.toLowerCase().includes("open dienst geaccepteerd"));
+      if (openIdx >= 0) {
+        const header = lines[openIdx + 1].split(/\t+/).map((h) => h.toLowerCase());
+        const values = lines[openIdx + 2].split(/\t+/);
 
+        // Datum: convert DD-MM-YYYY
+        const idxDatum = header.findIndex((h) => h === "datum");
+        if (idxDatum >= 0 && values[idxDatum]) {
+          const raw = values[idxDatum].trim();
+          const match = raw.match(/\d{2}-\d{2}-\d{4}/);
+          if (match) {
+            result.datum = convertDDMMYYYYtoISO(match[0]);
+          }
+        }
 
-      result.tijd =
-        lines
-          .find((l) => l.toLowerCase().startsWith("tijd"))
-          ?.match(/\d{2}:\d{2}\s*-\s*\d{2}:\d{2}/)?.[0] || "";
-      result.shift =
-        lines
-          .find((l) => l.toLowerCase().startsWith("dienst"))
-          ?.split(/:|\t/)[1]
-          ?.trim() || "";
+        // Shift name
+        const idxShift = header.findIndex((h) => h === "dienst");
+        if (idxShift >= 0) {
+          result.shift = values[idxShift].trim();
+        }
+
+        // Tijd
+        const idxStart = header.findIndex((h) => h === "van");
+        const idxEnd = header.findIndex((h) => h === "tot");
+        if (idxStart >= 0 && idxEnd >= 0) {
+          result.tijd = `${values[idxStart].trim()} - ${values[idxEnd].trim()}`;
+        }
+      }
+
     } else if (
       mailText.includes("heeft een ruilaanvraag") &&
       mailText.includes("geaccepteerd")
@@ -100,11 +113,11 @@ result.datum = dateMatch ? convertDDMMYYYYtoISO(dateMatch[0]) : "";
         // Shift name
         if (idxShift >= 0) result.shift = values[idxShift];
         // 'van' is de requester: haal de naam tussen 'van' en 'voor'
-const ruilLine = lines.find(l => l.toLowerCase().includes("heeft een ruilaanvraag"));
-const vanMatch = ruilLine?.match(/heeft een ruilaanvraag van\s+(.*?)\s+voor/i);
-if (vanMatch) {
-  result.van = vanMatch[1].trim();
-}
+        const ruilLine = lines.find(l => l.toLowerCase().includes("heeft een ruilaanvraag"));
+        const vanMatch = ruilLine?.match(/heeft een ruilaanvraag van\s+(.*?)\s+voor/i);
+        if (vanMatch) {
+          result.van = vanMatch[1].trim();
+        }
 
         // Tijd
         if (idxStart >= 0 && idxEnd >= 0) {
