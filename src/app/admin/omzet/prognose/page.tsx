@@ -74,16 +74,7 @@ export default function PrognosePage() {
 
       <div className="overflow-auto">
         <table className="table-auto border border-collapse w-full text-sm">
-          <thead className="bg-gray-200 font-bold">
-            <tr>
-              <th className="px-2 py-1 text-left">MAAND</th>
-              {data.map((m) => (
-                <th key={m.maand} className="px-2 py-1 text-right">
-                  {maandNamen[m.maand - 3]}
-                </th>
-              ))}
-            </tr>
-          </thead>
+          
           <tbody>
             {rows.map(([label, fn]) => (
               <tr key={label} className={isHeader(label) ? "bg-gray-200" : "border-t"}>
