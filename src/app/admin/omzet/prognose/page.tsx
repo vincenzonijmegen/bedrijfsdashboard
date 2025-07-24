@@ -89,6 +89,45 @@ export default function PrognosePage() {
                 })}
               </tr>
             ))}
+
+            {([
+              ["TO-DO omzet", (m: MaandData) => m.todoOmzet],
+              ["TO-DO dagen", (m: MaandData) => m.todoDagen],
+              ["TO-DO €/dag", (m: MaandData) => m.todoPerDag],
+              ["Prognose obv huidig", (m: MaandData) => m.prognoseHuidig],
+              ["Prognose plusmin", (m: MaandData) => m.plusmin],
+              ["Voor/achter in dagen", (m: MaandData) => m.voorAchterInDagen],
+              ["Plusomzet-to-date", (m: MaandData) => m.plusmin],
+              ["Omzet plus min cumul.", (m: MaandData) => m.cumulatiefPlus],
+              ["Jrprgn. obv omzet to date", (m: MaandData) => m.jrPrognoseObvTotNu],
+              ["Prognose cumulatief", (m: MaandData) => m.cumulatiefPrognose],
+              ["Realisatie cumulatief", (m: MaandData) => m.cumulatiefRealisatie],
+              ["% plus min", (m: MaandData) => m.procentueel],
+            ] as [string, (m: MaandData) => number | null][]).map(([label, fn]) => (
+              <tr key={label} className="border-t">
+                <td className="font-medium px-2 py-1 text-left whitespace-nowrap">{label}</td>
+                {data.map((m) => {
+                  const value = fn(m);
+                  return (
+                    <td key={m.maand + label} className="px-2 py-1 text-right font-mono">
+                      {value === null
+                        ? "-"
+                        : typeof value === "number"
+                        ? label.includes("dag") && !label.includes("€")
+                          ? value.toLocaleString("nl-NL")
+                          : label.includes("%")
+                          ? `${Math.round(100 * value)}%`
+                          : value.toLocaleString("nl-NL", {
+                              style: "currency",
+                              currency: "EUR",
+                              maximumFractionDigits: 0,
+                            })
+                        : value}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
           </tbody>
 
           <thead className="bg-gray-200">
