@@ -1,3 +1,4 @@
+// app/shift-acties/parse/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -17,6 +18,20 @@ interface ParsedActie {
 const convertDDMMYYYYtoISO = (raw: string): string => {
   const [d, m, y] = raw.split('-');
   return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+};
+
+// Helper: convert Dutch date format 'DD mmm. YYYY' (e.g., '28 aug. 2025') to ISO
+const convertDutchDateToISO = (raw: string): string => {
+  const parts = raw.replace('.', '').split(' ');
+  if (parts.length !== 3) return raw;
+  const [d, m, y] = parts;
+  const monthMap: { [key: string]: string } = {
+    jan: '01', feb: '02', mrt: '03', apr: '04', mei: '05', jun: '06',
+    jul: '07', aug: '08', sep: '09', okt: '10', nov: '11', dec: '12',
+  };
+  const monthKey = m.toLowerCase();
+  const mm = monthMap[monthKey] || m;
+  return `${y}-${mm}-${d.padStart(2, '0')}`;
 };
 
 export default function ShiftMailParser() {
@@ -45,38 +60,33 @@ export default function ShiftMailParser() {
       // Open dienst opgepakt
       result.type = "Open dienst opgepakt";
       result.naar =
-        lines.find((l) => l.includes("heeft een open dienst geaccepteerd"))
+        lines.find((l) => l.toLowerCase().includes("heeft een open dienst geaccepteerd"))
           ?.split(" heeft")[0] || "";
 
-      // Table parsing: datum, dienst, tijden
-      const openIdx = lines.findIndex((l) => l.toLowerCase().includes("open dienst geaccepteerd"));
-      if (openIdx >= 0) {
-        const header = lines[openIdx + 1].split(/\t+/).map((h) => h.toLowerCase());
-        const values = lines[openIdx + 2].split(/\t+/);
-
-        // Datum: convert DD-MM-YYYY
-        const idxDatum = header.findIndex((h) => h === "datum");
-        if (idxDatum >= 0 && values[idxDatum]) {
-          const raw = values[idxDatum].trim();
-          const match = raw.match(/\d{2}-\d{2}-\d{4}/);
-          if (match) {
-            result.datum = convertDDMMYYYYtoISO(match[0]);
-          }
-        }
-
-        // Shift name
-        const idxShift = header.findIndex((h) => h === "dienst");
-        if (idxShift >= 0) {
-          result.shift = values[idxShift].trim();
-        }
-
-        // Tijd
-        const idxStart = header.findIndex((h) => h === "van");
-        const idxEnd = header.findIndex((h) => h === "tot");
-        if (idxStart >= 0 && idxEnd >= 0) {
-          result.tijd = `${values[idxStart].trim()} - ${values[idxEnd].trim()}`;
+      // Datum: tekstuele Nederlandse datum, bv. 'donderdag 28 aug. 2025'
+      const dateLine = lines.find((l) =>
+        /(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\s+\d{1,2}\s+[a-z]{3,}\.\s+\d{4}/i.test(l)
+      );
+      if (dateLine) {
+        // extract 'DD mmm. YYYY'
+        const match = dateLine.match(/\d{1,2}\s+[a-z]{3,}\.\s+\d{4}/i);
+        if (match) {
+          result.datum = convertDutchDateToISO(match[0]);
         }
       }
+
+      // Tijd: uit vrije tekst (bv. 'Tijd: 07:30 - 16:30')
+      result.tijd =
+        lines
+          .find((l) => l.toLowerCase().startsWith("tijd"))
+          ?.match(/\d{2}:\d{2}\s*-\s*\d{2}:\d{2}/)?.[0] || "";
+
+      // Shift: uit vrije tekst (bv. 'Dienst: Dagdienst')
+      result.shift =
+        lines
+          .find((l) => l.toLowerCase().startsWith("dienst"))
+          ?.split(/:|\t/)[1]
+          ?.trim() || "";
 
     } else if (
       mailText.includes("heeft een ruilaanvraag") &&
@@ -84,7 +94,6 @@ export default function ShiftMailParser() {
     ) {
       // Ruil geaccepteerd
       result.type = "Ruil geaccepteerd";
-      // 'naar' is de accepterende medewerker
       result.naar =
         lines.find((l) => l.toLowerCase().includes("heeft een ruilaanvraag"))
           ?.split(" heeft")[0] || "";
@@ -103,25 +112,22 @@ export default function ShiftMailParser() {
         const idxStart = header.findIndex((h) => h === "van");
         const idxEnd = header.findIndex((h) => h === "tot");
 
-        // Datum: always convert DD-MM-YYYY from table
         if (idxDatum >= 0 && values[idxDatum]) {
           const raw = values[idxDatum].trim();
           if (/\d{2}-\d{2}-\d{4}/.test(raw)) {
             result.datum = convertDDMMYYYYtoISO(raw.match(/\d{2}-\d{2}-\d{4}/)![0]);
           }
         }
-        // Shift name
-        if (idxShift >= 0) result.shift = values[idxShift];
-        // 'van' is de requester: haal de naam tussen 'van' en 'voor'
+        if (idxShift >= 0) result.shift = values[idxShift].trim();
+
         const ruilLine = lines.find(l => l.toLowerCase().includes("heeft een ruilaanvraag"));
         const vanMatch = ruilLine?.match(/heeft een ruilaanvraag van\s+(.*?)\s+voor/i);
         if (vanMatch) {
           result.van = vanMatch[1].trim();
         }
 
-        // Tijd
         if (idxStart >= 0 && idxEnd >= 0) {
-          result.tijd = `${values[idxStart]} - ${values[idxEnd]}`;
+          result.tijd = `${values[idxStart].trim()} - ${values[idxEnd].trim()}`;
         }
       }
     } else {
