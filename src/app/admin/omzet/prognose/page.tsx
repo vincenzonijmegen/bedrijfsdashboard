@@ -75,7 +75,7 @@ export default function PrognosePage() {
               ["Prognose obv huidig", (m: MaandData) => m.prognoseHuidig],
               ["Prognose plusmin", (m: MaandData) => m.plusmin],
               ["Voor/achter in dagen", (m: MaandData) => m.voorAchterInDagen],
-              ["Plusomzet-to-date", (m: MaandData) => m.plusmin],
+              ["Plusomzet-to-date", (m: MaandData) => m.cumulatiefPlus],
               ["Omzet plus min cumul.", (m: MaandData) => m.cumulatiefPlus],
               ["Jrprgn. obv omzet to date", (m: MaandData) => m.jrPrognoseObvTotNu],
               ["Prognose cumulatief", (m: MaandData) => m.cumulatiefPrognose],
@@ -92,8 +92,7 @@ export default function PrognosePage() {
                       {value === null
                         ? (label === "REALISATIE" || label === "TO-DO") ? maandNamen[m.maand - 3] : "-"
                         : typeof value === "number"
-                        ? label === "dagen" || label === "Voor/achter in dagen"
-                          ? Math.round(value).toLocaleString("nl-NL")
+                        ? label === "dagen" ? Math.round(value).toLocaleString("nl-NL") : label === "Voor/achter in dagen" ? value.toLocaleString("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
                           : label.includes("%")
                           ? `${Math.round(100 * value)}%`
                           : value.toLocaleString("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })
