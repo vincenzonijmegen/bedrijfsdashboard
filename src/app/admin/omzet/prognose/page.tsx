@@ -88,7 +88,6 @@ export default function PrognosePage() {
                 key={label}
                 className={isHeaderLabel(label) ? "bg-gray-200" : "border-t"}
               >
-                {/* Label cell */}
                 <td
                   className={`px-2 py-1 text-left whitespace-nowrap ${
                     isHeaderLabel(label) ? "font-bold" : "font-medium"
@@ -96,11 +95,9 @@ export default function PrognosePage() {
                 >
                   {label}
                 </td>
-                {/* Data cells */}
                 {data.map((m) => {
                   const raw = fn(m);
                   let display = "";
-                  // header rows show month name
                   if (isHeaderLabel(label)) {
                     display = maandNamen[m.maand - 3];
                   } else if (raw === null || raw === 0) {
@@ -117,14 +114,12 @@ export default function PrognosePage() {
                   } else {
                     display = raw.toLocaleString("nl-NL", { maximumFractionDigits: 0 });
                   }
-                  // cell styling
                   let cellClass = "px-2 py-1 text-right font-mono";
                   if (isHeaderLabel(label)) cellClass = "px-2 py-1 text-right font-bold";
-                  // coloring for realisatie omzet/dag vs prognose
                   if (label === "omzet/dag" && rowIdx === 7 && raw !== null) {
                     cellClass += raw > (m.prognosePerDag || 0)
-                      ? " text-green-600"
-                      : " text-red-600";
+                      ? " bg-green-100"
+                      : " bg-red-100";
                   }
                   return (
                     <td key={m.maand + label} className={cellClass}>
@@ -132,7 +127,6 @@ export default function PrognosePage() {
                     </td>
                   );
                 })}
-                {/* Totals/Average cell */}
                 <td className="px-2 py-1 text-right font-bold">
                   {label === "omzet"
                     ? '€ ' +
