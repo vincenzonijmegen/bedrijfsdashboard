@@ -106,20 +106,25 @@ export default function PrognosePage() {
                   );
                 })}
                 <td className="px-2 py-1 text-right font-bold">
-                  {label === 'omzet'
-                    ? '€ ' + data.reduce((sum, m) => sum + (fn(m) || 0), 0).toLocaleString('nl-NL', { maximumFractionDigits: 0 })
-                    : label === 'dagen'
-                    ? data.reduce((sum, m) => sum + (fn(m) || 0), 0)
-                    : label === 'omzet/dag'
-                    ? (() => {
-                        const vals = data.map(m => fn(m)).filter(v => v !== null && v !== 0) as number[];
-                        const sum = vals.reduce((s, v) => s + v, 0);
-                        const avg = vals.length > 0 ? Math.round(sum / vals.length) : 0;
-                        return avg.toLocaleString('nl-NL');
-                      })()
-                    :
-                    : ''}
-                </td>
+  {label === 'omzet'
+    ? '€ ' + data.reduce((sum, m) => sum + (fn(m) || 0), 0).toLocaleString('nl-NL', { maximumFractionDigits: 0 })
+    : label === 'dagen'
+    ? data.reduce((sum, m) => sum + (fn(m) || 0), 0)
+    : label === 'omzet/dag'
+    ? (() => {
+        const values = data.map(m => fn(m)).filter(v => v !== null && v !== 0) as number[];
+        if (label === 'dagen') {
+          // For realisatie, compute total omzet / total dagen
+          const totalOmzet = data.reduce((sum, m) => sum + (fn(m) || 0), 0);
+          const totalDagen = data.reduce((sum, m) => sum + ((m.realisatieDagen) || 0), 0);
+          return totalDagen > 0 ? Math.round(totalOmzet / totalDagen).toLocaleString('nl-NL') : '0';
+        }
+        const sum = values.reduce((s, v) => s + v, 0);
+        const avg = Math.round(sum / values.length);
+        return avg.toLocaleString('nl-NL');
+      })()
+    : ''}
+</td>
               </tr>
             ))}
           </tbody>
