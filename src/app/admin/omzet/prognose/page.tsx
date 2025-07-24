@@ -42,7 +42,7 @@ export default function PrognosePage() {
   }, []);
 
   const isHeader = (label: string) =>
-    ["PROGNOSE", "REALISATIE", "TO-DO", "PROGNOSES"].includes(label);
+    ["PROGNOSE", "REALISATIE", "TO-DO", "PROGNOSES"].includes(label.toUpperCase());
 
   const rows: [string, (m: MaandData) => number | null][] = [
     ["PROGNOSE", () => null],
@@ -53,7 +53,7 @@ export default function PrognosePage() {
     ["omzet", (m) => m.realisatieOmzet],
     ["dagen", (m) => m.realisatieDagen],
     ["omzet/dag", (m) => m.realisatiePerDag],
-    ["Voor/achter in dagen", (m) => m.voorAchterInDagen],
+    ["voor/achter in dagen", (m) => m.voorAchterInDagen],
     ["TO-DO", () => null],
     ["omzet", (m) => m.todoOmzet],
     ["dagen", (m) => m.todoDagen],
@@ -70,15 +70,25 @@ export default function PrognosePage() {
       <h1 className="text-2xl font-bold mb-6">Omzetprognose overzicht</h1>
 
       <p className="mb-4 text-gray-600">
-        Jaaromzet: <strong>€ {jaaromzet.toLocaleString("nl-NL", { maximumFractionDigits: 0 })}</strong>
+        Jaaromzet:&nbsp;
+        <strong>
+          € {jaaromzet.toLocaleString("nl-NL", { maximumFractionDigits: 0 })}
+        </strong>
       </p>
 
       <div className="overflow-auto">
         <table className="table-auto border border-collapse w-full text-sm">
           <tbody>
             {rows.map(([label, fn], rowIndex) => (
-              <tr key={label} className={isHeader(label) ? "bg-gray-200" : "border-t"}>
-                <td className={`${isHeader(label) ? "font-bold" : "font-medium"} px-2 py-1 text-left whitespace-nowrap`}>
+              <tr
+                key={label}
+                className={isHeader(label) ? "bg-gray-200" : "border-t"}
+              >
+                <td
+                  className={`${
+                    isHeader(label) ? "font-bold" : "font-medium"
+                  } px-2 py-1 text-left whitespace-nowrap`}
+                >
                   {label}
                 </td>
                 {data.map((m) => {
@@ -87,7 +97,9 @@ export default function PrognosePage() {
                     return (
                       <td
                         key={m.maand + label}
-                        className={`px-2 py-1 text-right ${isHeader(label) ? "font-bold" : "font-mono"}`}
+                        className={`px-2 py-1 text-right ${
+                          isHeader(label) ? "font-bold" : "font-mono"
+                        }`}
                       >
                         {isHeader(label) ? maandNamen[m.maand - 3] : '\u00A0'}
                       </td>
@@ -96,38 +108,70 @@ export default function PrognosePage() {
                   let display: string;
                   if (label === "dagen") {
                     display = Math.round(raw).toLocaleString("nl-NL");
+                  } else if (label === "voor/achter in dagen") {
+                    display = raw
+                      .toLocaleString("nl-NL", {
+                        minimumFractionDigits: 1,
+                        maximumFractionDigits: 1,
+                      });
                   } else if (label.includes("%")) {
                     display = `${Math.round(raw * 100)}%`;
                   } else {
-                    display = raw.toLocaleString("nl-NL", { maximumFractionDigits: 0 });
+                    display = raw.toLocaleString("nl-NL", {
+                      maximumFractionDigits: 0,
+                    });
                   }
                   return (
-                    <td key={m.maand + label} className="px-2 py-1 text-right">
+                    <td
+                      key={m.maand + label}
+                      className="px-2 py-1 text-right"
+                    >
                       {display}
                     </td>
                   );
                 })}
                 <td className="px-2 py-1 text-right font-bold">
                   {label === 'omzet'
-                    ? '€ ' + data.reduce((sum, m) => sum + (fn(m) || 0), 0).toLocaleString('nl-NL', { maximumFractionDigits: 0 })
+                    ? '€ ' +
+                      data
+                        .reduce((sum, m) => sum + (fn(m) || 0), 0)
+                        .toLocaleString('nl-NL', { maximumFractionDigits: 0 })
                     : label === 'dagen'
-                    ? data.reduce((sum, m) => sum + (fn(m) || 0), 0)
+                    ?
+                      data
+                        .reduce((sum, m) => sum + (fn(m) || 0), 0)
+                        .toLocaleString('nl-NL')
                     : label === 'omzet/dag'
                     ? (() => {
                         let totalOmzet = 0;
                         let totalDagen = 0;
                         if (rowIndex <= 3) {
-                          // PROGNOSE block rows 1-3
-                          totalOmzet = data.reduce((s, m) => s + m.prognoseOmzet, 0);
-                          totalDagen = data.reduce((s, m) => s + m.prognoseDagen, 0);
+                          totalOmzet = data.reduce(
+                            (s, m) => s + m.prognoseOmzet,
+                            0
+                          );
+                          totalDagen = data.reduce(
+                            (s, m) => s + m.prognoseDagen,
+                            0
+                          );
                         } else if (rowIndex <= 7) {
-                          // REALISATIE block rows 5-7
-                          totalOmzet = data.reduce((s, m) => s + m.realisatieOmzet, 0);
-                          totalDagen = data.reduce((s, m) => s + m.realisatieDagen, 0);
+                          totalOmzet = data.reduce(
+                            (s, m) => s + m.realisatieOmzet,
+                            0
+                          );
+                          totalDagen = data.reduce(
+                            (s, m) => s + m.realisatieDagen,
+                            0
+                          );
                         } else if (rowIndex <= 11) {
-                          // TO-DO block rows 9-11
-                          totalOmzet = data.reduce((s, m) => s + m.todoOmzet, 0);
-                          totalDagen = data.reduce((s, m) => s + m.todoDagen, 0);
+                          totalOmzet = data.reduce(
+                            (s, m) => s + m.todoOmzet,
+                            0
+                          );
+                          totalDagen = data.reduce(
+                            (s, m) => s + m.todoDagen,
+                            0
+                          );
                         } else {
                           return '';
                         }
