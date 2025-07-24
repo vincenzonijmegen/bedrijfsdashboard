@@ -64,9 +64,10 @@ export default function PrognosePage() {
               ["omzet", (m: MaandData) => m.prognoseOmzet],
               ["dagen", (m: MaandData) => m.prognoseDagen],
               ["omzet/dag", (m: MaandData) => m.prognosePerDag],
-              ["TO-DO omzet", (m: MaandData) => m.todoOmzet],
-              ["TO-DO dagen", (m: MaandData) => m.todoDagen],
-              ["TO-DO €/dag", (m: MaandData) => m.todoPerDag],
+              ["TO-DO", () => null],
+              ["omzet", (m: MaandData) => m.todoOmzet],
+              ["dagen", (m: MaandData) => m.todoDagen],
+              ["omzet/dag", (m: MaandData) => m.todoPerDag],
               ["Prognose obv huidig", (m: MaandData) => m.prognoseHuidig],
               ["Prognose plusmin", (m: MaandData) => m.plusmin],
               ["Voor/achter in dagen", (m: MaandData) => m.voorAchterInDagen],
@@ -81,14 +82,14 @@ export default function PrognosePage() {
               ["dagen", (m: MaandData) => m.realisatieDagen],
               ["omzet/dag", (m: MaandData) => m.realisatiePerDag],
             ] as [string, (m: MaandData) => number | null][]).map(([label, fn]) => (
-              <tr key={label} className={label === "REALISATIE" ? "bg-gray-200" : "border-t"}>
+              <tr key={label} className={(label === "REALISATIE" || label === "TO-DO") ? "bg-gray-200" : "border-t"}>
                 <td className="font-medium px-2 py-1 text-left whitespace-nowrap">{label}</td>
                 {data.map((m) => {
                   const value = fn(m);
                   return (
                     <td key={m.maand + label} className="px-2 py-1 text-right font-mono">
                       {value === null
-                        ? label === "REALISATIE" ? maandNamen[m.maand - 3] : "-"
+                        ? (label === "REALISATIE" || label === "TO-DO") ? maandNamen[m.maand - 3] : "-"
                         : typeof value === "number"
                         ? label.includes("dag") && !label.includes("€")
                           ? value.toLocaleString("nl-NL")
