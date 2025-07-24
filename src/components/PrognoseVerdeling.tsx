@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-
+const [jaren, setJaren] = useState<number>(0);
 const maandNamen = [
   "", "januari", "februari", "maart", "april", "mei", "juni",
   "juli", "augustus", "september", "oktober", "november", "december"
@@ -11,12 +11,15 @@ export default function PrognoseVerdeling() {
   const [verdeling, setVerdeling] = useState<{ maand: number; percentage: number }[]>([]);
   const [jaaromzet, setJaaromzet] = useState(700000);
 
-  useEffect(() => {
+    useEffect(() => {
     fetch("/api/prognose/verdeling")
-      .then((res) => res.json())
-      .then(setVerdeling)
-      .catch((err) => console.error("Fout bij ophalen verdeling", err));
-  }, []);
+        .then((res) => res.json())
+        .then((data) => {
+        setVerdeling(data.verdeling); // correcte array
+        setJaren(data.jaren);         // nieuwe extra info
+        })
+        .catch((err) => console.error("Fout bij ophalen verdeling", err));
+    }, []);
 
   return (
     <div className="max-w-2xl mx-auto p-4 bg-white shadow rounded">
