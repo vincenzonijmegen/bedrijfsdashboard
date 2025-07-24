@@ -72,14 +72,16 @@ export default function PrognosePage() {
               ["omzet", (m: MaandData) => m.todoOmzet],
               ["dagen", (m: MaandData) => m.todoDagen],
               ["omzet/dag", (m: MaandData) => m.todoPerDag],
-              ["Prognose obv huidig", (m: MaandData) => m.prognoseHuidig],
-              ["Prognose plusmin", (m: MaandData) => m.plusmin],
               ["Voor/achter in dagen", (m: MaandData) => m.voorAchterInDagen],
               ["Omzet plus min cumul.", (m: MaandData) => m.cumulatiefPlus],
+              ["% plus min", (m: MaandData) => m.procentueel],
+              ["PROGNOSES", () => null],
+              ["Prognose obv huidig", (m: MaandData) => m.prognoseHuidig],
+              ["Prognose plusmin", (m: MaandData) => m.plusmin],
               ["Jrprgn. obv omzet to date", (m: MaandData) => m.jrPrognoseObvTotNu],
               ["Prognose cumulatief", (m: MaandData) => m.cumulatiefPrognose],
               ["Realisatie cumulatief", (m: MaandData) => m.cumulatiefRealisatie],
-              ["% plus min", (m: MaandData) => m.procentueel],
+              
 
             ] as [string, (m: MaandData) => number | null][]).map(([label, fn]) => (
               <tr key={label} className={(label === "REALISATIE" || label === "TO-DO") ? "bg-gray-200" : "border-t"}>
