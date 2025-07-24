@@ -121,6 +121,10 @@ export default function PrognosePage() {
                       ? " bg-green-100"
                       : " bg-red-100";
                   }
+                  // kleur prognose plusmin cellen
+                  if (label === "Prognose plusmin" && raw !== null) {
+                    cellClass += raw > 0 ? " bg-green-100" : " bg-red-100";
+                  }
                   return (
                     <td key={m.maand + label} className={cellClass}>
                       {display}
