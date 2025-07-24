@@ -111,7 +111,13 @@ export default function PrognosePage() {
                     : label === 'dagen'
                     ? data.reduce((sum, m) => sum + (fn(m) || 0), 0)
                     : label === 'omzet/dag'
-                    ? Math.round(data.reduce((sum, m) => sum + (fn(m) || 0), 0) / data.length).toLocaleString('nl-NL')
+                    ? (() => {
+                        const vals = data.map(m => fn(m)).filter(v => v !== null && v !== 0) as number[];
+                        const sum = vals.reduce((s, v) => s + v, 0);
+                        const avg = vals.length > 0 ? Math.round(sum / vals.length) : 0;
+                        return avg.toLocaleString('nl-NL');
+                      })()
+                    :
                     : ''}
                 </td>
               </tr>
