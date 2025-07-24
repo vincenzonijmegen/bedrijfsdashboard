@@ -74,7 +74,6 @@ export default function PrognosePage() {
 
       <div className="overflow-auto">
         <table className="table-auto border border-collapse w-full text-sm">
-          
           <tbody>
             {rows.map(([label, fn]) => (
               <tr key={label} className={isHeader(label) ? "bg-gray-200" : "border-t"}>
@@ -83,25 +82,38 @@ export default function PrognosePage() {
                 </td>
                 {data.map((m) => {
                   const raw = fn(m);
-                  // Hide zeros and nulls, but show month names for header rows
                   if (raw === null || raw === 0) {
                     return (
-                      <td key={m.maand + label} className={`px-2 py-1 text-right ${isHeader(label) ? "font-bold" : "font-mono"}`}>
-                        {isHeader(label) ? maandNamen[m.maand - 3] : ' '}
+                      <td
+                        key={m.maand + label}
+                        className={`px-2 py-1 text-right ${isHeader(label) ? "font-bold" : "font-mono"}`}>
+                        {isHeader(label) ? maandNamen[m.maand - 3] : '\u00A0'}
                       </td>
                     );
                   }
-                  let display;
+                  let display: string;
                   if (label === "dagen") {
                     display = Math.round(raw).toLocaleString("nl-NL");
                   } else if (label.includes("%")) {
                     display = `${Math.round(raw * 100)}%`;
                   } else {
-                    // currency values, round to whole
-                    display = raw.toLocaleString("nl-NL", {maximumFractionDigits:0});
+                    display = raw.toLocaleString("nl-NL", { maximumFractionDigits: 0 });
                   }
-                  return <td key={m.maand + label} className="px-2 py-1 text-right">{display}</td>;
+                  return (
+                    <td key={m.maand + label} className="px-2 py-1 text-right">
+                      {display}
+                    </td>
+                  );
                 })}
+                <td className="px-2 py-1 text-right font-bold">
+                  {label === 'omzet'
+                    ? '€ ' + data.reduce((sum, m) => sum + (fn(m) || 0), 0).toLocaleString('nl-NL', { maximumFractionDigits: 0 })
+                    : label === 'dagen'
+                    ? data.reduce((sum, m) => sum + (fn(m) || 0), 0)
+                    : label === 'omzet/dag'
+                    ? Math.round(data.reduce((sum, m) => sum + (fn(m) || 0), 0) / data.length).toLocaleString('nl-NL')
+                    : ''}
+                </td>
               </tr>
             ))}
           </tbody>
