@@ -152,6 +152,8 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/rapportage" label="Financiële Rapporten" color="gray" Icon={Archive} />
         <LinkCard href="/admin/mypos" label="Inlezen maandbestanden myPOS" color="gray" Icon={Archive} />
         <LinkCard href="/admin/mypos/boeking" label="Boekingsdocument myPOS=>snelstart" color="gray" Icon={Archive} />
+        <LinkCard href="/admin/omzet/prognose" label="Omzetverdeling" color="gray" Icon={Archive} />
+
       </Section>
     </main>
   );
