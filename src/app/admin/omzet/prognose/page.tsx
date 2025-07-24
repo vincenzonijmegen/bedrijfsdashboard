@@ -105,6 +105,17 @@ export default function PrognosePage() {
                     (raw === 0 && !(label === "omzet/dag" && rowIdx >= 11))
                   ) {
                     display = "";
+                  } else {
+                    // default numeric display
+                    if (label === "dagen") {
+                      display = Math.round(raw!).toLocaleString("nl-NL");
+                    } else if (label === "voor/achter in dagen") {
+                      display = raw!.toLocaleString("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+                    } else if (label.includes("%")) {
+                      display = `${Math.round(raw! * 100)}%`;
+                    } else {
+                      display = raw!.toLocaleString("nl-NL", { maximumFractionDigits: 0 });
+                    }
                   }
                   let cellClass = "px-2 py-1 text-right font-mono";
                   if (isHeaderLabel(label)) cellClass = "px-2 py-1 text-right font-bold";
