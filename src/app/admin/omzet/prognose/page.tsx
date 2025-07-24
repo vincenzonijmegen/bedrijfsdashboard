@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from "react";
 
 const maandNamen = [
-  "", "maart", "april", "mei", "juni", "juli", "augustus", "september"
+  "maart", "april", "mei", "juni", "juli", "augustus", "september"
 ];
 
 interface MaandData {
@@ -55,7 +55,7 @@ export default function PrognosePage() {
             <tr>
               <th className="px-2 py-1 text-left">Categorie</th>
               {data.map((m) => (
-                <th key={m.maand} className="px-2 py-1 text-right">{maandNamen[m.maand]}</th>
+                <th key={m.maand} className="px-2 py-1 text-right">{maandNamen[m.maand - 3]}</th>
               ))}
             </tr>
           </thead>
@@ -82,21 +82,26 @@ export default function PrognosePage() {
             ] as [string, (m: MaandData) => number | null][]).map(([label, fn]) => (
               <tr key={label} className="border-t">
                 <td className="font-medium px-2 py-1 text-left whitespace-nowrap">{label}</td>
-                {data.map((m) => (
-                  <td key={m.maand + label} className="px-2 py-1 text-right font-mono">
-                    {fn(m) === null
-                      ? "-"
-                      : typeof fn(m) === "number"
-                      ? label.includes("%")
-                        ? `${Math.round(100 * (fn(m) as number))}%`
-                        : (fn(m) as number).toLocaleString("nl-NL", {
-                            style: "currency",
-                            currency: "EUR",
-                            maximumFractionDigits: 0,
-                          })
-                      : fn(m)}
-                  </td>
-                ))}
+                {data.map((m) => {
+                  const value = fn(m);
+                  return (
+                    <td key={m.maand + label} className="px-2 py-1 text-right font-mono">
+                      {value === null
+                        ? "-"
+                        : typeof value === "number"
+                        ? label.includes("dag") && !label.includes("€")
+                          ? value.toLocaleString("nl-NL")
+                          : label.includes("%")
+                          ? `${Math.round(100 * value)}%`
+                          : value.toLocaleString("nl-NL", {
+                              style: "currency",
+                              currency: "EUR",
+                              maximumFractionDigits: 0,
+                            })
+                        : value}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>
