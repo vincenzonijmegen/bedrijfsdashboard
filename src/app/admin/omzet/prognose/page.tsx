@@ -64,33 +64,6 @@ export default function PrognosePage() {
               ["omzet", (m: MaandData) => m.prognoseOmzet],
               ["dagen", (m: MaandData) => m.prognoseDagen],
               ["omzet/dag", (m: MaandData) => m.prognosePerDag],
-            ] as [string, (m: MaandData) => number | null][]).map(([label, fn]) => (
-              <tr key={"prognose-" + label} className="border-t">
-                <td className="font-medium px-2 py-1 text-left whitespace-nowrap">{label}</td>
-                {data.map((m) => {
-                  const value = fn(m);
-                  return (
-                    <td key={m.maand + label} className="px-2 py-1 text-right font-mono">
-                      {value === null
-                        ? "-"
-                        : typeof value === "number"
-                        ? label.includes("dag") && !label.includes("€")
-                          ? value.toLocaleString("nl-NL")
-                          : label.includes("%")
-                          ? `${Math.round(100 * value)}%`
-                          : value.toLocaleString("nl-NL", {
-                              style: "currency",
-                              currency: "EUR",
-                              maximumFractionDigits: 0,
-                            })
-                        : value}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-
-            {([
               ["TO-DO omzet", (m: MaandData) => m.todoOmzet],
               ["TO-DO dagen", (m: MaandData) => m.todoDagen],
               ["TO-DO €/dag", (m: MaandData) => m.todoPerDag],
@@ -103,55 +76,19 @@ export default function PrognosePage() {
               ["Prognose cumulatief", (m: MaandData) => m.cumulatiefPrognose],
               ["Realisatie cumulatief", (m: MaandData) => m.cumulatiefRealisatie],
               ["% plus min", (m: MaandData) => m.procentueel],
+              ["REALISATIE", () => null],
+              ["omzet", (m: MaandData) => m.realisatieOmzet],
+              ["dagen", (m: MaandData) => m.realisatieDagen],
+              ["omzet/dag", (m: MaandData) => m.realisatiePerDag],
             ] as [string, (m: MaandData) => number | null][]).map(([label, fn]) => (
-              <tr key={label} className="border-t">
+              <tr key={label} className={label === "REALISATIE" ? "bg-gray-200" : "border-t"}>
                 <td className="font-medium px-2 py-1 text-left whitespace-nowrap">{label}</td>
                 {data.map((m) => {
                   const value = fn(m);
                   return (
                     <td key={m.maand + label} className="px-2 py-1 text-right font-mono">
                       {value === null
-                        ? "-"
-                        : typeof value === "number"
-                        ? label.includes("dag") && !label.includes("€")
-                          ? value.toLocaleString("nl-NL")
-                          : label.includes("%")
-                          ? `${Math.round(100 * value)}%`
-                          : value.toLocaleString("nl-NL", {
-                              style: "currency",
-                              currency: "EUR",
-                              maximumFractionDigits: 0,
-                            })
-                        : value}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-
-          <thead className="bg-gray-200">
-            <tr>
-              <th className="px-2 py-1 text-left">REALISATIE</th>
-              {data.map((m) => (
-                <th key={"realisatie-" + m.maand} className="px-2 py-1 text-right">{maandNamen[m.maand - 3]}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {([
-              ["omzet", (m: MaandData) => m.realisatieOmzet],
-              ["dagen", (m: MaandData) => m.realisatieDagen],
-              ["omzet/dag", (m: MaandData) => m.realisatiePerDag],
-            ] as [string, (m: MaandData) => number | null][]).map(([label, fn]) => (
-              <tr key={"realisatie-" + label} className="border-t">
-                <td className="font-medium px-2 py-1 text-left whitespace-nowrap">{label}</td>
-                {data.map((m) => {
-                  const value = fn(m);
-                  return (
-                    <td key={m.maand + "realisatie-" + label} className="px-2 py-1 text-right font-mono">
-                      {value === null
-                        ? "-"
+                        ? label === "REALISATIE" ? maandNamen[m.maand - 3] : "-"
                         : typeof value === "number"
                         ? label.includes("dag") && !label.includes("€")
                           ? value.toLocaleString("nl-NL")
