@@ -1,29 +1,28 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-const [jaren, setJaren] = useState<number>(0);
-const maandNamen = [
-  "", "januari", "februari", "maart", "april", "mei", "juni",
-  "juli", "augustus", "september", "oktober", "november", "december"
-];
 
 export default function PrognoseVerdeling() {
   const [verdeling, setVerdeling] = useState<{ maand: number; percentage: number }[]>([]);
   const [jaaromzet, setJaaromzet] = useState(700000);
+  const [jaren, setJaren] = useState<number>(0);
 
-    useEffect(() => {
+  useEffect(() => {
     fetch("/api/prognose/verdeling")
-        .then((res) => res.json())
-        .then((data) => {
-        setVerdeling(data.verdeling); // correcte array
-        setJaren(data.jaren);         // nieuwe extra info
-        })
-        .catch((err) => console.error("Fout bij ophalen verdeling", err));
-    }, []);
+      .then((res) => res.json())
+      .then((data) => {
+        setVerdeling(data.verdeling);
+        setJaren(data.jaren);
+      });
+  }, []);
 
   return (
     <div className="max-w-2xl mx-auto p-4 bg-white shadow rounded">
       <h2 className="text-xl font-semibold mb-4">Omzetprognose per maand</h2>
+
+      <p className="text-sm text-gray-500 mb-2">
+        Gebaseerd op {jaren} volledige jaar{jaren !== 1 ? "en" : ""} sinds 2022
+      </p>
 
       <label className="block mb-4">
         Jaaromzet (€): 
@@ -46,12 +45,14 @@ export default function PrognoseVerdeling() {
         <tbody>
           {verdeling.map(({ maand, percentage }) => (
             <tr key={maand} className="border-t">
-              <td className="px-2 py-1">{maandNamen[maand]}</td>
+              <td className="px-2 py-1">
+                {["", "januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"][maand]}
+              </td>
               <td className="px-2 py-1 text-right">{(percentage * 100).toFixed(2)}%</td>
               <td className="px-2 py-1 text-right font-mono">
-                {Math.round(jaaromzet * percentage).toLocaleString("nl-NL", {
+                {(jaaromzet * percentage).toLocaleString("nl-NL", {
                   style: "currency",
-                  currency: "EUR"
+                  currency: "EUR",
                 })}
               </td>
             </tr>
