@@ -4,7 +4,13 @@
 import React, { useEffect, useState } from "react";
 
 const maandNamen = [
-  "maart", "april", "mei", "juni", "juli", "augustus", "september"
+  "maart",
+  "april",
+  "mei",
+  "juni",
+  "juli",
+  "augustus",
+  "september",
 ];
 
 interface MaandData {
@@ -41,7 +47,7 @@ export default function PrognosePage() {
       });
   }, []);
 
-  const isHeader = (label: string) =>
+  const isHeaderLabel = (label: string) =>
     ["PROGNOSE", "REALISATIE", "TO-DO", "PROGNOSES"].includes(label.toUpperCase());
 
   const rows: [string, (m: MaandData) => number | null][] = [
@@ -68,121 +74,96 @@ export default function PrognosePage() {
   return (
     <main className="p-6">
       <h1 className="text-2xl font-bold mb-6">Omzetprognose overzicht</h1>
-
       <p className="mb-4 text-gray-600">
         Jaaromzet:&nbsp;
         <strong>
           € {jaaromzet.toLocaleString("nl-NL", { maximumFractionDigits: 0 })}
         </strong>
       </p>
-
       <div className="overflow-auto">
         <table className="table-auto border border-collapse w-full text-sm">
           <tbody>
-            {rows.map(([label, fn], rowIndex) => (
+            {rows.map(([label, fn], rowIdx) => (
               <tr
                 key={label}
-                className={isHeader(label) ? "bg-gray-200" : "border-t"}
+                className={isHeaderLabel(label) ? "bg-gray-200" : "border-t"}
               >
+                {/* Label cell */}
                 <td
-                  className={`${
-                    isHeader(label) ? "font-bold" : "font-medium"
-                  } px-2 py-1 text-left whitespace-nowrap`}
+                  className={`px-2 py-1 text-left whitespace-nowrap ${
+                    isHeaderLabel(label) ? "font-bold" : "font-medium"
+                  }`}
                 >
                   {label}
                 </td>
+                {/* Data cells */}
                 {data.map((m) => {
                   const raw = fn(m);
-                  const isRealisatieDag = label === 'omzet/dag' && rowIndex === 7;
-                  let cellClass = `px-2 py-1 text-right ${isHeader(label) ? 'font-bold' : 'font-mono'}`;
-                  if (!isHeader(label) && raw !== null && isRealisatieDag) {
-                    cellClass += raw > m.prognosePerDag ? ' text-green-600' : ' text-red-600';
+                  let display = "";
+                  // header rows show month name
+                  if (isHeaderLabel(label)) {
+                    display = maandNamen[m.maand - 3];
+                  } else if (raw === null || raw === 0) {
+                    display = "";
+                  } else if (label === "dagen") {
+                    display = Math.round(raw).toLocaleString("nl-NL");
+                  } else if (label === "voor/achter in dagen") {
+                    display = raw.toLocaleString("nl-NL", {
+                      minimumFractionDigits: 1,
+                      maximumFractionDigits: 1,
+                    });
+                  } else if (label.includes("%")) {
+                    display = `${Math.round(raw * 100)}%`;
+                  } else {
+                    display = raw.toLocaleString("nl-NL", { maximumFractionDigits: 0 });
                   }
-                  if (raw === null || raw === 0) {
-                    return (
-                      <td key={m.maand + label} className={cellClass}>
-                        {isHeader(label) ? maandNamen[m.maand - 3] : ' '}
-                      </td>
-                    );
+                  // cell styling
+                  let cellClass = "px-2 py-1 text-right font-mono";
+                  if (isHeaderLabel(label)) cellClass = "px-2 py-1 text-right font-bold";
+                  // coloring for realisatie omzet/dag vs prognose
+                  if (label === "omzet/dag" && rowIdx === 7 && raw !== null) {
+                    cellClass += raw > (m.prognosePerDag || 0)
+                      ? " text-green-600"
+                      : " text-red-600";
                   }
                   return (
                     <td key={m.maand + label} className={cellClass}>
                       {display}
                     </td>
                   );
-                });
-                  } else if (label.includes("%")) {
-                    display = `${Math.round(raw * 100)}%`;
-                  } else {
-                    display = raw.toLocaleString("nl-NL", {
-                      maximumFractionDigits: 0,
-                    });
-                  }
-                  return (
-                    <td
-                      key={m.maand + label}
-                      className={`px-2 py-1 text-right ${!isHeader(label) && raw !== null
-                        ? raw > 0
-                          ? "text-green-600"
-                          : raw < 0
-                          ? "text-red-600"
-                          : ""
-                        : ""}`}
-                    >
-                      {display}
-                    </td>
-                  );
                 })}
+                {/* Totals/Average cell */}
                 <td className="px-2 py-1 text-right font-bold">
-                  {label === 'omzet'
+                  {label === "omzet"
                     ? '€ ' +
                       data
                         .reduce((sum, m) => sum + (fn(m) || 0), 0)
-                        .toLocaleString('nl-NL', { maximumFractionDigits: 0 })
-                    : label === 'dagen'
-                    ?
-                      data
+                        .toLocaleString("nl-NL", { maximumFractionDigits: 0 })
+                    : label === "dagen"
+                    ? data
                         .reduce((sum, m) => sum + (fn(m) || 0), 0)
-                        .toLocaleString('nl-NL')
-                    : label === 'omzet/dag'
+                        .toLocaleString("nl-NL")
+                    : label === "omzet/dag"
                     ? (() => {
-                        let totalOmzet = 0;
-                        let totalDagen = 0;
-                        if (rowIndex <= 3) {
-                          totalOmzet = data.reduce(
-                            (s, m) => s + m.prognoseOmzet,
-                            0
-                          );
-                          totalDagen = data.reduce(
-                            (s, m) => s + m.prognoseDagen,
-                            0
-                          );
-                        } else if (rowIndex <= 7) {
-                          totalOmzet = data.reduce(
-                            (s, m) => s + m.realisatieOmzet,
-                            0
-                          );
-                          totalDagen = data.reduce(
-                            (s, m) => s + m.realisatieDagen,
-                            0
-                          );
-                        } else if (rowIndex <= 12) {
-                          totalOmzet = data.reduce(
-                            (s, m) => s + m.todoOmzet,
-                            0
-                          );
-                          totalDagen = data.reduce(
-                            (s, m) => s + m.todoDagen,
-                            0
-                          );
+                        let totOm = 0;
+                        let totDg = 0;
+                        if (rowIdx <= 3) {
+                          totOm = data.reduce((s, m) => s + m.prognoseOmzet, 0);
+                          totDg = data.reduce((s, m) => s + m.prognoseDagen, 0);
+                        } else if (rowIdx <= 7) {
+                          totOm = data.reduce((s, m) => s + m.realisatieOmzet, 0);
+                          totDg = data.reduce((s, m) => s + m.realisatieDagen, 0);
+                        } else if (rowIdx <= 11) {
+                          totOm = data.reduce((s, m) => s + m.todoOmzet, 0);
+                          totDg = data.reduce((s, m) => s + m.todoDagen, 0);
                         } else {
-                          return '';
+                          return "";
                         }
-                        return totalDagen > 0
-                          ? Math.round(totalOmzet / totalDagen).toLocaleString('nl-NL')
-                          : '';
+                        return totDg > 0
+                          ? Math.round(totOm / totDg).toLocaleString("nl-NL")
+                          : "";
                       })()
-                    : ''}
+                    : ""}
                 </td>
               </tr>
             ))}
