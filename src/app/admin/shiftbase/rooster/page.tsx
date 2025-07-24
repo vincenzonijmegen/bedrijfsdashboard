@@ -22,7 +22,7 @@ type ShiftItem = {
   id: string;
   Roster: { starttime: string; endtime: string; name: string; color?: string; user_id: string };
   Shift?: { long_name: string };
-User?: { id: string; name: string };
+  User?: { id: string; name: string };
 };
 
 export default function RoosterPage() {
@@ -39,10 +39,16 @@ export default function RoosterPage() {
     fetcher
   );
 
-  const { data: timesheetData } = useSWR<TimesheetEntry[]>(
-  selectedDate === formatISO(today) ? `/api/shiftbase/timesheets?min_date=${selectedDate}&max_date=${selectedDate}&status=Approved` : null,
-  fetcher
+  const { data: timesheetData } = useSWR<any>(
+    selectedDate === formatISO(today)
+      ? `/api/shiftbase/timesheets?min_date=${selectedDate}&max_date=${selectedDate}&status=Approved`
+      : null,
+    fetcher
   );
+
+  useEffect(() => {
+    console.log('[DEBUG] timesheetData]', timesheetData);
+  }, [timesheetData]);
 
   const rosterData = data || [];
 
@@ -73,9 +79,7 @@ export default function RoosterPage() {
   return (
     <div className="p-4">
       <p className="mb-4">
-        <Link href="/admin/rapportage" className="text-sm underline text-blue-600">
-          ← Terug naar Rapportage
-        </Link>
+        <Link href="/admin/rapportage" legacyBehavior><a className="text-sm underline text-blue-600">← Terug naar Rapportage</a></Link>
       </p>
 
       <div className="flex items-center mb-4 gap-2">
@@ -112,9 +116,9 @@ export default function RoosterPage() {
                       {item.Roster.starttime.slice(0,5)}–{item.Roster.endtime.slice(0,5)}
                     </span>{' '}
                     <strong>{item.User?.name || 'Onbekend'}</strong>{selectedDate === formatISO(today) && (() => {
-                      const entry = Array.isArray(timesheetData)
-                      ? timesheetData.find(t => t.Timesheet.user_id === item.Roster.user_id)
-                      : undefined;
+                      const entry = Array.isArray(timesheetData?.data)
+                        ? timesheetData.data.find((t: any) => t.Timesheet.user_id === item.Roster.user_id)
+                        : undefined;
                       const inTijd = entry?.Timesheet.clocked_in?.substring(11, 16) || '--';
                       const uitTijd = entry?.Timesheet.clocked_out?.substring(11, 16) || '--';
                       const klasse = entry ? (entry.Timesheet.clocked_in && entry.Timesheet.clocked_out ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800') : 'bg-red-100 text-red-800';
