@@ -25,7 +25,7 @@ interface MaandData {
   cumulatiefRealisatie: number;
   voorAchterInDagen: number | null;
   procentueel: number | null;
-  jrPrognoseObvTotNu: number;
+  jrPrognoseObvTotNu: number; // cumulatiefRealisatie + totaalPrognoseRest (realisatiePerDag × todoDagen)
 }
 
 export default function PrognosePage() {
@@ -75,7 +75,6 @@ export default function PrognosePage() {
               ["Prognose obv huidig", (m: MaandData) => m.prognoseHuidig],
               ["Prognose plusmin", (m: MaandData) => m.plusmin],
               ["Voor/achter in dagen", (m: MaandData) => m.voorAchterInDagen],
-              ["Plusomzet-to-date", (m: MaandData) => m.cumulatiefPlus],
               ["Omzet plus min cumul.", (m: MaandData) => m.cumulatiefPlus],
               ["Jrprgn. obv omzet to date", (m: MaandData) => m.jrPrognoseObvTotNu],
               ["Prognose cumulatief", (m: MaandData) => m.cumulatiefPrognose],
