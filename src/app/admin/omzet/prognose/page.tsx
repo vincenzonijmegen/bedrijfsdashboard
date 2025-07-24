@@ -86,7 +86,7 @@ export default function PrognosePage() {
                   // Hide zeros and nulls, but show month names for header rows
                   if (raw === null || raw === 0) {
                     return (
-                      <td key={m.maand + label} className="px-2 py-1 text-right">
+                      <td key={m.maand + label} className={`px-2 py-1 text-right ${isHeader(label) ? "font-bold" : "font-mono"}`}>
                         {isHeader(label) ? maandNamen[m.maand - 3] : ' '}
                       </td>
                     );
