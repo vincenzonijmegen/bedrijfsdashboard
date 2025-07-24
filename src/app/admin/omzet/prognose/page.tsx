@@ -64,6 +64,10 @@ export default function PrognosePage() {
               ["omzet", (m: MaandData) => m.prognoseOmzet],
               ["dagen", (m: MaandData) => m.prognoseDagen],
               ["omzet/dag", (m: MaandData) => m.prognosePerDag],
+              ["REALISATIE", () => null],
+              ["omzet", (m: MaandData) => m.realisatieOmzet],
+              ["dagen", (m: MaandData) => m.realisatieDagen],
+              ["omzet/dag", (m: MaandData) => m.realisatiePerDag],
               ["TO-DO", () => null],
               ["omzet", (m: MaandData) => m.todoOmzet],
               ["dagen", (m: MaandData) => m.todoDagen],
@@ -77,10 +81,7 @@ export default function PrognosePage() {
               ["Prognose cumulatief", (m: MaandData) => m.cumulatiefPrognose],
               ["Realisatie cumulatief", (m: MaandData) => m.cumulatiefRealisatie],
               ["% plus min", (m: MaandData) => m.procentueel],
-              ["REALISATIE", () => null],
-              ["omzet", (m: MaandData) => m.realisatieOmzet],
-              ["dagen", (m: MaandData) => m.realisatieDagen],
-              ["omzet/dag", (m: MaandData) => m.realisatiePerDag],
+
             ] as [string, (m: MaandData) => number | null][]).map(([label, fn]) => (
               <tr key={label} className={(label === "REALISATIE" || label === "TO-DO") ? "bg-gray-200" : "border-t"}>
                 <td className="font-medium px-2 py-1 text-left whitespace-nowrap">{label}</td>
