@@ -108,7 +108,6 @@ export default function NotitieblokPagina() {
     <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* Rubriekenlijst met bewerk/delete */}
       <div className="col-span-1 space-y-2">
-        <Link href="/admin/rapportage" className="text-sm underline text-blue-600">← Terug naar Rapportage</Link>
         <h2 className="text-lg font-semibold">Rubrieken</h2>
         {sortedRubrieken.map(r => (
           <div key={r.id} className="flex items-center justify-between px-2 py-1 border rounded">

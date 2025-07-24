@@ -80,7 +80,7 @@ export async function GET() {
     const resultaten = maanden.map((maand) => {
       const maandPercentage = maandverdeling[maand] || 0;
       const prognoseOmzet = Math.round(maandPercentage * jaaromzet);
-      const prognoseDagen = maand === 9 ? 21 : 30 + ((maand + Math.floor(maand / 8)) % 2);
+      const prognoseDagen = new Date(2025, maand, 0).getDate();
       const prognosePerDag = prognoseOmzet / prognoseDagen;
 
       const realisatie = realisatieMap[maand] || { dagen: 0, omzet: 0 };

@@ -92,8 +92,8 @@ export default function PrognosePage() {
                       {value === null
                         ? (label === "REALISATIE" || label === "TO-DO") ? maandNamen[m.maand - 3] : "-"
                         : typeof value === "number"
-                        ? label.includes("dag") && !label.includes("€")
-                          ? value.toLocaleString("nl-NL")
+                        ? label === "dagen"
+                          ? Math.round(value).toLocaleString("nl-NL")
                           : label.includes("%")
                           ? `${Math.round(100 * value)}%`
                           : value.toLocaleString("nl-NL", {
