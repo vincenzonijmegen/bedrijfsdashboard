@@ -92,8 +92,14 @@ export default function PrognosePage() {
                 </td>
                 {data.map((m) => {
                   const raw = fn(m);
-                  // Hide zeros and nulls
-                  if (raw === null || raw === 0) return <td key={m.maand + label} className="px-2 py-1 text-right">&nbsp;</td>;
+                  // Hide zeros and nulls, but show month names for header rows
+                  if (raw === null || raw === 0) {
+                    return (
+                      <td key={m.maand + label} className="px-2 py-1 text-right">
+                        {isHeader(label) ? maandNamen[m.maand - 3] : ' '}
+                      </td>
+                    );
+                  }
                   let display;
                   if (label === "dagen") {
                     display = Math.round(raw).toLocaleString("nl-NL");
