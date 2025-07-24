@@ -53,6 +53,7 @@ export default function PrognosePage() {
     ["omzet", (m) => m.realisatieOmzet],
     ["dagen", (m) => m.realisatieDagen],
     ["omzet/dag", (m) => m.realisatiePerDag],
+    ["Voor/achter in dagen", (m) => m.voorAchterInDagen],
     ["TO-DO", () => null],
     ["omzet", (m) => m.todoOmzet],
     ["dagen", (m) => m.todoDagen],
