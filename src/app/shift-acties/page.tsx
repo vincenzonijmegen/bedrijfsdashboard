@@ -99,26 +99,28 @@ export default function ShiftActiesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {acties.map(item => {
-                    const kleur =
-                      item.type === 'Open dienst opgepakt'
-                        ? 'bg-yellow-50'
-                        : item.type === 'Ruil geaccepteerd'
-                        ? 'bg-green-50'
-                        : '';
-                    return (
-                      <tr key={item.id} className={`${kleur} border-b`}>
-                        <td className="p-2 border">
-                          {dayjs(item.datum).format('ddd D MMMM YYYY')}
-                        </td>
-                        <td className="p-2 border">{item.shift}</td>
-                        <td className="p-2 border">{item.tijd}</td>
-                        <td className="p-2 border">{item.van}</td>
-                        <td className="p-2 border">{item.naar}</td>
-                        <td className="p-2 border">{item.type}</td>
-                      </tr>
-                    );
-                  })}
+                  {acties
+                    .sort((a, b) => dayjs(b.datum).diff(dayjs(a.datum)))
+                    .map(item => {
+                      const kleur =
+                        item.type === 'Open dienst opgepakt'
+                          ? 'bg-yellow-50'
+                          : item.type === 'Ruil geaccepteerd'
+                          ? 'bg-green-50'
+                          : '';
+                      return (
+                        <tr key={item.id} className={`${kleur} border-b`}>
+                          <td className="p-2 border">
+                            {dayjs(item.datum).format('ddd D MMMM YYYY')}
+                          </td>
+                          <td className="p-2 border">{item.shift}</td>
+                          <td className="p-2 border">{item.tijd}</td>
+                          <td className="p-2 border">{item.van}</td>
+                          <td className="p-2 border">{item.naar}</td>
+                          <td className="p-2 border">{item.type}</td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>
