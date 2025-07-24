@@ -75,7 +75,7 @@ export default function PrognosePage() {
     <main className="p-6">
       <h1 className="text-2xl font-bold mb-6">Omzetprognose overzicht</h1>
       <p className="mb-4 text-gray-600">
-        Jaaromzet:&nbsp;
+        Prognose jaaromzet:&nbsp;
         <strong>
           € {jaaromzet.toLocaleString("nl-NL", { maximumFractionDigits: 0 })}
         </strong>
@@ -100,19 +100,11 @@ export default function PrognosePage() {
                   let display = "";
                   if (isHeaderLabel(label)) {
                     display = maandNamen[m.maand - 3];
-                  } else if (raw === null || raw === 0) {
+                  } else if (
+                    raw === null ||
+                    (raw === 0 && !(label === "omzet/dag" && rowIdx >= 11))
+                  ) {
                     display = "";
-                  } else if (label === "dagen") {
-                    display = Math.round(raw).toLocaleString("nl-NL");
-                  } else if (label === "voor/achter in dagen") {
-                    display = raw.toLocaleString("nl-NL", {
-                      minimumFractionDigits: 1,
-                      maximumFractionDigits: 1,
-                    });
-                  } else if (label.includes("%")) {
-                    display = `${Math.round(raw * 100)}%`;
-                  } else {
-                    display = raw.toLocaleString("nl-NL", { maximumFractionDigits: 0 });
                   }
                   let cellClass = "px-2 py-1 text-right font-mono";
                   if (isHeaderLabel(label)) cellClass = "px-2 py-1 text-right font-bold";
