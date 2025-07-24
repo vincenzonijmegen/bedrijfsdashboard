@@ -100,7 +100,7 @@ export default function ShiftActiesPage() {
                 </thead>
                 <tbody>
                   {acties
-                    .sort((a, b) => dayjs(b.datum).diff(dayjs(a.datum)))
+                    .sort((a, b) => dayjs(a.datum).diff(dayjs(b.datum)))
                     .map(item => {
                       const kleur =
                         item.type === 'Open dienst opgepakt'
