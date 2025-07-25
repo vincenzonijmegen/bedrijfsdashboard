@@ -73,6 +73,7 @@ export default function ReceptenBeheer() {
     }, 0);
   }
 
+
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">📋 Receptbeheer</h1>
@@ -206,7 +207,23 @@ export default function ReceptenBeheer() {
           return (
             <li key={r.id} className="mb-2 border rounded">
               <button
-                onClick={() => setOpenReceptId(isOpen ? null : r.id ?? null)}
+                onClick={() => {
+  setOpenReceptId(isOpen ? null : r.id ?? null);
+  setRecept({
+    id: r.id,
+    naam: r.naam,
+    omschrijving: r.omschrijving,
+    totaal_output: r.totaal_output,
+    eenheid: r.eenheid,
+    product_id: r.product_id,
+    regels: r.regels.map((regel) => ({
+      product_id: regel.product_id,
+      hoeveelheid: regel.hoeveelheid,
+      eenheid: regel.eenheid ?? "g",
+    })),
+  });
+}}
+
                 className="flex justify-between items-center w-full px-4 py-2 text-left bg-gray-100 hover:bg-gray-200"
               >
                 <span>{r.naam}</span>
