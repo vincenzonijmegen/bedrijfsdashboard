@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import useSWR, { mutate } from "swr";
 
-const ALLERGENEN = ["gluten", "soja", "ei", "melk", "noten", "pinda"];
+const ALLERGENEN = ["gluten", "soja", "ei", "melk", "noten", "pinda", "tarwe"];
 
 interface Product {
   id: number;
