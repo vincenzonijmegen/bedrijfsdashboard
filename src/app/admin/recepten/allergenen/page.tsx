@@ -80,7 +80,7 @@ export default function AllergenenKaart() {
                   const aanwezig = new Set(allergenenVoorRecept(r));
                   return (
                     <tr key={r.id}>
-                      <td className="border px-2 py-1 font-semibold whitespace-nowrap align-middle">{r.naam}</td>
+                      <td className="border px-2 py-1 font-semibold whitespace-nowrap align-middle text-center">{r.naam}</td>
                       {ALLERGENEN.map((a) => (
                         <td
                           key={a}
