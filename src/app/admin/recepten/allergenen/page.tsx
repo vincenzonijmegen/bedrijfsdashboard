@@ -63,7 +63,7 @@ export default function AllergenenKaart() {
                 <tr className="bg-gray-100">
                   <th className="border px-2 py-1 text-left">Smaak</th>
                   {ALLERGENEN.map((a) => (
-                    <th key={a} className="border px-2 py-1 text-center uppercase">{a}</th>
+                    <th key={a} className="border px-2 py-1 text-center uppercase w-20">{a}</th>
                   ))}
                 </tr>
               </thead>
@@ -76,7 +76,7 @@ export default function AllergenenKaart() {
                       {ALLERGENEN.map((a) => (
                         <td
                           key={a}
-                          className={`border px-2 py-1 text-center ${aanwezig.has(a) ? "bg-red-500 text-white" : ""}`}
+                          className={`border px-2 py-1 text-center w-20 ${aanwezig.has(a) ? "bg-red-500 text-white" : ""}`}
                         >
                           {aanwezig.has(a) ? "●" : ""}
                         </td>
