@@ -59,9 +59,9 @@ export default function AllergenenKaart() {
         📄 Download als PDF
       </button>
       <h1 className="text-2xl font-bold text-center">🧾 Allergenenkaart IJssalon Vincenzo</h1>
-      <p className="text-center text-yellow-600 font-semibold uppercase">
-        Alle sorbetsmaken zijn veganistisch en allergenenvrij
-      </p>
+      <p className="text-center bg-blue-600 text-yellow-300 font-bold text-xl uppercase py-2 rounded">
+  ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJF
+</p>
       <div className="overflow-x-auto space-y-6 print:overflow-visible">
         {volgorde.map((soort) => (
           <div key={soort}>
