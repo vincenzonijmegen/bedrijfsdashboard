@@ -136,6 +136,17 @@ export default function ReceptenBeheer() {
           <option value="l">liter</option>
         </select>
 
+        <select
+          value={recept.product_id ?? ""}
+          onChange={(e) => setRecept({ ...recept, product_id: parseInt(e.target.value) })}
+          className="border px-2 py-1 rounded col-span-2"
+        >
+          <option value="">-- Koppel aan product (optioneel) --</option>
+          {producten?.map((p) => (
+            <option key={p.id} value={p.id}>{p.naam}</option>
+          ))}
+        </select>
+
         <h2 className="col-span-2 font-semibold mt-4">Ingrediënten</h2>
 
         {recept.regels.map((regel, i) => {
