@@ -89,7 +89,7 @@ export default function AllergenenKaart() {
   className={`border px-2 py-1 text-center w-20 print:border-black ${aanwezig.has(a) ? "bg-red-500 text-white print:bg-black print:text-white" : ""}`}
 >
   <div className="h-full flex items-center justify-center">
-    {aanwezig.has(a) ? "●" : ""}
+    {aanwezig.has(a) ? "" : ""}
   </div>
 </td>
                       ))}
