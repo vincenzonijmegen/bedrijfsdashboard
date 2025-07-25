@@ -84,8 +84,19 @@ export default function ReceptenBeheer() {
     <main className="max-w-4xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">📋 Receptbeheer</h1>
 
-      <form
-        className="grid grid-cols-2 gap-4 text-sm bg-gray-50 p-4 border rounded"
+      <form className="grid grid-cols-2 gap-4 text-sm bg-gray-50 p-4 border rounded">
+
+        <select
+          value={recept.omschrijving ?? ""}
+          onChange={(e) => setRecept({ ...recept, omschrijving: e.target.value })}
+          className="border px-2 py-1 rounded col-span-2"
+        >
+          <option value="">-- Kies categorie --</option>
+          <option value="mixen">mixen</option>
+          <option value="melksmaken">melksmaken</option>
+          <option value="vruchtensmaken">vruchtensmaken</option>
+          <option value="overig">overig</option>
+        </select>
         onSubmit={async (e) => {
           e.preventDefault();
           await fetch("/api/recepten", {
@@ -221,68 +232,66 @@ export default function ReceptenBeheer() {
         </div>
       </form>
 
-      <select
-          value={recept.omschrijving ?? ""}
-          onChange={(e) => setRecept({ ...recept, omschrijving: e.target.value })}
-          className="border px-2 py-1 rounded col-span-2"
-        >
-          <option value="">-- Kies categorie --</option>
-          <option value="mixen">mixen</option>
-          <option value="melksmaken">melksmaken</option>
-          <option value="vruchtensmaken">vruchtensmaken</option>
-          <option value="overig">overig</option>
-        </select>
+      
 
         <h2 className="text-xl font-semibold">📚 Bestaande recepten</h2>
       <ul className="pl-0">
-        {recepten?.map((r) => {
-          const totaal = berekenTotaalprijs(r);
-          const isOpen = openReceptId === (r.id ?? null);
-          return (
-            <li key={r.id} className="mb-2 border rounded">
-              <button
-                onClick={() => {
-  setOpenReceptId(isOpen ? null : r.id ?? null);
-  setRecept({
-    id: r.id,
-    naam: r.naam,
-    omschrijving: r.omschrijving,
-    totaal_output: r.totaal_output,
-    eenheid: r.eenheid,
-    product_id: r.product_id,
-    regels: r.regels.map((regel) => ({
-      product_id: regel.product_id,
-      hoeveelheid: regel.hoeveelheid,
-      eenheid: regel.eenheid ?? "g",
-    })),
-  });
-}}
-
-                className="flex justify-between items-center w-full px-4 py-2 text-left bg-gray-100 hover:bg-gray-200"
-              >
-                <span>{r.naam}</span>
-                <span className="font-mono text-sm">€ {totaal.toFixed(2)}</span>
-              </button>
-              {isOpen && (
-                <div className="p-4 text-sm bg-white border-t">
-                  <ul className="space-y-1">
-                    {r.regels.map((regel, i) => {
-                      const prod = producten?.find((p) => p.id === regel.product_id);
-                      const prijs = berekenRegelKostprijs(regel);
-                      return (
-                        <li key={i} className="flex justify-between">
-                          <span>{prod?.naam ?? "?"} ({regel.hoeveelheid} {regel.eenheid})</span>
-                          <span className="text-right">€ {prijs.toFixed(2)}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
+  {['mixen', 'vruchtensmaken', 'melksmaken', 'overig'].map((categorie) => (
+    <li key={categorie} className="mb-6">
+      <h3 className="font-semibold text-lg capitalize mb-2">{categorie}</h3>
+      <ul className="space-y-1">
+        {recepten
+          ?.filter((r) => r.omschrijving === categorie)
+          .map((r) => {
+            const totaal = berekenTotaalprijs(r);
+            const isOpen = openReceptId === (r.id ?? null);
+            return (
+              <li key={r.id} className="border rounded">
+                <button
+                  onClick={() => {
+                    setOpenReceptId(isOpen ? null : r.id ?? null);
+                    setRecept({
+                      id: r.id,
+                      naam: r.naam,
+                      omschrijving: r.omschrijving,
+                      totaal_output: r.totaal_output,
+                      eenheid: r.eenheid,
+                      product_id: r.product_id,
+                      regels: r.regels.map((regel) => ({
+                        product_id: regel.product_id,
+                        hoeveelheid: regel.hoeveelheid,
+                        eenheid: regel.eenheid ?? "g",
+                      })),
+                    });
+                  }}
+                  className="flex justify-between items-center w-full px-4 py-2 text-left bg-gray-100 hover:bg-gray-200"
+                >
+                  <span>{r.naam}</span>
+                  <span className="font-mono text-sm">€ {totaal.toFixed(2)}</span>
+                </button>
+                {isOpen && (
+                  <div className="p-4 text-sm bg-white border-t">
+                    <ul className="space-y-1">
+                      {r.regels.map((regel, i) => {
+                        const prod = producten?.find((p) => p.id === regel.product_id);
+                        const prijs = berekenRegelKostprijs(regel);
+                        return (
+                          <li key={i} className="flex justify-between">
+                            <span>{prod?.naam ?? "?"} ({regel.hoeveelheid} {regel.eenheid})</span>
+                            <span className="text-right">€ {prijs.toFixed(2)}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
               )}
             </li>
           );
         })}
       </ul>
+    </li>
+  ))}
+</ul>
     </main>
   );
 }
