@@ -5,11 +5,6 @@
 import { useEffect, useState } from "react";
 import useSWR, { mutate } from "swr";
 
-interface Leverancier {
-  id: number;
-  naam: string;
-}
-
 interface Product {
   id: number;
   naam: string;
@@ -36,13 +31,8 @@ interface Recept {
 }
 
 export default function ReceptenBeheer() {
-  const [leverancierId, setLeverancierId] = useState<number | null>(null);
   const [recept, setRecept] = useState<Recept>({ naam: "", regels: [] });
-  const { data: leveranciers } = useSWR<Leverancier[]>("/api/leveranciers", fetcher);
-  const { data: producten } = useSWR<Product[]>(
-    leverancierId ? `/api/producten?leverancier=${leverancierId}` : null,
-    fetcher
-  );
+  const { data: producten } = useSWR<Product[]>("/api/producten", fetcher);
   const { data: recepten } = useSWR<Recept[]>("/api/recepten", fetcher);
   const [openReceptId, setOpenReceptId] = useState<number | null>(null);
 
@@ -72,21 +62,6 @@ export default function ReceptenBeheer() {
     <main className="max-w-4xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">📋 Receptbeheer</h1>
 
-      <div className="mb-4">
-        <label className="block font-medium">Kies leverancier:</label>
-        <select
-          value={leverancierId ?? ""}
-          onChange={(e) => setLeverancierId(Number(e.target.value))}
-          className="border px-2 py-1 rounded"
-        >
-          <option value="">-- Kies leverancier --</option>
-          {leveranciers?.map((l) => (
-            <option key={l.id} value={l.id}>{l.naam}</option>
-          ))}
-        </select>
-      </div>
-
-
       <form
         className="grid grid-cols-2 gap-4 text-sm bg-gray-50 p-4 border rounded"
         onSubmit={async (e) => {
@@ -94,7 +69,10 @@ export default function ReceptenBeheer() {
           await fetch("/api/recepten", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(recept),
+            body: JSON.stringify({
+              ...recept,
+              regels: recept.regels.filter((r) => r.product_id && r.hoeveelheid > 0)
+            }),
           });
           mutate("/api/recepten");
           setRecept({ naam: "", regels: [] });
@@ -209,7 +187,7 @@ export default function ReceptenBeheer() {
       <ul className="pl-0">
         {recepten?.map((r) => {
           const totaal = berekenTotaalprijs(r);
-          const isOpen = openReceptId === r.id;
+          const isOpen = openReceptId === (r.id ?? null);
           return (
             <li key={r.id} className="mb-2 border rounded">
               <button
