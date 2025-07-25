@@ -11,6 +11,7 @@ interface Product {
   eenheid: string;
   inhoud?: number;
   huidige_prijs?: number;
+  is_samengesteld?: boolean;
 }
 
 interface ReceptRegel {
@@ -57,22 +58,27 @@ export default function ReceptenBeheer() {
 
   function berekenRegelKostprijs(regel: ReceptRegel): number {
     const prod = producten?.find((p) => p.id === regel.product_id);
-    if (!prod || !prod.inhoud || !prod.huidige_prijs) return 0;
+    if (!prod) return 0;
+
+    // Samengesteld product → prijs berekenen uit gekoppeld recept
+    if (prod.is_samengesteld) {
+      const subrecept = recepten?.find((r) => r.product_id === prod.id);
+      if (!subrecept || !subrecept.totaal_output) return 0;
+      const subprijs = berekenTotaalprijs(subrecept);
+      const prijsPerEenheid = subprijs / subrecept.totaal_output;
+      const hoeveelheidInBasis = converteerEenheid(regel.hoeveelheid, regel.eenheid, subrecept.eenheid ?? "l");
+      return prijsPerEenheid * hoeveelheidInBasis;
+    }
+
+    if (!prod.inhoud || !prod.huidige_prijs) return 0;
     const hoeveelheidInProductEenheid = converteerEenheid(regel.hoeveelheid, regel.eenheid, prod.eenheid);
     const prijsPerEenheid = prod.huidige_prijs / prod.inhoud;
     return prijsPerEenheid * hoeveelheidInProductEenheid;
   }
 
   function berekenTotaalprijs(r: Recept): number {
-    return r.regels.reduce((t, regel) => {
-      const prod = producten?.find((p) => p.id === regel.product_id);
-      if (!prod || !prod.inhoud || !prod.huidige_prijs) return t;
-      const hoeveelheidInProductEenheid = converteerEenheid(regel.hoeveelheid, regel.eenheid, prod.eenheid);
-      const prijsPerEenheid = prod.huidige_prijs / prod.inhoud;
-      return t + prijsPerEenheid * hoeveelheidInProductEenheid;
-    }, 0);
+    return r.regels.reduce((t, regel) => t + berekenRegelKostprijs(regel), 0);
   }
-
 
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-6">
