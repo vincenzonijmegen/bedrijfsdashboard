@@ -147,16 +147,28 @@ export default function ReceptenBeheer() {
           const geenInhoud = prod && prod.inhoud == null;
           return (
             <div key={i} className="col-span-2 flex gap-2 items-center">
-              <select
-                value={regel.product_id}
-                onChange={(e) => wijzigRegel(i, "product_id", Number(e.target.value))}
-                className="border px-2 py-1 rounded w-1/3"
-              >
-                <option value="">-- kies product --</option>
-                {producten?.map((p) => (
-                  <option key={p.id} value={p.id}>{p.naam}</option>
-                ))}
-              </select>
+<div className="flex flex-col w-1/3">
+  <input
+    type="text"
+    placeholder="Zoek product..."
+    className="border px-2 py-1 rounded mb-1"
+    onChange={(e) => wijzigRegel(i, "product_naam", e.target.value)}
+    value={regel.product_naam ?? ""}
+  />
+  <select
+    value={regel.product_id}
+    onChange={(e) => wijzigRegel(i, "product_id", Number(e.target.value))}
+    className="border px-2 py-1 rounded"
+  >
+    <option value="">-- kies product --</option>
+    {producten?.filter((p) =>
+      !regel.product_naam || p.naam.toLowerCase().includes(regel.product_naam.toLowerCase())
+    ).map((p) => (
+      <option key={p.id} value={p.id}>{p.naam}</option>
+    ))}
+  </select>
+</div>
+
 
               <input
                 type="number"
