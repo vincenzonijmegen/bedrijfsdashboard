@@ -140,10 +140,11 @@ export default function AdminDashboard() {
         <LinkCard href="/shift-acties" label="Shiftacties & Statistieken" color="orange" Icon={Activity} />
       </Section>
 
-      <Section title="📦 Voorraadbeheer en Recepturen" color="pink">
+      <Section title="📦 Voorraadbeheer, Recepturen & Allergenen" color="pink">
         <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="pink" Icon={Box} />
         <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ShoppingCart} />
         <LinkCard href="/admin/recepten" label="Receptprijs" color="pink" Icon={ShoppingCart} />
+        <LinkCard href="/admin/producten/allergenen" label="Allergenenregistratie" color="pink" Icon={ShoppingCart} />
       </Section>
 
       <Section title="📊 Rapportages" color="slate">
