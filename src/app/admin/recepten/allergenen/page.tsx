@@ -60,7 +60,7 @@ export default function AllergenenKaart() {
       </button>
       <h1 className="text-2xl font-bold text-center">🧾 Allergenenkaart IJssalon Vincenzo</h1>
       <p className="text-center bg-blue-600 text-yellow-300 font-bold text-xl uppercase py-2 rounded">
-  ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJF
+  ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJ
 </p>
       <div className="overflow-x-auto space-y-6 print:overflow-visible">
         {volgorde.map((soort) => (
@@ -92,8 +92,19 @@ export default function AllergenenKaart() {
             </table>
           </div>
         ))}
-      </div>
-    </main>
+        </div>
+  {/* legenda */}
+  <div className="mt-4 text-sm">
+    <p className="font-semibold">Legenda:</p>
+    <ul className="list-disc list-inside">
+      <li><span className="inline-block w-4 h-4 bg-red-500 align-middle mr-2"></span> Aanwezig allergeen</li>
+      <li><span className="inline-block w-4 h-4 border align-middle mr-2"></span> Geen allergeen</li>
+    </ul>
+  </div>
+  <div className="mt-2 text-xs text-gray-600">
+    De allergenen vis, selderij, zwaveldioxide, mosterd, weekdieren, schaaldieren, lupine en sesamzaad zijn niet apart vermeld, omdat ze in ons ijs niet voorkomen.
+  </div>
+</main>
   );
 }
 
