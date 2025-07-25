@@ -53,8 +53,7 @@ export default function AllergenenKaart() {
 
   return (
     <main className="max-w-6xl mx-auto p-6 space-y-6" id="pdf-content">
-      <button
-        onClick={exportPDF}
+      <button onClick={exportPDF} id="print-knop"
         className="bg-blue-600 text-white px-4 py-2 rounded print:hidden"
       >
         📄 Download als PDF
@@ -103,6 +102,10 @@ export default function AllergenenKaart() {
 }
 
 async function exportPDF() {
+  const knop = document.querySelector("button#print-knop") as HTMLElement;
+  if (knop) knop.style.display = "none";
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
   const input = document.getElementById("pdf-content");
   if (!input) return;
 
@@ -127,6 +130,7 @@ async function exportPDF() {
 
   pdf.addImage(imgData, "PNG", x, y, scaledWidth, scaledHeight);
   pdf.save("allergenenkaart.pdf");
+  if (knop) knop.style.display = "inline-block";
 }
 
 async function fetcher(url: string) {
