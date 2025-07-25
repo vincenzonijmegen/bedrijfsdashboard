@@ -129,7 +129,7 @@ async function exportPDF() {
   if (!input) return;
 
   const canvas = await html2canvas(input, {
-    scale: 1.5,
+    scale: 1,
     backgroundColor: null,
     useCORS: true,
     windowWidth: input.scrollWidth,
