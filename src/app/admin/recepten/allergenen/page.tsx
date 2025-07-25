@@ -55,7 +55,7 @@ export default function AllergenenKaart() {
     <main className="max-w-6xl mx-auto p-6 space-y-6" id="pdf-content">
       <button
         onClick={exportPDF}
-        className="bg-blue-600 text-white px-4 py-2 rounded hidden"
+        className="bg-blue-600 text-white px-4 py-2 rounded print:hidden"
       >
         📄 Download als PDF
       </button>
