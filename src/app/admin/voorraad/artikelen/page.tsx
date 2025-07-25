@@ -211,6 +211,7 @@ export default function Productbeheer() {
                       setBesteleenheid(p.besteleenheid ?? 1);
                       setPrijs(p.huidige_prijs);
                       setVolgorde(p.volgorde);
+                      setInhoud(p.inhoud);
                       setActief(p.actief);
                       setNieuweLeverancier("");
                     }}
