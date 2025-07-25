@@ -79,7 +79,7 @@ export default function AllergenenKaart() {
                 {gegroepeerdPerSoort[soort]?.sort((a, b) => a.naam.localeCompare(b.naam)).map((r) => {
                   const aanwezig = new Set(allergenenVoorRecept(r));
                   return (
-                    <tr key={r.id}>
+                    <tr key={r.id} className="align-middle">
                       <td className="border px-2 py-1 font-semibold whitespace-nowrap align-middle">{r.naam}</td>
                       {ALLERGENEN.map((a) => (
                         <td
