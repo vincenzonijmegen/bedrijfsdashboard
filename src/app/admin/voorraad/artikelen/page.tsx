@@ -1,3 +1,4 @@
+// Aangepaste productbeheer-component met ondersteuning voor inhoud, eenheid en is_samengesteld
 "use client";
 
 import useSWR, { mutate } from "swr";
@@ -15,6 +16,9 @@ interface Product {
   minimum_voorraad?: number;
   besteleenheid?: number;
   huidige_prijs?: number;
+  inhoud?: number;
+  eenheid?: string;
+  is_samengesteld?: boolean;
   actief: boolean;
   volgorde?: number;
 }
@@ -27,6 +31,9 @@ export default function Productbeheer() {
   const [minimumVoorraad, setMinimumVoorraad] = useState<number | undefined>();
   const [besteleenheid, setBesteleenheid] = useState<number>(1);
   const [prijs, setPrijs] = useState<number | undefined>();
+  const [inhoud, setInhoud] = useState<number | undefined>();
+  const [eenheid, setEenheid] = useState<string>("g");
+  const [isSamengesteld, setIsSamengesteld] = useState(false);
   const [actief, setActief] = useState(true);
   const [volgorde, setVolgorde] = useState<number | undefined>();
   const [productId, setProductId] = useState<number | null>(null);
@@ -66,7 +73,10 @@ export default function Productbeheer() {
                 bestelnummer,
                 minimum_voorraad: minimumVoorraad,
                 besteleenheid,
-                prijs,
+                prijs: isSamengesteld ? undefined : prijs,
+                inhoud,
+                eenheid,
+                is_samengesteld: isSamengesteld,
                 actief,
                 volgorde,
               }),
@@ -79,6 +89,9 @@ export default function Productbeheer() {
               setMinimumVoorraad(undefined);
               setBesteleenheid(1);
               setPrijs(undefined);
+              setInhoud(undefined);
+              setEenheid("g");
+              setIsSamengesteld(false);
               setActief(true);
               setNieuweLeverancier("");
               setVolgorde(undefined);
@@ -122,7 +135,23 @@ export default function Productbeheer() {
           <input type="text" placeholder="Bestelnummer" className="border px-2 py-1 rounded" value={bestelnummer} onChange={(e) => setBestelnummer(e.target.value)} />
           <input type="number" placeholder="Min. voorraad" className="border px-2 py-1 rounded" value={minimumVoorraad ?? ""} onChange={(e) => setMinimumVoorraad(e.target.value ? Number(e.target.value) : undefined)} />
           <input type="number" placeholder="Besteleenheid" className="border px-2 py-1 rounded" value={besteleenheid} onChange={(e) => setBesteleenheid(Number(e.target.value))} />
-          <input type="number" placeholder="Prijs (€)" className="border px-2 py-1 rounded" step="0.01" value={prijs ?? ""} onChange={(e) => setPrijs(e.target.value ? Number(e.target.value) : undefined)} />
+
+          <input type="number" placeholder="Prijs (€)" className="border px-2 py-1 rounded" step="0.01" value={prijs ?? ""} onChange={(e) => setPrijs(e.target.value ? Number(e.target.value) : undefined)} disabled={isSamengesteld} />
+
+          <input type="number" placeholder="Inhoud" className="border px-2 py-1 rounded" step="0.01" value={inhoud ?? ""} onChange={(e) => setInhoud(e.target.value ? Number(e.target.value) : undefined)} />
+
+          <select value={eenheid} onChange={(e) => setEenheid(e.target.value)} className="border px-2 py-1 rounded">
+            <option value="g">gram</option>
+            <option value="kg">kilogram</option>
+            <option value="ml">milliliter</option>
+            <option value="l">liter</option>
+            <option value="batch">batch (bijv. 180L)</option>
+          </select>
+
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={isSamengesteld} onChange={(e) => setIsSamengesteld(e.target.checked)} /> Samengesteld product (prijs uit recept)
+          </label>
+
           <input type="number" placeholder="Volgorde" className="border px-2 py-1 rounded" value={volgorde ?? ""} onChange={(e) => setVolgorde(e.target.value ? Number(e.target.value) : undefined)} />
 
           <label className="flex items-center gap-2">
@@ -146,7 +175,7 @@ export default function Productbeheer() {
         ))}
       </select>
 
-      {producten && (
+       {producten && (
         <table className="w-full text-sm border mt-4">
           <thead>
             <tr className="bg-gray-100">

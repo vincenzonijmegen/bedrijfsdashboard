@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   try {
     const data = await req.json();
     const {
-      id, // toegevoegd voor bewerken
+      id,
       leverancier_id,
       nieuwe_leverancier,
       naam,
@@ -32,6 +32,9 @@ export async function POST(req: Request) {
       minimum_voorraad,
       besteleenheid,
       prijs,
+      inhoud,
+      eenheid,
+      is_samengesteld,
       actief,
       volgorde,
     } = data;
@@ -70,17 +73,44 @@ export async function POST(req: Request) {
       await db.query(
         `UPDATE producten
          SET leverancier_id = $1, naam = $2, bestelnummer = $3, minimum_voorraad = $4,
-             besteleenheid = $5, huidige_prijs = $6, actief = $7, volgorde = $8
-         WHERE id = $9`,
-        [lid, naam, bestelnummer ?? null, minimum_voorraad ?? null, besteleenheid ?? 1, nieuwePrijs ?? null, actief ?? true, volgorde ?? null, id]
+             besteleenheid = $5, huidige_prijs = $6, inhoud = $7, eenheid = $8,
+             is_samengesteld = $9, actief = $10, volgorde = $11
+         WHERE id = $12`,
+        [
+          lid,
+          naam,
+          bestelnummer ?? null,
+          minimum_voorraad ?? null,
+          besteleenheid ?? 1,
+          nieuwePrijs ?? null,
+          inhoud ?? null,
+          eenheid ?? null,
+          is_samengesteld ?? false,
+          actief ?? true,
+          volgorde ?? null,
+          id,
+        ]
       );
     } else {
       const insert = await db.query(
         `INSERT INTO producten
-         (leverancier_id, naam, bestelnummer, minimum_voorraad, besteleenheid, actief, huidige_prijs, volgorde)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         (leverancier_id, naam, bestelnummer, minimum_voorraad, besteleenheid,
+          huidige_prijs, inhoud, eenheid, is_samengesteld, actief, volgorde)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING id`,
-        [lid, naam, bestelnummer ?? null, minimum_voorraad ?? null, besteleenheid ?? 1, actief ?? true, prijs ?? null, volgorde ?? null]
+        [
+          lid,
+          naam,
+          bestelnummer ?? null,
+          minimum_voorraad ?? null,
+          besteleenheid ?? 1,
+          prijs ?? null,
+          inhoud ?? null,
+          eenheid ?? null,
+          is_samengesteld ?? false,
+          actief ?? true,
+          volgorde ?? null,
+        ]
       );
       pid = insert.rows[0].id;
     }
@@ -109,14 +139,14 @@ export async function GET(req: Request) {
 
   try {
     const result = await db.query(
-      `SELECT id, naam, bestelnummer, minimum_voorraad, besteleenheid, huidige_prijs, actief, volgorde
+      `SELECT id, naam, bestelnummer, minimum_voorraad, besteleenheid, huidige_prijs,
+              inhoud, eenheid, is_samengesteld, actief, volgorde
        FROM producten
        WHERE leverancier_id = $1
        ORDER BY volgorde NULLS LAST, naam`,
       [leverancierId]
     );
 
-    console.log("Producten response:", result.rows);
     return NextResponse.json(result.rows);
   } catch (err) {
     console.error("Fout bij ophalen producten:", err);
