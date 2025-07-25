@@ -15,6 +15,7 @@ interface Product {
   naam: string;
   eenheid: string;
   inhoud?: number;
+  huidige_prijs?: number;
 }
 
 interface ReceptRegel {
@@ -43,11 +44,28 @@ export default function ReceptenBeheer() {
     fetcher
   );
   const { data: recepten } = useSWR<Recept[]>("/api/recepten", fetcher);
+  const [openReceptId, setOpenReceptId] = useState<number | null>(null);
 
   function wijzigRegel(index: number, veld: keyof ReceptRegel, waarde: any) {
     const nieuw = [...recept.regels];
     nieuw[index] = { ...nieuw[index], [veld]: waarde };
     setRecept({ ...recept, regels: nieuw });
+  }
+
+  function berekenRegelKostprijs(regel: ReceptRegel): number {
+    const prod = producten?.find((p) => p.id === regel.product_id);
+    if (!prod || !prod.inhoud || !prod.huidige_prijs) return 0;
+    const prijsPerEenheid = prod.huidige_prijs / prod.inhoud;
+    return prijsPerEenheid * regel.hoeveelheid;
+  }
+
+  function berekenTotaalprijs(r: Recept): number {
+    return r.regels.reduce((t, regel) => {
+      const prod = producten?.find((p) => p.id === regel.product_id);
+      if (!prod || !prod.inhoud || !prod.huidige_prijs) return t;
+      const prijsPerEenheid = prod.huidige_prijs / prod.inhoud;
+      return t + prijsPerEenheid * regel.hoeveelheid;
+    }, 0);
   }
 
   return (
@@ -67,6 +85,7 @@ export default function ReceptenBeheer() {
           ))}
         </select>
       </div>
+
 
       <form
         className="grid grid-cols-2 gap-4 text-sm bg-gray-50 p-4 border rounded"
@@ -187,15 +206,38 @@ export default function ReceptenBeheer() {
       </form>
 
       <h2 className="text-xl font-semibold">📚 Bestaande recepten</h2>
-      <ul className="list-disc pl-6">
-        {recepten?.map((r) => (
-          <li key={r.id}>
-            <button
-              onClick={() => setRecept(r)}
-              className="text-blue-600 hover:underline"
-            >{r.naam}</button>
-          </li>
-        ))}
+      <ul className="pl-0">
+        {recepten?.map((r) => {
+          const totaal = berekenTotaalprijs(r);
+          const isOpen = openReceptId === r.id;
+          return (
+            <li key={r.id} className="mb-2 border rounded">
+              <button
+                onClick={() => setOpenReceptId(isOpen ? null : r.id ?? null)}
+                className="flex justify-between items-center w-full px-4 py-2 text-left bg-gray-100 hover:bg-gray-200"
+              >
+                <span>{r.naam}</span>
+                <span className="font-mono text-sm">€ {totaal.toFixed(2)}</span>
+              </button>
+              {isOpen && (
+                <div className="p-4 text-sm bg-white border-t">
+                  <ul className="space-y-1">
+                    {r.regels.map((regel, i) => {
+                      const prod = producten?.find((p) => p.id === regel.product_id);
+                      const prijs = berekenRegelKostprijs(regel);
+                      return (
+                        <li key={i} className="flex justify-between">
+                          <span>{prod?.naam ?? "?"} ({regel.hoeveelheid} {regel.eenheid})</span>
+                          <span className="text-right">€ {prijs.toFixed(2)}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </main>
   );
