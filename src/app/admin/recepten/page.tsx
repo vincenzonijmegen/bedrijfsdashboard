@@ -209,7 +209,19 @@ export default function ReceptenBeheer() {
         </div>
       </form>
 
-      <h2 className="text-xl font-semibold">📚 Bestaande recepten</h2>
+      <select
+          value={recept.omschrijving ?? ""}
+          onChange={(e) => setRecept({ ...recept, omschrijving: e.target.value })}
+          className="border px-2 py-1 rounded col-span-2"
+        >
+          <option value="">-- Kies categorie --</option>
+          <option value="mixen">mixen</option>
+          <option value="melksmaken">melksmaken</option>
+          <option value="vruchtensmaken">vruchtensmaken</option>
+          <option value="overig">overig</option>
+        </select>
+
+        <h2 className="text-xl font-semibold">📚 Bestaande recepten</h2>
       <ul className="pl-0">
         {recepten?.map((r) => {
           const totaal = berekenTotaalprijs(r);
