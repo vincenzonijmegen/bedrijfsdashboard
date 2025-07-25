@@ -84,7 +84,7 @@ export default function AllergenenKaart() {
                       {ALLERGENEN.map((a) => (
                         <td
                           key={a}
-                          className={`border px-2 py-1 text-center w-20 print:border-black ${aanwezig.has(a) ? "bg-red-500 text-white print:bg-black print:text-white" : ""}`}
+                          className={`border px-2 py-1 text-center w-20 align-middle print:border-black ${aanwezig.has(a) ? "bg-red-500 text-white print:bg-black print:text-white" : ""}`}
                         >
                           {aanwezig.has(a) ? "●" : ""}
                         </td>
