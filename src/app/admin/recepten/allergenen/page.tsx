@@ -19,6 +19,9 @@ interface ProductAllergenen {
   allergeen: string;
 }
 
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
+
 export default function AllergenenKaart() {
   const { data: recepten } = useSWR<Recept[]>("/api/recepten", fetcher);
   const { data: allergenenData } = useSWR<ProductAllergenen[]>("/api/allergenen/receptniveau", fetcher);
@@ -49,9 +52,9 @@ export default function AllergenenKaart() {
   const volgorde = ["melksmaken", "overig"];
 
   return (
-    <main className="max-w-6xl mx-auto p-6 space-y-6 print:p-0 print:text-black print:bg-white">
+    <main className="max-w-6xl mx-auto p-6 space-y-6" id="pdf-content">
       <button
-        onClick={() => window.print()}
+        onClick={exportPDF}
         className="bg-blue-600 text-white px-4 py-2 rounded print:hidden"
       >
         📄 Download als PDF
@@ -97,6 +100,18 @@ export default function AllergenenKaart() {
       </div>
     </main>
   );
+}
+
+async function exportPDF() {
+  const input = document.getElementById("pdf-content");
+  if (!input) return;
+  const canvas = await html2canvas(input, { scale: 2 });
+  const imgData = canvas.toDataURL("image/png");
+  const pdf = new jsPDF({ orientation: "landscape" });
+  const width = pdf.internal.pageSize.getWidth();
+  const height = (canvas.height * width) / canvas.width;
+  pdf.addImage(imgData, "PNG", 0, 0, width, height);
+  pdf.save("allergenenkaart.pdf");
 }
 
 async function fetcher(url: string) {
