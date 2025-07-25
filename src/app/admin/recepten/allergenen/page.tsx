@@ -49,21 +49,21 @@ export default function AllergenenKaart() {
   const volgorde = ["melksmaken", "overig"];
 
   return (
-    <main className="max-w-6xl mx-auto p-6 space-y-6">
+    <main className="max-w-6xl mx-auto p-6 space-y-6 print:p-0 print:text-black print:bg-white">
       <h1 className="text-2xl font-bold text-center">🧾 Allergenenkaart IJssalon Vincenzo</h1>
       <p className="text-center text-yellow-600 font-semibold uppercase">
         Alle sorbetsmaken zijn veganistisch en allergenenvrij
       </p>
-      <div className="overflow-x-auto space-y-6">
+      <div className="overflow-x-auto space-y-6 print:overflow-visible">
         {volgorde.map((soort) => (
           <div key={soort}>
             <h2 className="text-lg font-bold mb-2 uppercase">{soort === "overig" ? "OVERIG" : "ROOMIJS"}</h2>
-            <table className="w-full border text-sm">
+            <table className="w-full border text-sm print:text-xs print:border-black">
               <thead>
                 <tr className="bg-gray-100">
                   <th className="border px-2 py-1 text-left">Smaak</th>
                   {ALLERGENEN.map((a) => (
-                    <th key={a} className="border px-2 py-1 text-center uppercase w-20">{a}</th>
+                    <th key={a} className="border px-2 py-1 text-center uppercase w-20 print:border-black">{a}</th>
                   ))}
                 </tr>
               </thead>
@@ -76,7 +76,7 @@ export default function AllergenenKaart() {
                       {ALLERGENEN.map((a) => (
                         <td
                           key={a}
-                          className={`border px-2 py-1 text-center w-20 ${aanwezig.has(a) ? "bg-red-500 text-white" : ""}`}
+                          className={`border px-2 py-1 text-center w-20 print:border-black ${aanwezig.has(a) ? "bg-red-500 text-white print:bg-black print:text-white" : ""}`}
                         >
                           {aanwezig.has(a) ? "●" : ""}
                         </td>
