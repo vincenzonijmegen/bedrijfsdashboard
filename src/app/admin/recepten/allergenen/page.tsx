@@ -1,4 +1,4 @@
-// src/app/admin/recepten/allergenen/page.tsx
+// src/app/admin/recepten/allergenenkaart/page.tsx
 
 "use client";
 
@@ -10,6 +10,7 @@ const ALLERGENEN = ["gluten", "soja", "ei", "melk", "noten", "pinda", "tarwe"];
 interface Recept {
   id: number;
   naam: string;
+  omschrijving?: string;
   regels: { product_id: number }[];
 }
 
@@ -18,7 +19,7 @@ interface ProductAllergenen {
   allergeen: string;
 }
 
-export default function AllergenenPerRecept() {
+export default function AllergenenKaart() {
   const { data: recepten } = useSWR<Recept[]>("/api/recepten", fetcher);
   const { data: allergenenData } = useSWR<ProductAllergenen[]>("/api/allergenen/receptniveau", fetcher);
 
@@ -37,18 +38,43 @@ export default function AllergenenPerRecept() {
   }
 
   return (
-    <main className="max-w-3xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold">🧾 Allergenenkaart per recept</h1>
-      <ul className="space-y-3">
-        {recepten?.map((r) => (
-          <li key={r.id} className="border p-4 rounded bg-white">
-            <h2 className="text-lg font-semibold mb-2">{r.naam}</h2>
-            <p className="text-sm">
-              Bevat: {allergenenVoorRecept(r).join(", ") || "geen allergenen geregistreerd"}
-            </p>
-          </li>
-        ))}
-      </ul>
+    <main className="max-w-6xl mx-auto p-6 space-y-6">
+      <h1 className="text-2xl font-bold text-center">🧾 Allergenenkaart IJssalon Vincenzo</h1>
+      <p className="text-center text-yellow-600 font-semibold uppercase">
+        Alle sorbetsmaken zijn veganistisch en allergenenvrij
+      </p>
+      <div className="overflow-x-auto">
+        <table className="w-full border text-sm mt-6">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border px-2 py-1 text-left">Smaak</th>
+              {ALLERGENEN.map((a) => (
+                <th key={a} className="border px-2 py-1 text-center uppercase">{a}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {recepten
+              ?.filter(r => !["mixen", "vruchtensmaken"].includes(r.omschrijving ?? ""))
+              .map((r) => {
+                const aanwezig = new Set(allergenenVoorRecept(r));
+                return (
+                  <tr key={r.id}>
+                    <td className="border px-2 py-1 font-semibold whitespace-nowrap">{r.naam}</td>
+                    {ALLERGENEN.map((a) => (
+                      <td
+                        key={a}
+                        className={`border px-2 py-1 text-center ${aanwezig.has(a) ? "bg-red-500 text-white" : ""}`}
+                      >
+                        {aanwezig.has(a) ? "●" : ""}
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+          </tbody>
+        </table>
+      </div>
     </main>
   );
 }
