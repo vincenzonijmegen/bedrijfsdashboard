@@ -5,10 +5,16 @@
 import { useEffect, useState } from "react";
 import useSWR, { mutate } from "swr";
 
+interface Leverancier {
+  id: number;
+  naam: string;
+}
+
 interface Product {
   id: number;
   naam: string;
   eenheid: string;
+  inhoud?: number;
 }
 
 interface ReceptRegel {
@@ -29,8 +35,13 @@ interface Recept {
 }
 
 export default function ReceptenBeheer() {
+  const [leverancierId, setLeverancierId] = useState<number | null>(null);
   const [recept, setRecept] = useState<Recept>({ naam: "", regels: [] });
-  const { data: producten } = useSWR<Product[]>("/api/producten?leverancier=1", fetcher); // vervang 1 door juiste ID indien nodig
+  const { data: leveranciers } = useSWR<Leverancier[]>("/api/leveranciers", fetcher);
+  const { data: producten } = useSWR<Product[]>(
+    leverancierId ? `/api/producten?leverancier=${leverancierId}` : null,
+    fetcher
+  );
   const { data: recepten } = useSWR<Recept[]>("/api/recepten", fetcher);
 
   function wijzigRegel(index: number, veld: keyof ReceptRegel, waarde: any) {
@@ -42,6 +53,20 @@ export default function ReceptenBeheer() {
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">📋 Receptbeheer</h1>
+
+      <div className="mb-4">
+        <label className="block font-medium">Kies leverancier:</label>
+        <select
+          value={leverancierId ?? ""}
+          onChange={(e) => setLeverancierId(Number(e.target.value))}
+          className="border px-2 py-1 rounded"
+        >
+          <option value="">-- Kies leverancier --</option>
+          {leveranciers?.map((l) => (
+            <option key={l.id} value={l.id}>{l.naam}</option>
+          ))}
+        </select>
+      </div>
 
       <form
         className="grid grid-cols-2 gap-4 text-sm bg-gray-50 p-4 border rounded"
@@ -94,48 +119,54 @@ export default function ReceptenBeheer() {
 
         <h2 className="col-span-2 font-semibold mt-4">Ingrediënten</h2>
 
-        {recept.regels.map((regel, i) => (
-          <div key={i} className="col-span-2 flex gap-2">
-            <select
-              value={regel.product_id}
-              onChange={(e) => wijzigRegel(i, "product_id", Number(e.target.value))}
-              className="border px-2 py-1 rounded w-1/3"
-            >
-              <option value="">-- kies product --</option>
-              {producten?.map((p) => (
-                <option key={p.id} value={p.id}>{p.naam}</option>
-              ))}
-            </select>
+        {recept.regels.map((regel, i) => {
+          const prod = producten?.find(p => p.id === regel.product_id);
+          const geenInhoud = prod && prod.inhoud == null;
+          return (
+            <div key={i} className="col-span-2 flex gap-2 items-center">
+              <select
+                value={regel.product_id}
+                onChange={(e) => wijzigRegel(i, "product_id", Number(e.target.value))}
+                className="border px-2 py-1 rounded w-1/3"
+              >
+                <option value="">-- kies product --</option>
+                {producten?.map((p) => (
+                  <option key={p.id} value={p.id}>{p.naam}</option>
+                ))}
+              </select>
 
-            <input
-              type="number"
-              placeholder="Hoeveelheid"
-              value={regel.hoeveelheid}
-              onChange={(e) => wijzigRegel(i, "hoeveelheid", parseFloat(e.target.value))}
-              className="border px-2 py-1 rounded w-1/4"
-            />
+              <input
+                type="number"
+                placeholder="Hoeveelheid"
+                value={regel.hoeveelheid}
+                onChange={(e) => wijzigRegel(i, "hoeveelheid", parseFloat(e.target.value))}
+                className="border px-2 py-1 rounded w-1/4"
+              />
 
-            <select
-              value={regel.eenheid}
-              onChange={(e) => wijzigRegel(i, "eenheid", e.target.value)}
-              className="border px-2 py-1 rounded w-1/4"
-            >
-              <option value="g">g</option>
-              <option value="kg">kg</option>
-              <option value="ml">ml</option>
-              <option value="l">l</option>
-            </select>
+              <select
+                value={regel.eenheid}
+                onChange={(e) => wijzigRegel(i, "eenheid", e.target.value)}
+                className="border px-2 py-1 rounded w-1/4"
+              >
+                <option value="g">g</option>
+                <option value="kg">kg</option>
+                <option value="ml">ml</option>
+                <option value="l">l</option>
+              </select>
 
-            <button
-              type="button"
-              onClick={() => setRecept({
-                ...recept,
-                regels: recept.regels.filter((_, idx) => idx !== i),
-              })}
-              className="text-red-600"
-            >🗑️</button>
-          </div>
-        ))}
+              <button
+                type="button"
+                onClick={() => setRecept({
+                  ...recept,
+                  regels: recept.regels.filter((_, idx) => idx !== i),
+                })}
+                className="text-red-600"
+              >🗑️</button>
+
+              {geenInhoud && <span className="text-xs text-red-600">⚠️ Geen inhoud geregistreerd</span>}
+            </div>
+          );
+        })}
 
         <div className="col-span-2">
           <button
