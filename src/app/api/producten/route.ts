@@ -133,19 +133,25 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const leverancierId = searchParams.get("leverancier");
 
-  if (!leverancierId) {
-    return NextResponse.json({ error: "leverancier vereist" }, { status: 400 });
-  }
-
   try {
-    const result = await db.query(
-      `SELECT id, naam, bestelnummer, minimum_voorraad, besteleenheid, huidige_prijs,
-              inhoud, eenheid, is_samengesteld, actief, volgorde
-       FROM producten
-       WHERE leverancier_id = $1
-       ORDER BY volgorde NULLS LAST, naam`,
-      [leverancierId]
-    );
+    let result;
+    if (leverancierId) {
+      result = await db.query(
+        `SELECT id, naam, bestelnummer, minimum_voorraad, besteleenheid, huidige_prijs,
+                inhoud, eenheid, is_samengesteld, actief, volgorde
+         FROM producten
+         WHERE leverancier_id = $1
+         ORDER BY volgorde NULLS LAST, naam`,
+        [leverancierId]
+      );
+    } else {
+      result = await db.query(
+        `SELECT id, naam, bestelnummer, minimum_voorraad, besteleenheid, huidige_prijs,
+                inhoud, eenheid, is_samengesteld, actief, volgorde
+         FROM producten
+         ORDER BY volgorde NULLS LAST, naam`
+      );
+    }
 
     return NextResponse.json(result.rows);
   } catch (err) {
