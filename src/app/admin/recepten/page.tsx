@@ -30,6 +30,19 @@ interface Recept {
   regels: ReceptRegel[];
 }
 
+function converteerEenheid(qty: number, van: string, naar: string): number {
+  const factor: Record<string, number> = {
+    g: 1,
+    kg: 1000,
+    ml: 1,
+    l: 1000,
+  };
+  if (factor[van] && factor[naar]) {
+    return qty * (factor[van] / factor[naar]);
+  }
+  return qty;
+}
+
 export default function ReceptenBeheer() {
   const [recept, setRecept] = useState<Recept>({ naam: "", regels: [] });
   const { data: producten } = useSWR<Product[]>("/api/producten", fetcher);
@@ -45,16 +58,18 @@ export default function ReceptenBeheer() {
   function berekenRegelKostprijs(regel: ReceptRegel): number {
     const prod = producten?.find((p) => p.id === regel.product_id);
     if (!prod || !prod.inhoud || !prod.huidige_prijs) return 0;
+    const hoeveelheidInProductEenheid = converteerEenheid(regel.hoeveelheid, regel.eenheid, prod.eenheid);
     const prijsPerEenheid = prod.huidige_prijs / prod.inhoud;
-    return prijsPerEenheid * regel.hoeveelheid;
+    return prijsPerEenheid * hoeveelheidInProductEenheid;
   }
 
   function berekenTotaalprijs(r: Recept): number {
     return r.regels.reduce((t, regel) => {
       const prod = producten?.find((p) => p.id === regel.product_id);
       if (!prod || !prod.inhoud || !prod.huidige_prijs) return t;
+      const hoeveelheidInProductEenheid = converteerEenheid(regel.hoeveelheid, regel.eenheid, prod.eenheid);
       const prijsPerEenheid = prod.huidige_prijs / prod.inhoud;
-      return t + prijsPerEenheid * regel.hoeveelheid;
+      return t + prijsPerEenheid * hoeveelheidInProductEenheid;
     }, 0);
   }
 
