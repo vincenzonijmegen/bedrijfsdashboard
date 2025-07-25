@@ -68,10 +68,10 @@ export default function AllergenenKaart() {
             <h2 className="text-lg font-bold mb-2 uppercase">{soort === "overig" ? "OVERIG" : "ROOMIJS"}</h2>
             <table className="w-full border text-sm print:text-xs print:border-black">
               <thead>
-                <tr className="bg-gray-100">
+                <tr className="bg-gray-100 align-middle">
                   <th className="border px-2 py-1 text-left">Smaak</th>
                   {ALLERGENEN.map((a) => (
-                    <th key={a} className="border px-2 py-1 text-center uppercase w-20 print:border-black">{a}</th>
+                    <th key={a} className="border px-2 py-1 text-center uppercase w-20 print:border-black align-middle">{a}</th>
                   ))}
                 </tr>
               </thead>
