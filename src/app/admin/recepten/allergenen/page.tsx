@@ -106,13 +106,26 @@ async function exportPDF() {
   const input = document.getElementById("pdf-content");
   if (!input) return;
 
-  const canvas = await html2canvas(input, { scale: 2 });
+  const canvas = await html2canvas(input, {
+    scale: 1.5,
+    backgroundColor: null,
+    useCORS: true,
+    windowWidth: input.scrollWidth,
+    windowHeight: input.scrollHeight,
+  });
   const imgData = canvas.toDataURL("image/png");
 
   const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: "a4" });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pageHeight);
+  // calculate scaling to fit within A4 portrait
+  const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
+  const scaledWidth = canvas.width * ratio;
+  const scaledHeight = canvas.height * ratio;
+  const x = (pageWidth - scaledWidth) / 2;
+  const y = (pageHeight - scaledHeight) / 2;
+
+  pdf.addImage(imgData, "PNG", x, y, scaledWidth, scaledHeight);
   pdf.save("allergenenkaart.pdf");
 }
 
