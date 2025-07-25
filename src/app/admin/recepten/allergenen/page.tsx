@@ -111,7 +111,7 @@ export default function AllergenenKaart() {
       </div>
       {/* uitlegtekst */}
       <p className="text-center bg-blue-600 text-yellow-300 font-bold text-l uppercase py-2 rounded">
-        vis, selderij, zwaveldioxide, mosterd, weekdieren, schaaldieren, lupine, sesamzaad komen niet in ons ijs voor
+        Er zit geen vis, selderij, zwaveldioxide, mosterd, weekdieren, schaaldieren, lupine, sesamzaad in ons ijs
       </p>
       <p className="text-center bg-blue-600 text-yellow-300 font-bold text-l uppercase py-2 rounded">
        AMARETTO - TIRAMISU - MALAGA zijn met alcohol bereid
