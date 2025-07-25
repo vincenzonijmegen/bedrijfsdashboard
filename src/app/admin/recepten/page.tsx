@@ -108,14 +108,7 @@ export default function ReceptenBeheer() {
           onChange={(e) => setRecept({ ...recept, naam: e.target.value })}
         />
 
-        <input
-          type="text"
-          placeholder="Omschrijving"
-          className="border px-2 py-1 rounded col-span-2"
-          value={recept.omschrijving ?? ""}
-          onChange={(e) => setRecept({ ...recept, omschrijving: e.target.value })}
-        />
-
+        
         <input
           type="number"
           placeholder="Totaaloutput (bijv. 180)"
