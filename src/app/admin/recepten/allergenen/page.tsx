@@ -50,6 +50,12 @@ export default function AllergenenKaart() {
 
   return (
     <main className="max-w-6xl mx-auto p-6 space-y-6 print:p-0 print:text-black print:bg-white">
+      <button
+        onClick={() => window.print()}
+        className="bg-blue-600 text-white px-4 py-2 rounded print:hidden"
+      >
+        📄 Download als PDF
+      </button>
       <h1 className="text-2xl font-bold text-center">🧾 Allergenenkaart IJssalon Vincenzo</h1>
       <p className="text-center text-yellow-600 font-semibold uppercase">
         Alle sorbetsmaken zijn veganistisch en allergenenvrij
