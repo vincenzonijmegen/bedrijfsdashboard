@@ -80,8 +80,8 @@ export default function AllergenenKaart() {
                   const aanwezig = new Set(allergenenVoorRecept(r));
                   return (
                     <tr key={r.id} className="align-middle">
-                      <td className="border px-2 py-2 whitespace-nowrap text-base md:text-lg align-middle">
-  <div className="flex items-center h-full">{r.naam}</div>
+                      <td className="border px-2 py-2 whitespace-nowrap text-base md:text-lg">
+  <div className="h-full flex items-center">="h-full flex items-center">{r.naam}</div>
 </td>
                       {ALLERGENEN.map((a) => (                        <td key={a} className={`border px-2 py-1 w-20 print:border-black ${aanwezig.has(a) ? "bg-red-500" : ""}`} />
                       ))}
