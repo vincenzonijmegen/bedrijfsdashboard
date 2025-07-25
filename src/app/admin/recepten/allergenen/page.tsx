@@ -4,6 +4,8 @@
 
 import { useEffect, useState } from "react";
 import useSWR from "swr";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 const ALLERGENEN = ["gluten", "soja", "ei", "melk", "noten", "pinda", "tarwe"];
 
@@ -18,9 +20,6 @@ interface ProductAllergenen {
   product_id: number;
   allergeen: string;
 }
-
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 
 export default function AllergenenKaart() {
   const { data: recepten } = useSWR<Recept[]>("/api/recepten", fetcher);
@@ -42,7 +41,7 @@ export default function AllergenenKaart() {
 
   const gegroepeerdPerSoort: Record<string, Recept[]> = {};
   recepten
-    ?.filter(r => !["mixen", "vruchtensmaken"].includes(r.omschrijving ?? ""))
+    ?.filter((r) => !["mixen", "vruchtensmaken"].includes(r.omschrijving ?? ""))
     .forEach((r) => {
       const cat = r.omschrijving || "overig";
       if (!gegroepeerdPerSoort[cat]) gegroepeerdPerSoort[cat] = [];
@@ -53,58 +52,69 @@ export default function AllergenenKaart() {
 
   return (
     <main className="max-w-6xl mx-auto p-6 space-y-6" id="pdf-content">
-      <button onClick={exportPDF} id="print-knop"
+      <button
+        onClick={exportPDF}
+        id="print-knop"
         className="bg-blue-600 text-white px-4 py-2 rounded print:hidden"
       >
         📄 Download als PDF
       </button>
       <h1 className="text-2xl font-bold text-center">🧾 Allergenenkaart IJssalon Vincenzo</h1>
       <p className="text-center bg-blue-600 text-yellow-300 font-bold text-xl uppercase py-2 rounded">
-  ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJ
-</p>
+        ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJF
+      </p>
       <div className="overflow-x-auto space-y-6 print:overflow-visible">
         {volgorde.map((soort) => (
           <div key={soort}>
-            <h2 className="text-lg font-bold mb-2 uppercase">{soort === "overig" ? "OVERIG" : "ROOMIJS"}</h2>
+            <h2 className="text-lg font-bold mb-2 uppercase">
+              {soort === "overig" ? "OVERIG" : "ROOMIJS"}
+            </h2>
             <table className="w-full border text-sm print:text-xs print:border-black">
               <thead>
                 <tr className="bg-gray-100 align-middle">
-                  <th className="border px-2 py-1 text-left">Smaak</th>
+                  <th className="border px-2 py-1 text-left align-middle">Smaak</th>
                   {ALLERGENEN.map((a) => (
-                    <th key={a} className="border px-2 py-1 text-center uppercase w-20 print:border-black align-middle">{a}</th>
+                    <th
+                      key={a}
+                      className="border px-2 py-1 text-center uppercase w-20 print:border-black align-middle"
+                    >
+                      {a}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {gegroepeerdPerSoort[soort]?.sort((a, b) => a.naam.localeCompare(b.naam)).map((r) => {
-                  const aanwezig = new Set(allergenenVoorRecept(r));
-                  return (
-                    <tr key={r.id} className="align-middle">
-                      <td className="border px-2 py-1 whitespace-nowrap">
-  <div className="h-full flex items-center">{r.naam}</div>
-</td>
-                      {ALLERGENEN.map((a) => (                        <td key={a} className={`border px-2 py-1 w-20 print:border-black ${aanwezig.has(a) ? "bg-red-500" : ""}`} />
-                      ))}
-                    </tr>
-                  );
-                })}
+                {gegroepeerdPerSoort[soort]
+                  ?.sort((a, b) => a.naam.localeCompare(b.naam))
+                  .map((r) => {
+                    const aanwezig = new Set(allergenenVoorRecept(r));
+                    return (
+                      <tr key={r.id} className="align-middle">
+                        <td className="border px-2 py-2 whitespace-nowrap text-base md:text-lg align-middle">
+                          {r.naam}
+                        </td>
+                        {ALLERGENEN.map((a) => (
+                          <td
+                            key={a}
+                            className={`border px-2 py-1 w-20 print:border-black align-middle ${
+                              aanwezig.has(a) ? "bg-red-500" : ""
+                            }`}
+                          />
+                        ))}
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
         ))}
-        </div>
-  {/* legenda */}
-  <div className="mt-4 text-sm">
-    <p className="font-semibold">Legenda:</p>
-    <ul className="list-disc list-inside">
-      <li><span className="inline-block w-4 h-4 bg-red-500 align-middle mr-2"></span> Aanwezig allergeen</li>
-      <li><span className="inline-block w-4 h-4 border align-middle mr-2"></span> Geen allergeen</li>
-    </ul>
-  </div>
-  <div className="mt-2 text-xs text-gray-600">
-    De allergenen vis, selderij, zwaveldioxide, mosterd, weekdieren, schaaldieren, lupine en sesamzaad zijn niet apart vermeld, omdat ze in ons ijs niet voorkomen.
-  </div>
-</main>
+      </div>
+      {/* uitlegtekst */}
+      <p className="text-center bg-blue-600 text-yellow-300 font-bold text-xl uppercase py-2 rounded">
+        De allergenen vis, selderij, zwaveldioxide, mosterd, weekdieren, schaaldieren, lupine en sesamzaad
+        zijn niet apart vermeld, omdat ze in ons ijs niet voorkomen.
+      </p>
+    </main>
   );
 }
 
