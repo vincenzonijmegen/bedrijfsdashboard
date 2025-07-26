@@ -148,6 +148,7 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} />
         <LinkCard href="/admin/suikervrij" label="Suikervrij productie" color="blue" Icon={IceCream} />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} />
+        <LinkCard href="/admin/contacten" label="Contacten" color="blue" Icon={Folder} />
       </Section>
 
       <Section id="planning" title="📅 Planning" color="orange" activeSection={activeSection} setActiveSection={setActiveSection}>
