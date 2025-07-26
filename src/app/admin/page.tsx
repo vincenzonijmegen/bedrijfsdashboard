@@ -41,7 +41,12 @@ const bgColorMap: Record<string, string> = {
   red: 'bg-rose-100 text-rose-900 hover:bg-rose-200',
   slate: 'bg-slate-100 text-slate-900 hover:bg-slate-200',
   orange: 'bg-orange-100 text-orange-900 hover:bg-orange-200',
-  gray: 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+  gray: 'bg-gray-100 text-gray-900 hover:bg-gray-200',
+  yellow: 'bg-yellow-100 text-yellow-900 hover:bg-yellow-200',
+  amber:  'bg-amber-100  text-amber-900  hover:bg-amber-200',
+  teal:   'bg-teal-100   text-teal-900   hover:bg-teal-200',
+  indigo: 'bg-indigo-100 text-indigo-900 hover:bg-indigo-200',
+  emerald:'bg-emerald-100 text-emerald-900 hover:bg-emerald-200'
 };
 
 const LinkCard = ({ href, label, color, Icon }: LinkCardProps) => (
@@ -129,12 +134,12 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/rapportage" label="Financiële Rapporten" color="purple" Icon={BarChart2} />
       </Section>
 
-      <Section id="medewerkers" title="👥 Medewerkers" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} />
-        <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="green" Icon={Users} />
-        <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="green" Icon={FileText} />
-        <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} />
-        <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} />
+      <Section id="medewerkers" title="👥 Medewerkers" color="yellow" activeSection={activeSection} setActiveSection={setActiveSection}>
+        <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="yellow" Icon={User} />
+        <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="yellow" Icon={Users} />
+        <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="yellow" Icon={FileText} />
+        <LinkCard href="/admin/functies" label="Functies" color="yellow" Icon={Tag} />
+        <LinkCard href="/admin/dossier" label="Dossiers" color="yellow" Icon={Folder} />
         </Section>
 
         <Section id="Instructies&Skills" title="🧠 Instructies & Skills" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
