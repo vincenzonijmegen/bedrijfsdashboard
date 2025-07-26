@@ -3,17 +3,11 @@
 
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  Input,
-  Label,
-  Textarea
-} from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Contact {
   id: number;
@@ -84,17 +78,17 @@ export default function ContactenPage() {
 
           <div className="grid gap-2 py-2">
             <Label>Naam</Label>
-            <Input value={bewerkt?.naam || ''} onChange={(e) => setBewerkt({ ...bewerkt!, naam: e.target.value })} />
+            <Input value={bewerkt?.naam || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBewerkt({ ...bewerkt!, naam: e.target.value })} />
             <Label>Type</Label>
-            <Input value={bewerkt?.type || ''} onChange={(e) => setBewerkt({ ...bewerkt!, type: e.target.value })} />
+            <Input value={bewerkt?.type || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBewerkt({ ...bewerkt!, type: e.target.value })} />
             <Label>Telefoon</Label>
-            <Input value={bewerkt?.telefoon || ''} onChange={(e) => setBewerkt({ ...bewerkt!, telefoon: e.target.value })} />
+            <Input value={bewerkt?.telefoon || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBewerkt({ ...bewerkt!, telefoon: e.target.value })} />
             <Label>Email</Label>
-            <Input value={bewerkt?.email || ''} onChange={(e) => setBewerkt({ ...bewerkt!, email: e.target.value })} />
+            <Input value={bewerkt?.email || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBewerkt({ ...bewerkt!, email: e.target.value })} />
             <Label>Website</Label>
-            <Input value={bewerkt?.website || ''} onChange={(e) => setBewerkt({ ...bewerkt!, website: e.target.value })} />
+            <Input value={bewerkt?.website || ''} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setBewerkt({ ...bewerkt!, website: e.target.value })} />
             <Label>Opmerking</Label>
-            <Textarea value={bewerkt?.opmerking || ''} onChange={(e) => setBewerkt({ ...bewerkt!, opmerking: e.target.value })} />
+            <Textarea value={bewerkt?.opmerking || ''} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setBewerkt({ ...bewerkt!, opmerking: e.target.value })} />
           </div>
 
           <DialogFooter>
