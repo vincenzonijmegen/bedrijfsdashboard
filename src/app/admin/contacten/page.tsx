@@ -47,6 +47,13 @@ export default function ContactenPage() {
   };
 
   // Groepeer bedrijven per rubriek en sorteer op naam
+  const rubriekStyles: Record<string,string> = {
+    'leverancier artikelen': 'bg-sky-100 text-sky-800 p-2 rounded',
+    'leverancier diensten': 'bg-cyan-100 text-cyan-800 p-2 rounded',
+    'financieel': 'bg-green-100 text-green-800 p-2 rounded',
+    'overheid': 'bg-orange-100 text-orange-800 p-2 rounded',
+    'overig': 'bg-gray-100 text-gray-800 p-2 rounded'
+  };
   const grouped = useMemo(() => {
     const map: Record<string, Company[]> = {};
     (bedrijven || []).forEach(c => {
@@ -58,7 +65,18 @@ export default function ContactenPage() {
     return map;
   }, [bedrijven]);
 
-  const rubrieken = useMemo(() => Object.keys(grouped).sort(), [grouped]);
+  // Vaste volgorde voor rubrieken
+  const rubriekOrder = [
+    'leverancier artikelen',
+    'leverancier diensten',
+    'financieel',
+    'overheid',
+    'overig'
+  ];
+  const rubrieken = useMemo(
+    () => rubriekOrder.filter(r => grouped[r] && grouped[r].length > 0),
+    [grouped]
+  );
 
   function openModal(company?: Company) {
     setCurrent(company ? { ...company } : { ...emptyCompany });
@@ -107,7 +125,7 @@ export default function ContactenPage() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold flex items-center space-x-2">
           <Users className="w-6 h-6" />
-          <span>Belangrijke Gegevens</span>
+          <span>Contacten</span>
         </h1>
         <button onClick={() => openModal()} className="flex items-center bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
           <UserPlus className="w-5 h-5 mr-1" />
@@ -117,7 +135,7 @@ export default function ContactenPage() {
 
       {rubrieken.map(r => (
         <section key={r} className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">{r}</h2>
+          <h2 className={`${rubriekStyles[r]} text-xl font-semibold mb-4`}>{r}</h2>
           <div className="space-y-4">
             {grouped[r].map(c => (
               <div key={c.id} className="p-4 border rounded shadow">
