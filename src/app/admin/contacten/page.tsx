@@ -211,23 +211,58 @@ export default function ContactenPage() {
               }}
               className="space-y-4"
             >
-              {[
-                { key: 'naam', label: 'Naam', Icon: Users },
-                { key: 'bedrijfsnaam', label: 'Bedrijfsnaam', Icon: Users },
-                { key: 'type', label: 'Type', Icon: Tag, select: true, options: [
-                  { value: 'leverancier artikelen', label: 'Leverancier artikelen' },
-                  { value: 'leverancier diensten', label: 'Leverancier diensten' },
-                  { value: 'financieel', label: 'Financieel' },
-                  { value: 'overheid', label: 'Overheid' },
-                  { value: 'overig', label: 'Overig' }
-                ] },
-                { key: 'debiteurennummer', label: 'Debiteurennummer', Icon: Hash },
-                { key: 'rubriek', label: 'Rubriek', Icon: List },
-                { key: 'telefoon', label: 'Telefoon', Icon: Phone },
-                { key: 'email', label: 'Email', Icon: Mail },
-                { key: 'website', label: 'Website', Icon: Globe },
-                { key: 'opmerking', label: 'Opmerking', Icon: Users }
-              ].map(field => (
+              {(
+  [
+    { key: 'naam', label: 'Naam', Icon: Users },
+    { key: 'bedrijfsnaam', label: 'Bedrijfsnaam', Icon: Building },
+    { key: 'type', label: 'Type', Icon: Tag, select: true, options: [
+      { value: 'leverancier artikelen', label: 'Leverancier artikelen' },
+      { value: 'leverancier diensten', label: 'Leverancier diensten' },
+      { value: 'financieel', label: 'Financieel' },
+      { value: 'overheid', label: 'Overheid' },
+      { value: 'overig', label: 'Overig' }
+    ] },
+    { key: 'debiteurennummer', label: 'Debiteurennummer', Icon: Hash },
+    { key: 'rubriek', label: 'Rubriek', Icon: List },
+    { key: 'telefoon', label: 'Telefoon', Icon: Phone },
+    { key: 'email', label: 'Email', Icon: Mail },
+    { key: 'website', label: 'Website', Icon: Globe },
+    { key: 'opmerking', label: 'Opmerking', Icon: Users }
+  ].map(field => (
+    <div key={field.key} className="flex flex-col">
+      <label className="flex items-center space-x-2 font-medium">
+        <field.Icon className="w-4 h-4 text-gray-600" />
+        <span>{field.label}</span>
+      </label>
+      {field.select ? (
+        <select
+          className="w-full border rounded px-2 py-1"
+          value={(bewerkt as any)[field.key] || ''}
+          onChange={e => setBewerkt({ ...bewerkt, [field.key]: e.target.value })}
+        >
+          <option value="">Selecteer {field.label.toLowerCase()}</option>
+          {field.options!.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      ) : field.key !== 'opmerking' ? (
+        <input
+          type="text"
+          className="w-full border rounded px-2 py-1"
+          value={(bewerkt as any)[field.key] || ''}
+          onChange={e => setBewerkt({ ...bewerkt, [field.key]: e.target.value })}
+        />
+      ) : (
+        <textarea
+          className="w-full border rounded px-2 py-1"
+          rows={3}
+          value={(bewerkt as any)[field.key] || ''}
+          onChange={e => setBewerkt({ ...bewerkt, [field.key]: e.target.value })}
+        />
+      )}
+    </div>
+  )))
+}
                 <div key={field.key} className="flex flex-col"> className="flex flex-col">
                   <label className="flex items-center space-x-2 font-medium">
                     <field.Icon className="w-4 h-4 text-Gray-600" />
