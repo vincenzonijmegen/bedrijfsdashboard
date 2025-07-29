@@ -15,9 +15,9 @@ import { db } from '@/lib/db';
 
 // GET: alle bedrijven + hun contactpersonen ophalen
 export async function GET() {
-  // Haal bedrijven
+  // Haal bedrijven met algemene contactgegevens
   const compRes = await db.query(
-    `SELECT id, naam, bedrijfsnaam, type, debiteurennummer, rubriek, opmerking
+    `SELECT id, naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking
      FROM admin_contacten ORDER BY naam ASC`
   );
   // Haal personen
@@ -45,13 +45,14 @@ export async function GET() {
 // POST: nieuw bedrijf + personen
 export async function POST(req: Request) {
   const body = await req.json();
-  const { personen, ...compData } = body;
+  const { personen, naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking } = body;
 
   // 1) Insert bedrijf
   const compInsert = await db.query(
-    `INSERT INTO admin_contacten (naam, bedrijfsnaam, type, debiteurennummer, rubriek, opmerking)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-    [compData.naam, compData.bedrijfsnaam, compData.type, compData.debiteurennummer, compData.rubriek, compData.opmerking]
+    `INSERT INTO admin_contacten
+       (naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+    [naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking]
   );
   const newId = compInsert.rows[0].id;
 
@@ -71,14 +72,15 @@ export async function POST(req: Request) {
 // PUT: update bedrijf en contactpersonen
 export async function PUT(req: Request) {
   const body = await req.json();
-  const { id, personen, ...compData } = body;
+  const { id, personen, naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking } = body;
 
-  // Update bedrijf
+  // Update bedrijf met algemene gegevens
   await db.query(
     `UPDATE admin_contacten
-     SET naam=$1, bedrijfsnaam=$2, type=$3, debiteurennummer=$4, rubriek=$5, opmerking=$6
-     WHERE id=$7`,
-    [compData.naam, compData.bedrijfsnaam, compData.type, compData.debiteurennummer, compData.rubriek, compData.opmerking, id]
+     SET naam=$1, bedrijfsnaam=$2, type=$3, debiteurennummer=$4,
+         rubriek=$5, telefoon=$6, email=$7, website=$8, opmerking=$9
+     WHERE id=$10`,
+    [naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking, id]
   );
 
   // Verwijder oude personen
@@ -103,5 +105,3 @@ export async function DELETE(req: Request) {
   await db.query(`DELETE FROM admin_contacten WHERE id=$1`, [id]);
   return NextResponse.json({ success: true });
 }
-
-// Voor contactpersonen CRUD apart kun je routes onder /api/contactpersonen aanmaken.
