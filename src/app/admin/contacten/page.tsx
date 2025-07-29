@@ -28,6 +28,16 @@ interface Company {
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
+  export default function ContactenPage() {
+    const { data: bedrijven, error, mutate } = useSWR<Company[]>('/api/contacten', fetcher);
+    // Fallbacks voor laden en fout
+    if (error) {
+      return <div className="p-6 max-w-4xl mx-auto text-red-600">Fout bij laden: {error.message}</div>;
+    }
+    if (!bedrijven) {
+      return <div className="p-6 max-w-4xl mx-auto">Laden...</div>;
+    }
+
 export default function ContactenPage() {
   const { data: bedrijven, mutate } = useSWR<Company[]>('/api/contacten', fetcher);
   const [modalOpen, setModalOpen] = useState(false);
