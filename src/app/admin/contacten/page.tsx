@@ -4,6 +4,8 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { Phone, Mail, Globe, Users, UserPlus, Building, Tag, Hash, List } from 'lucide-react';
+import { JSX } from 'react';
+
 
 interface Contactpersoon {
   id?: number;
