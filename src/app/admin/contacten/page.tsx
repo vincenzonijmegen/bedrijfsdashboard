@@ -102,7 +102,17 @@ export default function ContactenPage() {
         </button>
       </div>
       <div className="space-y-4">
-        {gesorteerd?.map(c => (
+        {gesorteerd?.reduce((acc, c, idx, arr) => {
+          const prevType = idx > 0 ? arr[idx - 1].type : null;
+          const showHeader = c.type !== prevType;
+          if (showHeader) {
+            acc.push(
+              <h2 key={`header-${c.type}`} className="text-xl font-semibold text-gray-700 pt-6">
+                {c.type || 'Onbekend type'}
+              </h2>
+            );
+          }
+          acc.push(
           <div key={c.id} className="p-4 border rounded shadow">
             <div className="flex justify-between items-start">
               <strong className="text-lg">{c.naam}</strong>
@@ -133,8 +143,9 @@ export default function ContactenPage() {
                 ))}
               </ul>
             </div>
-          </div>
-        ))}
+          </div>);
+        return acc;
+      }, [])}
       </div>
 
       {modalOpen && (
