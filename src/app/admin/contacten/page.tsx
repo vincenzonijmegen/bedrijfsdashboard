@@ -87,6 +87,8 @@ export default function ContactenPage() {
     setBewerkt({ ...bewerkt, personen });
   };
 
+  const gesorteerd = bedrijven?.slice().sort((a, b) => a.type.localeCompare(b.type));
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-4">
@@ -100,7 +102,7 @@ export default function ContactenPage() {
         </button>
       </div>
       <div className="space-y-4">
-        {bedrijven?.map(c => (
+        {gesorteerd?.map(c => (
           <div key={c.id} className="p-4 border rounded shadow">
             <div className="flex justify-between items-start">
               <strong className="text-lg">{c.naam}</strong>
