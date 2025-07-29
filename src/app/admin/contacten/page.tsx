@@ -32,7 +32,15 @@ export default function ContactenPage() {
   const { data: bedrijven, mutate } = useSWR<Company[]>('/api/contacten', fetcher);
   const [modalOpen, setModalOpen] = useState(false);
   const emptyCompany: Omit<Company, 'id'> = {
-    naam: '', bedrijfsnaam: '', type: '', debiteurennummer: '', rubriek: '', telefoon: '', email: '', website: '', opmerking: '',
+    naam: '',
+    bedrijfsnaam: '',
+    type: '',
+    debiteurennummer: '',
+    rubriek: '',
+    telefoon: '',
+    email: '',
+    website: '',
+    opmerking: '',
     personen: [{ naam: '', telefoon: '', email: '' }]
   };
   const [bewerkt, setBewerkt] = useState<Partial<Company>>(emptyCompany);
@@ -86,7 +94,10 @@ export default function ContactenPage() {
           <Users className="w-6 h-6 text-gray-800" />
           <span>Belangrijke Gegevens</span>
         </h1>
-        <button onClick={openNew} className="flex items-center space-x-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+        <button
+          onClick={openNew}
+          className="flex items-center space-x-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
           <UserPlus className="w-5 h-5" />
           <span>Nieuw bedrijf</span>
         </button>
@@ -97,18 +108,65 @@ export default function ContactenPage() {
             <div className="flex justify-between items-start">
               <strong className="text-lg">{c.naam}</strong>
               <div className="space-x-2">
-                <button onClick={() => openEdit(c)} className="px-2 py-1 border rounded hover:bg-gray-100">Bewerk</button>
-                <button onClick={() => handleDelete(c.id)} className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700">Verwijder</button>
+                <button onClick={() => openEdit(c)} className="px-2 py-1 border rounded hover:bg-gray-100">
+                  Bewerk
+                </button>
+                <button
+                  onClick={() => handleDelete(c.id)}
+                  className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                  Verwijder
+                </button>
               </div>
             </div>
             <div className="mt-2 space-y-2 text-sm">
-              {c.bedrijfsnaam && <div className="flex items-center space-x-2"><Building className="w-4 h-4 text-gray-600"/> className="w-4 h-4 text-gray-600"/><span>{c.bedrijfsnaam}</span></div>}
-              <div className="flex items-center space-x-2"><Tag className="w-4 h-4 text-gray-600"/><span>Type: {c.type}</span></div>
-              {c.debiteurennummer && <div className="flex items-center space-x-2"><Hash className="w-4 h-4 text-gray-600"/>="w-4 h-4 text-gray-600"/><span>Debiteur #: {c.debiteurennummer}</span></div>}
-              {c.rubriek && <div className="flex items-center space-x-2"><List className="w-4 h-4 text-gray-600"/>="w-4 h-4 text-gray-600"/><span>Rubriek: {c.rubriek}</span></div>}
-              {c.telefoon && <div className="flex items-center space-x-2"><Phone className="w-4 h-4 text-gray-600"/><span>{c.telefoon}</span></div>}
-              {c.email && <div className="flex items-center space-x-2"><Mail className="w-4 h-4 text-gray-600"/><span>{c.email}</span></div>}
-              {c.website && <div className="flex items-center space-x-2"><Globe className="w-4 h-4 text-gray-600"/><a href={c.website} target="_blank" rel="noreferrer" className="underline">{c.website}</a></div>}
+              {c.bedrijfsnaam && (
+                <div className="flex items-center space-x-2">
+                  <Building className="w-4 h-4 text-gray-600" />
+                  <span>{c.bedrijfsnaam}</span>
+                </div>
+              )}
+              <div className="flex items-center space-x-2">
+                <Tag className="w-4 h-4 text-gray-600" />
+                <span>Type: {c.type}</span>
+              </div>
+              {c.debiteurennummer && (
+                <div className="flex items-center space-x-2">
+                  <Hash className="w-4 h-4 text-gray-600" />
+                  <span>Debiteur #: {c.debiteurennummer}</span>
+                </div>
+              )}
+              {c.rubriek && (
+                <div className="flex items-center space-x-2">
+                  <List className="w-4 h-4 text-gray-600" />
+                  <span>Rubriek: {c.rubriek}</span>
+                </div>
+              )}
+              {c.telefoon && (
+                <div className="flex items-center space-x-2">
+                  <Phone className="w-4 h-4 text-gray-600" />
+                  <span>{c.telefoon}</span>
+                </div>
+              )}
+              {c.email && (
+                <div className="flex items-center space-x-2">
+                  <Mail className="w-4 h-4 text-gray-600" />
+                  <span>{c.email}</span>
+                </div>
+              )}
+              {c.website && (
+                <div className="flex items-center space-x-2">
+                  <Globe className="w-4 h-4 text-gray-600" />
+                  <a
+                    href={c.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline"
+                  >
+                    {c.website}
+                  </a>
+                </div>
+              )}
               {c.opmerking && <div className="italic">{c.opmerking}</div>}
             </div>
             <div className="mt-3">
@@ -120,8 +178,18 @@ export default function ContactenPage() {
                 {c.personen.map((p, i) => (
                   <li key={i} className="flex items-center space-x-2">
                     <span>{p.naam}</span>
-                    {p.telefoon && <><Phone className="w-4 h-4 text-gray-500"/><span>{p.telefoon}</span></>}
-                    {p.email && <><Mail className="w-4 h-4 text-gray-500"/><span>{p.email}</span></>}
+                    {p.telefoon && (
+                      <>
+                        <Phone className="w-4 h-4 text-gray-500" />
+                        <span>{p.telefoon}</span>
+                      </>
+                    )}
+                    {p.email && (
+                      <>
+                        <Mail className="w-4 h-4 text-gray-500" />
+                        <span>{p.email}</span>
+                      </>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -133,8 +201,16 @@ export default function ContactenPage() {
       {modalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl overflow-y-auto max-h-full">
-            <h2 className="text-xl font-semibold mb-4">{bewerkt.id ? 'Bewerk bedrijf' : 'Nieuw bedrijf'}</h2>
-            <form onSubmit={e => { e.preventDefault(); handleSave(); }} className="space-y-4">
+            <h2 className="text-xl font-semibold mb-4">
+              {bewerkt.id ? 'Bewerk bedrijf' : 'Nieuw bedrijf'}
+            </h2>
+            <form
+              onSubmit={e => {
+                e.preventDefault();
+                handleSave();
+              }}
+              className="space-y-4"
+            >
               {[
                 { key: 'naam', label: 'Naam', Icon: Users },
                 { key: 'bedrijfsnaam', label: 'Bedrijfsnaam', Icon: Users },
@@ -148,7 +224,7 @@ export default function ContactenPage() {
               ].map(field => (
                 <div key={field.key} className="flex flex-col">
                   <label className="flex items-center space-x-2 font-medium">
-                    <field.Icon className="w-4 h-4 text-gray-600" />
+                    <field.Icon className="w-4 h-4 text-Gray-600" />
                     <span>{field.label}</span>
                   </label>
                   {field.key !== 'opmerking' ? (
@@ -172,20 +248,56 @@ export default function ContactenPage() {
                 <h3 className="font-medium">Contactpersonen</h3>
                 {(bewerkt.personen || []).map((p, idx) => (
                   <div key={idx} className="flex space-x-2 items-center mb-2">
-                    <input className="border px-2 py-1 flex-1" placeholder="Naam" value={p.naam} onChange={e => updatePersoon(idx, 'naam', e.target.value)} />
-                    <input className="border px-2 py-1" placeholder="Telefoon" value={p.telefoon} onChange={e => updatePersoon(idx, 'telefoon', e.target.value)} />
-                    <input className="border px-2 py-1" placeholder="Email" value={p.email} onChange={e => updatePersoon(idx, 'email', e.target.value)} />
-                    <button type="button" onClick={() => removePersoon(idx)} className="px-2 py-1 bg-red-500 text-white rounded">-</button>
+                    <input
+                      className="border px-2 py-1 flex-1"
+                      placeholder="Naam"
+                      value={p.naam}
+                      onChange={e => updatePersoon(idx, 'naam', e.target.value)}
+                    />
+                    <input
+                      className="border px-2 py-1"
+                      placeholder="Telefoon"
+                      value={p.telefoon}
+                      onChange={e => updatePersoon(idx, 'telefoon', e.target.value)}
+                    />
+                    <input
+                      className="border px-2 py-1"
+                      placeholder="Email"
+                      value={p.email}
+                      onChange={e => updatePersoon(idx, 'email', e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePersoon(idx)}
+                      className="px-2 py-1 bg-red-500 text-white rounded"
+                    >
+                      -
+                    </button>
                   </div>
                 ))}
-                <button type="button" onClick={addPersoon} className="px-3 py-1 bg-green-600 text-white rounded flex items-center space-x-1"> 
+                <button
+                  type="button"
+                  onClick={addPersoon}
+                  className="px-3 py-1 bg-green-600 text-white rounded flex items-center space-x-1"
+                >
                   <UserPlus className="w-4 h-4" />
                   <span>Persoon toevoegen</span>
                 </button>
               </div>
               <div className="flex justify-end space-x-2 pt-4">
-                <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded hover:bg-gray-100">Annuleer</button>
-                <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">{bewerkt.id ? 'Opslaan' : 'Toevoegen'}</button>
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  className="px-4 py-2 border rounded hover:bg-gray-100"
+                >
+                  Annuleer
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  {bewerkt.id ? 'Opslaan' : 'Toevoegen'}
+                </button>
               </div>
             </form>
           </div>
