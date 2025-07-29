@@ -89,18 +89,30 @@ export default function ContactenPage() {
     setBewerkt({ ...bewerkt, personen });
   };
 
-  const gesorteerd = bedrijven?.slice().sort((a, b) => a.type.localeCompare(b.type));
+  const typeOrder = [
+    'leverancier artikelen',
+    'leverancier diensten',
+    'financieel',
+    'overheid',
+    'overig'
+  ];
+
+  const gesorteerd = bedrijven?.slice().sort((a, b) => {
+    const indexA = typeOrder.indexOf(a.type);
+    const indexB = typeOrder.indexOf(b.type);
+    return indexA - indexB || a.naam.localeCompare(b.naam);
+  });
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold flex items-center space-x-2">
           <Users className="w-6 h-6 text-gray-800" />
-          <span>Belangrijke Gegevens</span>
+          <span>Contacten</span>
         </h1>
         <button onClick={openNew} className="flex items-center space-x-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
           <UserPlus className="w-5 h-5" />
-          <span>Nieuw bedrijf</span>
+          <span>Nieuw contact</span>
         </button>
       </div>
       <div className="space-y-4">
@@ -109,7 +121,7 @@ export default function ContactenPage() {
           const showHeader = c.type !== prevType;
           if (showHeader) {
             acc.push(
-              <h2 key={`header-${c.type}`} className="text-xl font-semibold text-gray-700 pt-6">
+              <h2 key={`header-${c.type}`} className="text-xl font-semibold pt-6 px-2 py-1 rounded bg-gray-100 text-gray-800">
                 {c.type || 'Onbekend type'}
               </h2>
             );
