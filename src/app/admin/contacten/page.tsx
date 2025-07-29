@@ -108,8 +108,26 @@ export default function ContactenPage() {
       </div>
       <div className="space-y-4">
         {gesorteerd?.map(c => (
-          <div key={c.id} className="p-4 border rounded shadow">
-            {/* Rest ongewijzigd */}
+          <div key={c.id} className="p-4 border rounded shadow space-y-1">
+            <div className="flex justify-between">
+              <strong>{c.naam}</strong>
+              <div className="space-x-2">
+                <button onClick={() => openEdit(c)} className="px-2 py-1 border rounded hover:bg-gray-100">
+                  Bewerk
+                </button>
+                <button onClick={() => handleDelete(c.id)} className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700">
+                  Verwijder
+                </button>
+              </div>
+            </div>
+            {c.type && <div className="text-sm text-gray-700">Type: {c.type}</div>}
+            {c.telefoon && <div className="text-sm text-gray-700">📞 {c.telefoon}</div>}
+            {c.email && <div className="text-sm text-gray-700">📧 {c.email}</div>}
+            {c.website && (
+              <div className="text-sm text-blue-700 underline">
+                🌐 <a href={c.website} target="_blank" rel="noreferrer">{c.website}</a>
+              </div>
+            )}
           </div>
         ))}
       </div>
