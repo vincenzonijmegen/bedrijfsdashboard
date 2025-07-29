@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Phone, Mail, Globe, Users, UserPlus } from 'lucide-react';
+import { Phone, Mail, Globe, Users, UserPlus, Building, Tag, Hash, List } from 'lucide-react';
 
 interface Contactpersoon {
   id?: number;
@@ -102,10 +102,10 @@ export default function ContactenPage() {
               </div>
             </div>
             <div className="mt-2 space-y-2 text-sm">
-              {c.bedrijfsnaam && <div className="flex items-center space-x-2"><Users className="w-4 h-4 text-gray-600"/><span>{c.bedrijfsnaam}</span></div>}
-              <div className="flex items-center space-x-2"><Users className="w-4 h-4 text-gray-600"/><span>Type: {c.type}</span></div>
-              {c.debiteurennummer && <div className="flex items-center space-x-2"><Users className="w-4 h-4 text-gray-600"/><span>Debiteur #: {c.debiteurennummer}</span></div>}
-              {c.rubriek && <div className="flex items-center space-x-2"><Users className="w-4 h-4 text-gray-600"/><span>Rubriek: {c.rubriek}</span></div>}
+              {c.bedrijfsnaam && <div className="flex items-center space-x-2"><Building className="w-4 h-4 text-gray-600"/> className="w-4 h-4 text-gray-600"/><span>{c.bedrijfsnaam}</span></div>}
+              <div className="flex items-center space-x-2"><Tag className="w-4 h-4 text-gray-600"/><span>Type: {c.type}</span></div>
+              {c.debiteurennummer && <div className="flex items-center space-x-2"><Hash className="w-4 h-4 text-gray-600"/>="w-4 h-4 text-gray-600"/><span>Debiteur #: {c.debiteurennummer}</span></div>}
+              {c.rubriek && <div className="flex items-center space-x-2"><List className="w-4 h-4 text-gray-600"/>="w-4 h-4 text-gray-600"/><span>Rubriek: {c.rubriek}</span></div>}
               {c.telefoon && <div className="flex items-center space-x-2"><Phone className="w-4 h-4 text-gray-600"/><span>{c.telefoon}</span></div>}
               {c.email && <div className="flex items-center space-x-2"><Mail className="w-4 h-4 text-gray-600"/><span>{c.email}</span></div>}
               {c.website && <div className="flex items-center space-x-2"><Globe className="w-4 h-4 text-gray-600"/><a href={c.website} target="_blank" rel="noreferrer" className="underline">{c.website}</a></div>}
