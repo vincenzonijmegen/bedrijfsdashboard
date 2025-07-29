@@ -164,7 +164,26 @@ export default function ContactenPage() {
                 <label className="font-medium">Debiteurennummer</label>
                 <input type="text" className="w-full border rounded px-2 py-1" value={bewerkt.debiteurennummer || ''} onChange={e => setBewerkt({ ...bewerkt, debiteurennummer: e.target.value })} />
               </div>
-              {/* Additional fields similar for rubriek, telefoon, email, website, opmerking */}
+              <div className="flex flex-col">
+                <label className="font-medium">Rubriek</label>
+                <input type="text" className="w-full border rounded px-2 py-1" value={bewerkt.rubriek || ''} onChange={e => setBewerkt({ ...bewerkt, rubriek: e.target.value })} />
+              </div>
+              <div className="flex flex-col">
+                <label className="font-medium">Telefoon</label>
+                <input type="text" className="w-full border rounded px-2 py-1" value={bewerkt.telefoon || ''} onChange={e => setBewerkt({ ...bewerkt, telefoon: e.target.value })} />
+              </div>
+              <div className="flex flex-col">
+                <label className="font-medium">Email</label>
+                <input type="text" className="w-full border rounded px-2 py-1" value={bewerkt.email || ''} onChange={e => setBewerkt({ ...bewerkt, email: e.target.value })} />
+              </div>
+              <div className="flex flex-col">
+                <label className="font-medium">Website</label>
+                <input type="text" className="w-full border rounded px-2 py-1" value={bewerkt.website || ''} onChange={e => setBewerkt({ ...bewerkt, website: e.target.value })} />
+              </div>
+              <div className="flex flex-col">
+                <label className="font-medium">Opmerking</label>
+                <textarea className="w-full border rounded px-2 py-1" rows={3} value={bewerkt.opmerking || ''} onChange={e => setBewerkt({ ...bewerkt, opmerking: e.target.value })} />
+              </div>
               <div>
                 <h3 className="font-medium">Contactpersonen</h3>
                 {(bewerkt.personen || []).map((p, idx) => (
