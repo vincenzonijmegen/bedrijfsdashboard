@@ -102,7 +102,7 @@ export default function ContactenPage() {
         </button>
       </div>
       <div className="space-y-4">
-        {gesorteerd?.reduce((acc, c, idx, arr) => {
+        {gesorteerd?.reduce<JSX.Element[]>((acc, c, idx, arr) => {
           const prevType = idx > 0 ? arr[idx - 1].type : null;
           const showHeader = c.type !== prevType;
           if (showHeader) {
