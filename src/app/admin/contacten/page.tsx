@@ -32,6 +32,44 @@ export default function ContactenPage() {
   // Data fetching
   const { data: bedrijven, error, mutate } = useSWR<Company[]>('/api/contacten', fetcher);
 
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [current, setCurrent] = useState<Partial<Company>>({ personen: [] });
+
+  // Loading and error states
+  if (error) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto text-red-600">
+        Fout bij laden: {error.message}
+      </div>
+    );
+  }
+  if (!bedrijven) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        Laden...
+      </div>
+    );
+  }
+
+  // Template for new company
+  const emptyCompany: Omit<Company, 'id'> = {
+    naam: '',
+    bedrijfsnaam: '',
+    type: '',
+    debiteurennummer: '',
+    rubriek: '',
+    telefoon: '',
+    email: '',
+    website: '',
+    opmerking: '',
+    personen: [{ naam: '', telefoon: '', email: '' }]
+  };
+
+  // Styles per rubriek
+
+  const { data: bedrijven, error, mutate } = useSWR<Company[]>('/api/contacten', fetcher);
+
   // Loading and error states
   if (error) {
     return (
