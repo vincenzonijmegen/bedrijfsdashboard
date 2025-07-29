@@ -56,8 +56,7 @@ export default function ContactenPage() {
 
   const handleSave = async () => {
     const method = bewerkt.id ? 'PUT' : 'POST';
-    const url = '/api/contacten' + (method === 'PUT' && bewerkt.id ? `?id=${bewerkt.id}` : '');
-    await fetch(url, {
+    await fetch('/api/contacten', {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(bewerkt)
@@ -76,10 +75,7 @@ export default function ContactenPage() {
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">📘 Belangrijke Gegevens</h1>
-        <button
-          onClick={openNew}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-        >
+        <button onClick={openNew} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
           Nieuw
         </button>
       </div>
@@ -88,39 +84,19 @@ export default function ContactenPage() {
         {contacten?.map(c => (
           <div key={c.id} className="p-4 border rounded shadow flex justify-between">
             <div className="space-y-1">
-              <div>
-                <strong>{c.naam}</strong>{c.bedrijfsnaam && <em> ({c.bedrijfsnaam})</em>}
-              </div>
-              <div className="text-sm text-gray-500">Type: {c.type}</div>
-              {c.debiteurennummer && <div className="text-sm">Debiteur #: {c.debiteurennummer}</div>}
-              {c.rubriek && <div className="text-sm">Rubriek: {c.rubriek}</div>}
-              <div className="mt-2 space-y-1 text-sm">
-                {c.telefoon && <div>📞 {c.telefoon}</div>}
-                {c.email && <div>✉️ {c.email}</div>}
-                {c.website && (
-                  <div>
-                    🔗{' '}
-                    <a href={c.website} target="_blank" rel="noreferrer" className="text-blue-600 underline">
-                      {c.website}
-                    </a>
-                  </div>
-                )}
-                {c.opmerking && <div className="italic">{c.opmerking}</div>}
-              </div>
+              <strong>{c.naam}</strong>
+              {c.bedrijfsnaam && <div>Bedrijf: {c.bedrijfsnaam}</div>}
+              <div>Type: {c.type}</div>
+              {c.debiteurennummer && <div>Debiteur #: {c.debiteurennummer}</div>}
+              {c.rubriek && <div>Rubriek: {c.rubriek}</div>}
+              {c.telefoon && <div>Telefoon: {c.telefoon}</div>}
+              {c.email && <div>Email: {c.email}</div>}
+              {c.website && <div>Website: <a href={c.website} target="_blank" className="text-blue-600 underline">{c.website}</a></div>}
+              {c.opmerking && <div>Opmerking: {c.opmerking}</div>}
             </div>
-            <div className="space-y-2 flex-shrink-0">
-              <button
-                onClick={() => openEdit(c)}
-                className="w-full text-sm border border-gray-300 px-3 py-1 rounded hover:bg-gray-100 transition"
-              >
-                Bewerk
-              </button>
-              <button
-                onClick={() => handleDelete(c.id)}
-                className="w-full text-sm bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
-              >
-                Verwijder
-              </button>
+            <div className="flex flex-col space-y-2">
+              <button onClick={() => openEdit(c)} className="px-3 py-1 border rounded hover:bg-gray-100">Bewerk</button>
+              <button onClick={() => handleDelete(c.id!)} className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700">Verwijder</button>
             </div>
           </div>
         ))}
@@ -132,41 +108,46 @@ export default function ContactenPage() {
             <h2 className="text-xl font-semibold mb-4">
               {bewerkt.id ? 'Bewerk contact' : 'Nieuw contact'}
             </h2>
-            <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleSave(); }}>
-              {['naam', 'bedrijfsnaam', 'type', 'debiteurennummer', 'rubriek', 'telefoon', 'email', 'website', 'opmerking'].map(field => (
-                <div key={field}>
-                  <label className="block font-medium capitalize">{field.replace('debiteurennummer', 'Debiteurennummer').replace('bedrijfsnaam', 'Bedrijfsnaam')}</label>
-                  {field !== 'opmerking' ? (
-                    <input
-                      type={field === 'email' ? 'email' : field === 'website' ? 'url' : 'text'}
-                      className="w-full border rounded px-3 py-2"
-                      value={(bewerkt as any)[field] || ''}
-                      onChange={e => setBewerkt({ ...bewerkt, [field]: e.target.value })}
-                    />
-                  ) : (
-                    <textarea
-                      className="w-full border rounded px-3 py-2"
-                      rows={3}
-                      value={(bewerkt as any)[field] || ''}
-                      onChange={e => setBewerkt({ ...bewerkt, [field]: e.target.value })}
-                    />
-                  )}
-                </div>
-              ))}
-              <div className="mt-6 flex justify-end space-x-2">
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(false)}
-                  className="px-4 py-2 border rounded hover:bg-gray-100 transition"
-                >
-                  Annuleer
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
-                >
-                  {bewerkt.id ? 'Opslaan' : 'Toevoegen'}
-                </button>
+            <form onSubmit={e => { e.preventDefault(); handleSave(); }}>
+              <div className="mb-3">
+                <label className="block font-medium">Naam</label>
+                <input className="w-full border rounded px-2 py-1" value={bewerkt.naam || ''} onChange={e => setBewerkt({ ...bewerkt, naam: e.target.value })} />
+              </div>
+              <div className="mb-3">
+                <label className="block font-medium">Bedrijfsnaam</label>
+                <input className="w-full border rounded px-2 py-1" value={bewerkt.bedrijfsnaam || ''} onChange={e => setBewerkt({ ...bewerkt, bedrijfsnaam: e.target.value })} />
+              </div>
+              <div className="mb-3">
+                <label className="block font-medium">Type</label>
+                <input className="w-full border rounded px-2 py-1" value={bewerkt.type || ''} onChange={e => setBewerkt({ ...bewerkt, type: e.target.value })} />
+              </div>
+              <div className="mb-3">
+                <label className="block font-medium">Debiteurennummer</label>
+                <input className="w-full border rounded px-2 py-1" value={bewerkt.debiteurennummer || ''} onChange={e => setBewerkt({ ...bewerkt, debiteurennummer: e.target.value })} />
+              </div>
+              <div className="mb-3">
+                <label className="block font-medium">Rubriek</label>
+                <input className="w-full border rounded px-2 py-1" value={bewerkt.rubriek || ''} onChange={e => setBewerkt({ ...bewerkt, rubriek: e.target.value })} />
+              </div>
+              <div className="mb-3">
+                <label className="block font-medium">Telefoon</label>
+                <input className="w-full border rounded px-2 py-1" value={bewerkt.telefoon || ''} onChange={e => setBewerkt({ ...bewerkt, telefoon: e.target.value })} />
+              </div>
+              <div className="mb-3">
+                <label className="block font-medium">Email</label>
+                <input className="w-full border rounded px-2 py-1" value={bewerkt.email || ''} onChange={e => setBewerkt({ ...bewerkt, email: e.target.value })} />
+              </div>
+              <div className="mb-3">
+                <label className="block font-medium">Website</label>
+                <input className="w-full border rounded px-2 py-1" value={bewerkt.website || ''} onChange={e => setBewerkt({ ...bewerkt, website: e.target.value })} />
+              </div>
+              <div className="mb-4">
+                <label className="block font-medium">Opmerking</label>
+                <textarea className="w-full border rounded px-2 py-1" rows={3} value={bewerkt.opmerking || ''} onChange={e => setBewerkt({ ...bewerkt, opmerking: e.target.value })} />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded hover:bg-gray-100">Annuleer</button>
+                <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">{bewerkt.id ? 'Opslaan' : 'Toevoegen'}</button>
               </div>
             </form>
           </div>
