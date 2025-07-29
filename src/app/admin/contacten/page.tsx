@@ -54,19 +54,6 @@ export default function ContactenPage() {
     mutate,
   } = useSWR<Company[]>('/api/contacten', fetcher);
 
-  if (error) {
-    return (
-      <div className="p-6 max-w-4xl mx-auto text-red-600">
-        Fout bij laden: {error.message}
-      </div>
-    );
-  }
-  if (!bedrijven) {
-    return (
-      <div className="p-6 max-w-4xl mx-auto">Laden...</div>
-    );
-  }
-
   /** Modal State **/
   const emptyCompany: CompanyInput = {
     naam: '',
@@ -95,7 +82,7 @@ export default function ContactenPage() {
 
   /** Group and sort companies by rubriek **/
   const grouped = useMemo(() => {
-    return bedrijven.reduce<Record<string, Company[]>>((map, c) => {
+    return (bedrijven || []).reduce<Record<string, Company[]>>((map, c) => {
       const key = (c.rubriek || 'overig').toLowerCase();
       if (!map[key]) map[key] = [];
       map[key].push(c);
@@ -116,10 +103,22 @@ export default function ContactenPage() {
   ];
   const rubrieken = rubriekOrder.filter(r => grouped[r]?.length > 0);
 
+  if (error) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto text-red-600">
+        Fout bij laden: {error.message}
+      </div>
+    );
+  }
+  if (!bedrijven) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">Laden...</div>
+    );
+  }
+
   /** Handlers **/
   const openModal = (company?: Company) => {
     if (company) {
-      // Strip `id` for form state
       const { id, ...rest } = company;
       setCurrent(rest);
     } else {
@@ -179,6 +178,8 @@ export default function ContactenPage() {
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
+
+
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold flex items-center space-x-2">
