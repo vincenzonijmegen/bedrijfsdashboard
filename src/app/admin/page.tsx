@@ -1,3 +1,4 @@
+// src/components/AdminDashboard.tsx
 "use client";
 
 import * as React from 'react';
@@ -49,6 +50,13 @@ const bgColorMap: Record<string, string> = {
   emerald:'bg-emerald-100 text-emerald-900 hover:bg-emerald-200'
 };
 
+type LinkCardProps = {
+  href: string;
+  label: string;
+  color: string;
+  Icon: React.FC<React.SVGProps<SVGSVGElement>>;
+};
+
 const LinkCard = ({ href, label, color, Icon }: LinkCardProps) => (
   <Link
     href={href}
@@ -61,25 +69,17 @@ const LinkCard = ({ href, label, color, Icon }: LinkCardProps) => (
   </Link>
 );
 
-type LinkCardProps = {
-  href: string;
-  label: string;
-  color: string;
-  Icon: React.FC<React.SVGProps<SVGSVGElement>>;
-};
-
 type SectionProps = {
   id: string;
   title: string;
   children: React.ReactNode;
   color?: string;
-  activeSection: string | null;
+  activeSection: string;
   setActiveSection: (id: string) => void;
 };
 
 const Section = ({ id, title, children, color, activeSection, setActiveSection }: SectionProps) => {
   const open = id === activeSection;
-
   return (
     <section className="mb-6 border rounded-xl overflow-hidden shadow-sm">
       <button
@@ -112,7 +112,16 @@ function DailyTotalDisplay() {
 }
 
 export default function AdminDashboard() {
-  const [activeSection, setActiveSection] = React.useState<string>('meest');
+  // activeSection state persisted in localStorage
+  const [activeSection, setActive] = React.useState<string>(() => {
+    if (typeof window === 'undefined') return 'meest';
+    return localStorage.getItem('activeSection') || 'meest';
+  });
+
+  const setActiveSection = (id: string) => {
+    setActive(id);
+    localStorage.setItem('activeSection', id);
+  };
 
   return (
     <main className="max-w-6xl mx-auto p-6">
@@ -123,32 +132,26 @@ export default function AdminDashboard() {
         </Link>
       </div>
 
-      <Section id="meest" title="👥 Meest gebruikte onderdelen" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/acties" label="Actielijsten" color="purple" Icon={CheckSquare} />
-        <LinkCard href="/admin/notities" label="Notities" color="purple" Icon={FileText} />
-        <LinkCard href="/admin/voorraad/bestelpagina" label="Inkopen" color="purple" Icon={ShoppingCart} />
-        <LinkCard href="/admin/shiftbase/rooster" label="Rooster per dag" color="purple" Icon={CalendarDays} />
-        <LinkCard href="/open-diensten" label="Open Shifts" color="purple" Icon={CalendarDays} />
-        <LinkCard href="/admin/dossier" label="Dossiers" color="purple" Icon={Folder} />
-        <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="purple" Icon={Wrench} />
-        <LinkCard href="/admin/rapportage" label="Financiële Rapporten" color="purple" Icon={BarChart2} />
+      <Section id="meest" title="👥 Meest gebruikte onderdelen" color="slate" activeSection={activeSection} setActiveSection={setActiveSection}>
+        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="slate" Icon={ShoppingCart} />
+        <LinkCard href="/admin/shiftbase/rooster" label="Rooster per dag" color="slate" Icon={CalendarDays} />
+        <LinkCard href="/open-diensten" label="Open Shifts" color="slate" Icon={CalendarDays} />
+        <LinkCard href="/admin/dossier" label="Dossiers" color="slate" Icon={Folder} />
+        <LinkCard href="/admin/acties" label="Actielijsten" color="slate" Icon={CheckSquare} />
+        <LinkCard href="/admin/notities" label="Notities" color="slate" Icon={FileText} />
+        <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="slate" Icon={Wrench} />
+        <LinkCard href="/admin/rapportage" label="Financiële Rapporten" color="slate" Icon={BarChart2} />
       </Section>
 
-      <Section id="medewerkers" title="👥 Medewerkers" color="yellow" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="yellow" Icon={User} />
-        <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="yellow" Icon={Users} />
-        <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="yellow" Icon={FileText} />
-        <LinkCard href="/admin/functies" label="Functies" color="yellow" Icon={Tag} />
-        <LinkCard href="/admin/dossier" label="Dossiers" color="yellow" Icon={Folder} />
-        </Section>
-
-        <Section id="Instructies&Skills" title="🧠 Instructies & Skills" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
+      <Section id="medewerkers" title="👥 Medewerkers en instructies" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
+        <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} />
+        <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="green" Icon={Users} />
+        <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="green" Icon={FileText} />
+        <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} />
+        <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} />
         <LinkCard href="/admin/instructies" label="Instructies beheren" color="green" Icon={FileText} />
         <LinkCard href="/instructies" label="Instructies medewerkers" color="green" Icon={Eye} />
         <LinkCard href="/admin/resultaten" label="Toetsresultaten" color="green" Icon={BarChart2} />
-        <LinkCard href="/admin/skills/categorieen" label="Beheer skills categorieën" color="green" Icon={Tag} />
-        <LinkCard href="/admin/skills" label="Skills beheer" color="green" Icon={Layers} />
-        <LinkCard href="/admin/skills/toewijzen" label="Skills toewijzen" color="green" Icon={Activity} />
       </Section>
 
       <Section id="management" title="📘 Management" color="blue" activeSection={activeSection} setActiveSection={setActiveSection}>
@@ -156,7 +159,14 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} />
         <LinkCard href="/admin/suikervrij" label="Suikervrij productie" color="blue" Icon={IceCream} />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} />
-        <LinkCard href="/admin/contacten" label="Contacten" color="blue" Icon={Folder} />
+        <LinkCard href="/admin/contacten" label="Belangrijke gegevens" color="yellow" Icon={Folder} />
+      </Section>
+
+      <Section id="skills" title="🧠 Skills" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
+        <LinkCard href="/admin/skills/categorieen" label="Beheer categorieën" color="purple" Icon={Tag} />
+        <LinkCard href="/admin/skills" label="Skills beheer" color="purple" Icon={Layers} />
+        <LinkCard href="/admin/skills/toewijzen" label="Skills toewijzen" color="purple" Icon={Activity} />
+        <LinkCard href="/skills" label="Skills medewerkers" color="purple" Icon={Layers} />
       </Section>
 
       <Section id="planning" title="📅 Planning" color="orange" activeSection={activeSection} setActiveSection={setActiveSection}>
@@ -179,10 +189,9 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/kassa-omzet-test" label="Omzet inlezen" color="gray" Icon={Wrench} />
         <LinkCard href="/admin/rapportage" label="Financiële Rapporten" color="gray" Icon={BarChart2} />
         <LinkCard href="/admin/mypos" label="Inlezen maandbestanden myPOS" color="gray" Icon={Archive} />
-        <LinkCard href="/admin/mypos/boeking" label="Boekingsdocument myPOS ⇒> Snelstart" color="gray" Icon={FileText} />
+        <LinkCard href="/admin/mypos/boeking" label="Boekingsdocument myPOS⇒snelstart" color="gray" Icon={FileText} />
         <LinkCard href="/admin/omzet/prognose" label="Omzetverdeling" color="gray" Icon={PieChart} />
         <LinkCard href="/admin/recepten/allergenen" label="Allergenenkaart" color="gray" Icon={List} />
-        <LinkCard href="/skills" label="View skills medewerkers" color="gray" Icon={Layers} />
       </Section>
     </main>
   );
