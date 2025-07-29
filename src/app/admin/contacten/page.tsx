@@ -32,44 +32,6 @@ export default function ContactenPage() {
   // Data fetching
   const { data: bedrijven, error, mutate } = useSWR<Company[]>('/api/contacten', fetcher);
 
-  // Modal state
-  const [modalOpen, setModalOpen] = useState(false);
-  const [current, setCurrent] = useState<Partial<Company>>({ personen: [] });
-
-  // Loading and error states
-  if (error) {
-    return (
-      <div className="p-6 max-w-4xl mx-auto text-red-600">
-        Fout bij laden: {error.message}
-      </div>
-    );
-  }
-  if (!bedrijven) {
-    return (
-      <div className="p-6 max-w-4xl mx-auto">
-        Laden...
-      </div>
-    );
-  }
-
-  // Template for new company
-  const emptyCompany: Omit<Company, 'id'> = {
-    naam: '',
-    bedrijfsnaam: '',
-    type: '',
-    debiteurennummer: '',
-    rubriek: '',
-    telefoon: '',
-    email: '',
-    website: '',
-    opmerking: '',
-    personen: [{ naam: '', telefoon: '', email: '' }]
-  };
-
-  // Styles per rubriek
-
-  const { data: bedrijven, error, mutate } = useSWR<Company[]>('/api/contacten', fetcher);
-
   // Loading and error states
   if (error) {
     return (
@@ -121,9 +83,7 @@ export default function ContactenPage() {
       if (!map[key]) map[key] = [];
       map[key].push(c);
     });
-    Object.keys(map).forEach(r => {
-      map[r].sort((a, b) => a.naam.localeCompare(b.naam));
-    });
+    Object.keys(map).forEach(r => map[r].sort((a, b) => a.naam.localeCompare(b.naam)));
     return map;
   }, [bedrijven]);
 
@@ -135,6 +95,7 @@ export default function ContactenPage() {
     'overheid',
     'overig'
   ];
+
   const rubrieken = rubriekOrder.filter(r => grouped[r]?.length > 0);
 
   // Handlers
@@ -191,8 +152,7 @@ export default function ContactenPage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold flex items-center space-x-2">
-          <Users className="w-6 h-6" />
-          <span>Contacten</span>
+          <Users className="w-6 h-6" /><span>Contacten</span>
         </h1>
         <button
           onClick={() => openModal()}
@@ -231,46 +191,15 @@ export default function ContactenPage() {
                 <div className="mt-2 space-y-2 text-sm">
                   {c.bedrijfsnaam && (
                     <div className="flex items-center space-x-2">
-                      <Building />
-                      <span>{c.bedrijfsnaam}</span>
+                      <Building /><span>{c.bedrijfsnaam}</span>
                     </div>
                   )}
-                  <div className="flex items-center space-x-2">
-                    <Tag />
-                    <span>Type: {c.type}</span>
-                  </div>
-                  {c.debiteurennummer && (
-                    <div className="flex items-center space-x-2">
-                      <Hash />
-                      <span>{c.debiteurennummer}</span>
-                    </div>
-                  )}
-                  {c.rubriek && (
-                    <div className="flex items-center space-x-2">
-                      <List />
-                      <span>{c.rubriek}</span>
-                    </div>
-                  )}
-                  {c.telefoon && (
-                    <div className="flex items-center space-x-2">
-                      <Phone />
-                      <span>{c.telefoon}</span>
-                    </div>
-                  )}
-                  {c.email && (
-                    <div className="flex items-center space-x-2">
-                      <Mail />
-                      <span>{c.email}</span>
-                    </div>
-                  )}
-                  {c.website && (
-                    <div className="flex items-center space-x-2">
-                      <Globe />
-                      <a href={c.website} target="_blank" rel="noreferrer" className="underline">
-                        {c.website}
-                      </a>
-                    </div>
-                  )}
+                  <div className="flex items-center space-x-2"><Tag /><span>Type: {c.type}</span></div>
+                  {c.debiteurennummer && (<div className="flex items-center space-x-2"><Hash /><span>{c.debiteurennummer}</span></div>)}
+                  {c.rubriek && (<div className="flex items-center space-x-2"><List /><span>{c.rubriek}</span></div>)}
+                  {c.telefoon && (<div className="flex items-center space-x-2"><Phone /><span>{c.telefoon}</span></div>)}
+                  {c.email && (<div className="flex items-center space-x-2"><Mail /><span>{c.email}</span></div>)}
+                  {c.website && (<div className="flex items-center space-x-2"><Globe /><a href={c.website} target="_blank" rel="noreferrer" className="underline">{c.website}</a></div>)}
                   {c.opmerking && <div className="italic">{c.opmerking}</div>}
                 </div>
                 {/* Contactpersonen */}
@@ -296,9 +225,7 @@ export default function ContactenPage() {
       {modalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl overflow-y-auto max-h-full">
-            <h2 className="text-xl font-semibold mb-4">
-              {current.id ? 'Bewerk bedrijf' : 'Nieuw bedrijf'}
-            </h2>
+            <h2 className="text-xl font-semibold mb-4">{current.id ? 'Bewerk bedrijf' : 'Nieuw bedrijf'}</h2>
             <form onSubmit={e => { e.preventDefault(); save(); }} className="space-y-4">
               <div className="flex flex-col"><label>Naam</label><input type="text" className="border rounded px-2 py-1" value={current.naam||''} onChange={e=>updateField('naam',e.target.value)} /></div>
               <div className="flex flex-col"><label>Bedrijfsnaam</label><input type="text" className="border rounded px-2 py-1" value={current.bedrijfsnaam||''} onChange={e=>updateField('bedrijfsnaam',e.target.value)} /></div>
@@ -311,14 +238,7 @@ export default function ContactenPage() {
               <div className="flex flex-col"><label>Opmerking</label><textarea className="border rounded px-2 py-1" rows={3} value={current.opmerking||''} onChange={e=>updateField('opmerking',e.target.value)} /></div>
               <div>
                 <h3 className="font-medium">Contactpersonen</h3>
-                {(current.personen||[]).map((p,idx)=>(
-                  <div key={idx} className="flex space-x-2 items-center mb-2">
-                    <input className="border px-2 py-1 flex-1" placeholder="Naam" value={p.naam} onChange={e=>updatePersoon(idx,'naam',e.target.value)} />
-                    <input className="border px-2 py-1" placeholder="Telefoon" value={p.telefoon} onChange={e=>updatePersoon(idx,'telefoon',e.target.value)} />
-                    <input className="border px-2 py-1" placeholder="Email" value={p.email} onChange={e=>updatePersoon(idx,'email',e.target.value)} />
-                    <button type="button" onClick={()=>deletePersoon(idx)} className="px-2 py-1 bg-red-500 text-white rounded">-</button>
-                  </div>
-                ))}
+                {current.personen?.map((p,idx)=>(<div key={idx} className="flex space-x-2 items-center mb-2"><input className="border px-2 py-1 flex-1" placeholder="Naam" value={p.naam} onChange={e=>updatePersoon(idx,'naam',e.target.value)} /><input className="border px-2 py-1" placeholder="Telefoon" value={p.telefoon} onChange={e=>updatePersoon(idx,'telefoon',e.target.value)} /><input className="border px-2 py-1" placeholder="Email" value={p.email} onChange={e=>updatePersoon(idx,'email',e.target.value)} /><button type="button" onClick={()=>deletePersoon(idx)} className="px-2 py-1 bg-red-500 text-white rounded">-</button></div>))}
                 <button type="button" onClick={addPersoon} className="px-3 py-1 bg-green-600 text-white rounded flex items-center space-x-1"><UserPlus className="w-4 h-4"/><span>Persoon toevoegen</span></button>
               </div>
               <div className="flex justify-end space-x-2 pt-4"><button type="button" onClick={()=>setModalOpen(false)} className="px-4 py-2 border rounded hover:bg-gray-100">Annuleer</button><button type="submit" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">{current.id?'Opslaan':'Toevoegen'}</button></div>
