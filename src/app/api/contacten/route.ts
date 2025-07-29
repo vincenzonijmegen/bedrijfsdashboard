@@ -3,21 +3,23 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
 export async function GET() {
-  const contacten = await db.query(
-    'SELECT * FROM admin_contacten ORDER BY naam ASC'
+  const result = await db.query(
+    `SELECT id, naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking
+     FROM admin_contacten ORDER BY naam ASC`
   );
-  return NextResponse.json(contacten.rows);
+  return NextResponse.json(result.rows);
 }
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { naam, type, telefoon, email, website, opmerking } = body;
+  const { naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking } = body;
 
   const result = await db.query(
-    `INSERT INTO admin_contacten (naam, type, telefoon, email, website, opmerking)
-     VALUES ($1, $2, $3, $4, $5, $6)
+    `INSERT INTO admin_contacten
+     (naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      RETURNING *`,
-    [naam, type, telefoon, email, website, opmerking]
+    [naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking]
   );
 
   return NextResponse.json(result.rows[0]);
@@ -25,13 +27,21 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   const body = await req.json();
-  const { id, naam, type, telefoon, email, website, opmerking } = body;
+  const { id, naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking } = body;
 
   const result = await db.query(
     `UPDATE admin_contacten
-     SET naam = $1, type = $2, telefoon = $3, email = $4, website = $5, opmerking = $6
-     WHERE id = $7 RETURNING *`,
-    [naam, type, telefoon, email, website, opmerking, id]
+     SET naam = $1,
+         bedrijfsnaam = $2,
+         type = $3,
+         debiteurennummer = $4,
+         rubriek = $5,
+         telefoon = $6,
+         email = $7,
+         website = $8,
+         opmerking = $9
+     WHERE id = $10 RETURNING *`,
+    [naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking, id]
   );
 
   return NextResponse.json(result.rows[0]);

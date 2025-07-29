@@ -7,7 +7,10 @@ import useSWR from 'swr';
 interface Contact {
   id: number;
   naam: string;
+  bedrijfsnaam?: string;
   type: string;
+  debiteurennummer?: string;
+  rubriek?: string;
   telefoon?: string;
   email?: string;
   website?: string;
@@ -19,21 +22,42 @@ const fetcher = (url: string) => fetch(url).then(res => res.json());
 export default function ContactenPage() {
   const { data: contacten, mutate } = useSWR<Contact[]>('/api/contacten', fetcher);
   const [modalOpen, setModalOpen] = useState(false);
-  const [bewerkt, setBewerkt] = useState<Partial<Contact>>({ naam: '', type: '' });
+  const [bewerkt, setBewerkt] = useState<Partial<Contact>>({
+    naam: '',
+    bedrijfsnaam: '',
+    type: '',
+    debiteurennummer: '',
+    rubriek: '',
+    telefoon: '',
+    email: '',
+    website: '',
+    opmerking: ''
+  });
 
   const openNew = () => {
-    setBewerkt({ naam: '', type: '' });
+    setBewerkt({
+      naam: '',
+      bedrijfsnaam: '',
+      type: '',
+      debiteurennummer: '',
+      rubriek: '',
+      telefoon: '',
+      email: '',
+      website: '',
+      opmerking: ''
+    });
     setModalOpen(true);
   };
 
   const openEdit = (c: Contact) => {
-    setBewerkt(c);
+    setBewerkt({ ...c });
     setModalOpen(true);
   };
 
   const handleSave = async () => {
     const method = bewerkt.id ? 'PUT' : 'POST';
-    await fetch('/api/contacten', {
+    const url = '/api/contacten' + (method === 'PUT' && bewerkt.id ? `?id=${bewerkt.id}` : '');
+    await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(bewerkt)
@@ -63,8 +87,13 @@ export default function ContactenPage() {
       <div className="grid gap-3">
         {contacten?.map(c => (
           <div key={c.id} className="p-4 border rounded shadow flex justify-between">
-            <div>
-              <strong>{c.naam}</strong> <span className="text-sm text-gray-500">({c.type})</span>
+            <div className="space-y-1">
+              <div>
+                <strong>{c.naam}</strong>{c.bedrijfsnaam && <em> ({c.bedrijfsnaam})</em>}
+              </div>
+              <div className="text-sm text-gray-500">Type: {c.type}</div>
+              {c.debiteurennummer && <div className="text-sm">Debiteur #: {c.debiteurennummer}</div>}
+              {c.rubriek && <div className="text-sm">Rubriek: {c.rubriek}</div>}
               <div className="mt-2 space-y-1 text-sm">
                 {c.telefoon && <div>📞 {c.telefoon}</div>}
                 {c.email && <div>✉️ {c.email}</div>}
@@ -79,7 +108,7 @@ export default function ContactenPage() {
                 {c.opmerking && <div className="italic">{c.opmerking}</div>}
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 flex-shrink-0">
               <button
                 onClick={() => openEdit(c)}
                 className="w-full text-sm border border-gray-300 px-3 py-1 rounded hover:bg-gray-100 transition"
@@ -103,76 +132,43 @@ export default function ContactenPage() {
             <h2 className="text-xl font-semibold mb-4">
               {bewerkt.id ? 'Bewerk contact' : 'Nieuw contact'}
             </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block font-medium">Naam</label>
-                <input
-                  type="text"
-                  className="w-full border rounded px-3 py-2"
-                  value={bewerkt.naam || ''}
-                  onChange={e => setBewerkt({ ...bewerkt, naam: e.target.value })}
-                />
+            <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleSave(); }}>
+              {['naam', 'bedrijfsnaam', 'type', 'debiteurennummer', 'rubriek', 'telefoon', 'email', 'website', 'opmerking'].map(field => (
+                <div key={field}>
+                  <label className="block font-medium capitalize">{field.replace('debiteurennummer', 'Debiteurennummer').replace('bedrijfsnaam', 'Bedrijfsnaam')}</label>
+                  {field !== 'opmerking' ? (
+                    <input
+                      type={field === 'email' ? 'email' : field === 'website' ? 'url' : 'text'}
+                      className="w-full border rounded px-3 py-2"
+                      value={(bewerkt as any)[field] || ''}
+                      onChange={e => setBewerkt({ ...bewerkt, [field]: e.target.value })}
+                    />
+                  ) : (
+                    <textarea
+                      className="w-full border rounded px-3 py-2"
+                      rows={3}
+                      value={(bewerkt as any)[field] || ''}
+                      onChange={e => setBewerkt({ ...bewerkt, [field]: e.target.value })}
+                    />
+                  )}
+                </div>
+              ))}
+              <div className="mt-6 flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(false)}
+                  className="px-4 py-2 border rounded hover:bg-gray-100 transition"
+                >
+                  Annuleer
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
+                >
+                  {bewerkt.id ? 'Opslaan' : 'Toevoegen'}
+                </button>
               </div>
-              <div>
-                <label className="block font-medium">Type</label>
-                <input
-                  type="text"
-                  className="w-full border rounded px-3 py-2"
-                  value={bewerkt.type || ''}
-                  onChange={e => setBewerkt({ ...bewerkt, type: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block font-medium">Telefoon</label>
-                <input
-                  type="text"
-                  className="w-full border rounded px-3 py-2"
-                  value={bewerkt.telefoon || ''}
-                  onChange={e => setBewerkt({ ...bewerkt, telefoon: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block font-medium">E-mail</label>
-                <input
-                  type="email"
-                  className="w-full border rounded px-3 py-2"
-                  value={bewerkt.email || ''}
-                  onChange={e => setBewerkt({ ...bewerkt, email: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block font-medium">Website</label>
-                <input
-                  type="url"
-                  className="w-full border rounded px-3 py-2"
-                  value={bewerkt.website || ''}
-                  onChange={e => setBewerkt({ ...bewerkt, website: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block font-medium">Opmerking</label>
-                <textarea
-                  className="w-full border rounded px-3 py-2"
-                  rows={3}
-                  value={bewerkt.opmerking || ''}
-                  onChange={e => setBewerkt({ ...bewerkt, opmerking: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end space-x-2">
-              <button
-                onClick={() => setModalOpen(false)}
-                className="px-4 py-2 border rounded hover:bg-gray-100 transition"
-              >
-                Annuleer
-              </button>
-              <button
-                onClick={handleSave}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
-              >
-                {bewerkt.id ? 'Opslaan' : 'Toevoegen'}
-              </button>
-            </div>
+            </form>
           </div>
         </div>
       )}
