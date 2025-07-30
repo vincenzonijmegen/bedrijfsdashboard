@@ -266,7 +266,10 @@ Opmerkingen: ${opmerking.trim()}`;
             </div>
           ))}
           <div className="flex space-x-2">
-          <button className="flex-1 bg-red-500 text-white px-4 py-2 rounded" onClick={async () => { await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, { method: 'DELETE' }); setInvoer({}); }}>Reset bestelling</button>
+          <button className="flex-1 bg-red-500 text-white px-4 py-2 rounded" onClick={async () => {
+            await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, { method: 'DELETE' });
+            setInvoer({});
+            showSnackbar('Bestelling is gereset'); }}>Reset bestelling</button>
           </div>
         </div>
       )}
