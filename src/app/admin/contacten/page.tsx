@@ -1,7 +1,7 @@
 // src/app/admin/contacten/page.tsx
 "use client";
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import useSWR from 'swr';
 import {
   Phone,
@@ -166,7 +166,7 @@ export default function ContactenPage() {
         </button>
       </div>
       <div className="space-y-4">
-        {gesorteerd.reduce<JSX.Element[]>((acc, c, idx, arr) => {
+        {gesorteerd.reduce<React.ReactNode[]>((acc, c, idx, arr) => {
           const prevType = idx > 0 ? arr[idx - 1].type : null;
           if (c.type !== prevType) {
             acc.push(
