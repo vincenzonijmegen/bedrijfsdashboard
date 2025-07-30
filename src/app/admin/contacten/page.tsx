@@ -97,14 +97,30 @@ export default function ContactenPage() {
     'overig'
   ];
 
-  const gesorteerd = bedrijven?.slice().sort((a, b) => {
+  const [zoekterm, setZoekterm] = useState('');
+
+  const gesorteerd = bedrijven?.filter(b => {
+    const allText = `
+      ${b.naam} ${b.bedrijfsnaam} ${b.type} ${b.debiteurennummer} ${b.rubriek}
+      ${b.telefoon} ${b.email} ${b.website} ${b.opmerking}
+      ${(b.personen || []).map(p => `${p.naam} ${p.telefoon} ${p.email}`).join(' ')}
+    `.toLowerCase();
+    return allText.includes(zoekterm);
+  }).sort((a, b) => {
     const indexA = typeOrder.indexOf(a.type);
     const indexB = typeOrder.indexOf(b.type);
     return indexA - indexB || a.naam.localeCompare(b.naam);
   });
 
-  return (
-    <div className="p-6 max-w-4xl mx-auto">
+return (
+  <div className="p-6 max-w-4xl mx-auto">
+    <input
+      type="text"
+      placeholder="Zoek..."
+      className="mb-4 w-full border px-3 py-2 rounded"
+      value={zoekterm}
+      onChange={e => setZoekterm(e.target.value.toLowerCase())}
+    />
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold flex items-center space-x-2">
           <Users className="w-6 h-6 text-gray-800" />
