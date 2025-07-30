@@ -270,22 +270,7 @@ export default function ContactenPage() {
                           className="text-red-600 hover:underline text-sm"
                         >Verwijder</button>
                       </li>
-                    ))}
-                  {(correspondentie || [])
-                    .filter(item => item.contact_id === c.id)
-                    .map(item => (
-                      <li key={item.id} className="flex items-center space-x-2">
-                        <span>{item.datum} – {item.type} – {item.omschrijving}</span>
-                        {item.bijlage_url && (
-                          <a href={item.bijlage_url} target="_blank" className="underline ml-2">PDF</a>
-                        )}
-                      </li>
-                    ))}
-                </ul>
-                <button
-                  className="mt-2 text-blue-600 hover:underline text-sm"
-                  onClick={() => {
-                    setCorrForm(f => ({ ...f, contact_id: c.id }));
+                    ))});
                     setCorrModalOpen(true);
                   }}
                 >
