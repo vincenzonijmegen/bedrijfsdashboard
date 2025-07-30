@@ -48,7 +48,7 @@ export default function ZiekteverzuimRapportage() {
           onClick={() => setSortering(s => s === 'standaard' ? 'aantal' : 'standaard')}
           className="px-3 py-1 text-sm border rounded bg-gray-100 hover:bg-gray-200"
         >
-          Sorteer op: {sortering === 'standaard' ? 'Aantal ziekmeldingen (hoog → laag)' : 'Open meldingen + alfabetisch'}
+          Sorteervolgorde: {sortering === 'standaard' ? 'Open meldingen + alfabetisch' : 'Aantal ziekmeldingen (hoog → laag)'}
         </button>
       </div>
 
