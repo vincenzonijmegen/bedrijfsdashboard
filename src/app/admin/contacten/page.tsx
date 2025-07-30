@@ -270,7 +270,12 @@ export default function ContactenPage() {
                           className="text-red-600 hover:underline text-sm"
                         >Verwijder</button>
                       </li>
-                    ))});
+                    ))}
+                </ul>
+                <button
+                  className="mt-2 text-blue-600 hover:underline text-sm"
+                  onClick={() => {
+                    setCorrForm(f => ({ ...f, contact_id: c.id }));
                     setCorrModalOpen(true);
                   }}
                 >
