@@ -169,7 +169,15 @@ return (
               {c.website && (<div className="flex items-center space-x-2"><Globe className="w-4 h-4 text-gray-600"/><a href={c.website} target="_blank" rel="noreferrer" className="underline">{c.website}</a></div>)}
               {c.opmerking && <div className="italic">{c.opmerking}</div>}
             </div>
-            <div className="mt-3">
+            
+            <div className="mt-6">
+              <h3 className="font-semibold flex items-center gap-2">📎 Correspondentie</h3>
+              <ul className="list-disc list-inside text-sm mt-1 italic text-gray-700">
+                <li>12-06-2024 – Mail over contractverlenging (PDF)</li>
+                <li>08-04-2024 – Gebeld over factuur</li>
+              </ul>
+              <button className="mt-2 text-blue-600 hover:underline text-sm">+ Correspondentie toevoegen</button>
+            </div>
               <div className="flex items-center space-x-2"><Users className="w-5 h-5 text-gray-700"/><h3 className="font-semibold">Contactpersonen</h3></div>
               <ul className="list-disc list-inside text-sm mt-1">
                 {c.personen.map((p, i) => (
@@ -194,7 +202,7 @@ return (
   </button>
 )}
 
-$1{modalOpen && (
+{modalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl overflow-y-auto max-h-full">
             <h2 className="text-xl font-semibold mb-4">{bewerkt.id ? 'Bewerk bedrijf' : 'Nieuw bedrijf'}</h2>
