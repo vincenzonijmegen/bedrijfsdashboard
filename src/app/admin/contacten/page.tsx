@@ -121,7 +121,15 @@ export default function ContactenPage() {
           const showHeader = c.type !== prevType;
           if (showHeader) {
             acc.push(
-              <h2 key={`header-${c.type}`} className="text-xl font-semibold pt-6 px-2 py-1 rounded bg-gray-100 text-gray-800">
+              <h2
+                key={`header-${c.type}`}
+                className={`text-xl font-semibold pt-6 px-2 py-1 rounded text-white ${
+                  c.type === 'leverancier artikelen' ? 'bg-sky-600' :
+                  c.type === 'leverancier diensten' ? 'bg-cyan-600' :
+                  c.type === 'financieel' ? 'bg-green-600' :
+                  c.type === 'overheid' ? 'bg-orange-600' :
+                  'bg-gray-600'
+                }`}>
                 {c.type || 'Onbekend type'}
               </h2>
             );
