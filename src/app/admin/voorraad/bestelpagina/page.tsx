@@ -22,10 +22,13 @@ interface Product {
 
 type Invoer = Record<number, number>;
 
+import { useSnackbar } from '@/lib/useSnackbar';
+
 export default function BestelPagina() {
   const [leverancierId, setLeverancierId] = useState<number | null>(null);
   const [invoer, setInvoer] = useState<Invoer>({});
   const [referentieSuffix, setReferentieSuffix] = useState("");
+  const { showSnackbar } = useSnackbar();
   const [opmerking, setOpmerking] = useState("");
 
   const datumPrefix = new Date().toISOString().slice(0, 10).replace(/-/g, "");
@@ -51,9 +54,13 @@ export default function BestelPagina() {
   // Load ongoing order
   useEffect(() => {
     if (!leverancierId) return;
-    fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`)
-      .then(res => res.json())
-      .then(data => setInvoer(data.data ?? {}));
+fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`)
+  .then(res => res.json())
+  .then(data => {
+    setInvoer(data.data ?? {});
+    showSnackbar('Opgeslagen bestelling geladen');
+  });
+
 
     // Refetch when window gains focus (e.g., after mobile update)
     const onFocus = () => {
@@ -173,6 +180,7 @@ Opmerkingen: ${opmerking.trim()}`;
                 await fetch(`/api/bestelling/historie`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ leverancier_id: leverancierId, data: invoer, referentie, opmerking }) });
                 await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, { method: 'DELETE' });
                 setInvoer({});
+                showSnackbar('Bestelling is gereset');
                 alert('Bestelling is verzonden!');
               }}
             >📧 Mail bestelling</button>
