@@ -230,15 +230,26 @@ export default function ContactenPage() {
 
               <div className="mt-6">
                 <h3 className="font-semibold flex items-center gap-2">📎 Correspondentie</h3>
-                {/* TODO: dynamic correspondence list */}
+                <ul className="list-disc list-inside text-sm mt-1 italic text-gray-700">
+                  {(correspondentie || [])
+                    .filter(item => item.contact_id === c.id)
+                    .map(item => (
+                      <li key={item.id} className="flex items-center space-x-2">
+                        <span>{item.datum} – {item.type} – {item.omschrijving}</span>
+                        {item.bijlage_url && (
+                          <a href={item.bijlage_url} target="_blank" className="underline ml-2">PDF</a>
+                        )}
+                      </li>
+                    ))}
+                </ul>
                 <button
-                className="mt-2 text-blue-600 hover:underline text-sm"
-                onClick={() => {
+                  className="mt-2 text-blue-600 hover:underline text-sm"
+                  onClick={() => {
                     setCorrForm(f => ({ ...f, contact_id: c.id }));
                     setCorrModalOpen(true);
-                }}
+                  }}
                 >
-                + Correspondentie toevoegen
+                  + Correspondentie toevoegen
                 </button>
               </div>
               <div className="mt-3">
