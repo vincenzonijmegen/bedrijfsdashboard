@@ -412,6 +412,20 @@ export default function ContactenPage() {
             onChange={e => setCorrForm(f => ({ ...f, omschrijving: e.target.value }))}
           />
         </div>
+        <div className="flex flex-col">
+          <label>PDF upload (optioneel)</label>
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={handleFileUpload}
+            className="border rounded px-2 py-1"
+          />
+          {corrForm.bijlage_url && (
+            <a href={corrForm.bijlage_url} target="_blank" className="text-blue-600 underline mt-1">
+              Bekijk geüploade PDF
+            </a>
+          )}
+        </div>
         <div className="flex justify-end space-x-2">
           <button type="button" onClick={() => setCorrModalOpen(false)} className="px-4 py-2 border rounded">
             Annuleer
