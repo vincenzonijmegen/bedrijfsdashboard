@@ -113,6 +113,46 @@ export default function ContactenPage() {
     setModalOpen(true);
   };
 
+  const openEdit = (c: Company) => {
+    const { id, ...rest } = c;
+    setCurrent(rest);
+    (current as any).id = id;
+    setModalOpen(true);
+  };
+
+  const save = async () => {
+    const method = (current as any).id ? 'PUT' : 'POST';
+    const url = '/api/contacten' + ((current as any).id ? `?id=${(current as any).id}` : '');
+    await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(current),
+    });
+    mutate();
+    setModalOpen(false);
+  };
+
+  const remove = async (id: number) => {
+    if (!confirm('Weet je zeker dat je dit bedrijf wilt verwijderen?')) return;
+    await fetch(`/api/contacten?id=${id}`, { method: 'DELETE' });
+    mutate();
+  };
+
+  const updateField = (field: keyof CompanyInput, value: string) =>
+    setCurrent(prev => ({ ...prev, [field]: value }));
+
+  const updatePersoon = (idx: number, field: keyof Contactpersoon, value: string) =>
+    setCurrent(prev => ({
+      ...prev,
+      personen: prev.personen.map((p, i) => (i === idx ? { ...p, [field]: value } : p)),
+    }));
+
+  const addPersoon = () =>
+    setCurrent(prev => ({ ...prev, personen: [...prev.personen, { naam: '', telefoon: '', email: '' }] }));
+
+  const deletePersoon = (idx: number) =>
+    setCurrent(prev => ({ ...prev, personen: prev.personen.filter((_, i) => i !== idx) }));
+
   const typeOrder = useMemo(
     () => [
       'leverancier artikelen',
