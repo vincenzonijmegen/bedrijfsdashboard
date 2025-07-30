@@ -187,7 +187,7 @@ export default function AdminDashboard() {
       <Section id="rapportages" title="📊 Rapportages" color="gray" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/rapportages/ziekteverzuim" label="Ziekteverzuim" color="gray" Icon={CreditCard} />
         <LinkCard href="/admin/rapportages/medewerkers/overzicht-progressie" label="Medewerkers-voortgang" color="gray" Icon={BarChart2} />
-        <LinkCard href="/admin/kassa-omzet-test" label="Omzet inlezen" color="gray" Icon={Wrench} />
+        <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="gray" Icon={Wrench} />
         <LinkCard href="/admin/rapportage" label="Financiële Rapporten" color="gray" Icon={BarChart2} />
         <LinkCard href="/admin/mypos" label="Inlezen maandbestanden myPOS" color="gray" Icon={Archive} />
         <LinkCard href="/admin/mypos/boeking" label="Boekingsdocument myPOS⇒snelstart" color="gray" Icon={FileText} />

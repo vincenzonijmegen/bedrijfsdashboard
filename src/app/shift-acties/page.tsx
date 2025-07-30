@@ -48,9 +48,13 @@ export default function ShiftActiesPage() {
 
   return (
     <div className="max-w-5xl mx-auto p-6">
-      <button onClick={() => router.push('/')} className="mb-4 text-blue-600 hover:underline">
-        ← Terug naar startpagina
-      </button>
+<Link href="/" className="inline-flex items-center text-sm text-blue-600 hover:underline gap-1">
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 9.75L12 3l9 6.75v9a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18.75v-9z" />
+  </svg>
+  Start
+</Link>
+
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">📊 Shiftacties & Statistieken</h1>
         <Link href="/shift-acties/parse" className="text-sm text-blue-600 hover:underline">

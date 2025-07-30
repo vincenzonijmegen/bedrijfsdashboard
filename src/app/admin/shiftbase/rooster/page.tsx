@@ -78,9 +78,6 @@ export default function RoosterPage() {
 
   return (
     <div className="p-4">
-      <p className="mb-4">
-        <Link href="/admin/rapportage" legacyBehavior><a className="text-sm underline text-blue-600">← Terug naar Rapportage</a></Link>
-      </p>
 
       <div className="flex items-center mb-4 gap-2">
         <button onClick={() => changeDay(-1)} className="px-2 py-1 bg-gray-200 rounded">←</button>

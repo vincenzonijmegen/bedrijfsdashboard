@@ -25,9 +25,6 @@ export default function KassaOmzetImportPage() {
 
   return (
     <div className="p-6 max-w-md mx-auto">
-      <Link href="/admin" className="text-sm underline text-blue-600">
-        ← Terug naar admin
-      </Link>
       <h1 className="text-2xl font-bold mt-4 mb-6">Import Omzet</h1>
 
       <div className="mb-4">

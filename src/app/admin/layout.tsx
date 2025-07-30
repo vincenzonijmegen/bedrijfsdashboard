@@ -7,7 +7,6 @@ import { ReactNode } from "react";
 import { handleLogout } from "@/utils/auth";
 
 
-
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [naam, setNaam] = useState("");
