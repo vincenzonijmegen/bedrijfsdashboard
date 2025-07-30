@@ -154,6 +154,7 @@ export default function ContactenPage() {
     setCurrent(prev => ({ ...prev, personen: prev.personen.filter((_, i) => i !== idx) }));
 
   // Verwijder een correspondentie-item
+    // Verwijder een correspondentie-item
   const removeCorr = async (id: number) => {
     if (!confirm('Weet je zeker dat je dit correspondentie-item wilt verwijderen?')) return;
     await fetch(`/api/contacten/correspondentie?id=${id}`, { method: 'DELETE' });
