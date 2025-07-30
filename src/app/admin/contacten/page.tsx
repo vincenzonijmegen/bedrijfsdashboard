@@ -2,6 +2,16 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
+
+// Type for correspondence items
+interface Correspondentie {
+  id: number;
+  contact_id: number;
+  datum: string;
+  type: string;
+  omschrijving: string;
+  bijlage_url?: string;
+}
 import useSWR from 'swr';
 import {
   Phone,
@@ -46,6 +56,7 @@ const fetcher = (url: string) =>
 
 export default function ContactenPage() {
   const { data: bedrijven, error, mutate } = useSWR<Company[]>('/api/contacten', fetcher);
+  const { data: correspondentie, mutate: mutateCorr } = useSWR<Correspondentie[]>('/api/contacten/correspondentie', fetcher);
   const [modalOpen, setModalOpen] = useState(false);
   const emptyCompany: CompanyInput = useMemo(() => ({
     naam: '',
@@ -61,7 +72,20 @@ export default function ContactenPage() {
   }), []);
   const [current, setCurrent] = useState<CompanyInput>({ ...emptyCompany });
   const [zoekterm, setZoekterm] = useState('');
-
+  const [corrModalOpen, setCorrModalOpen] = useState(false);
+  const [corrForm, setCorrForm] = useState<{
+  contact_id: number;
+  datum: string;
+  type: string;
+  omschrijving: string;
+  bijlage_url?: string;
+}>({
+  contact_id: 0,
+  datum: new Date().toISOString().slice(0,10),
+  type: '',
+  omschrijving: '',
+  bijlage_url: '',
+});
   const typeOrder = useMemo(
     () => [
       'leverancier artikelen',
@@ -207,7 +231,15 @@ export default function ContactenPage() {
               <div className="mt-6">
                 <h3 className="font-semibold flex items-center gap-2">📎 Correspondentie</h3>
                 {/* TODO: dynamic correspondence list */}
-                <button className="mt-2 text-blue-600 hover:underline text-sm">+ Correspondentie toevoegen</button>
+                <button
+                className="mt-2 text-blue-600 hover:underline text-sm"
+                onClick={() => {
+                    setCorrForm(f => ({ ...f, contact_id: c.id }));
+                    setCorrModalOpen(true);
+                }}
+                >
+                + Correspondentie toevoegen
+                </button>
               </div>
               <div className="mt-3">
                 <h3 className="font-semibold flex items-center gap-2"><Users /><span>Contactpersonen</span></h3>
@@ -303,6 +335,66 @@ export default function ContactenPage() {
               </div>
             </form>
           </div>
+          {corrModalOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded shadow w-full max-w-md">
+      <h2 className="text-xl font-semibold mb-4">Nieuwe correspondentie</h2>
+      <form onSubmit={async e => {
+          e.preventDefault();
+          await fetch('/api/contacten/correspondentie', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json'},
+            body: JSON.stringify(corrForm),
+          });
+          mutateCorr();
+          setCorrModalOpen(false);
+        }}
+        className="space-y-4"
+      >
+        <div className="flex flex-col">
+          <label>Datum</label>
+          <input
+            type="date"
+            className="border rounded px-2 py-1"
+            value={corrForm.datum}
+            onChange={e => setCorrForm(f => ({ ...f, datum: e.target.value }))}
+          />
+        </div>
+        <div className="flex flex-col">
+          <label>Type</label>
+          <select
+            className="border rounded px-2 py-1"
+            value={corrForm.type}
+            onChange={e => setCorrForm(f => ({ ...f, type: e.target.value }))}
+          >
+            <option value="">Selecteer type</option>
+            <option value="email">E‑mail</option>
+            <option value="telefoon">Telefoon</option>
+            <option value="bezoek">Bezoek</option>
+          </select>
+        </div>
+        <div className="flex flex-col">
+          <label>Omschrijving</label>
+          <textarea
+            className="border rounded px-2 py-1"
+            rows={3}
+            value={corrForm.omschrijving}
+            onChange={e => setCorrForm(f => ({ ...f, omschrijving: e.target.value }))}
+          />
+        </div>
+        <div className="flex justify-end space-x-2">
+          <button type="button" onClick={() => setCorrModalOpen(false)} className="px-4 py-2 border rounded">
+            Annuleer
+          </button>
+          <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded">
+            Opslaan
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
         </div>
       )}
     </div>
