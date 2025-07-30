@@ -108,6 +108,11 @@ export default function ContactenPage() {
     setCorrForm(f => ({ ...f, bijlage_url: url }));
   };
 
+  const openNew = () => {
+    setCurrent({ ...emptyCompany });
+    setModalOpen(true);
+  };
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <input
