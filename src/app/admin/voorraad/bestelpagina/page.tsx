@@ -6,6 +6,7 @@ import useSWR from "swr";
 interface Leverancier {
   id: number;
   naam: string;
+  soort: string;
 }
 
 interface Product {
@@ -27,6 +28,7 @@ export default function BestelPagina() {
 
   const datumPrefix = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const referentie = `${datumPrefix}-${referentieSuffix}`;
+  const [toonIncidenteel, setToonIncidenteel] = useState(false);
 
   // Fetcher
   const fetcher = (url: string) => fetch(url).then(res => { if (!res.ok) throw new Error("Fout bij ophalen"); return res.json(); });
@@ -112,13 +114,28 @@ Opmerkingen: ${opmerking.trim()}`;
     <main className="max-w-4xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">📦 Bestellen</h1>
 
+<div className="flex items-center gap-4 mb-2">
+  <label className="flex items-center gap-2 text-sm">
+    <input
+      type="checkbox"
+      checked={toonIncidenteel}
+      onChange={e => setToonIncidenteel(e.target.checked)}
+    />
+    Toon incidentele leveranciers
+  </label>
+</div>
+
+
+
       <select
         className="border rounded px-3 py-2"
         value={leverancierId ?? ""}
         onChange={e => setLeverancierId(Number(e.target.value))}
       >
         <option value="">-- Kies leverancier --</option>
-        {leveranciers.map(l => (
+ {leveranciers
+  .filter(l => toonIncidenteel ? l.soort === "incidenteel" : l.soort === "wekelijks")
+  .map(l => (
           <option key={l.id} value={l.id}>{l.naam}</option>
         ))}
       </select>
