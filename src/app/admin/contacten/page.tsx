@@ -78,7 +78,12 @@ export default function ContactenPage() {
     return bedrijven
       .filter(b => {
         const allText = (
-          `${b.naam} ${b.bedrijfsnaam} ${b.type} ${b.debiteurennummer} ${b.rubriek} ${b.telefoon} ${b.email} ${b.website} ${b.opmerking} ${b.personen.map(p => `${p.naam} ${p.telefoon} ${p.email}`).join(' ')}`
+          `${b.naam} ${
+            b.bedrijfsnaam || ''
+          } ${b.type} ${b.debiteurennummer || ''} ${b.rubriek || ''} ${b.telefoon || ''} ${b.email || ''} ${b.website || ''} ${b.opmerking || ''} ${b.personen
+            .map(p => `${p.naam} ${p.telefoon || ''} ${p.email || ''}`)
+            .join(' ')}
+        `
         ).toLowerCase();
         return allText.includes(zoekterm.toLowerCase());
       })
@@ -136,6 +141,7 @@ export default function ContactenPage() {
   if (error) {
     return <div className="p-6 max-w-4xl mx-auto text-red-600">Fout bij laden: {error.message}</div>;
   }
+
   if (!bedrijven) {
     return <div className="p-6 max-w-4xl mx-auto">Laden...</div>;
   }
@@ -159,7 +165,6 @@ export default function ContactenPage() {
           <span>Nieuw contact</span>
         </button>
       </div>
-
       <div className="space-y-4">
         {gesorteerd.reduce<JSX.Element[]>((acc, c, idx, arr) => {
           const prevType = idx > 0 ? arr[idx - 1].type : null;
@@ -188,44 +193,30 @@ export default function ContactenPage() {
                   <button onClick={() => remove(c.id)} className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700">Verwijder</button>
                 </div>
               </div>
-
               <div className="mt-2 space-y-2 text-sm">
-                {c.bedrijfsnaam && (
-                  <div className="flex items-center space-x-2"><Building /><span>{c.bedrijfsnaam}</span></div>
-                )}
+                {c.bedrijfsnaam && (<div className="flex items-center space-x-2"><Building /><span>{c.bedrijfsnaam}</span></div>)}
                 <div className="flex items-center space-x-2"><Tag /><span>Type: {c.type}</span></div>
-                {c.debiteurennummer && (
-                  <div className="flex items-center space-x-2"><Hash /><span>{c.debiteurennummer}</span></div>
-                )}
-                {c.rubriek && (
-                  <div className="flex items-center space-x-2"><List /><span>{c.rubriek}</span></div>
-                )}
-                {c.telefoon && (
-                  <div className="flex items-center space-x-2"><Phone /><span>{c.telefoon}</span></div>
-                )}
-                {c.email && (
-                  <div className="flex items-center space-x-2"><Mail /><span>{c.email}</span></div>
-                )}
-                {c.website && (
-                  <div className="flex items-center space-x-2"><Globe /><a href={c.website} target="_blank" rel="noreferrer" className="underline">{c.website}</a></div>
-                )}
+                {c.debiteurennummer && (<div className="flex items-center space-x-2"><Hash /><span>{c.debiteurennummer}</span></div>)}
+                {c.rubriek && (<div className="flex items-center space-x-2"><List /><span>{c.rubriek}</span></div>)}
+                {c.telefoon && (<div className="flex items-center space-x-2"><Phone /><span>{c.telefoon}</span></div>)}
+                {c.email && (<div className="flex items-center space-x-2"><Mail /><span>{c.email}</span></div>)}
+                {c.website && (<div className="flex items-center space-x-2"><Globe /><a href={c.website} target="_blank" rel="noreferrer" className="underline">{c.website}</a></div>)}
                 {c.opmerking && <div className="italic">{c.opmerking}</div>}
               </div>
 
               <div className="mt-6">
                 <h3 className="font-semibold flex items-center gap-2">📎 Correspondentie</h3>
-                {/* Correspondentie list here */}
+                {/* TODO: dynamic correspondence list */}
                 <button className="mt-2 text-blue-600 hover:underline text-sm">+ Correspondentie toevoegen</button>
               </div>
-
               <div className="mt-3">
                 <h3 className="font-semibold flex items-center gap-2"><Users /><span>Contactpersonen</span></h3>
                 <ul className="list-disc list-inside text-sm mt-1">
-                  {c.personen.map((p, idx) => (
-                    <li key={idx} className="flex items-center space-x-2">
+                  {c.personen.map((p, i) => (
+                    <li key={i} className="flex items-center space-x-2">
                       <span>{p.naam}</span>
-                      {p.telefoon && <><Phone /><span>{p.telefoon}</span></>}
-                      {p.email && <><Mail /><span>{p.email}</span></>}
+                      {p.telefoon && (<><Phone /><span>{p.telefoon}</span></>)}
+                      {p.email && (<><Mail /><span>{p.email}</span></>)}
                     </li>
                   ))}
                 </ul>
