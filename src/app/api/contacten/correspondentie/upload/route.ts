@@ -1,30 +1,37 @@
 // src/app/api/contacten/correspondentie/upload/route.ts
 
-import { NextRequest, NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
-import path from 'path';
-import { mkdirSync, existsSync } from 'fs';
+import { NextRequest, NextResponse } from "next/server";
+import { put } from "@vercel/blob";
+import { db } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
-  const file = formData.get('file') as File;
-  const contactId = formData.get('contact_id');
+  const file = formData.get("file") as File;
+  const contactId = formData.get("contact_id") as string;
 
-  if (!file || typeof contactId !== 'string') {
-    return NextResponse.json({ error: 'Ongeldige invoer' }, { status: 400 });
+  if (!file || !contactId) {
+    return NextResponse.json({ error: "Bestand of contact_id ontbreekt" }, { status: 400 });
   }
 
-  const bytes = await file.arrayBuffer();
-  const buffer = Buffer.from(bytes);
+  // Bepaal extensie en blob-path
+  const extension = file.name.split(".").pop()?.toLowerCase() || "pdf";
+  const key = `contacten/${contactId}/${Date.now()}.${extension}`;
 
-  const uploadDir = path.join(process.cwd(), 'public/uploads/correspondentie');
-  if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
+  try {
+    // Upload naar Vercel Blob met publieke toegang
+    const blob = await put(key, file, { access: "public" });
 
-  const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '')}`;
-  const filepath = path.join(uploadDir, filename);
+    // Sla URL en contactId op in database
+    await db.query(
+      `INSERT INTO contact_pdfs (contact_id, bestand_url)
+       VALUES ($1, $2)
+       ON CONFLICT (contact_id) DO UPDATE SET bestand_url = EXCLUDED.bestand_url`,
+      [contactId, blob.url]
+    );
 
-  await writeFile(filepath, buffer);
-
-  const url = `/uploads/correspondentie/${filename}`;
-  return NextResponse.json({ url });
+    return NextResponse.json({ success: true, url: blob.url });
+  } catch (err) {
+    console.error("Fout bij upload Van contact-pdf:", err);
+    return NextResponse.json({ error: "Upload mislukt" }, { status: 500 });
+  }
 }
