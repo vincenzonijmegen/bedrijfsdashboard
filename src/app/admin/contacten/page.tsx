@@ -171,7 +171,7 @@ export default function ContactenPage() {
       </div>{typeof window !== "undefined" && (
   <button
     onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-    className="fixed bottom-6 left-6 z-50 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-full shadow-lg"
+    className="fixed bottom-6 left-6 z-50 text-3xl hover:scale-110 transition-transform"
     title="Scroll naar boven"
   >
     ⬆️
