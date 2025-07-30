@@ -123,7 +123,7 @@ export default function ContactenPage() {
             acc.push(
               <h2
                 key={`header-${c.type}`}
-                className={`text-xl font-semibold pt-6 px-2 py-1 rounded text-white ${
+                className={`text-xl font-semibold pt-6 px-2 py-2 rounded text-white flex items-center h-10 ${
                   c.type === 'leverancier artikelen' ? 'bg-sky-600' :
                   c.type === 'leverancier diensten' ? 'bg-cyan-600' :
                   c.type === 'financieel' ? 'bg-green-600' :
