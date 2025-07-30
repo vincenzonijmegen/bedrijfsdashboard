@@ -35,9 +35,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-4">
       <div className="flex justify-between items-center">
-        <Link href="/admin" className="text-sm text-blue-600 hover:underline">
-          ← Terug naar startpagina
-        </Link>
+      <Link href="/admin" className="inline-flex items-center text-sm text-blue-600 hover:underline gap-1">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+        </svg>
+        
+      </Link>
+
 
 
 
