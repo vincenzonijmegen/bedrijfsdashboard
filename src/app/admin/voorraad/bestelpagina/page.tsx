@@ -95,9 +95,7 @@ Referentie: ${referentie}
 `;
         tekst += `Aantal	Bestelnummer	Product
 `;
-    tekst += `------	-----------	-------
-`;
-    tekst += `-----------	-------	------
+    tekst += `------	------------	-------
 `;
     rows.forEach(r => {
       // Output: Aantal, Bestelnummer, Product
