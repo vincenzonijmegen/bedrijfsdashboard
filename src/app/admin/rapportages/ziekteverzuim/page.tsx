@@ -66,11 +66,6 @@ export default function ZiekteverzuimRapportage() {
             if (aOpen === bOpen) return aNaam.localeCompare(bNaam);
             return aOpen ? -1 : 1;
           }
-        }) => {
-          const aOpen = aM.some((m) => !m.tot);
-          const bOpen = bM.some((m) => !m.tot);
-          if (aOpen === bOpen) return aNaam.localeCompare(bNaam);
-          return aOpen ? -1 : 1;
         }).map(([naam, meldingen]) => (
           <div key={naam} className="mb-6">
             <h2 className="text-lg font-semibold mb-2">{naam} ({meldingen.length})</h2>
