@@ -153,6 +153,14 @@ export default function ContactenPage() {
   const deletePersoon = (idx: number) =>
     setCurrent(prev => ({ ...prev, personen: prev.personen.filter((_, i) => i !== idx) }));
 
+  // Verwijder een correspondentie-item
+  const removeCorr = async (id: number) => {
+    if (!confirm('Weet je zeker dat je dit correspondentie-item wilt verwijderen?')) return;
+    await fetch(`/api/contacten/correspondentie?id=${id}`, { method: 'DELETE' });
+    mutateCorr();
+  }; (idx: number) =>
+    setCurrent(prev => ({ ...prev, personen: prev.personen.filter((_, i) => i !== idx) }));
+
   const typeOrder = useMemo(
     () => [
       'leverancier artikelen',
@@ -246,6 +254,22 @@ export default function ContactenPage() {
               <div className="mt-6">
                 <h3 className="font-semibold flex items-center gap-2">📎 Correspondentie</h3>
                 <ul className="list-disc list-inside text-sm mt-1 italic text-gray-700">
+                  {(correspondentie || [])
+                    .filter(item => item.contact_id === c.id)
+                    .map(item => (
+                      <li key={item.id} className="flex items-center justify-between space-x-2">
+                        <div className="flex items-center space-x-2">
+                          <span>{item.datum} – {item.type} – {item.omschrijving}</span>
+                          {item.bijlage_url && (
+                            <a href={item.bijlage_url} target="_blank" className="underline ml-2">PDF</a>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => removeCorr(item.id)}
+                          className="text-red-600 hover:underline text-sm"
+                        >Verwijder</button>
+                      </li>
+                    ))}
                   {(correspondentie || [])
                     .filter(item => item.contact_id === c.id)
                     .map(item => (
