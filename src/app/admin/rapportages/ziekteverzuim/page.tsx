@@ -24,11 +24,15 @@ interface VerzuimItem {
   opmerking: string;
 }
 
+import { useState } from "react";
+
 export default function ZiekteverzuimRapportage() {
   const { data: verzuim } = useSWR<VerzuimItem[]>(
     "/api/admin/rapportage/ziekteverzuim",
     fetcher
   );
+
+  const [sortering, setSortering] = useState<'aantal' | 'standaard'>('standaard');
 
   const gegroepeerd: { [naam: string]: VerzuimItem[] } = {};
   verzuim?.forEach((v) => {
@@ -39,6 +43,14 @@ export default function ZiekteverzuimRapportage() {
   return (
     <div className="p-4">
       <h1 className="text-xl font-bold mb-4">Ziekteverzuimrapportage</h1>
+      <div className="mb-4">
+        <button
+          onClick={() => setSortering(s => s === 'standaard' ? 'aantal' : 'standaard')}
+          className="px-3 py-1 text-sm border rounded bg-gray-100 hover:bg-gray-200"
+        >
+          Sorteer op: {sortering === 'standaard' ? 'Aantal ziekmeldingen (hoog → laag)' : 'Open meldingen + alfabetisch'}
+        </button>
+      </div>
 
       {!verzuim ? (
         <p>Laden...</p>
@@ -46,6 +58,15 @@ export default function ZiekteverzuimRapportage() {
         <p>Geen meldingen gevonden.</p>
       ) : (
         Object.entries(gegroepeerd).sort(([aNaam, aM], [bNaam, bM]) => {
+          if (sortering === 'aantal') {
+            return bM.length - aM.length || aNaam.localeCompare(bNaam);
+          } else {
+            const aOpen = aM.some((m) => !m.tot);
+            const bOpen = bM.some((m) => !m.tot);
+            if (aOpen === bOpen) return aNaam.localeCompare(bNaam);
+            return aOpen ? -1 : 1;
+          }
+        }) => {
           const aOpen = aM.some((m) => !m.tot);
           const bOpen = bM.some((m) => !m.tot);
           if (aOpen === bOpen) return aNaam.localeCompare(bNaam);
