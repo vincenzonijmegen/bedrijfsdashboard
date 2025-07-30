@@ -4,7 +4,6 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { Phone, Mail, Globe, Users, UserPlus, Building, Tag, Hash, List } from 'lucide-react';
-import { JSX } from 'react';
 
 
 interface Contactpersoon {
@@ -113,7 +112,7 @@ export default function ContactenPage() {
   });
 
 return (
-  <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-4xl mx-auto">
     <input
       type="text"
       placeholder="Zoek..."
