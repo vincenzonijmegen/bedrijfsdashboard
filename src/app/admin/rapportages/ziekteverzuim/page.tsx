@@ -43,12 +43,15 @@ export default function ZiekteverzuimRapportage() {
   return (
     <div className="p-4">
       <h1 className="text-xl font-bold mb-4">Ziekteverzuimrapportage</h1>
-      <div className="mb-4">
+      <div className="mb-4 flex items-center gap-4">
+        <p className="text-sm">
+          Huidige sortering: <strong>{sortering === 'standaard' ? 'Open meldingen + alfabetisch' : 'Aantal ziekmeldingen (hoog → laag)'}</strong>
+        </p>
         <button
           onClick={() => setSortering(s => s === 'standaard' ? 'aantal' : 'standaard')}
           className="px-3 py-1 text-sm border rounded bg-gray-100 hover:bg-gray-200"
         >
-          Sorteervolgorde: {sortering === 'standaard' ? 'Open meldingen + alfabetisch' : 'Aantal ziekmeldingen (hoog → laag)'}
+          Wissel naar: {sortering === 'standaard' ? 'Aantal ziekmeldingen' : 'Open meldingen + alfabetisch'}
         </button>
       </div>
 
