@@ -255,12 +255,10 @@ export default function ContactenPage() {
               <div className="mt-6">
                 <h3 className="font-semibold flex items-center gap-2">📎 Correspondentie</h3>
                 <ul className="list-disc list-inside text-sm mt-1 italic text-gray-700">
-                  {(correspondentie || [])
-                    .filter(item => item.contact_id === c.id)
-                    .map(item => (
-                      <li key={item.id} className="flex items-center justify-between space-x-2">
-                        <div className="flex items-center space-x-2">
-                          <span>{item.datum} – {item.type} – {item.omschrijving}</span>
+                  $1<li key={item.id} className="border-t pt-2 mt-2 flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span>{new Date(item.datum).toLocaleDateString('nl-NL')} – {item.type}</span>
+                          <span>{item.omschrijving}</span> {item.type} – {item.omschrijving}</span>
                           {item.bijlage_url && (
                             <a href={item.bijlage_url} target="_blank" className="underline ml-2">PDF</a>
                           )}
