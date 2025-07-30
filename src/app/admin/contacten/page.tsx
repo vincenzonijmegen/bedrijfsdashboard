@@ -415,6 +415,7 @@ export default function ContactenPage() {
         <div className="flex flex-col">
           <label>PDF upload (optioneel)</label>
           <input
+            key={corrForm.contact_id}
             type="file"
             accept="application/pdf"
             onChange={handleFileUpload}
