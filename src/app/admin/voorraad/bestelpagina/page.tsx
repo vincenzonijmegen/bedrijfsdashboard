@@ -206,7 +206,18 @@ Opmerkingen: ${opmerking.trim()}`;
                   <td className="p-2">{p.naam}</td>
                   <td className="p-2">{p.besteleenheid ?? 1}</td>
                   <td className="p-2">{p.huidige_prijs != null ? `€ ${Number(p.huidige_prijs).toFixed(2)}` : '–'}</td>
-                  <td className="p-2">{invoer[p.id] ?? 0}</td>
+                  <td className="p-2">
+  <input
+    type="number"
+    min="0"
+    className="w-16 px-2 py-1 border rounded text-right"
+    value={invoer[p.id] ?? 0}
+    onChange={e => {
+      const val = Number(e.target.value);
+      setInvoer(prev => ({ ...prev, [p.id]: isNaN(val) ? 0 : Math.max(0, val) }));
+    }}
+  />
+</td>
                   <td className="p-2 space-x-2">
                     <button onClick={() => wijzigAantal(p.id, -1)} className="px-2 py-1 bg-gray-200 rounded">–</button>
                     <button onClick={() => wijzigAantal(p.id, 1)} className="px-2 py-1 bg-blue-600 text-white rounded">+</button>
@@ -229,7 +240,16 @@ Opmerkingen: ${opmerking.trim()}`;
               <span>{p.naam}</span>
               <div className="flex items-center space-x-2">
                 <button onClick={() => wijzigAantal(p.id, -1)} className="px-2 py-1 bg-gray-200 rounded">–</button>
-                <span className="w-6 text-center font-bold">{invoer[p.id] ?? 0}</span>
+                <input
+  type="number"
+  min="0"
+  className="w-16 px-2 py-1 border rounded text-right"
+  value={invoer[p.id] ?? 0}
+  onChange={e => {
+    const val = Number(e.target.value);
+    setInvoer(prev => ({ ...prev, [p.id]: isNaN(val) ? 0 : Math.max(0, val) }));
+  }}
+/>
                 <button onClick={() => wijzigAantal(p.id, 1)} className="px-2 py-1 bg-blue-600 text-white rounded">+</button>
               </div>
             </div>
