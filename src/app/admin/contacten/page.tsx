@@ -335,7 +335,11 @@ export default function ContactenPage() {
               </div>
             </form>
           </div>
-          {corrModalOpen && (
+
+
+        </div>
+      )}
+                {corrModalOpen && (
   <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div className="bg-white p-6 rounded shadow w-full max-w-md">
       <h2 className="text-xl font-semibold mb-4">Nieuwe correspondentie</h2>
@@ -394,9 +398,6 @@ export default function ContactenPage() {
     </div>
   </div>
 )}
-
-        </div>
-      )}
     </div>
     );
 }
