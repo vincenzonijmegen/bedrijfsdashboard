@@ -155,12 +155,12 @@ export default function ContactenPage() {
 
   // Verwijder een correspondentie-item
     // Verwijder een correspondentie-item
+    // Verwijder een correspondentie-item
   const removeCorr = async (id: number) => {
     if (!confirm('Weet je zeker dat je dit correspondentie-item wilt verwijderen?')) return;
     await fetch(`/api/contacten/correspondentie?id=${id}`, { method: 'DELETE' });
     mutateCorr();
-  }; (idx: number) =>
-    setCurrent(prev => ({ ...prev, personen: prev.personen.filter((_, i) => i !== idx) }));
+  };
 
   const typeOrder = useMemo(
     () => [
