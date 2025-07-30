@@ -53,6 +53,8 @@ const fetcher = (url: string) =>
     return res.json();
   });
 
+import { useSnackbar } from '@/lib/useSnackbar';
+
 export default function ContactenPage() {
   const { data: bedrijven, error, mutate } = useSWR<Company[]>('/api/contacten', fetcher);
   const { data: correspondentie, mutate: mutateCorr } = useSWR<Correspondentie[]>('/api/contacten/correspondentie', fetcher);
@@ -86,6 +88,8 @@ export default function ContactenPage() {
     bijlage_url: '',
   });
 
+  const { showSnackbar } = useSnackbar();
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !corrForm.contact_id) return;
@@ -106,6 +110,7 @@ export default function ContactenPage() {
 
     const { url } = await res.json();
     setCorrForm(f => ({ ...f, bijlage_url: url }));
+    showSnackbar('Upload succesvol');
   };
 
   const openNew = () => {
@@ -160,6 +165,7 @@ export default function ContactenPage() {
     if (!confirm('Weet je zeker dat je dit correspondentie-item wilt verwijderen?')) return;
     await fetch(`/api/contacten/correspondentie?id=${id}`, { method: 'DELETE' });
     mutateCorr();
+    showSnackbar('Correspondentie verwijderd');
   };
 
   const typeOrder = useMemo(
