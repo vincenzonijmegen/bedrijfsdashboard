@@ -102,6 +102,15 @@ export default function ContactenPage() {
     const indexB = typeOrder.indexOf(b.type);
     return indexA - indexB || a.naam.localeCompare(b.naam);
   });
+{typeof window !== "undefined" && (
+  <button
+    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+    className="fixed bottom-6 left-6 z-50 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-full shadow-lg"
+    title="Scroll naar boven"
+  >
+    ⬆️
+  </button>
+)}
 
   return (
     <div className="p-6 max-w-4xl mx-auto">
