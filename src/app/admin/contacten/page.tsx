@@ -2,16 +2,6 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-
-// Type for correspondence items
-interface Correspondentie {
-  id: number;
-  contact_id: number;
-  datum: string;
-  type: string;
-  omschrijving: string;
-  bijlage_url?: string;
-}
 import useSWR from 'swr';
 import {
   Phone,
@@ -24,6 +14,15 @@ import {
   Hash,
   List,
 } from 'lucide-react';
+
+interface Correspondentie {
+  id: number;
+  contact_id: number;
+  datum: string;
+  type: string;
+  omschrijving: string;
+  bijlage_url?: string;
+}
 
 interface Contactpersoon {
   id?: number;
@@ -74,101 +73,40 @@ export default function ContactenPage() {
   const [zoekterm, setZoekterm] = useState('');
   const [corrModalOpen, setCorrModalOpen] = useState(false);
   const [corrForm, setCorrForm] = useState<{
-  contact_id: number;
-  datum: string;
-  type: string;
-  omschrijving: string;
-  bijlage_url?: string;
-}>({
-  contact_id: 0,
-  datum: new Date().toISOString().slice(0,10),
-  type: '',
-  omschrijving: '',
-  bijlage_url: '',
-});
-  const typeOrder = useMemo(
-    () => [
-      'leverancier artikelen',
-      'leverancier diensten',
-      'financieel',
-      'overheid',
-      'overig',
-    ],
-    []
-  );
+    contact_id: number;
+    datum: string;
+    type: string;
+    omschrijving: string;
+    bijlage_url?: string;
+  }>({
+    contact_id: 0,
+    datum: new Date().toISOString().slice(0, 10),
+    type: '',
+    omschrijving: '',
+    bijlage_url: '',
+  });
 
-  const gesorteerd = useMemo(() => {
-    if (!bedrijven) return [];
-    return bedrijven
-      .filter(b => {
-        const allText = (
-          `${b.naam} ${
-            b.bedrijfsnaam || ''
-          } ${b.type} ${b.debiteurennummer || ''} ${b.rubriek || ''} ${b.telefoon || ''} ${b.email || ''} ${b.website || ''} ${b.opmerking || ''} ${b.personen
-            .map(p => `${p.naam} ${p.telefoon || ''} ${p.email || ''}`)
-            .join(' ')}
-        `
-        ).toLowerCase();
-        return allText.includes(zoekterm.toLowerCase());
-      })
-      .sort((a, b) => {
-        const idxA = typeOrder.indexOf(a.type);
-        const idxB = typeOrder.indexOf(b.type);
-        if (idxA !== idxB) return idxA - idxB;
-        return a.naam.localeCompare(b.naam);
-      });
-  }, [bedrijven, zoekterm, typeOrder]);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !corrForm.contact_id) return;
 
-  const openNew = () => {
-    setCurrent({ ...emptyCompany });
-    setModalOpen(true);
-  };
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("contact_id", corrForm.contact_id.toString());
 
-  const openEdit = (c: Company) => {
-    const { id, ...rest } = c;
-    setCurrent(rest);
-    setModalOpen(true);
-  };
-
-  const save = async () => {
-    const method = (current as any).id ? 'PUT' : 'POST';
-    await fetch('/api/contacten', {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(current),
+    const res = await fetch("/api/contacten/correspondentie/upload", {
+      method: "POST",
+      body: formData,
     });
-    mutate();
-    setModalOpen(false);
+
+    if (!res.ok) {
+      alert("Upload mislukt");
+      return;
+    }
+
+    const { url } = await res.json();
+    setCorrForm(f => ({ ...f, bijlage_url: url }));
   };
-
-  const remove = async (id: number) => {
-    if (!confirm('Weet je zeker dat je dit bedrijf wilt verwijderen?')) return;
-    await fetch(`/api/contacten?id=${id}`, { method: 'DELETE' });
-    mutate();
-  };
-
-  const updateField = (field: keyof CompanyInput, value: string) =>
-    setCurrent(prev => ({ ...prev, [field]: value }));
-
-  const updatePersoon = (idx: number, field: keyof Contactpersoon, value: string) =>
-    setCurrent(prev => ({
-      ...prev,
-      personen: prev.personen.map((p, i) => (i === idx ? { ...p, [field]: value } : p)),
-    }));
-
-  const addPersoon = () =>
-    setCurrent(prev => ({ ...prev, personen: [...prev.personen, { naam: '', telefoon: '', email: '' }] }));
-
-  const deletePersoon = (idx: number) =>
-    setCurrent(prev => ({ ...prev, personen: prev.personen.filter((_, i) => i !== idx) }));
-
-  if (error) {
-    return <div className="p-6 max-w-4xl mx-auto text-red-600">Fout bij laden: {error.message}</div>;
-  }
-
-  if (!bedrijven) {
-    return <div className="p-6 max-w-4xl mx-auto">Laden...</div>;
-  }
 
   return (
     <div className="p-6 max-w-4xl mx-auto">

@@ -157,7 +157,6 @@ export default function AdminDashboard() {
       <Section id="management" title="📘 Management" color="blue" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} />
         <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} />
-        <LinkCard href="/admin/suikervrij" label="Suikervrij productie" color="blue" Icon={IceCream} />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} />
         <LinkCard href="/admin/contacten" label="Belangrijke gegevens" color="blue" Icon={Folder} />
       </Section>
@@ -178,6 +177,7 @@ export default function AdminDashboard() {
 
       <Section id="voorraad" title="📦 Voorraadbeheer, Recepturen & Allergenen" color="pink" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/leveranciers" label="Leveranciers beheren" color="pink" Icon={CreditCard} />
+        <LinkCard href="/admin/suikervrij" label="Suikervrij productie" color="pink" Icon={IceCream} />
         <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="pink" Icon={Box} />
         <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ClipboardList} />
         <LinkCard href="/admin/recepten" label="Receptprijs" color="pink" Icon={Truck} />
