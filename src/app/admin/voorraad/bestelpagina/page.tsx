@@ -112,6 +112,9 @@ Opmerkingen: ${opmerking.trim()}`;
 
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-6">
+      <a href="/admin" className="inline-flex items-center text-sm text-blue-600 hover:underline">
+        ← Terug
+      </a>
       <h1 className="text-2xl font-bold">📦 Bestellen</h1>
 
 <div className="flex items-center gap-4 mb-2">
