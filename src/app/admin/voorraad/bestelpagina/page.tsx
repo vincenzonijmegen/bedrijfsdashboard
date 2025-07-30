@@ -1,3 +1,5 @@
+// src/app/admin/voorraad/bestelpagina/page.tsx
+
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -170,7 +172,16 @@ Opmerkingen: ${opmerking.trim()}`;
                 const naar = prompt("Naar welk e-mailadres?", "info@ijssalonvincenzo.nl");
                 if (!naar) return;
                 await fetch("/api/mail/bestelling", { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ naar, onderwerp: `Bestelling ${referentie}`, tekst: genereerTekst() }) });
-                await fetch(`/api/bestelling/historie`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ leverancier_id: leverancierId, data: invoer, referentie, opmerking }) });
+                const dataObj: Record<number, number> = {};
+                Object.entries(invoer).forEach(([id, aantal]) => {
+                  if (aantal > 0) dataObj[Number(id)] = aantal;
+                });
+
+                await fetch('/api/bestelling/historie', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ leverancier_id: leverancierId, data: dataObj, referentie, opmerking })
+                });
                 await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, { method: 'DELETE' });
                 setInvoer({});
                 alert('Bestelling is verzonden!');
