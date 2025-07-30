@@ -113,6 +113,38 @@ export default function ContactenPage() {
     setModalOpen(true);
   };
 
+  const typeOrder = useMemo(
+    () => [
+      'leverancier artikelen',
+      'leverancier diensten',
+      'financieel',
+      'overheid',
+      'overig',
+    ],
+    []
+  );
+
+  const gesorteerd = useMemo(() => {
+    if (!bedrijven) return [];
+    return bedrijven
+      .filter(b => {
+        const allText = (
+          `${b.naam} ${
+            b.bedrijfsnaam || ''
+          } ${b.type} ${b.debiteurennummer || ''} ${b.rubriek || ''} ${b.telefoon || ''} ${b.email || ''} ${b.website || ''} ${b.opmerking || ''} ${b.personen
+            .map(p => `${p.naam} ${p.telefoon || ''} ${p.email || ''}`)
+            .join(' ')}`
+        ).toLowerCase();
+        return allText.includes(zoekterm.toLowerCase());
+      })
+      .sort((a, b) => {
+        const idxA = typeOrder.indexOf(a.type);
+        const idxB = typeOrder.indexOf(b.type);
+        if (idxA !== idxB) return idxA - idxB;
+        return a.naam.localeCompare(b.naam);
+      });
+  }, [bedrijven, zoekterm, typeOrder]);
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <input
