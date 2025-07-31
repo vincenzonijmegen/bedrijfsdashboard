@@ -15,8 +15,8 @@ interface Regel {
   [key: string]: any;
 }
 
-// Softer background colors per day of week
-const dagen = ["maandag","dinsdag","woensdag","donderdag","vrijdag","zaterdag","zondag"];
+// Background colors per day of week
+const dagen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"];
 const kleuren = [
   "bg-blue-50",
   "bg-green-50",
@@ -27,73 +27,63 @@ const kleuren = [
   "bg-teal-50",
 ];
 
-const maandNamen = [
-  "Januari", "Februari", "Maart", "April", "Mei", "Juni",
-  "Juli", "Augustus", "September", "Oktober", "November", "December"
-];
-
-export default function BeschikbaarheidPeriode() {
+export default function BeschikbaarheidWeek() {
   const today = new Date();
+  const getISOWeek = (d: Date) => {
+    const date = new Date(d.getTime());
+    date.setHours(0,0,0,0);
+    // Thursday in current week decides the year.
+    date.setDate(date.getDate() + 3 - ((date.getDay() + 6) % 7));
+    const week1 = new Date(date.getFullYear(),0,4);
+    return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay()+6)%7)) / 7);
+  };
   const [jaar, setJaar] = useState(today.getFullYear());
-  const [maand, setMaand] = useState(today.getMonth());
+  const [week, setWeek] = useState(getISOWeek(today));
+
+  // Compute Monday of ISO week
+  const weekStart = useMemo(() => {
+    const simple = new Date(jaar,0,1 + (week - 1) * 7);
+    const dow = simple.getDay(); // 0 Sunday
+    const isoDow = (dow + 6) % 7; // Mon=0
+    simple.setDate(simple.getDate() - isoDow);
+    return simple;
+  }, [jaar, week]);
+  const weekDates = useMemo(() => {
+    const arr: Date[] = [];
+    for (let i=0; i<7; i++) arr.push(new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate()+i));
+    return arr;
+  }, [weekStart]);
 
   const { data, error } = useSWR<Regel[]>(
     "/api/beschikbaarheid",
-    (url: string) => fetch(url).then(res => res.json())
+    (url: string) => fetch(url).then(r => r.json())
   );
 
-  // Compute start and end dates of selected month
-  const startDatum = useMemo(() => new Date(jaar, maand, 1), [jaar, maand]);
-  const eindDatum = useMemo(() => new Date(jaar, maand + 1, 0), [jaar, maand]);
-
-  // List of dates in period
-  const dateList = useMemo(() => {
-    const dates: Date[] = [];
-    const d = new Date(startDatum);
-    while (d <= eindDatum) {
-      dates.push(new Date(d));
-      d.setDate(d.getDate() + 1);
-    }
-    return dates;
-  }, [startDatum, eindDatum]);
-
-    // Filter regels overlapping period
-  const filtered = useMemo(() => {
-    if (!data) return [];
-    return data.filter(regel => {
+  // Filter relevant regels and group per medewerker
+  const perMedewerker = useMemo(() => {
+    if (!data) return {} as Record<number, Regel[]>;
+    const map: Record<number, Regel[]> = {};
+    data.forEach(regel => {
       const rs = new Date(regel.startdatum);
       const re = new Date(regel.einddatum);
-      return !(re < startDatum || rs > eindDatum);
-    });
-  }, [data, startDatum, eindDatum]);
-
-  // Groepeer en sorteer regels per medewerker
-  const perMedewerker = useMemo(() => {
-    const map: Record<number, Regel[]> = {};
-    filtered.forEach(regel => {
-      (map[regel.medewerker_id] ||= []).push(regel);
+      // if overlaps week
+      if (!(re < weekStart || rs > new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate()+6))) {
+        (map[regel.medewerker_id] ||= []).push(regel);
+      }
     });
     Object.values(map).forEach(arr =>
-      arr.sort((a, b) => new Date(a.startdatum).getTime() - new Date(b.startdatum).getTime())
+      arr.sort((a,b) => new Date(a.startdatum).getTime() - new Date(b.startdatum).getTime())
     );
     return map;
-  }, [filtered]);
+  }, [data, weekStart]);
 
   if (error) return <div className="p-4 text-red-600">Fout bij laden</div>;
   if (!data) return <div className="p-4">Laden…</div>;
 
   return (
     <div className="p-4 overflow-auto">
-      <h1 className="text-2xl font-bold mb-4">Beschikbaarheid per periode</h1>
+      <h1 className="text-2xl font-bold mb-4">Beschikbaarheid per week</h1>
       <div className="flex gap-4 mb-6">
-        <div>
-          <label className="block mb-1">Maand</label>
-          <select value={maand} onChange={e => setMaand(Number(e.target.value))} className="border px-3 py-2 rounded">
-            {maandNamen.map((naam, idx) => (
-              <option key={idx} value={idx}>{naam}</option>
-            ))}
-          </select>
-        </div>
         <div>
           <label className="block mb-1">Jaar</label>
           <input
@@ -104,19 +94,28 @@ export default function BeschikbaarheidPeriode() {
             min={2000} max={2100}
           />
         </div>
+        <div>
+          <label className="block mb-1">Week</label>
+          <input
+            type="number"
+            value={week}
+            onChange={e => setWeek(Number(e.target.value))}
+            className="border px-3 py-2 rounded w-24"
+            min={1} max={53}
+          />
+        </div>
+        <div className="self-end text-sm">
+          {`Periode: ${weekStart.toLocaleDateString('nl-NL')} t/m ${new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate()+6).toLocaleDateString('nl-NL')}`}
+        </div>
       </div>
       <table className="w-full border-collapse border text-sm">
         <thead className="bg-gray-100">
           <tr>
-            <th className="border px-2 py-1">Naam</th>
-            {dateList.map(datum => (
-              <React.Fragment key={datum.toISOString()}>
-                <th className="border px-1 py-1 text-center whitespace-nowrap">
-                  {datum.getDate()}s1
-                </th>
-                <th className="border px-1 py-1 text-center whitespace-nowrap">
-                  {datum.getDate()}s2
-                </th>
+            <th className="border px-2 py-1 text-left">Naam</th>
+            {weekDates.map((d, idx) => (
+              <React.Fragment key={d.toISOString()}>
+                <th className={`border px-1 py-1 text-center ${kleuren[idx]}`}>{d.getDate()} s1</th>
+                <th className={`border px-1 py-1 text-center ${kleuren[idx]}`}>{d.getDate()} s2</th>
               </React.Fragment>
             ))}
           </tr>
@@ -127,18 +126,17 @@ export default function BeschikbaarheidPeriode() {
             return (
               <tr key={regels[0].medewerker_id}>
                 <td className="border px-2 py-1 truncate max-w-[100px]" title={naam}>{naam}</td>
-                {dateList.map(datum => {
-                  const dayIdx = datum.getDay() === 0 ? 6 : datum.getDay() - 1;
-                  // kies de meest recente regel die deze datum omvat
+                {weekDates.map((d, idx) => {
+                  const dayIdx = d.getDay() === 0 ? 6 : d.getDay() - 1;
                   const aktRegel = [...regels].reverse().find(r => {
                     const rs = new Date(r.startdatum);
                     const re = new Date(r.einddatum);
-                    return rs <= datum && re >= datum;
+                    return rs <= d && re >= d;
                   });
                   const a1 = aktRegel ? aktRegel[`${dagen[dayIdx]}_1`] : false;
                   const a2 = aktRegel ? aktRegel[`${dagen[dayIdx]}_2`] : false;
                   return (
-                    <React.Fragment key={datum.toISOString()}>
+                    <React.Fragment key={d.toISOString()}>
                       <td className={`border px-1 py-1 text-center ${kleuren[dayIdx]}`}>{a1 ? "✓" : ""}</td>
                       <td className={`border px-1 py-1 text-center ${kleuren[dayIdx]}`}>{a2 ? "✓" : ""}</td>
                     </React.Fragment>
