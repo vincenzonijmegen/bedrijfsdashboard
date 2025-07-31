@@ -1,6 +1,7 @@
 // src/app/api/aftekenlijsten/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { sql } from '@/lib/db';
+import { db } from '@/lib/db';
+
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
     ORDER BY jaar DESC, week DESC, categorie
   `;
 
-  const result = await sql(query, values);
+  const result = await db.query(query, values);
   return NextResponse.json(result.rows);
 }
 
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Verplichte velden ontbreken' }, { status: 400 });
   }
 
-  const result = await sql(
+  const result = await db.query(
     `INSERT INTO aftekenlijsten (categorie, week, jaar, bestand_url, opmerking)
      VALUES ($1, $2, $3, $4, $5)
      RETURNING *`,
