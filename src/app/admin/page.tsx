@@ -140,7 +140,7 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/acties" label="Actielijsten" color="slate" Icon={CheckSquare} />
         <LinkCard href="/admin/notities" label="Notities" color="slate" Icon={FileText} />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="slate" Icon={Wrench} />
-        <LinkCard href="/admin/rapportage" label="Financiële Rapporten" color="slate" Icon={BarChart2} />
+        <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="slate" Icon={BarChart2} />
       </Section>
 
       <Section id="medewerkers" title="👥 Medewerkers en instructies" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
@@ -187,8 +187,8 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="gray" Icon={BarChart2} />
         <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers Rapporten" color="gray" Icon={BarChart2} />
         <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="gray" Icon={Wrench} />
-        <LinkCard href="/admin/mypos" label="Inlezen maandbestanden myPOS" color="gray" Icon={Archive} />
-        <LinkCard href="/admin/mypos/boeking" label="Boekingsdocument myPOS⇒snelstart" color="gray" Icon={FileText} />
+        <LinkCard href="/admin/mypos" label="Inlezen myPOS (maand)" color="gray" Icon={Archive} />
+        <LinkCard href="/admin/mypos/boeking" label="JP myPOS⇒snelstart" color="gray" Icon={FileText} />
         <LinkCard href="/admin/omzet/prognose" label="Omzetverdeling" color="gray" Icon={PieChart} />
         <LinkCard href="/admin/recepten/allergenen" label="Allergenenkaart" color="gray" Icon={List} />
       </Section>

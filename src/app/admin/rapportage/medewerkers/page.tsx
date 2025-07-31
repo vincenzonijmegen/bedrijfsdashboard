@@ -4,18 +4,18 @@ import { Card, CardContent } from '@/components/ui/card';
 
 const rapportages = [
   {
-    titel: 'Maandomzet per jaar',
-    beschrijving: 'Toon de totale omzet per maand en per jaar',
+    titel: 'Rapportage ziekteverzuim',
+    beschrijving: 'Rapportage ziekteverzuim per medewerker',
     link: '/admin/rapportage/medewerkers/ziekteverzuim',
   },
       {
-    titel: 'Omzet per uur per dag',
-    beschrijving: 'Overzicht progressie',
+    titel: 'Overzicht progressie',
+    beschrijving: 'Overzicht progressie werkinstructies',
     link: '/admin/rapportage/medewerkers/overzicht-progressie',
   },
     {
     titel: 'Toetsresultaten',
-    beschrijving: 'Toon omzet op feestdagen (tooltip toont uuromzet)',
+    beschrijving: 'Overzicht toetsresultateb per medewerker',
     link: '/admin/rapportage/medewerkers/resultaten',
   },
   // Toekomstige rapportages kunnen hier worden toegevoegd
