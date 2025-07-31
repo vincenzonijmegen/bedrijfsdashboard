@@ -2,6 +2,7 @@
 
 "use client";
 
+import Link from 'next/link';
 import useSWR from "swr";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -40,9 +41,13 @@ export default function ZiekteverzuimRapportage() {
     gegroepeerd[v.medewerker_naam].push(v);
   });
 
-  return (
-    <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">Ziekteverzuimrapportage</h1>
+return (
+  <div className="p-4">
+    <Link href="/admin/rapportage/medewerkers" className="text-sm underline text-blue-600 block mb-2">
+      🡐 Terug naar Rapportage Medewerkers
+    </Link>
+    <h1 className="text-xl font-bold mb-4">Ziekteverzuimrapportage</h1>
+
       <div className="mb-4 flex items-center gap-4">
         <p className="text-sm">
           Huidige sortering: <strong>{sortering === 'standaard' ? 'Open meldingen + alfabetisch' : 'Aantal ziekmeldingen (hoog → laag)'}</strong>

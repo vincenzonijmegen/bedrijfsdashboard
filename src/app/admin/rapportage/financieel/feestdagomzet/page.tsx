@@ -52,7 +52,7 @@ export default function FeestdagOmzetPage() {
 
   return (
     <div className="p-6 relative">
-      <Link href="/admin/rapportage" className="text-sm underline text-blue-600">← Terug naar Rapportage</Link>
+      <Link href="/admin/rapportage/financieel" className="text-sm underline text-blue-600">← Financiële Rapportages</Link>
       <h1 className="text-2xl font-bold mt-4 mb-6">Omzet per feestdag</h1>
 
       <table className="border border-gray-400 text-sm leading-tight">

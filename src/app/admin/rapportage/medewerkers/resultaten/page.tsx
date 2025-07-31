@@ -3,6 +3,7 @@
 import useSWR, { mutate } from "swr";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface Resultaat {
   id: string;
@@ -51,9 +52,14 @@ export default function ResultatenOverzicht() {
     ? data
     : data.filter((r) => r.email === filterEmail);
 
-  return (
-    <div className="p-6 max-w-4xl mx-auto space-y-4">
-      <h1 className="text-2xl font-bold flex items-center gap-2">📊 Toetsresultaten</h1>
+
+
+return (
+  <div className="p-4">
+    <Link href="/admin/rapportage/medewerkers" className="text-sm underline text-blue-600 block mb-2">
+      🡐 Terug naar Rapportage Medewerkers
+    </Link>
+          <h1 className="text-2xl font-bold flex items-center gap-2">📊 Toetsresultaten</h1>
 
       <div className="mb-4">
         <label className="mr-2 font-medium">Filter op medewerker:</label>

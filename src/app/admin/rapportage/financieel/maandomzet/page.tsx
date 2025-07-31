@@ -59,7 +59,7 @@ export default function MaandomzetPage() {
 
   return (
     <div className="p-6">
-      <Link href="/admin/rapportage" className="text-sm underline text-blue-600">← Terug naar Rapportage</Link>
+      <Link href="/admin/rapportage/financieel" className="text-sm underline text-blue-600">← Financiële Rapportages</Link>
       <h1 className="text-2xl font-bold mt-4 mb-2">Maandomzet per jaar</h1>
       <p className="text-sm text-gray-600 mb-4">
         Huidige jaar bijgewerkt t/m {maxDatum.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}

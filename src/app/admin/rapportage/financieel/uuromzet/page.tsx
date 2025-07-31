@@ -42,7 +42,7 @@ export default function UurOmzetPage() {
   return (
     <div className="p-6 max-w-full">
       <p className="mb-4">
-        <a href="/admin/rapportage" className="text-sm underline text-blue-600">← Terug naar Rapportage</a>
+        <a href="/admin/rapportage/financieel" className="text-sm underline text-blue-600">← Financiële Rapportages</a>
       </p>
       <h1 className="text-2xl font-bold mb-4">Uur-omzet per dag</h1>
 

@@ -79,11 +79,13 @@ CC: info@ijssalonvincenzo.nl`);
     data.skillsstatus.map((r) => [r.email, r])
   );
 
-  return (
-    <main className="p-6">
-      <h1 className="text-2xl font-bold mb-4">
-        📊 Overzicht voortgang medewerkers
-      </h1>
+return (
+  <main className="p-4">
+    <Link href="/admin/rapportage/medewerkers" className="text-sm underline text-blue-600 block mb-2">
+      🡐 Terug naar Rapportage Medewerkers
+    </Link>
+    <h1 className="text-xl font-bold mb-4">Overzicht progressie</h1>
+
       <button
         onClick={handleMailClick}
         disabled={selectedEmails.length === 0}
