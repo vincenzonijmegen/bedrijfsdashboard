@@ -44,6 +44,12 @@ export default function BeschikbaarheidOverzicht() {
             <th className="border px-2 py-1 text-left">Opmerking</th>
           </tr>
         </thead>
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="border px-2 py-1 text-left">Actie</th>
+          </tr>
+        </thead>
+        <tbody>
         <tbody>
           {data.map((regel) => (
             <tr key={regel.id}>
