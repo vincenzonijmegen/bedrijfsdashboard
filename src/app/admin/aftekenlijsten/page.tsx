@@ -22,7 +22,8 @@ const categorieNamen: Record<string, string> = {
 };
 
 export default function AftekenlijstenOverzicht() {
-  const { data, error } = useSWR<Lijst[]>("/api/aftekenlijsten", (url) => fetch(url).then((r) => r.json()));
+const { data, error } = useSWR<Lijst[]>("/api/aftekenlijsten", (url: string) => fetch(url).then((r) => r.json()));
+
 
   if (error) return <p className="p-4 text-red-600">Fout bij laden</p>;
   if (!data) return <p className="p-4">Laden…</p>;
