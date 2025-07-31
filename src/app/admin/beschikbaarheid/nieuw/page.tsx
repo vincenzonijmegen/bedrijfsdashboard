@@ -1,12 +1,19 @@
 // src/app/admin/beschikbaarheid/nieuw/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const dagen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"];
 
+interface Medewerker {
+  id: number;
+  naam: string;
+}
+
 export default function NieuwBeschikbaarheidFormulier() {
+  const [medewerkers, setMedewerkers] = useState<Medewerker[]>([]);
+  const [medewerkerId, setMedewerkerId] = useState<number | null>(null);
   const [startdatum, setStartdatum] = useState("");
   const [einddatum, setEinddatum] = useState("");
   const [maxShifts, setMaxShifts] = useState(2);
@@ -23,6 +30,12 @@ export default function NieuwBeschikbaarheidFormulier() {
   const [uploading, setUploading] = useState(false);
   const router = useRouter();
 
+  useEffect(() => {
+    fetch("/api/medewerkers")
+      .then((res) => res.json())
+      .then((data) => setMedewerkers(data));
+  }, []);
+
   const toggle = (dag: string, shift: "s1" | "s2") => {
     setShifts((prev) => ({
       ...prev,
@@ -31,8 +44,8 @@ export default function NieuwBeschikbaarheidFormulier() {
   };
 
   const handleSubmit = async () => {
-    if (!startdatum || !einddatum) {
-      alert("Start- en einddatum zijn verplicht");
+    if (!startdatum || !einddatum || !medewerkerId) {
+      alert("Alle velden zijn verplicht");
       return;
     }
     setUploading(true);
@@ -41,6 +54,7 @@ export default function NieuwBeschikbaarheidFormulier() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        medewerker_id: medewerkerId,
         startdatum,
         einddatum,
         max_shifts_per_week: maxShifts,
@@ -66,6 +80,23 @@ export default function NieuwBeschikbaarheidFormulier() {
   return (
     <div className="max-w-xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Nieuwe beschikbaarheid invoeren</h1>
+
+      <div className="mb-4">
+        <label className="block mb-1">Medewerker</label>
+        <select
+          value={medewerkerId !== null ? medewerkerId : ""}
+          onChange={(e) => {
+            const val = e.target.value;
+            setMedewerkerId(val ? Number(val) : null);
+          }}
+          className="border px-3 py-2 rounded w-full"
+        >
+          <option value="">-- Kies een medewerker --</option>
+          {medewerkers.map((m) => (
+            <option key={m.id} value={m.id}>{m.naam}</option>
+          ))}
+        </select>
+      </div>
 
       <div className="mb-4">
         <label className="block mb-1">Startdatum</label>
