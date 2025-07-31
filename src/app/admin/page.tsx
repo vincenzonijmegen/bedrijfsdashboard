@@ -143,6 +143,25 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="slate" Icon={BarChart2} />
       </Section>
 
+      <Section id="management" title="📘 Management" color="blue" activeSection={activeSection} setActiveSection={setActiveSection}>
+        <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} />
+        <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} />
+        <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} />
+        <LinkCard href="/admin/contacten" label="Belangrijke gegevens" color="blue" Icon={Folder} />
+      </Section>
+
+      <Section id="planning" title="📅 Planning" color="orange" activeSection={activeSection} setActiveSection={setActiveSection}>
+        <LinkCard href="/admin/shiftbase/rooster" label="Rooster per dag" color="orange" Icon={CalendarDays} />
+        <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} />
+        <LinkCard href="/admin/rapportages/timesheets" label="Klokuren" color="orange" Icon={Clock} />
+        <LinkCard href="/shift-acties" label="Shiftacties & Statistieken" color="orange" Icon={Activity} />
+      </Section>
+
+      <Section id="rapportages" title="📊 Rapportages" color="amber" activeSection={activeSection} setActiveSection={setActiveSection}>
+        <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="amber" Icon={BarChart2} />
+        <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers Rapporten" color="amber" Icon={BarChart2} />
+      </Section>
+
       <Section id="medewerkers" title="👥 Medewerkers en instructies" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} />
         <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="green" Icon={Users} />
@@ -153,25 +172,11 @@ export default function AdminDashboard() {
         <LinkCard href="/instructies" label="Instructies medewerkers" color="green" Icon={Eye} />
       </Section>
 
-      <Section id="management" title="📘 Management" color="blue" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} />
-        <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} />
-        <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} />
-        <LinkCard href="/admin/contacten" label="Belangrijke gegevens" color="blue" Icon={Folder} />
-      </Section>
-
       <Section id="skills" title="🧠 Skills" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/skills/categorieen" label="Beheer categorieën" color="purple" Icon={Tag} />
         <LinkCard href="/admin/skills" label="Skills beheer" color="purple" Icon={Layers} />
         <LinkCard href="/admin/skills/toewijzen" label="Skills toewijzen" color="purple" Icon={Activity} />
         <LinkCard href="/skills" label="Skills medewerkers" color="purple" Icon={Layers} />
-      </Section>
-
-      <Section id="planning" title="📅 Planning" color="orange" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/shiftbase/rooster" label="Rooster per dag" color="orange" Icon={CalendarDays} />
-        <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} />
-        <LinkCard href="/admin/rapportages/timesheets" label="Klokuren" color="orange" Icon={Clock} />
-        <LinkCard href="/shift-acties" label="Shiftacties & Statistieken" color="orange" Icon={Activity} />
       </Section>
 
       <Section id="voorraad" title="📦 Voorraadbeheer, Recepturen & Allergenen" color="pink" activeSection={activeSection} setActiveSection={setActiveSection}>
@@ -184,14 +189,9 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/recepten/allergenen" label="Allergenenkaart" color="pink" Icon={List} />
       </Section>
 
-      <Section id="rapportages" title="📊 Rapportages" color="indigo" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="amber" Icon={BarChart2} />
-        <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers Rapporten" color="emerald" Icon={BarChart2} />
-      </Section>
-
-      <Section id="import" title="📊 Import" color="red" activeSection={activeSection} setActiveSection={setActiveSection}>
+      <Section id="import" title="📊 Import" color="teal" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="teal" Icon={Wrench} />
-        <LinkCard href="/admin/mypos" label="Inlezen myPOS (maand)" color="red" Icon={Archive} />
+        <LinkCard href="/admin/mypos" label="Inlezen myPOS (maand)" color="teal" Icon={Archive} />
       </Section>
     </main>
   );
