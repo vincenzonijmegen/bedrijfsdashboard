@@ -181,6 +181,7 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ClipboardList} />
         <LinkCard href="/admin/recepten" label="Receptprijs" color="pink" Icon={Truck} />
         <LinkCard href="/admin/producten/allergenen" label="Allergenenregistratie" color="pink" Icon={List} />
+        <LinkCard href="/admin/recepten/allergenen" label="Allergenenkaart" color="pink" Icon={List} />
       </Section>
 
       <Section id="rapportages" title="📊 Rapportages" color="gray" activeSection={activeSection} setActiveSection={setActiveSection}>
@@ -188,9 +189,11 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers Rapporten" color="gray" Icon={BarChart2} />
         <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="gray" Icon={Wrench} />
         <LinkCard href="/admin/mypos" label="Inlezen myPOS (maand)" color="gray" Icon={Archive} />
-        <LinkCard href="/admin/mypos/boeking" label="JP myPOS⇒snelstart" color="gray" Icon={FileText} />
-        <LinkCard href="/admin/omzet/prognose" label="Omzetverdeling" color="gray" Icon={PieChart} />
-        <LinkCard href="/admin/recepten/allergenen" label="Allergenenkaart" color="gray" Icon={List} />
+      </Section>
+
+      <Section id="import" title="📊 Import" color="red" activeSection={activeSection} setActiveSection={setActiveSection}>
+        <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="red" Icon={Wrench} />
+        <LinkCard href="/admin/mypos" label="Inlezen myPOS (maand)" color="red" Icon={Archive} />
       </Section>
     </main>
   );

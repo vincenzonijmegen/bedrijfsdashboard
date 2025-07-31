@@ -18,6 +18,16 @@ const rapportages = [
     beschrijving: 'Toon omzet op feestdagen (tooltip toont uuromzet)',
     link: '/admin/rapportage/financieel/feestdagomzet',
   },
+  {
+    titel: 'Omzetprognose',
+    beschrijving: 'Toon omzetprognose o.b.v. historie en groei',
+    link: '/admin/omzet/prognose',
+  },
+  {
+    titel: 'JP MyPos',
+    beschrijving: 'Journaalpost MyPOS t.b.v. Snelstart',
+    link: '/admin/mypos/boeking',
+  },
   // Toekomstige rapportages kunnen hier worden toegevoegd
 ];
 

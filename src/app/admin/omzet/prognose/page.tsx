@@ -82,8 +82,11 @@ export default function PrognosePage() {
     ["prognose obv omzet to date", (m) => m.jrPrognoseObvTotNu],
   ];
 
+
+  
   return (
     <main className="p-6">
+      <a href="/admin/rapportage/financieel" className="text-sm underline text-blue-600 block mb-4">← Financiële Rapportages</a>
       <h1 className="text-2xl font-bold mb-6">Omzetprognose overzicht</h1>
       <p className="mb-4 text-gray-600">
         Prognose jaaromzet:&nbsp;

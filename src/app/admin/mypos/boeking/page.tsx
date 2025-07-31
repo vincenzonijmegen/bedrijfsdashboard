@@ -35,8 +35,11 @@ export default function BoekingsdocumentPage() {
   }, [maand]);
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Boekingsdocument MyPOS</h1>
+    <div className="p-6 max-w-full">
+      <p className="mb-4">
+        <a href="/admin/rapportage/financieel" className="text-sm underline text-blue-600">← Financiële Rapportages</a>
+      </p>
+      <h1 className="text-2xl font-bold mb-4">MyPOS boekingsdocument Snelstart</h1>
 
       <label className="block mb-4">
         Kies maand:
