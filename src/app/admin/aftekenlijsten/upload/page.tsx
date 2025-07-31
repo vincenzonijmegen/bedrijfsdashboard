@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Camera } from "lucide-react";
 
 const categorieOpties = [
   { label: "Winkel – begin", value: "winkel-begin" },
@@ -98,25 +99,26 @@ export default function UploadAftekenlijst() {
       </div>
 
       <label className="block mb-2">Uploadoptie</label>
-      <div className="flex gap-4 mb-4">
-        <label className="flex-1 border px-3 py-2 rounded bg-gray-50">
+      <div className="flex flex-col gap-4 mb-4">
+        <label className="flex flex-col gap-1 border px-3 py-2 rounded bg-gray-50">
           PDF uploaden:
           <input
             type="file"
             accept="application/pdf"
             onChange={(e) => setBestand(e.target.files?.[0] || null)}
-            className="mt-1 block"
+            className="block"
           />
         </label>
-        <br></br>
-        <label className="flex-1 border px-3 py-2 rounded bg-gray-50">
-          Foto maken:
+
+        <label className="flex items-center justify-center gap-2 border px-3 py-2 rounded bg-gray-50 cursor-pointer">
+          <Camera className="w-5 h-5 text-gray-600" />
+          <span className="text-gray-700">Foto maken</span>
           <input
             type="file"
             accept="image/*"
             capture="environment"
             onChange={(e) => setBestand(e.target.files?.[0] || null)}
-            className="mt-1 block"
+            className="hidden"
           />
         </label>
       </div>
