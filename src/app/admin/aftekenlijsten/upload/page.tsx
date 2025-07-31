@@ -14,7 +14,7 @@ const categorieOpties = [
 
 export default function UploadAftekenlijst() {
   const [categorie, setCategorie] = useState("");
-  const [week, setWeek] = useState<number>(0);
+  const [week, setWeek] = useState<number | "">("");
   const [jaar, setJaar] = useState<number>(new Date().getFullYear());
   const [bestand, setBestand] = useState<File | null>(null);
   const [opmerking, setOpmerking] = useState("");
@@ -81,8 +81,7 @@ export default function UploadAftekenlijst() {
         <div className="flex-1">
           <label className="block mb-2">Week</label>
           <input
-            type="number"
-            value={week}
+            type="number" value={week || ""}
             onChange={(e) => setWeek(Number(e.target.value))}
             min={1} max={53}
             className="w-full border px-3 py-2 rounded"
