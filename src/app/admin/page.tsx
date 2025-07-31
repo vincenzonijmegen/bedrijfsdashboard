@@ -192,6 +192,7 @@ export default function AdminDashboard() {
       <Section id="import" title="📊 Import" color="teal" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="teal" Icon={Wrench} />
         <LinkCard href="/admin/mypos" label="Inlezen myPOS (maand)" color="teal" Icon={Archive} />
+        <LinkCard href="/admin/aftekenlijsten/upload" label="Upload HACCP-formulieren" color="teal" Icon={Archive} />
       </Section>
     </main>
   );
