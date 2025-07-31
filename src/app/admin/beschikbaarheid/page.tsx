@@ -16,6 +16,8 @@ interface Regel {
 }
 
 const dagen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"];
+// Define alternating colors
+const kleuren = ["bg-blue-100", "bg-green-100", "bg-yellow-100", "bg-red-100", "bg-purple-100", "bg-pink-100", "bg-teal-100"];
 
 export default function BeschikbaarheidOverzicht() {
   const { data, error, mutate } = useSWR<Regel[]>(
@@ -46,10 +48,10 @@ export default function BeschikbaarheidOverzicht() {
             <th className="border px-2 py-1 text-left">Naam</th>
             <th className="border px-2 py-1 text-left">Periode</th>
             <th className="border px-2 py-1 text-center">Max</th>
-            {dagen.map((dag) => (
+            {dagen.map((dag, idx) => (
               <React.Fragment key={dag}>
-                <th className="border px-2 py-1 text-center">{dag.charAt(0)}1</th>
-                <th className="border px-2 py-1 text-center">{dag.charAt(0)}2</th>
+                <th className={`border px-2 py-1 text-center ${kleuren[idx]}`}>{dag.charAt(0)}1</th>
+                <th className={`border px-2 py-1 text-center ${kleuren[idx]}`}>{dag.charAt(0)}2</th>
               </React.Fragment>
             ))}
             <th className="border px-2 py-1 text-left">Opmerking</th>
@@ -66,13 +68,11 @@ export default function BeschikbaarheidOverzicht() {
                 {new Date(regel.startdatum).toLocaleDateString("nl-NL")} –{' '}
                 {new Date(regel.einddatum).toLocaleDateString("nl-NL")}
               </td>
-              <td className="border px-2 py-1 text-center">
-                {regel.max_shifts_per_week}
-              </td>
-              {dagen.map((dag) => (
+              <td className="border px-2 py-1 text-center">{regel.max_shifts_per_week}</td>
+              {dagen.map((dag, idx) => (
                 <React.Fragment key={`${regel.id}-${dag}`}> 
-                  <td className="border px-2 py-1 text-center">{regel[`${dag}_1`] ? "✓" : ""}</td>
-                  <td className="border px-2 py-1 text-center">{regel[`${dag}_2`] ? "✓" : ""}</td>
+                  <td className={`border px-2 py-1 text-center ${kleuren[idx]}`}>{regel[`${dag}_1`] ? "✓" : ""}</td>
+                  <td className={`border px-2 py-1 text-center ${kleuren[idx]}`}>{regel[`${dag}_2`] ? "✓" : ""}</td>
                 </React.Fragment>
               ))}
               <td
