@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function KassaOmzetImportPage() {
@@ -8,7 +8,19 @@ export default function KassaOmzetImportPage() {
   const [startDate, setStartDate] = useState<string>(today);
   const [endDate, setEndDate] = useState<string>(today);
   const [status, setStatus] = useState<string>('');
+  const [lastImport, setLastImport] = useState<string | null>(null);
 
+  useEffect(() => {
+    fetch('/api/rapportage/omzet/last-import')
+      .then(res => res.json())
+      .then(data => {
+        if (data.lastImported) {
+          setLastImport(data.lastImported);
+        }
+      })
+      .catch(() => {});
+  }, []);
+  
   // Fetch last imported date on mount
   useState(() => {
     fetch('/api/rapportage/omzet/last-import')
