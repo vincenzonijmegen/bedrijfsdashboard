@@ -116,9 +116,26 @@ const { data: timesheetData } = useSWR<any>(
                         ? timesheetData.data.find((t: any) => t.Timesheet.user_id === item.Roster.user_id)
                         : undefined;
                       const inTijd = entry?.Timesheet.clocked_in?.substring(11, 16) || '--';
-                      const uitTijd = entry?.Timesheet.clocked_out?.substring(11, 16) || '--';
-                      const klasse = entry ? (entry.Timesheet.clocked_in && entry.Timesheet.clocked_out ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800') : 'bg-red-100 text-red-800';
-                      return <span className={`ml-2 px-1 rounded text-sm ${klasse}`}>⏱ In: {inTijd} Uit: {uitTijd}</span>;
+const uitTijd = entry?.Timesheet.clocked_out?.substring(11, 16) || '--';
+const totaalUur = parseFloat(entry?.Timesheet.total || '0');
+const status = entry?.Timesheet.status || 'Onbekend';
+
+// Class op basis van status of kloktijd
+let kleur = 'bg-red-100 text-red-800';
+if (entry?.Timesheet.clocked_in && entry?.Timesheet.clocked_out) {
+  kleur = 'bg-green-100 text-green-800';
+} else if (entry?.Timesheet.clocked_in || entry?.Timesheet.clocked_out) {
+  kleur = 'bg-orange-100 text-orange-800';
+}
+
+return (
+  <div className={`ml-2 mt-1 flex flex-wrap items-center gap-1 text-sm ${kleur} px-2 py-1 rounded`}>
+    <span className="text-sm">⏱</span>
+    <span>In: {inTijd}</span>
+    <span>Uit: {uitTijd}</span>
+  </div>
+);
+
                     })()}
                   </span>
                 </li>
