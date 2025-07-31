@@ -39,12 +39,11 @@ export default function RoosterPage() {
     fetcher
   );
 
-  const { data: timesheetData } = useSWR<any>(
-    selectedDate === formatISO(today)
-      ? `/api/shiftbase/timesheets?min_date=${selectedDate}&max_date=${selectedDate}&status=Approved`
-      : null,
-    fetcher
-  );
+const { data: timesheetData } = useSWR<any>(
+  `/api/shiftbase/timesheets?min_date=${selectedDate}&max_date=${selectedDate}`,
+  fetcher
+);
+
 
   useEffect(() => {
     console.log('[DEBUG] timesheetData]', timesheetData);

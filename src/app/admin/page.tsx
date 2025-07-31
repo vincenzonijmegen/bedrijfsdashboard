@@ -126,7 +126,7 @@ export default function AdminDashboard() {
   return (
     <main className="max-w-6xl mx-auto p-6">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-slate-800">🗂️ Portaal</h1>
+        <h1 className="text-2xl font-bold text-slate-800">🗂️ Portaal Vincenzo</h1>
         <Link href="/admin/dashboard" className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200">
           <DailyTotalDisplay />
         </Link>
