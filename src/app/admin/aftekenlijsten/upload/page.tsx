@@ -10,6 +10,7 @@ const categorieOpties = [
   { label: "Winkel – eind", value: "winkel-eind" },
   { label: "Keuken – begin", value: "keuken-begin" },
   { label: "Keuken – eind", value: "keuken-eind" },
+  { label: "Incidenteel", value: "incidenteel" },
 ];
 
 export default function UploadAftekenlijst() {
@@ -36,9 +37,10 @@ export default function UploadAftekenlijst() {
 
     setUploading(true);
 
+    const ext = bestand.name.split(".").pop()?.toLowerCase() || "pdf";
     const formData = new FormData();
     formData.append("file", bestand);
-    formData.append("path", `aftekenlijsten/${jaar}/week-${week}-${categorie}.pdf`);
+    formData.append("path", `aftekenlijsten/${jaar}/week-${week}-${categorie}.${ext}`);
 
     const uploadRes = await fetch("/api/upload", {
       method: "POST",
