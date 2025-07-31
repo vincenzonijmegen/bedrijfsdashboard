@@ -160,6 +160,7 @@ export default function AdminDashboard() {
       <Section id="rapportages" title="📊 Rapportages" color="amber" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="amber" Icon={BarChart2} />
         <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers Rapporten" color="amber" Icon={BarChart2} />
+        <LinkCard href="/admin/aftekenlijsten" label="HACCP-lijsten ingescand" color="amber" Icon={BarChart2} />
       </Section>
 
       <Section id="medewerkers" title="👥 Medewerkers en instructies" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
