@@ -17,7 +17,16 @@ interface Regel {
 
 const dagen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"];
 // Define alternating colors
-const kleuren = ["bg-blue-100", "bg-green-100", "bg-yellow-100", "bg-red-100", "bg-purple-100", "bg-pink-100", "bg-teal-100"];
+// Define softer background colors
+const kleuren = [
+  "bg-blue-50",
+  "bg-green-50",
+  "bg-yellow-50",
+  "bg-red-50",
+  "bg-purple-50",
+  "bg-pink-50",
+  "bg-teal-50",
+];
 
 export default function BeschikbaarheidOverzicht() {
   const { data, error, mutate } = useSWR<Regel[]>(
