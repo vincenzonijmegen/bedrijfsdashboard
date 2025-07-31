@@ -84,9 +84,10 @@ export default function BeschikbaarheidOverzicht() {
               <td className="border px-2 py-1">
                 <button
                   onClick={() => handleDelete(regel.id)}
-                  className="text-red-600 hover:underline"
+                  className="text-red-600 hover:text-red-800"
+                  title="Verwijderen"
                 >
-                  Verwijderen
+                  ✖
                 </button>
               </td>
             </tr>
