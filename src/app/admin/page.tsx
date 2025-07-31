@@ -151,7 +151,6 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} />
         <LinkCard href="/admin/instructies" label="Instructies beheren" color="green" Icon={FileText} />
         <LinkCard href="/instructies" label="Instructies medewerkers" color="green" Icon={Eye} />
-        <LinkCard href="/admin/resultaten" label="Toetsresultaten" color="green" Icon={BarChart2} />
       </Section>
 
       <Section id="management" title="📘 Management" color="blue" activeSection={activeSection} setActiveSection={setActiveSection}>
@@ -185,10 +184,9 @@ export default function AdminDashboard() {
       </Section>
 
       <Section id="rapportages" title="📊 Rapportages" color="gray" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/rapportages/ziekteverzuim" label="Ziekteverzuim" color="gray" Icon={CreditCard} />
-        <LinkCard href="/admin/rapportages/medewerkers/overzicht-progressie" label="Medewerkers-voortgang" color="gray" Icon={BarChart2} />
+        <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="gray" Icon={BarChart2} />
+        <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers Rapporten" color="gray" Icon={BarChart2} />
         <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="gray" Icon={Wrench} />
-        <LinkCard href="/admin/rapportage" label="Financiële Rapporten" color="gray" Icon={BarChart2} />
         <LinkCard href="/admin/mypos" label="Inlezen maandbestanden myPOS" color="gray" Icon={Archive} />
         <LinkCard href="/admin/mypos/boeking" label="Boekingsdocument myPOS⇒snelstart" color="gray" Icon={FileText} />
         <LinkCard href="/admin/omzet/prognose" label="Omzetverdeling" color="gray" Icon={PieChart} />
