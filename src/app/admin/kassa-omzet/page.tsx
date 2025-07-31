@@ -9,6 +9,16 @@ export default function KassaOmzetImportPage() {
   const [endDate, setEndDate] = useState<string>(today);
   const [status, setStatus] = useState<string>('');
 
+  // Fetch last imported date on mount
+  useState(() => {
+    fetch('/api/rapportage/omzet/last-import')
+      .then(res => res.json())
+      .then(data => {
+        if (data.lastImported) setLastImport(data.lastImported);
+      })
+      .catch(() => {});
+  });
+
   const handleImport = async () => {
     setStatus('Importeren...');
     try {
