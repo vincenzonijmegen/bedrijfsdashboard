@@ -54,6 +54,8 @@ export default function UploadAftekenlijst() {
 
     if (!saveRes.ok) {
       alert("Upload mislukt");
+    } else {
+      router.push("/admin/aftekenlijsten");
     }
 
     setUploading(false);
