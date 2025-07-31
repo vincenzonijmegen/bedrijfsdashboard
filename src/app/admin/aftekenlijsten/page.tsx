@@ -22,8 +22,7 @@ const categorieNamen: Record<string, string> = {
 };
 
 export default function AftekenlijstenOverzicht() {
-const { data, error } = useSWR<Lijst[]>("/api/aftekenlijsten", (url: string) => fetch(url).then((r) => r.json()));
-
+  const { data, error } = useSWR<Lijst[]>("/api/aftekenlijsten", (url: string) => fetch(url).then((r) => r.json()));
 
   if (error) return <p className="p-4 text-red-600">Fout bij laden</p>;
   if (!data) return <p className="p-4">Laden…</p>;
@@ -31,6 +30,10 @@ const { data, error } = useSWR<Lijst[]>("/api/aftekenlijsten", (url: string) => 
   return (
     <div className="max-w-4xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Aftekenlijsten per week</h1>
+
+      <p className="mb-4">
+        <Link href="/admin/aftekenlijsten/upload" className="text-blue-600 underline">➕ Nieuwe aftekenlijst uploaden</Link>
+      </p>
 
       <table className="w-full border text-sm">
         <thead className="bg-gray-100">
