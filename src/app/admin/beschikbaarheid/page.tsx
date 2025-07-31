@@ -24,18 +24,18 @@ export default function BeschikbaarheidOverzicht() {
   if (!data) return <div className="p-4">Laden…</div>;
 
   return (
-    <div className="p-4 max-w-full overflow-auto">
+    <div className="p-4 overflow-auto">
       <h1 className="text-2xl font-bold mb-4">Beschikbaarheid per medewerker</h1>
-      <table className="min-w-[1200px] border text-sm">
+      <table className="w-full border-collapse border text-sm">
         <thead className="bg-gray-100">
           <tr>
             <th className="border px-2 py-1 text-left">Naam</th>
             <th className="border px-2 py-1 text-left">Periode</th>
-            <th className="border px-2 py-1 text-center">Max/wk</th>
+            <th className="border px-2 py-1 text-center">Max</th>
             {dagen.map((dag) => (
               <React.Fragment key={dag}>
-                <th className="border px-2 py-1 text-center">{dag.slice(0,2)}1</th>
-                <th className="border px-2 py-1 text-center">{dag.slice(0,2)}2</th>
+                <th className="border px-2 py-1 text-center">{dag.charAt(0).toLowerCase()}1</th>
+                <th className="border px-2 py-1 text-center">{dag.charAt(0).toLowerCase()}2</th>
               </React.Fragment>
             ))}
             <th className="border px-2 py-1 text-left">Opmerking</th>
@@ -44,25 +44,19 @@ export default function BeschikbaarheidOverzicht() {
         <tbody>
           {data.map((regel) => (
             <tr key={regel.id}>
-              <td className="border px-2 py-1 whitespace-nowrap">{regel.naam}</td>
+              <td className="border px-2 py-1 max-w-[100px] truncate" title={regel.naam}>{regel.naam}</td>
               <td className="border px-2 py-1 whitespace-nowrap">
-                {new Date(regel.startdatum).toLocaleDateString("nl-NL")} t/m {new Date(regel.einddatum).toLocaleDateString("nl-NL")}
+                {new Date(regel.startdatum).toLocaleDateString("nl-NL")} – {new Date(regel.einddatum).toLocaleDateString("nl-NL")}
               </td>
               <td className="border px-2 py-1 text-center">{regel.max_shifts_per_week}</td>
               {dagen.map((dag) => (
-                <React.Fragment key={`${regel.id}-${dag}`}>
+                <React.Fragment key={`${regel.id}-${dag}`}> 
                   <td className="border px-2 py-1 text-center">{regel[`${dag}_1`] ? "✓" : ""}</td>
                   <td className="border px-2 py-1 text-center">{regel[`${dag}_2`] ? "✓" : ""}</td>
                 </React.Fragment>
               ))}
-              <td className="border px-2 py-1" title={regel.opmerkingen || ""}>
-                {regel.opmerkingen ? (
-                  <span className="truncate inline-block max-w-[120px] overflow-hidden whitespace-nowrap">
-                    {regel.opmerkingen}
-                  </span>
-                ) : (
-                  <span className="text-gray-500">-</span>
-                )}
+              <td className="border px-2 py-1 max-w-[80px] truncate" title={regel.opmerkingen || ""}>
+                {regel.opmerkingen || "-"}
               </td>
             </tr>
           ))}
