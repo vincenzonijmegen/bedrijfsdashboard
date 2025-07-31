@@ -25,7 +25,10 @@ export default function BeschikbaarheidOverzicht() {
 
   return (
     <div className="p-4 overflow-auto">
-      <h1 className="text-2xl font-bold mb-4">Beschikbaarheid per medewerker</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Beschikbaarheid per medewerker</h1>
+        <a href="/admin/beschikbaarheid/nieuw" className="text-blue-600 underline">➕ Nieuwe beschikbaarheid opgeven</a>
+      </div>
       <table className="w-full border-collapse border text-sm">
         <thead className="bg-gray-100">
           <tr>
@@ -34,8 +37,8 @@ export default function BeschikbaarheidOverzicht() {
             <th className="border px-2 py-1 text-center">Max</th>
             {dagen.map((dag) => (
               <React.Fragment key={dag}>
-                <th className="border px-2 py-1 text-center">{dag.charAt(0).toLowerCase()}1</th>
-                <th className="border px-2 py-1 text-center">{dag.charAt(0).toLowerCase()}2</th>
+                <th className="border px-2 py-1 text-center">{dag.charAt(0)}1</th>
+                <th className="border px-2 py-1 text-center">{dag.charAt(0)}2</th>
               </React.Fragment>
             ))}
             <th className="border px-2 py-1 text-left">Opmerking</th>
