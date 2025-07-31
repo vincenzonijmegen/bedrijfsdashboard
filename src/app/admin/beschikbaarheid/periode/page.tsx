@@ -33,7 +33,7 @@ export default function BeschikbaarheidPeriode() {
   const [start, setStart] = useState(formatISO(new Date(today.getFullYear(), today.getMonth(), 1)));
   const [end, setEnd] = useState(formatISO(new Date(today.getFullYear(), today.getMonth() + 1, 0)));
 
-  const { data, error } = useSWR<Regel[]>('/api/beschikbaarheid', url => fetch(url).then(r => r.json()));
+  const { data, error } = useSWR<Regel[]>('/api/beschikbaarheid', (url: string) => fetch(url).then(r => r.json()));
 
   const filtered = useMemo(() => {
     if (!data) return [];
