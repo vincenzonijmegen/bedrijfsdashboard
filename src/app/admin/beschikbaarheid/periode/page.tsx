@@ -57,7 +57,7 @@ export default function BeschikbaarheidPeriode() {
     return dates;
   }, [startDatum, eindDatum]);
 
-  // Filter regels overlapping period
+    // Filter regels overlapping period
   const filtered = useMemo(() => {
     if (!data) return [];
     return data.filter(regel => {
@@ -66,6 +66,18 @@ export default function BeschikbaarheidPeriode() {
       return !(re < startDatum || rs > eindDatum);
     });
   }, [data, startDatum, eindDatum]);
+
+  // Groepeer en sorteer regels per medewerker
+  const perMedewerker = useMemo(() => {
+    const map: Record<number, Regel[]> = {};
+    filtered.forEach(regel => {
+      (map[regel.medewerker_id] ||= []).push(regel);
+    });
+    Object.values(map).forEach(arr =>
+      arr.sort((a, b) => new Date(a.startdatum).getTime() - new Date(b.startdatum).getTime())
+    );
+    return map;
+  }, [filtered]);
 
   if (error) return <div className="p-4 text-red-600">Fout bij laden</div>;
   if (!data) return <div className="p-4">Laden…</div>;
@@ -110,24 +122,31 @@ export default function BeschikbaarheidPeriode() {
           </tr>
         </thead>
         <tbody>
-          {filtered.map(regel => (
-            <tr key={regel.id}>
-              <td className="border px-2 py-1 truncate max-w-[100px]" title={regel.naam}>
-                {regel.naam}
-              </td>
-              {dateList.map(datum => {
-                const dayIdx = datum.getDay() === 0 ? 6 : datum.getDay() - 1; // maandag=0
-                const available1 = regel[`${dagen[dayIdx]}_1`];
-                const available2 = regel[`${dagen[dayIdx]}_2`];
-                return (
-                  <React.Fragment key={datum.toISOString()}>
-                    <td className={`border px-1 py-1 text-center ${kleuren[dayIdx]}`}>{available1 ? "✓" : ""}</td>
-                    <td className={`border px-1 py-1 text-center ${kleuren[dayIdx]}`}>{available2 ? "✓" : ""}</td>
-                  </React.Fragment>
-                );
-              })}
-            </tr>
-          ))}
+          {Object.entries(perMedewerker).map(([, regels]) => {
+            const naam = regels[0].naam;
+            return (
+              <tr key={regels[0].medewerker_id}>
+                <td className="border px-2 py-1 truncate max-w-[100px]" title={naam}>{naam}</td>
+                {dateList.map(datum => {
+                  const dayIdx = datum.getDay() === 0 ? 6 : datum.getDay() - 1;
+                  // kies de meest recente regel die deze datum omvat
+                  const aktRegel = [...regels].reverse().find(r => {
+                    const rs = new Date(r.startdatum);
+                    const re = new Date(r.einddatum);
+                    return rs <= datum && re >= datum;
+                  });
+                  const a1 = aktRegel ? aktRegel[`${dagen[dayIdx]}_1`] : false;
+                  const a2 = aktRegel ? aktRegel[`${dagen[dayIdx]}_2`] : false;
+                  return (
+                    <React.Fragment key={datum.toISOString()}>
+                      <td className={`border px-1 py-1 text-center ${kleuren[dayIdx]}`}>{a1 ? "✓" : ""}</td>
+                      <td className={`border px-1 py-1 text-center ${kleuren[dayIdx]}`}>{a2 ? "✓" : ""}</td>
+                    </React.Fragment>
+                  );
+                })}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
