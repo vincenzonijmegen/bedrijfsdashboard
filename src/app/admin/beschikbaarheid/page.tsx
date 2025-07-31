@@ -16,7 +16,6 @@ interface Regel {
 }
 
 const dagen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"];
-// Define alternating colors
 // Define softer background colors
 const kleuren = [
   "bg-blue-50",
@@ -63,14 +62,20 @@ export default function BeschikbaarheidOverzicht() {
                 <th className={`border px-2 py-1 text-center ${kleuren[idx]}`}>{dag.charAt(0)}2</th>
               </React.Fragment>
             ))}
-            <th className="border px-2 py-1 text-left">Opmerking</th>
             <th className="border px-2 py-1 text-left">Actie</th>
           </tr>
         </thead>
         <tbody>
           {data.map((regel) => (
             <tr key={regel.id}>
-              <td className="border px-2 py-1 max-w-[100px] truncate" title={regel.naam}>
+              <td
+                className="border px-2 py-1 max-w-[100px] truncate"
+                title={
+                  regel.opmerkingen
+                    ? `${regel.naam} – ${regel.opmerkingen}`
+                    : regel.naam
+                }
+              >
                 {regel.naam}
               </td>
               <td className="border px-2 py-1 whitespace-nowrap">
@@ -84,12 +89,6 @@ export default function BeschikbaarheidOverzicht() {
                   <td className={`border px-2 py-1 text-center ${kleuren[idx]}`}>{regel[`${dag}_2`] ? "✓" : ""}</td>
                 </React.Fragment>
               ))}
-              <td
-                className="border px-2 py-1 max-w-[80px] truncate"
-                title={regel.opmerkingen || ""}
-              >
-                {regel.opmerkingen || "-"}
-              </td>
               <td className="border px-2 py-1">
                 <button
                   onClick={() => handleDelete(regel.id)}
