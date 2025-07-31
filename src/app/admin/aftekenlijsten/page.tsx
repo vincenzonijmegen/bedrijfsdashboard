@@ -1,140 +1,90 @@
-// src/app/admin/aftekenlijsten/upload/page.tsx
+// src/app/admin/aftekenlijsten/page.tsx
 "use client";
 
+import useSWR from "swr";
+import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
-const categorieOpties = [
-  { label: "Winkel – begin", value: "winkel-begin" },
-  { label: "Winkel – eind", value: "winkel-eind" },
-  { label: "Keuken – begin", value: "keuken-begin" },
-  { label: "Keuken – eind", value: "keuken-eind" },
-];
+interface Lijst {
+  id: number;
+  categorie: string;
+  week: number;
+  jaar: number;
+  bestand_url: string;
+  opmerking?: string;
+  upload_datum: string;
+}
 
-export default function UploadAftekenlijst() {
-  const [categorie, setCategorie] = useState("");
-  const [week, setWeek] = useState<number>(0);
-  const [jaar, setJaar] = useState<number>(new Date().getFullYear());
-  const [bestand, setBestand] = useState<File | null>(null);
-  const [opmerking, setOpmerking] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const router = useRouter();
+const categorieNamen: Record<string, string> = {
+  "winkel-begin": "Winkel – begin",
+  "winkel-eind": "Winkel – eind",
+  "keuken-begin": "Keuken – begin",
+  "keuken-eind": "Keuken – eind",
+};
 
-  const handleUpload = async () => {
-    if (!categorie || !week || !jaar || !bestand) {
-      alert("Vul alle verplichte velden in.");
-      return;
-    }
+export default function AftekenlijstenOverzicht() {
+  const { data, mutate, error } = useSWR<Lijst[]>("/api/aftekenlijsten", (url: string) => fetch(url).then((r) => r.json()));
+  const [snackbar, setSnackbar] = useState<string | null>(null);
 
-    setUploading(true);
-
-    const formData = new FormData();
-    formData.append("file", bestand);
-    formData.append("path", `aftekenlijsten/${jaar}/week-${week}-${categorie}.pdf`);
-
-    const uploadRes = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    });
-
-    const { url } = await uploadRes.json();
-
-    const saveRes = await fetch("/api/aftekenlijsten", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        categorie,
-        week,
-        jaar,
-        bestand_url: url,
-        opmerking,
-      }),
-    });
-
-    if (!saveRes.ok) {
-      alert("Upload mislukt");
-    }
-
-    setUploading(false);
+  const handleDelete = async (id: number) => {
+    if (!confirm("Weet je zeker dat je deze aftekenlijst wilt verwijderen?")) return;
+    const res = await fetch(`/api/aftekenlijsten/${id}`, { method: "DELETE" });
+    const json = await res.json();
+    if (json?.snackbar?.message) setSnackbar(json.snackbar.message);
+    mutate();
+    setTimeout(() => setSnackbar(null), 4000);
   };
 
+  if (error) return <p className="p-4 text-red-600">Fout bij laden</p>;
+  if (!data) return <p className="p-4">Laden…</p>;
+
   return (
-    <div className="max-w-xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Aftekenlijst uploaden</h1>
+    <div className="max-w-4xl mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Aftekenlijsten per week</h1>
 
-      <label className="block mb-2">Categorie</label>
-      <select
-        value={categorie}
-        onChange={(e) => setCategorie(e.target.value)}
-        className="w-full border px-3 py-2 rounded mb-4"
-      >
-        <option value="">-- Kies categorie --</option>
-        {categorieOpties.map((opt) => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
-
-      <div className="flex gap-4 mb-4">
-        <div className="flex-1">
-          <label className="block mb-2">Week</label>
-          <input
-            type="number"
-            value={week}
-            onChange={(e) => setWeek(Number(e.target.value))}
-            min={1} max={53}
-            className="w-full border px-3 py-2 rounded"
-          />
+      {snackbar && (
+        <div className="mb-4 px-4 py-2 bg-green-100 text-green-800 rounded border border-green-300">
+          {snackbar}
         </div>
-        <div className="flex-1">
-          <label className="block mb-2">Jaar</label>
-          <input
-            type="number"
-            value={jaar}
-            onChange={(e) => setJaar(Number(e.target.value))}
-            min={2020} max={2100}
-            className="w-full border px-3 py-2 rounded"
-          />
-        </div>
-      </div>
+      )}
 
-      <label className="block mb-2">Uploadoptie</label>
-      <div className="flex gap-4 mb-4">
-        <label className="flex-1 border px-3 py-2 rounded bg-gray-50">
-          PDF uploaden:
-          <input
-            type="file"
-            accept="application/pdf"
-            onChange={(e) => setBestand(e.target.files?.[0] || null)}
-            className="mt-1 block"
-          />
-        </label>
+      <p className="mb-4">
+        <Link href="/admin/aftekenlijsten/upload" className="text-blue-600 underline">➕ Nieuwe aftekenlijst uploaden</Link>
+      </p>
 
-        <label className="flex-1 border px-3 py-2 rounded bg-gray-50">
-          Foto maken:
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(e) => setBestand(e.target.files?.[0] || null)}
-            className="mt-1 block"
-          />
-        </label>
-      </div>
-
-      <label className="block mb-2">Opmerking (optioneel)</label>
-      <textarea
-        value={opmerking}
-        onChange={(e) => setOpmerking(e.target.value)}
-        className="w-full border px-3 py-2 rounded mb-4"
-      />
-
-      <button
-        disabled={uploading}
-        onClick={handleUpload}
-        className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
-      >
-        {uploading ? "Bezig met uploaden..." : "Uploaden"}
-      </button>
+      <table className="w-full border text-sm">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="border px-3 py-2 text-left">Categorie</th>
+            <th className="border px-3 py-2 text-left">Week</th>
+            <th className="border px-3 py-2 text-left">Jaar</th>
+            <th className="border px-3 py-2 text-left">Bestand</th>
+            <th className="border px-3 py-2 text-left">Opmerking</th>
+            <th className="border px-3 py-2 text-left">Actie</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((r) => (
+            <tr key={r.id}>
+              <td className="border px-3 py-2">{categorieNamen[r.categorie] || r.categorie}</td>
+              <td className="border px-3 py-2">{r.week}</td>
+              <td className="border px-3 py-2">{r.jaar}</td>
+              <td className="border px-3 py-2 text-blue-600 underline">
+                <a href={r.bestand_url} target="_blank" rel="noopener noreferrer">Download</a>
+              </td>
+              <td className="border px-3 py-2">{r.opmerking || "-"}</td>
+              <td className="border px-3 py-2">
+                <button
+                  onClick={() => handleDelete(r.id)}
+                  className="text-red-600 hover:underline"
+                >
+                  Verwijderen
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

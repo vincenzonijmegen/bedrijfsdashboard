@@ -51,12 +51,11 @@ export default function UploadAftekenlijst() {
       }),
     });
 
-    if (saveRes.ok) {
-      router.push("/admin/aftekenlijsten");
-    } else {
+    if (!saveRes.ok) {
       alert("Upload mislukt");
-      setUploading(false);
     }
+
+    setUploading(false);
   };
 
   return (
@@ -98,13 +97,29 @@ export default function UploadAftekenlijst() {
         </div>
       </div>
 
-      <label className="block mb-2">PDF-bestand</label>
-      <input
-        type="file"
-        accept="application/pdf"
-        onChange={(e) => setBestand(e.target.files?.[0] || null)}
-        className="mb-4"
-      />
+      <label className="block mb-2">Uploadoptie</label>
+      <div className="flex gap-4 mb-4">
+        <label className="flex-1 border px-3 py-2 rounded bg-gray-50">
+          PDF uploaden:
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={(e) => setBestand(e.target.files?.[0] || null)}
+            className="mt-1 block"
+          />
+        </label>
+        <br></br>
+        <label className="flex-1 border px-3 py-2 rounded bg-gray-50">
+          Foto maken:
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(e) => setBestand(e.target.files?.[0] || null)}
+            className="mt-1 block"
+          />
+        </label>
+      </div>
 
       <label className="block mb-2">Opmerking (optioneel)</label>
       <textarea
