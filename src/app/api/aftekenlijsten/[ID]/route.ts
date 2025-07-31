@@ -12,11 +12,9 @@ const r2 = new S3Client({
   },
 });
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const id = parseInt(params.id);
+export async function DELETE(request: NextRequest) {
+  const urlParts = request.nextUrl.pathname.split("/");
+  const id = parseInt(urlParts[urlParts.length - 1]);
   if (isNaN(id)) {
     return NextResponse.json({ error: "Ongeldig ID" }, { status: 400 });
   }
