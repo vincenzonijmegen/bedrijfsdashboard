@@ -102,7 +102,7 @@ export default function PrognosePage() {
     ["prognose obv huidig", (m) => m.prognoseHuidig],
     ["prognose plusmin", (m) => m.plusmin],
     ["prognose obv omzet to date", (m) => m.jrPrognoseObvTotNu],
-    ["Loonkosten", (m) => getLoonkosten(m.maand)],
+    ["Loonkosten", (m) => Number(getLoonkosten(m.maand))],
     ["% van omzet", (m) => getLoonkostenPercentage(m.maand, m.realisatieOmzet)],
   ];
 
@@ -164,7 +164,7 @@ export default function PrognosePage() {
                         return totDg > 0 ? Math.round(totOm / totDg).toLocaleString("nl-NL") : "";
                       })()
                     : label === "Loonkosten"
-                    ? '€ ' + data.reduce((sum, m) => sum + getLoonkosten(m.maand), 0).toLocaleString("nl-NL", { maximumFractionDigits: 0 })
+                    ? '€ ' + data.reduce((sum, m) => sum + Number(getLoonkosten(m.maand)), 0).toLocaleString("nl-NL", { maximumFractionDigits: 0 })
                     : label === "% van omzet"
                     ? (() => {
                         const totaalLoon = data.reduce((s, m) => s + getLoonkosten(m.maand), 0);
