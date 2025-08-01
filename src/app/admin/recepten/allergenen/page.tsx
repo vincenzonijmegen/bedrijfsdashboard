@@ -1,11 +1,10 @@
-// src/app/admin/recepten/allergenenkaart/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 
 const ALLERGENEN = ["gluten", "soja", "ei", "melk", "noten", "pinda", "tarwe"];
 
@@ -69,6 +68,56 @@ export default function AllergenenKaart() {
       ];
 
       const ws = XLSX.utils.aoa_to_sheet(data);
+
+      const range = XLSX.utils.decode_range(ws["!ref"]!);
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+          const cell = ws[cellAddress];
+          if (!cell) continue;
+
+          if (R === 0) {
+            // Header stijlen
+            cell.s = {
+              font: { bold: true },
+              fill: { fgColor: { rgb: "DDDDDD" } },
+              alignment: { horizontal: "center", vertical: "center" },
+              border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } },
+              },
+            };
+          } else if (C > 0 && cell.v === "JA") {
+            // JA = rood/wit
+            cell.s = {
+              fill: { fgColor: { rgb: "FF0000" } },
+              font: { color: { rgb: "FFFFFF" }, bold: true },
+              alignment: { horizontal: "center", vertical: "center" },
+              border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } },
+              },
+            };
+          } else {
+            // Lege cel of "nee"
+            cell.s = {
+              alignment: { horizontal: "center", vertical: "center" },
+              border: {
+                top: { style: "thin", color: { rgb: "CCCCCC" } },
+                bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+                left: { style: "thin", color: { rgb: "CCCCCC" } },
+                right: { style: "thin", color: { rgb: "CCCCCC" } },
+              },
+            };
+          }
+        }
+      }
+
+      ws["!cols"] = [{ wch: 22 }, ...ALLERGENEN.map(() => ({ wch: 10 }))];
       XLSX.utils.book_append_sheet(wb, ws, soort === "overig" ? "OVERIG" : "ROOMIJS");
     });
 
