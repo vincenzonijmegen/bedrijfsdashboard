@@ -156,7 +156,11 @@ export default function AllergenenKaart() {
 
   return (
     <main className="max-w-6xl mx-auto p-6 space-y-6" id="pdf-content">
-      <div className="space-x-2 print:hidden">
+      <h1 className="text-2xl font-bold text-center">🧾 Allergenenkaart IJssalon Vincenzo</h1>
+<p className="text-center bg-blue-600 text-yellow-300 font-bold text-xl uppercase py-2 rounded">
+  ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJF
+</p>
+<div className="space-x-2 print:hidden">
         <button
           onClick={exportPDF}
           id="print-knop"
