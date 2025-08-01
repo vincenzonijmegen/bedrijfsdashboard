@@ -235,7 +235,7 @@ export default function AllergenenKaart() {
 }
 
 async function exportPDF() {
-  const knop = document.querySelector("button#print-knop") asHTMLElement;
+  const knop = document.querySelector("button#print-knop") as HTMLElement;
   if (knop) knop.style.display = "none";
   await new Promise((resolve) => setTimeout(resolve, 100));
 
