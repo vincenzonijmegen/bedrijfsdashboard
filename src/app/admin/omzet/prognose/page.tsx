@@ -90,10 +90,14 @@ export default function PrognosePage() {
 
   const rows: [string, (m: MaandData) => number | null][] = [
     ["PROGNOSES", () => null],
+["prognose obv huidig", (m) => m.prognoseHuidig],
+["prognose plusmin", (m) => m.plusmin],
+["prognose obv omzet to date", (m) => m.jrPrognoseObvTotNu],
+["LOONKOSTEN", () => null],
     ["prognose obv huidig", (m) => m.prognoseHuidig],
     ["prognose plusmin", (m) => m.plusmin],
     ["prognose obv omzet to date", (m) => m.jrPrognoseObvTotNu],
-    ["LOONKOSTEN", () => null],
+    
     
     ["PROGNOSE", () => null],
     ["omzet", (m) => m.prognoseOmzet],
