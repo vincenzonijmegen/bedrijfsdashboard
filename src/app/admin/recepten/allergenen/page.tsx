@@ -62,7 +62,10 @@ export default function AllergenenKaart() {
     volgorde.forEach((soort) => {
       const recepten = gegroepeerdPerSoort[soort] || [];
       if (rows.length > 1) rows.push([]);
-      rows.push([soort === "overig" ? "OVERIG" : "ROOMIJS"]);
+      rows.push(['🧾 Allergenenkaart IJssalon Vincenzo']);
+    rows.push(['ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJF']);
+    rows.push([]);
+    rows.push([soort === "overig" ? "OVERIG" : "ROOMIJS"]);
 
       recepten.sort((a, b) => a.naam.localeCompare(b.naam)).forEach((r) => {
         const allergenen = new Set(allergenenVoorRecept(r));
