@@ -86,7 +86,7 @@ export default function PrognosePage() {
   const dagenPercent = totalPrognoseDagen > 0 ? Math.round((totalRealisatieDagen / totalPrognoseDagen) * 100) : 0;
 
   const isHeaderLabel = (label: string) =>
-    ["PROGNOSE", "REALISATIE", "TO-DO", "PROGNOSES"].includes(label.toUpperCase());
+    ["PROGNOSE", "REALISATIE", "TO-DO", "PROGNOSES, LOONKOSTEN"].includes(label.toUpperCase());
 
   const rows: [string, (m: MaandData) => number | null][] = [
     ["PROGNOSE", () => null],
