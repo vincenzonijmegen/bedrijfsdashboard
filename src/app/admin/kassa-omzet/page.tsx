@@ -39,9 +39,11 @@ export default function KassaOmzetImportPage() {
   return (
     <div className="p-6 max-w-md mx-auto">
       <h1 className="text-2xl font-bold mt-4 mb-4">Import Omzet</h1>
-      <p className="mb-4 text-sm text-gray-600">
-  Laatst geïmporteerd op: <strong>{lastImport ?? '– nog niet'}</strong>
-</p>
+      {lastImport && (
+        <p className="mb-4 text-sm text-gray-600">
+          Laatst geïmporteerd op: <strong>{lastImport}</strong>
+        </p>
+      )}
       <div className="mb-4">
         <label htmlFor="start" className="block mb-1">Startdatum</label>
         <input
