@@ -1,11 +1,11 @@
 // src/app/admin/recepten/allergenenkaart/page.tsx
-
 "use client";
 
 import { useEffect, useState } from "react";
 import useSWR from "swr";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import * as XLSX from "xlsx";
 
 const ALLERGENEN = ["gluten", "soja", "ei", "melk", "noten", "pinda", "tarwe"];
 
@@ -50,19 +50,54 @@ export default function AllergenenKaart() {
 
   const volgorde = ["melksmaken", "overig"];
 
+  function exportExcel() {
+    const wb = XLSX.utils.book_new();
+
+    volgorde.forEach((soort) => {
+      const receptenLijst = gegroepeerdPerSoort[soort];
+      if (!receptenLijst) return;
+
+      const data = [
+        ["Smaak", ...ALLERGENEN.map((a) => a.toUpperCase())],
+        ...receptenLijst.sort((a, b) => a.naam.localeCompare(b.naam)).map((r) => {
+          const allergenen = new Set(allergenenVoorRecept(r));
+          return [
+            r.naam,
+            ...ALLERGENEN.map((a) => (allergenen.has(a) ? "JA" : "")),
+          ];
+        }),
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      XLSX.utils.book_append_sheet(wb, ws, soort === "overig" ? "OVERIG" : "ROOMIJS");
+    });
+
+    XLSX.writeFile(wb, "allergenenkaart.xlsx");
+  }
+
   return (
     <main className="max-w-6xl mx-auto p-6 space-y-6" id="pdf-content">
-      <button
-        onClick={exportPDF}
-        id="print-knop"
-        className="bg-blue-600 text-white px-4 py-2 rounded print:hidden"
-      >
-        📄 Download als PDF
-      </button>
+      <div className="space-x-2 print:hidden">
+        <button
+          onClick={exportPDF}
+          id="print-knop"
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          📄 Download als PDF
+        </button>
+        <button
+          onClick={exportExcel}
+          className="bg-green-600 text-white px-4 py-2 rounded"
+        >
+          📊 Download als Excel
+        </button>
+      </div>
+
       <h1 className="text-2xl font-bold text-center">🧾 Allergenenkaart IJssalon Vincenzo</h1>
       <p className="text-center bg-blue-600 text-yellow-300 font-bold text-xl uppercase py-2 rounded">
         ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJF
       </p>
+
       <div className="overflow-x-auto space-y-6 print:overflow-visible">
         {volgorde.map((soort) => (
           <div key={soort}>
@@ -109,12 +144,12 @@ export default function AllergenenKaart() {
           </div>
         ))}
       </div>
-      {/* uitlegtekst */}
+
       <p className="text-center bg-blue-600 text-yellow-300 font-bold text-l uppercase py-2 rounded">
         geen vis, selderij, zwaveldioxide, mosterd, weekdieren, schaaldieren, lupine, sesamzaad in ons ijs
       </p>
       <p className="text-center bg-blue-600 text-yellow-300 font-bold text-l uppercase py-2 rounded">
-       AMARETTO - TIRAMISU - MALAGA zijn met alcohol bereid
+        AMARETTO - TIRAMISU - MALAGA zijn met alcohol bereid
       </p>
     </main>
   );
@@ -140,7 +175,6 @@ async function exportPDF() {
   const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: "a4" });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  // calculate scaling to fit within A4 portrait
   const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
   const scaledWidth = canvas.width * ratio;
   const scaledHeight = canvas.height * ratio;
