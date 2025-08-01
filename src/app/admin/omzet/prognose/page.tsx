@@ -34,10 +34,19 @@ interface MaandData {
   jrPrognoseObvTotNu: number;
 }
 
+interface LoonkostenItem {
+  jaar: number;
+  maand: number;
+  lonen: number;
+  loonheffing: number;
+  pensioenpremie: number;
+}
+
 export default function PrognosePage() {
   const [data, setData] = useState<MaandData[]>([]);
   const [jaaromzet, setJaaromzet] = useState<number>(0);
   const [vorigJaarOmzet, setVorigJaarOmzet] = useState<number>(0);
+  const [loonkosten, setLoonkosten] = useState<LoonkostenItem[]>([]);
 
   useEffect(() => {
     fetch("/api/prognose/analyse")
@@ -45,14 +54,27 @@ export default function PrognosePage() {
       .then((res) => {
         setData(res.resultaten);
         setJaaromzet(res.jaaromzet);
-        // Gebruik vorigJaarOmzet afkomstig van dezelfde API
         if (typeof res.vorigJaarOmzet === 'number') {
           setVorigJaarOmzet(res.vorigJaarOmzet);
         }
       });
+
+    fetch("/api/rapportage/loonkosten")
+      .then((res) => res.json())
+      .then((res) => setLoonkosten(res));
   }, []);
 
-  // Samenvatting percentages
+  const getLoonkosten = (maand: number) => {
+    const item = loonkosten.find((l) => l.maand === maand);
+    if (!item) return 0;
+    return item.lonen + item.loonheffing + item.pensioenpremie;
+  };
+
+  const getLoonkostenPercentage = (maand: number, omzet: number) => {
+    const totaal = getLoonkosten(maand);
+    return omzet > 0 ? (totaal / omzet) * 100 : 0;
+  };
+
   const totalRealisatieOmzet = data.reduce((sum, m) => sum + m.realisatieOmzet, 0);
   const totalRealisatieDagen = data.reduce((sum, m) => sum + m.realisatieDagen, 0);
   const totalPrognoseDagen = data.reduce((sum, m) => sum + m.prognoseDagen, 0);
@@ -80,10 +102,10 @@ export default function PrognosePage() {
     ["prognose obv huidig", (m) => m.prognoseHuidig],
     ["prognose plusmin", (m) => m.plusmin],
     ["prognose obv omzet to date", (m) => m.jrPrognoseObvTotNu],
+    ["Loonkosten", (m) => getLoonkosten(m.maand)],
+    ["% van omzet", (m) => getLoonkostenPercentage(m.maand, m.realisatieOmzet)],
   ];
 
-
-  
   return (
     <main className="p-6">
       <a href="/admin/rapportage/financieel" className="text-sm underline text-blue-600 block mb-4">← Financiële Rapportages</a>
@@ -110,7 +132,7 @@ export default function PrognosePage() {
                   else if (raw === null || raw === 0) display = "";
                   else if (label === "dagen") display = Math.round(raw).toLocaleString("nl-NL");
                   else if (label === "voor/achter in dagen") display = raw.toLocaleString("nl-NL", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-                  else if (label.includes("%")) display = `${Math.round(raw * 100)}%`;
+                  else if (label === "% van omzet") display = raw.toFixed(1) + "%";
                   else display = raw.toLocaleString("nl-NL", { maximumFractionDigits: 0 });
 
                   let cellClass = "px-2 py-1 text-right font-mono border";
@@ -140,6 +162,14 @@ export default function PrognosePage() {
                           totDg = data.reduce((s, m) => s + m.todoDagen, 0);
                         } else return "";
                         return totDg > 0 ? Math.round(totOm / totDg).toLocaleString("nl-NL") : "";
+                      })()
+                    : label === "Loonkosten"
+                    ? '€ ' + data.reduce((sum, m) => sum + getLoonkosten(m.maand), 0).toLocaleString("nl-NL", { maximumFractionDigits: 0 })
+                    : label === "% van omzet"
+                    ? (() => {
+                        const totaalLoon = data.reduce((s, m) => s + getLoonkosten(m.maand), 0);
+                        const totaalOmzet = data.reduce((s, m) => s + m.realisatieOmzet, 0);
+                        return totaalOmzet > 0 ? (totaalLoon / totaalOmzet * 100).toFixed(1) + "%" : "";
                       })()
                     : ""}
                 </td>
