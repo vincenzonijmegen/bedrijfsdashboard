@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   // Haal de laatst geïmporteerde datum op uit de omzet-tabel
   const result = await db.query(
     `SELECT MAX(datum)::date AS last_imported
-     FROM omzet_regels`
+     FROM rapportage.omzet`
   );
   const lastImported = result.rows[0]?.last_imported
     ? result.rows[0].last_imported.toISOString().split('T')[0]
