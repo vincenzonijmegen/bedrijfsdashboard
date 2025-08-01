@@ -1,3 +1,4 @@
+// src/app/admin/recepten/allergenenkaart/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -24,12 +25,14 @@ export default function AllergenenKaart() {
   const { data: recepten } = useSWR<Recept[]>("/api/recepten", fetcher);
   const { data: allergenenData } = useSWR<ProductAllergenen[]>("/api/allergenen/receptniveau", fetcher);
 
+  // Groepeer allergenen per product
   const gegroepeerd: Record<number, string[]> = {};
   allergenenData?.forEach((r) => {
     if (!gegroepeerd[r.product_id]) gegroepeerd[r.product_id] = [];
     gegroepeerd[r.product_id].push(r.allergeen);
   });
 
+  // Haal allergenen op voor een recept
   function allergenenVoorRecept(r: Recept): string[] {
     const verzameld = new Set<string>();
     r.regels.forEach((regel) => {
@@ -38,17 +41,19 @@ export default function AllergenenKaart() {
     return Array.from(verzameld).sort();
   }
 
+  // Groepeer recepten per categorie
   const gegroepeerdPerSoort: Record<string, Recept[]> = {};
   recepten
     ?.filter((r) => !["mixen", "vruchtensmaken"].includes(r.omschrijving ?? ""))
     .forEach((r) => {
       const cat = r.omschrijving || "overig";
-      if (!gegroepeerdPerSoort[cat]) gegroepeerdPerSoort[cat] = [];
+      if (!gegropeerdPerSoort[cat]) gegroepeerdPerSoort[cat] = [];
       gegroepeerdPerSoort[cat].push(r);
     });
 
   const volgorde = ["melksmaken", "overig"];
 
+  // Excel-export functie
   function exportExcel() {
     const wb = XLSX.utils.book_new();
 
@@ -56,32 +61,40 @@ export default function AllergenenKaart() {
       const receptenLijst = gegroepeerdPerSoort[soort];
       if (!receptenLijst) return;
 
+      // Maak header en data rijen
       const hoofd = ["Smaak", ...ALLERGENEN.map((a) => a.toUpperCase())];
-      const rijen = receptenLijst.sort((a, b) => a.naam.localeCompare(b.naam)).map((r) => {
-        const allergenen = new Set(allergenenVoorRecept(r));
-        return [
-          r.naam,
-          ...ALLERGENEN.map((a) => (allergenen.has(a) ? "JA" : "")),
-        ];
-      });
+      const rijen = receptenLijst
+        .sort((a, b) => a.naam.localeCompare(b.naam))
+        .map((r) => {
+          const allergenen = new Set(allergenenVoorRecept(r));
+          return [
+            r.naam,
+            ...ALLERGENEN.map((a) => (allergenen.has(a) ? "JA" : "")),
+          ];
+        });
 
+      // Voeg uitlegregels onderaan
       const uitleg = [
         [],
-        ["ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJ"],
-        ["Geen vis, selderij, zwaveldioxide, mosterd, weekdieren, schaaldieren, lupine, sesamzaad in ons ijs"],
+        ["ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJF"],
+        [
+          "Geen vis, selderij, zwaveldioxide, mosterd, weekdieren, schaaldieren, lupine, sesamzaad in ons ijs"
+        ],
         ["Amaretto, Tiramisu en Malaga zijn bereid met alcohol"]
       ];
 
       const data = [hoofd, ...rijen, ...uitleg];
       const ws = XLSX.utils.aoa_to_sheet(data);
-      const range = XLSX.utils.decode_range(ws["!ref"]!);
 
+      // Pas opmaak toe
+      const range = XLSX.utils.decode_range(ws["!ref"]!);
       for (let R = range.s.r; R <= range.e.r; ++R) {
         for (let C = range.s.c; C <= range.e.c; ++C) {
-          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-          const cell = ws[cellAddress];
+          const addr = XLSX.utils.encode_cell({ r: R, c: C });
+          const cell = ws[addr];
           if (!cell) continue;
 
+          // Header
           if (R === 0) {
             cell.s = {
               font: { bold: true },
@@ -94,13 +107,17 @@ export default function AllergenenKaart() {
                 right: { style: "thin", color: { rgb: "000000" } },
               },
             };
-          } else if (R >= rijen.length + 2) {
+          }
+          // Uitlegregels
+          else if (R >= rijen.length + 2) {
             cell.s = {
-              font: { italic: true, bold: true },
+              font: { bold: true, italic: true },
               fill: { fgColor: { rgb: "FFFFCC" } },
               alignment: { horizontal: "left", vertical: "center" },
             };
-          } else if (C > 0 && cell.v === "JA") {
+          }
+          // Allergenen aanwezig
+          else if (C > 0 && cell.v === "JA") {
             cell.s = {
               fill: { fgColor: { rgb: "FF0000" } },
               font: { color: { rgb: "FFFFFF" }, bold: true },
@@ -112,7 +129,9 @@ export default function AllergenenKaart() {
                 right: { style: "thin", color: { rgb: "000000" } },
               },
             };
-          } else {
+          }
+          // Lege of "nee"
+          else {
             cell.s = {
               alignment: { horizontal: "center", vertical: "center" },
               border: {
@@ -126,10 +145,12 @@ export default function AllergenenKaart() {
         }
       }
 
+      // Kolombreedte
       ws["!cols"] = [{ wch: 22 }, ...ALLERGENEN.map(() => ({ wch: 10 }))];
       XLSX.utils.book_append_sheet(wb, ws, soort === "overig" ? "OVERIG" : "ROOMIJS");
     });
 
+    // Sla op
     XLSX.writeFile(wb, "allergenenkaart.xlsx");
   }
 
@@ -145,18 +166,76 @@ export default function AllergenenKaart() {
         </button>
         <button
           onClick={exportExcel}
-          className="bg-green-600 text-white px-4 py-2 rounded"
+          className="bg-green-600 text-white px-4 py-2rounded"
         >
           📊 Download als Excel
         </button>
       </div>
+
       <h1 className="text-2xl font-bold text-center">🧾 Allergenenkaart IJssalon Vincenzo</h1>
+      <p className="text-center bg-blue-600 text-yellow-300 font-bold text-xl uppercase py-2rounded">
+        ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJF
+      </p>
+
+      <div className="overflow-x-auto space-y-6 print:overflow-visible">
+        {volgorde.map((soort) => (
+          <div key={soort}>
+            <h2 className="text-lg font-bold mb-2 uppercase">
+              {soort === "overig" ? "OVERIG" : "ROOMIJS"}
+            </h2>
+            <table className="w-full border text-sm print:text-xs print:border-black">
+              <thead>
+                <tr className="bg-gray-100 align-middle">
+                  <th className="border px-2 py-1 text-left align-middle">Smaak</th>
+                  {ALLERGENEN.map((a) => (
+                    <th
+                      key={a}
+                      className="border px-2 py-1 text-center uppercase w-20print:border-black align-middle"
+                    >
+                      {a}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {gegroepeerdPerSoort[soort]
+                  ?.sort((a, b) => a.naam.localeCompare(b.naam))
+                  .map((r) => {
+                    const aanwezig = new Set(allergenenVoorRecept(r));
+                    return (
+                      <tr key={r.id} className="align-middle">
+                        <td className="border px-2 py-2whitespace-nowrap text-lg md:text-xl align-middle">
+                          {r.naam}
+                        </td>
+                        {ALLERGENEN.map((a) => (
+                          <td
+                            key={a}
+                            className={`border px-2 py-1 w-20print:border-black align-middle ${
+                              aanwezig.has(a) ? "bg-red-500" : ""
+                            }`}
+                          />
+                        ))}
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-center bg-blue-600 text-yellow-300 font-bold text-luppercase py-2 rounded">
+        geen vis, selderij, zwaveldioxide, mosterd, weekdieren, schaaldieren, lupine, sesamzaadin ons ijs
+      </p>
+      <p className="text-center bg-blue-600 text-yellow-300 font-bold text-luppercase py-2 rounded">
+        AMARETTO - TIRAMISU - MALAGA zijn met alcohol bereid
+      </p>
     </main>
   );
 }
 
 async function exportPDF() {
-  const knop = document.querySelector("button#print-knop") as HTMLElement;
+  const knop = document.querySelector("button#print-knop") asHTMLElement;
   if (knop) knop.style.display = "none";
   await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -172,16 +251,16 @@ async function exportPDF() {
   });
   const imgData = canvas.toDataURL("image/png");
 
-  const pdf = new jsPDF({ orientation: "portrait", unit: "px", format: "a4" });
+  const pdf = new jsPDF({ orientation: "portrait",unit: "px", format: "a4" });
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
-  const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
+  const ratio = Math.min(pageWidth / canvas.width,pageHeight / canvas.height);
   const scaledWidth = canvas.width * ratio;
   const scaledHeight = canvas.height * ratio;
   const x = (pageWidth - scaledWidth) / 2;
   const y = (pageHeight - scaledHeight) / 2;
 
-  pdf.addImage(imgData, "PNG", x, y, scaledWidth, scaledHeight);
+  pdf.addImage(imgData, "PNG", x, y,scaledWidth, scaledHeight);
   pdf.save("allergenenkaart.pdf");
   if (knop) knop.style.display = "inline-block";
 }
