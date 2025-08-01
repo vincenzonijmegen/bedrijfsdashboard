@@ -13,9 +13,24 @@ export default function KassaOmzetImportPage() {
   // Fetch last imported date
   useEffect(() => {
     fetch('/api/rapportage/omzet/last-import')
-      .then(res => res.json())
-      .then(data => { if (data.lastImported) setLastImport(data.lastImported); })
-      .catch(() => {});
+      .then(res => {
+        if (!res.ok) {
+          console.error('Last-import API error:', res.status);
+          throw new Error(`Status ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(data => {
+        console.log('Last-import data:', data);
+        if (data.lastImported) {
+          setLastImport(data.lastImported);
+        } else {
+          console.warn('lastImported ontbreekt in response');
+        }
+      })
+      .catch(err => {
+        console.error('Fout bij ophalen lastImport:', err);
+      });
   }, []);
 
   const handleImport = async () => {
