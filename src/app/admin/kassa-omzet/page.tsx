@@ -56,7 +56,7 @@ export default function KassaOmzetImportPage() {
       <h1 className="text-2xl font-bold mt-4 mb-4">Import Omzet</h1>
       {lastImport && (
         <p className="mb-4 text-sm text-gray-600">
-          Laatst geïmporteerd op: <strong>{lastImport}</strong>
+          Laatst geïmporteerd op: <strong>{new Date(lastImport).toLocaleDateString('nl-NL')}</strong>
         </p>
       )}
       <div className="mb-4">
