@@ -146,14 +146,14 @@ export default function PrognosePage() {
                   if (label === "prognose plusmin" && raw !== null) cellClass += raw > 0 ? " bg-green-100" : " bg-red-100";
 
                   if (label === "Loonkosten") {
-                    const item = loonkosten.find((l) => l.maand === m.maand);
-                    const incompleet = item && (
-                      Number(item.lonen) === 0 ||
-                      Number(item.loonheffing) === 0 ||
-                      Number(item.pensioenpremie) === 0
-                    );
-                    if (incompleet) cellClass += " bg-red-100";
-                  }
+  const item = loonkosten.find((l) => l.maand === m.maand);
+  const incompleet = item && (
+    Number(item.lonen) === 0 ||
+    Number(item.loonheffing) === 0 ||
+    Number(item.pensioenpremie) === 0
+  );
+  if (incompleet) display += " 🔴";
+}
                   return <td key={m.maand + label} className={cellClass}>{display}</td>;
                 })}
                 <td className="px-2 py-1 text-right font-bold border">
