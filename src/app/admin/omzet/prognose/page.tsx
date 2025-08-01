@@ -86,7 +86,7 @@ export default function PrognosePage() {
   const dagenPercent = totalPrognoseDagen > 0 ? Math.round((totalRealisatieDagen / totalPrognoseDagen) * 100) : 0;
 
   const isHeaderLabel = (label: string) =>
-    ["PROGNOSE", "REALISATIE", "TO-DO", "PROGNOSES", "LOONKOSTEN"].includes(label.toUpperCase());
+    ["PROGNOSE", "REALISATIE", "TO-DO", "PROGNOSES", "LONEN"].includes(label.toUpperCase());
 
   const rows: [string, (m: MaandData) => number | null][] = [
     ["PROGNOSE", () => null],
@@ -106,7 +106,7 @@ export default function PrognosePage() {
     ["prognose obv huidig", (m) => m.prognoseHuidig],
     ["prognose plusmin", (m) => m.plusmin],
     ["prognose obv omzet to date", (m) => m.jrPrognoseObvTotNu],
-    ["LOONKOSTEN", () => null],
+    ["LONEN", () => null],
     ["Loonkosten", (m) => Number(getLoonkosten(m.maand))],
     ["% van omzet", (m) => getLoonkostenPercentage(m.maand, m.realisatieOmzet)],
   ];
@@ -145,6 +145,15 @@ export default function PrognosePage() {
                   if (label === "omzet/dag" && rowIdx === 7 && raw !== null) cellClass += raw > (m.prognosePerDag || 0) ? " bg-green-100" : " bg-red-100";
                   if (label === "prognose plusmin" && raw !== null) cellClass += raw > 0 ? " bg-green-100" : " bg-red-100";
 
+                  if (label === "Loonkosten") {
+                    const item = loonkosten.find((l) => l.maand === m.maand);
+                    const incompleet = item && (
+                      Number(item.lonen) === 0 ||
+                      Number(item.loonheffing) === 0 ||
+                      Number(item.pensioenpremie) === 0
+                    );
+                    if (incompleet) cellClass += " bg-red-100";
+                  }
                   return <td key={m.maand + label} className={cellClass}>{display}</td>;
                 })}
                 <td className="px-2 py-1 text-right font-bold border">
