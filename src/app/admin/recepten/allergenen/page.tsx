@@ -47,7 +47,7 @@ export default function AllergenenKaart() {
     ?.filter((r) => !["mixen", "vruchtensmaken"].includes(r.omschrijving ?? ""))
     .forEach((r) => {
       const cat = r.omschrijving || "overig";
-      if (!gegropeerdPerSoort[cat]) gegroepeerdPerSoort[cat] = [];
+      if (!gegroepeerdPerSoort[cat]) gegroepeerdPerSoort[cat] = [];
       gegroepeerdPerSoort[cat].push(r);
     });
 
