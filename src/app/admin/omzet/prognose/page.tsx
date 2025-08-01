@@ -67,8 +67,12 @@ export default function PrognosePage() {
   const getLoonkosten = (maand: number) => {
     const item = loonkosten.find((l) => l.maand === maand);
     if (!item) return 0;
-    return item.lonen + item.loonheffing + item.pensioenpremie;
-  };
+    return (
+      Number(item.lonen) +
+      Number(item.loonheffing) +
+      Number(item.pensioenpremie)
+    );
+  };;
 
   const getLoonkostenPercentage = (maand: number, omzet: number) => {
     const totaal = getLoonkosten(maand);
