@@ -89,7 +89,12 @@ export default function PrognosePage() {
     ["PROGNOSE", "REALISATIE", "TO-DO", "PROGNOSES", "LOONKOSTEN"].includes(label.toUpperCase());
 
   const rows: [string, (m: MaandData) => number | null][] = [
+    ["PROGNOSES", () => null],
+    ["prognose obv huidig", (m) => m.prognoseHuidig],
+    ["prognose plusmin", (m) => m.plusmin],
+    ["prognose obv omzet to date", (m) => m.jrPrognoseObvTotNu],
     ["LOONKOSTEN", () => null],
+    
     ["PROGNOSE", () => null],
     ["omzet", (m) => m.prognoseOmzet],
     ["dagen", (m) => m.prognoseDagen],
@@ -148,8 +153,9 @@ export default function PrognosePage() {
                   if (label === "Loonkosten totaal") {
                     const item = loonkosten.find((l) => l.maand === m.maand);
                     const incompleet = item && (
-                      item.lonen === null || item.loonheffing === null || item.pensioenpremie === null ||
-                      item.lonen === undefined || item.loonheffing === undefined || item.pensioenpremie === undefined
+                      isNaN(Number(item.lonen)) ||
+                      isNaN(Number(item.loonheffing)) ||
+                      isNaN(Number(item.pensioenpremie))
                     );
                     if (incompleet) cellClass += " bg-red-100";
                   }
