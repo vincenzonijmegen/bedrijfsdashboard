@@ -1,4 +1,3 @@
-// src/app/admin/recepten/allergenen/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -74,7 +73,6 @@ export default function AllergenenKaart() {
       ];
 
       const data = [hoofd, ...rijen, ...uitleg];
-
       const ws = XLSX.utils.aoa_to_sheet(data);
       const range = XLSX.utils.decode_range(ws["!ref"]!);
 
@@ -152,7 +150,7 @@ export default function AllergenenKaart() {
           📊 Download als Excel
         </button>
       </div>
-      <h1 className="text-2xl font-bold text-center">📟 Allergenenkaart IJssalon Vincenzo</h1>
+      <h1 className="text-2xl font-bold text-center">🧾 Allergenenkaart IJssalon Vincenzo</h1>
     </main>
   );
 }
