@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
@@ -30,7 +29,7 @@ export default function LoonkostenBeheerPage() {
   const jaar = new Date().getFullYear();
 
   const getValue = (maand: number, veld: keyof Loonkosten) =>
-    data.find((r) => r.jaar === jaar && r.maand === maand)?.[veld] ?? 0;
+    Number(data.find((r) => r.jaar === jaar && r.maand === maand)?.[veld]) || 0;
 
   const updateField = (maand: number, veld: keyof Loonkosten, waarde: number) => {
     setData((prev) => {
@@ -80,7 +79,7 @@ export default function LoonkostenBeheerPage() {
             const lonen = getValue(maand, "lonen");
             const loonheffing = getValue(maand, "loonheffing");
             const pensioen = getValue(maand, "pensioenpremie");
-            const totaal = lonen + loonheffing + pensioen;
+            const totaal = Number(lonen) + Number(loonheffing) + Number(pensioen);
 
             return (
               <tr key={maand} className="border-t">
@@ -117,7 +116,7 @@ export default function LoonkostenBeheerPage() {
                     }
                   />
                 </td>
-                <td className="p-2 font-semibold">€ {totaal.toFixed(2)}</td>
+                <td className="p-2 font-semibold">€ {Number(totaal).toFixed(2)}</td>
                 <td className="p-2">
                   <button
                     onClick={() => opslaan(maand)}
