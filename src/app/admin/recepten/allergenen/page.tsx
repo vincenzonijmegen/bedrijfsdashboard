@@ -85,9 +85,6 @@ export default function AllergenenKaart() {
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const range = XLSX.utils.decode_range(ws["!ref"]!);
 
-    ws["!autofilter"] = {
-      ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: header.length - 1 } })
-    };
     ws["!freeze"] = { ySplit: 1 };
 
     rows.forEach((row, R) => {
