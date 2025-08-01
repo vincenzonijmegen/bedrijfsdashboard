@@ -144,6 +144,7 @@ export default function PrognosePage() {
                   if (isHeaderLabel(label)) cellClass = "px-2 py-1 text-right font-bold border";
                   if (label === "omzet/dag" && rowIdx === 7 && raw !== null) cellClass += raw > (m.prognosePerDag || 0) ? " bg-green-100" : " bg-red-100";
                   if (label === "prognose plusmin" && raw !== null) cellClass += raw > 0 ? " bg-green-100" : " bg-red-100";
+                  if (label === "% van omzet" && raw !== null && raw > 25) cellClass += " bg-red-100";
 
                   if (label === "Loonkosten") {
   const item = loonkosten.find((l) => l.maand === m.maand);
