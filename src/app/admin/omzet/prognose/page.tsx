@@ -86,7 +86,7 @@ export default function PrognosePage() {
   const dagenPercent = totalPrognoseDagen > 0 ? Math.round((totalRealisatieDagen / totalPrognoseDagen) * 100) : 0;
 
   const isHeaderLabel = (label: string) =>
-    ["PROGNOSE", "REALISATIE", "TO-DO", "PROGNOSES"].includes(label.toUpperCase());
+    ["PROGNOSE", "REALISATIE", "TO-DO", "PROGNOSES", "LOONKOSTEN"].includes(label.toUpperCase());
 
   const rows: [string, (m: MaandData) => number | null][] = [
     ["LOONKOSTEN", () => null],
@@ -176,7 +176,7 @@ export default function PrognosePage() {
                         } else return "";
                         return totDg > 0 ? Math.round(totOm / totDg).toLocaleString("nl-NL") : "";
                       })()
-                    : label === "Loonkosten"
+                    : label === "Loonkosten totaal"
                     ? '€ ' + data.reduce((sum, m) => sum + Number(getLoonkosten(m.maand)), 0).toLocaleString("nl-NL", { maximumFractionDigits: 0 })
                     : label === "% van omzet"
                     ? (() => {
