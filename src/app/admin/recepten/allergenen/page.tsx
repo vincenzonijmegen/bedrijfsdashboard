@@ -85,6 +85,9 @@ export default function AllergenenKaart() {
     const ws = XLSX.utils.aoa_to_sheet(rows);
     const range = XLSX.utils.decode_range(ws["!ref"]!);
 
+    ws["!autofilter"] = {
+      ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 0, c: header.length - 1 } })
+    };
     ws["!freeze"] = { ySplit: 1 };
 
     rows.forEach((row, R) => {
@@ -131,6 +134,10 @@ export default function AllergenenKaart() {
   return (
     <main className="max-w-6xl mx-auto p-6 space-y-6" id="pdf-content">
       <h1 className="text-2xl font-bold text-center">🧾 Allergenenkaart IJssalon Vincenzo</h1>
+      <p className="text-center bg-blue-600 text-yellow-300 font-bold text-xl uppercase py-2 rounded">
+        ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJF
+      </p>
+      <h1 className="text-2xl font-bold text-center">🧾 Allergenenkaart IJssalon Vincenzo</h1>
 <p className="text-center bg-blue-600 text-yellow-300 font-bold text-xl uppercase py-2 rounded">
   ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJF
 </p>
@@ -150,10 +157,7 @@ export default function AllergenenKaart() {
         </button>
       </div>
 
-      <h1 className="text-2xl font-bold text-center">🧾 Allergenenkaart IJssalon Vincenzo</h1>
-      <p className="text-center bg-blue-600 text-yellow-300 font-bold text-xl uppercase py-2rounded">
-        ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJF
-      </p>
+      
 
       <div className="overflow-x-auto space-y-6 print:overflow-visible">
         {volgorde.map((soort) => (
