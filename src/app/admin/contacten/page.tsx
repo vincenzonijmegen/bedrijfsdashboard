@@ -204,6 +204,18 @@ export default function ContactenPage() {
                     {c.telefoon && (<div className="flex items-center space-x-2"><Phone /><span>{c.telefoon}</span></div>)}
                     {c.email && (<div className="flex items-center space-x-2"><Mail /><span>{c.email}</span></div>)}
                   </div>
+                  <div className="mt-3">
+                    <h3 className="font-semibold flex items-center gap-2"><Users/><span>Contactpersonen</span></h3>
+                    <ul className="list-disc list-inside text-sm mt-1">
+                      {c.personen.map((p, i) => (
+                        <li key={i} className="flex items-center space-x-2">
+                          <span>{p.naam}</span>
+                          {p.telefoon && (<><Phone/><span>{p.telefoon}</span></>)}
+                          {p.email && (<><Mail/><span>{p.email}</span></>)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                   <div className="mt-6">
                     <h3 className="font-semibold flex items-center gap-2">📎 Correspondentie</h3>
                     <ul className="list-disc list-inside text-sm mt-1 italic text-gray-700">
@@ -226,18 +238,6 @@ export default function ContactenPage() {
                     >
                       + Correspondentie toevoegen
                     </button>
-                  </div>
-                  <div className="mt-3">
-                    <h3 className="font-semibold flex items-center gap-2"><Users /><span>Contactpersonen</span></h3>
-                    <ul className="list-disc list-inside text-sm mt-1">
-                      {c.personen.map((p, i) => (
-                        <li key={i} className="flex items-center space-x-2">
-                          <span>{p.naam}</span>
-                          {p.telefoon && (<><Phone /><span>{p.telefoon}</span></>)}
-                          {p.email && (<><Mail /><span>{p.email}</span></>)}
-                        </li>
-                      ))}
-                    </ul>
                   </div>
                 </div>
               ))}
