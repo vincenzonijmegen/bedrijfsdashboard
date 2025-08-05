@@ -110,7 +110,7 @@ const SubSection = ({
   color?: string;
   children: React.ReactNode;
 }) => {
-  const [open, setOpen] = React.useState(true);
+  const [open, setOpen] = React.useState(false);
   return (
     <div className="col-span-full border rounded-md mb-2">
       <button
