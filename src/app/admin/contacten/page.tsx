@@ -88,7 +88,8 @@ export default function ContactenPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [corrModalOpen, setCorrModalOpen] = useState(false);
   const [zoekterm, setZoekterm] = useState('');
-  const [corrForm, setCorrForm] = useState<Correspondentie>({ contact_id: 0, datum: new Date().toISOString().slice(0, 10), type: '', omschrijving: '', bijlage_url: '' });
+  type CorrForm = Omit<Correspondentie, 'id'>;
+  const [corrForm, setCorrForm] = useState<CorrForm>({ contact_id: 0, datum: new Date().toISOString().slice(0, 10), type: '', omschrijving: '', bijlage_url: '' });
 
   // Handlers
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
