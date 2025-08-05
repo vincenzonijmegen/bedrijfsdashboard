@@ -57,7 +57,7 @@ const fetcher = (url: string) =>
 
 import { useSnackbar } from '@/lib/useSnackbar';
 
-// Collapsible section component
+// Collapsible group component
 const CollapsibleGroup = ({ title, colorClass, children }: { title: string; colorClass: string; children: React.ReactNode }) => {
   const [open, setOpen] = useState(false);
   return (
@@ -69,7 +69,7 @@ const CollapsibleGroup = ({ title, colorClass, children }: { title: string; colo
         <span>{title}</span>
         {open ? <ChevronDown className="w-4 h-4 opacity-80" /> : <ChevronRight className="w-4 h-4 opacity-80" />}
       </button>
-      {open && <div className="space-y-4 px-4 py-3 bg-white">{children}</div>}
+      {open && <div className="space-y-4 p-4 bg-white">{children}</div>}
     </div>
   );
 };
@@ -79,48 +79,66 @@ export default function ContactenPage() {
   const { data: correspondentie, mutate: mutateCorr } = useSWR<Correspondentie[]>('/api/contacten/correspondentie', fetcher);
   const { showSnackbar } = useSnackbar();
 
-  const emptyCompany: CompanyInput = useMemo(() => ({
-    naam: '', bedrijfsnaam: '', type: '', debiteurennummer: '', rubriek: '', telefoon: '', email: '', website: '', opmerking: '',
-    personen: [{ naam: '', telefoon: '', email: '' }],
-  }), []);
+  const emptyCompany: CompanyInput = useMemo(
+    () => ({
+      naam: '', bedrijfsnaam: '', type: '', debiteurennummer: '', rubriek: '', telefoon: '', email: '', website: '', opmerking: '',
+      personen: [{ naam: '', telefoon: '', email: '' }],
+    }),
+    []
+  );
 
   // State
   const [current, setCurrent] = useState<CompanyInput>({ ...emptyCompany });
   const [modalOpen, setModalOpen] = useState(false);
-  const [zoekterm, setZoekterm] = useState('');
   const [corrModalOpen, setCorrModalOpen] = useState(false);
-  const [corrForm, setCorrForm] = useState({ contact_id: 0, datum: new Date().toISOString().slice(0,10), type: '', omschrijving: '', bijlage_url: '' });
+  const [zoekterm, setZoekterm] = useState('');
+  const [corrForm, setCorrForm] = useState({ contact_id: 0, datum: new Date().toISOString().slice(0, 10), type: '', omschrijving: '', bijlage_url: '' });
 
   // Handlers
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file || !corrForm.contact_id) return;
-    const formData = new FormData(); formData.append('file', file); formData.append('contact_id', corrForm.contact_id.toString());
+    const file = e.target.files?.[0];
+    if (!file || !corrForm.contact_id) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('contact_id', corrForm.contact_id.toString());
     const res = await fetch('/api/contacten/correspondentie/upload', { method: 'POST', body: formData });
     if (!res.ok) { alert('Upload mislukt'); return; }
-    const { url } = await res.json(); setCorrForm(f => ({ ...f, bijlage_url: url })); showSnackbar('Upload succesvol');
+    const { url } = await res.json();
+    setCorrForm(f => ({ ...f, bijlage_url: url }));
+    showSnackbar('Upload succesvol');
   };
 
   const openNew = () => { setCurrent({ ...emptyCompany }); setModalOpen(true); };
-  const openEdit = (c: Company) => { setCurrent(c); (current as any).id = c.id; setModalOpen(true); };
+  const openEdit = (c: Company) => { const { id, ...rest } = c; setCurrent({ ...rest, id } as any); setModalOpen(true); };
   const save = async () => {
     const method = (current as any).id ? 'PUT' : 'POST';
     const url = '/api/contacten' + ((current as any).id ? `?id=${(current as any).id}` : '');
     await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(current) });
-    mutate(); setModalOpen(false);
+    mutate();
+    setModalOpen(false);
   };
-  const remove = async (id: number) => { if (!confirm('Weet je zeker?')) return; await fetch(`/api/contacten?id=${id}`, { method: 'DELETE' }); mutate(); };
-  const removeCorr = async (id: number) => { if (!confirm('Verwijder correspondentie?')) return; await fetch(`/api/contacten/correspondentie?id=${id}`, { method: 'DELETE' }); mutateCorr(); showSnackbar('Verwijderd'); };
-  const updateField = (field: keyof CompanyInput, value: string) => setCurrent(prev => ({ ...prev, [field]: value }));
-  const updatePersoon = (i: number, field: keyof Contactpersoon, value: string) => setCurrent(prev => ({ ...prev, personen: prev.personen.map((p, idx) => i===idx ? { ...p, [field]: value } : p) }));
-  const addPersoon = () => setCurrent(prev => ({ ...prev, personen: [...prev.personen, { naam: '', telefoon: '', email: '' }] }));
-  const deletePersoon = (i: number) => setCurrent(prev => ({ ...prev, personen: prev.personen.filter((_, idx) => i!==idx) }));
+  const remove = async (id: number) => { if (!confirm('Weet je zeker dat je dit bedrijf wilt verwijderen?')) return; await fetch(`/api/contacten?id=${id}`, { method: 'DELETE' }); mutate(); };
+  const removeCorr = async (id: number) => { if (!confirm('Weet je zeker dat je dit correspondentie-item wilt verwijderen?')) return; await fetch(`/api/contacten/correspondentie?id=${id}`, { method: 'DELETE' }); mutateCorr(); showSnackbar('Correspondentie verwijderd'); };
 
-  const typeOrder = useMemo(() => ['leverancier artikelen','leverancier diensten','financieel','overheid','overig'], []);
+  const updateField = (field: keyof CompanyInput, value: string) => setCurrent(prev => ({ ...prev, [field]: value }));
+  const updatePersoon = (idx: number, field: keyof Contactpersoon, value: string) => setCurrent(prev => ({ ...prev, personen: prev.personen.map((p, i) => (i === idx ? { ...p, [field]: value } : p)) }));
+  const addPersoon = () => setCurrent(prev => ({ ...prev, personen: [...prev.personen, { naam: '', telefoon: '', email: '' }] }));
+  const deletePersoon = (idx: number) => setCurrent(prev => ({ ...prev, personen: prev.personen.filter((_, i) => i !== idx) }));
+
+  const typeOrder = useMemo(
+    () => ['leverancier artikelen', 'leverancier diensten', 'financieel', 'overheid', 'overig'],
+    []
+  );
+
   const gesorteerd = useMemo(() => {
     if (!bedrijven) return [];
     return bedrijven
-      .filter(b => (`${b.naam} ${b.bedrijfsnaam||''} ${b.type}`).toLowerCase().includes(zoekterm.toLowerCase()))
-      .sort((a, b) => { const ia = typeOrder.indexOf(a.type), ib = typeOrder.indexOf(b.type); return ia!==ib?ia-ib:a.naam.localeCompare(b.naam); });
+      .filter(b => `${b.naam} ${b.bedrijfsnaam || ''} ${b.type}`.toLowerCase().includes(zoekterm.toLowerCase()))
+      .sort((a, b) => {
+        const idxA = typeOrder.indexOf(a.type);
+        const idxB = typeOrder.indexOf(b.type);
+        return idxA !== idxB ? idxA - idxB : a.naam.localeCompare(b.naam);
+      });
   }, [bedrijven, zoekterm, typeOrder]);
 
   return (
@@ -145,12 +163,14 @@ export default function ContactenPage() {
         </div>
         <div className="space-y-6">
           {typeOrder.map(type => {
-            const kleur = type==='leverancier artikelen'? 'bg-sky-600'
-              : type==='leverancier diensten'? 'bg-cyan-600'
-              : type==='financieel'? 'bg-green-600'
-              : type==='overheid'? 'bg-orange-600' : 'bg-gray-600';
-            const grp = gesorteerd.filter(b => b.type===type);
-            if(!grp.length) return null;
+            const kleur =
+              type === 'leverancier artikelen' ? 'bg-sky-600' :
+              type === 'leverancier diensten' ? 'bg-cyan-600' :
+              type === 'financieel' ? 'bg-green-600' :
+              type === 'overheid' ? 'bg-orange-600' :
+              'bg-gray-600';
+            const grp = gesorteerd.filter(b => b.type === type);
+            if (!grp.length) return null;
             return (
               <CollapsibleGroup key={type} title={type} colorClass={kleur}>
                 {grp.map(c => (
@@ -171,7 +191,7 @@ export default function ContactenPage() {
                     <div className="mt-3">
                       <h3 className="font-semibold flex items-center gap-2"><Users /><span>Contactpersonen</span></h3>
                       <ul className="list-disc list-inside text-sm mt-1">
-                        {c.personen.map((p,i)=>(
+                        {c.personen.map((p, i) => (
                           <li key={i} className="flex items-center space-x-2">
                             <span>{p.naam}</span>
                             {p.telefoon && (<><Phone /><span>{p.telefoon}</span></>)}
@@ -183,40 +203,53 @@ export default function ContactenPage() {
                     <div className="mt-6">
                       <h3 className="font-semibold flex items-center gap-2">📎 Correspondentie</h3>
                       <ul className="list-disc list-inside text-sm mt-1 italic text-gray-700">
-                        {(correspondentie||[]).filter(item=>item.contact_id===c.id).map(item=>(
-                          <li key={item.id} className="border-t pt-2 mt-2 flex items-center justify-between">
-                            <div className="flex flex-col">
-                              <span>{new Date(item.datum).toLocaleDateString('nl-NL')} – {item.type}</span>
-                              <span>{item.omschrijving}</span>
-                              {item.bijlage_url && (<a href={item.bijlage_url} target="_blank" className="underline ml-2">PDF</a>)}
-                            </div>
-                            <button onClick={()=>removeCorr(item.id)} className="text-red-600 hover:underline text-sm">Verwijder</button>
+                        {(correspondentie || [])
+                          .filter(item => item.contact_id === c.id)
+                          .map(item => (
+                            <li key={item.id} className="border-t pt-2 mt-2 flex items-center justify-between">
+                              <div className="flex flex-col">
+                                <span>{new Date(item.datum).toLocaleDateString('nl-NL')} – {item.type}</span>
+                                <span>{item.omschrijving}</span>
+                                {item.bijlage_url && (<a href={item.bijlage_url} target="_blank" className="underline ml-2">PDF</a>)}
+                              </div>
+                              <button onClick={() => removeCorr(item.id)} className="text-red-600 hover:underline text-sm">Verwijder</button>
                             </li>
                           ))}
-                        </ul>
-                        <button onClick={()=>{setCorrForm(f=>({...f,contact_id:c.id}));setCorrModalOpen(true);}} className="mt-2 text-blue-600 hover:underline text-sm">+ Correspondentie toevoegen</button>
-                      </div>
+                      </ul>
+                      <button
+                        onClick={() => { setCorrForm(f => ({ ...f, contact_id: c.id })); setCorrModalOpen(true); }}
+                        className="mt-2 text-blue-600 hover:underline text-sm"
+                      >
+                        + Correspondentie toevoegen
+                      </button>
                     </div>
-                  ))}
-                </CollapsibleGroup>
-              );
-            })}
+                  </div>
+                ))}
+              </CollapsibleGroup>
+            );
+          })}
+        </div>
+      </div>
+
+```jsx
+      {/* Modals */}
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl overflow-y-auto max-h-full">
+            {/* Modal for add/edit company */}
+            {/* ...form fields... */}
           </div>
-          {/* Modals */}
-          {modalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl overflow-y-auto max-h-full">
-                {/* modal content */}
-              </div>
-            </div>
-          )}
-          {corrModalOpen && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white p-6 rounded shadow w-full max-w-md">
-                {/* correspondentie modal content */}
-              </div>
-            </div>
-          )}
-        </>
-      );
-    }
+        </div>
+      )}
+
+      {corrModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow w-full max-w-md">
+            {/* Modal for correspondence */}
+            {/* ...form fields... */}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
