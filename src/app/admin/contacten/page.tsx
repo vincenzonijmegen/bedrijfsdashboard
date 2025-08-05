@@ -13,6 +13,8 @@ import {
   Tag,
   Hash,
   List,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 
 interface Correspondentie {
@@ -54,6 +56,31 @@ const fetcher = (url: string) =>
   });
 
 import { useSnackbar } from '@/lib/useSnackbar';
+
+const CollapsibleGroup = ({
+  title,
+  colorClass,
+  children,
+}: {
+  title: string;
+  colorClass: string;
+  children: React.ReactNode;
+}) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border rounded shadow">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`w-full text-left px-4 py-2 font-semibold text-white flex justify-between items-center ${colorClass}`}
+      >
+        <span>{title}</span>
+        {open ? <ChevronDown className="w-4 h-4 opacity-80" /> : <ChevronRight className="w-4 h-4 opacity-80" />}
+      </button>
+      {open && <div className="space-y-4 px-4 py-3 bg-white">{children}</div>}
+    </div>
+  );
+};
+
 
 export default function ContactenPage() {
   const { data: bedrijven, error, mutate } = useSWR<Company[]>('/api/contacten', fetcher);
