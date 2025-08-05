@@ -100,6 +100,16 @@ const Section = ({ id, title, children, color, activeSection, setActiveSection }
   );
 };
 
+// Bovenin toevoegen:
+const SubSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div className="col-span-full">
+    <h3 className="text-sm font-semibold text-slate-600 mb-2 mt-4">{title}</h3>
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+      {children}
+    </div>
+  </div>
+);
+
 function DailyTotalDisplay() {
   const today = new Date().toISOString().slice(0, 10).split('-').reverse().join('-');
   const { data } = useSWR('/api/kassa/omzet?start=' + today + '&totalen=1', fetcher);
@@ -126,7 +136,7 @@ export default function AdminDashboard() {
   return (
     <main className="max-w-6xl mx-auto p-6">
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-slate-800">🗂️ Portaal Vincenzo</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
         <Link href="/admin/dashboard" className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200">
           <DailyTotalDisplay />
         </Link>
@@ -166,22 +176,28 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/aftekenlijsten" label="HACCP-lijsten ingescand" color="purple" Icon={BarChart2} />
       </Section>
 
-      <Section id="medewerkers" title="👥 Medewerkers en instructies" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} />
-        <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="green" Icon={Users} />
-        <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="green" Icon={FileText} />
-        <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} />
-        <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} />
-        <LinkCard href="/admin/instructies" label="Instructies beheren" color="green" Icon={FileText} />
-        <LinkCard href="/instructies" label="Instructies medewerkers" color="green" Icon={Eye} />
-      </Section>
+     <Section id="medewerkers" title="👥 Medewerkers" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
+  <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} />
+  <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="green" Icon={Users} />
+  <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="green" Icon={FileText} />
+  <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} />
+  <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} />
 
-      <Section id="skills" title="🧠 Skills" color="amber" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/skills/categorieen" label="Beheer categorieën" color="amber" Icon={Tag} />
-        <LinkCard href="/admin/skills" label="Skills beheer" color="amber" Icon={Layers} />
-        <LinkCard href="/admin/skills/toewijzen" label="Skills toewijzen" color="amber" Icon={Activity} />
-        <LinkCard href="/skills" label="Skills medewerkers" color="amber" Icon={Layers} />
-      </Section>
+  <SubSection title="📘 Instructies">
+    <LinkCard href="/admin/instructies" label="Instructies beheren" color="green" Icon={FileText} />
+    <LinkCard href="/instructies" label="Instructies medewerkers" color="green" Icon={Eye} />
+  </SubSection>
+
+  <SubSection title="🧠 Skills">
+    <LinkCard href="/admin/skills/categorieen" label="Beheer categorieën" color="amber" Icon={Tag} />
+    <LinkCard href="/admin/skills" label="Skills beheer" color="amber" Icon={Layers} />
+    <LinkCard href="/admin/skills/toewijzen" label="Skills toewijzen" color="amber" Icon={Activity} />
+    <LinkCard href="/skills" label="Skills medewerkers" color="amber" Icon={Layers} />
+  </SubSection>
+</Section>
+
+
+
 
       <Section id="voorraad" title="📦 Voorraadbeheer, Recepturen & Allergenen" color="pink" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/leveranciers" label="Leveranciers beheren" color="pink" Icon={CreditCard} />
