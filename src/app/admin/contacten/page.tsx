@@ -251,16 +251,6 @@ export default function ContactenPage() {
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl overflow-y-auto max-h-full">
             <h2 className="text-xl font-semibold mb-4">{(current as any).id ? 'Bewerk bedrijf' : 'Nieuw bedrijf'}</h2>
             <form onSubmit={e => { e.preventDefault(); save(); }} className="space-y-4">
-              {/* Form fields */}
-            </form>
-          </div>
-        </div>
-      )}
-
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl overflow-y-auto max-h-full">
-            <h2 className="text-xl font-semibold mb-4">{(current as any).id ? 'Bewerk bedrijf' : 'Nieuw bedrijf'}</h2>
-            <form onSubmit={e => { e.preventDefault(); save(); }} className="space-y-4">
               <div className="flex flex-col">
                 <label>Naam</label>
                 <input type="text" className="border rounded px-2 py-1" value={current.naam} onChange={e => updateField('naam', e.target.value)} />
@@ -324,7 +314,7 @@ export default function ContactenPage() {
             </form>
           </div>
         </div>
-      )
+      )}
     </div>
   );
 }
