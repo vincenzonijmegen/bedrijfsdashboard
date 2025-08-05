@@ -81,33 +81,17 @@ const CollapsibleGroup = ({
   );
 };
 
-
 export default function ContactenPage() {
   const { data: bedrijven, error, mutate } = useSWR<Company[]>('/api/contacten', fetcher);
   const { data: correspondentie, mutate: mutateCorr } = useSWR<Correspondentie[]>('/api/contacten/correspondentie', fetcher);
   const [modalOpen, setModalOpen] = useState(false);
   const emptyCompany: CompanyInput = useMemo(() => ({
-    naam: '',
-    bedrijfsnaam: '',
-    type: '',
-    debiteurennummer: '',
-    rubriek: '',
-    telefoon: '',
-    email: '',
-    website: '',
-    opmerking: '',
-    personen: [{ naam: '', telefoon: '', email: '' }],
+    naam: '', bedrijfsnaam: '', type: '', debiteurennummer: '', rubriek: '', telefoon: '', email: '', website: '', opmerking: '', personen: [{ naam: '', telefoon: '', email: '' }],
   }), []);
   const [current, setCurrent] = useState<CompanyInput>({ ...emptyCompany });
   const [zoekterm, setZoekterm] = useState('');
   const [corrModalOpen, setCorrModalOpen] = useState(false);
-  const [corrForm, setCorrForm] = useState<{
-    contact_id: number;
-    datum: string;
-    type: string;
-    omschrijving: string;
-    bijlage_url?: string;
-  }>({
+  const [corrForm, setCorrForm] = useState({
     contact_id: 0,
     datum: new Date().toISOString().slice(0, 10),
     type: '',
@@ -185,9 +169,6 @@ export default function ContactenPage() {
   const deletePersoon = (idx: number) =>
     setCurrent(prev => ({ ...prev, personen: prev.personen.filter((_, i) => i !== idx) }));
 
-  // Verwijder een correspondentie-item
-    // Verwijder een correspondentie-item
-    // Verwijder een correspondentie-item
   const removeCorr = async (id: number) => {
     if (!confirm('Weet je zeker dat je dit correspondentie-item wilt verwijderen?')) return;
     await fetch(`/api/contacten/correspondentie?id=${id}`, { method: 'DELETE' });
@@ -210,20 +191,180 @@ export default function ContactenPage() {
     if (!bedrijven) return [];
     return bedrijven
       .filter(b => {
-        const allText = (
-          `${b.naam} ${
-            b.bedrijfsnaam || ''
-          } ${b.type} ${b.debiteurennummer || ''} ${b.rubriek || ''} ${b.telefoon || ''} ${b.email || ''} ${b.website || ''} ${b.opmerking || ''} ${b.personen
-            .map(p => `${p.naam} ${p.telefoon || ''} ${p.email || ''}`)
-            .join(' ')}`
-        ).toLowerCase();
+        const allText = `${b.naam} ${b.bedrijfsnaam || ''} ${b.type} ${b.debiteurennummer || ''} ${b.rubriek || ''} ${b.telefoon || ''} ${b.email || ''} ${b.website || ''} ${b.opmerking || ''} ${b.personen.map(p => `${p.naam} ${p.telefoon || ''} ${p.email || ''}`).join(' ')}`.toLowerCase();
         return allText.includes(zoekterm.toLowerCase());
       })
       .sort((a, b) => {
         const idxA = typeOrder.indexOf(a.type);
         const idxB = typeOrder.indexOf(b.type);
-        if (idxA !== idxB) return idxA - idxB;
-        return a.naam.localeCompare(b.naam);
+        return idxA - idxB || a.naam.localeCompare(b.naam);
+      });
+  }, [bedrijven, zoekterm, typeOrder]);
+
+  return (
+    <div className="p-6 max-w-4xl mx-auto">
+      <input
+        type="text"
+        placeholder="Zoek..."
+        className="mb-4 w-full border px-3 py-2 rounded"
+        value={zoekterm}
+        onChange={e => setZoekterm(e.target.value)}
+      />
+
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold flex items-center space-x-2">
+          <Users className="w-6 h-6 text-gray-800" />
+          <span>Contacten</span>
+        </h1>
+        <button
+          onClick={openNew}
+          className="flex items-center space-x-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          <UserPlus className="w-5 h-5" />
+          <span>Nieuw contact</span>
+        </button>
+      </div>
+
+      <div className="space-y-6">
+        {typeOrder.map(type => {
+          const kleur = type === 'leverancier artikelen' ? 'bg-sky-600' :
+                        type === 'leverancier diensten' ? 'bg-cyan-600' :
+                        type === 'financieel' ? 'bg-green-600' :
+                        type === 'overheid' ? 'bg-orange-600' : 'bg-gray-600';
+          const bedrijvenVanType = gesorteerd.filter(b => b.type === type);
+          if (!bedrijvenVanType.length) return null;
+
+          return (
+            <CollapsibleGroup key={type} title={type} colorClass={kleur}>
+              {bedrijvenVanType.map(c => (
+  <div key={c.id} className="p-4 border rounded shadow">
+    <div className="flex justify-between items-start">
+      <strong className="text-lg">{c.naam}</strong>
+      <div className="space-x-2">
+        <button onClick={() => openEdit(c)} className="px-2 py-1 border rounded hover:bg-gray-100">Bewerk</button>
+        <button onClick={() => remove(c.id)} className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700">Verwijder</button>
+      </div>
+    </div>
+    <div className="mt-2 space-y-2 text-sm">
+      {c.bedrijfsnaam && (<div className="flex items-center space-x-2"><Building /><span>{c.bedrijfsnaam}</span></div>)}
+      <div className="flex items-center space-x-2"><Tag /><span>Type: {c.type}</span></div>
+      {c.debiteurennummer && (<div className="flex items-center space-x-2"><Hash /><span>{c.debiteurennummer}</span></div>)}
+      {c.rubriek && (<div className="flex items-center space-x-2"><List /><span>{c.rubriek}</span></div>)}
+      {c.telefoon && (<div className="flex items-center space-x-2"><Phone /><span>{c.telefoon}</span></div>)}
+      {c.email && (<div className="flex items-center space-x-2"><Mail /><span>{c.email}</span></div>)}
+      {c.website && (<div className="flex items-center space-x-2"><Globe /><a href={c.website} target="_blank" rel="noreferrer" className="underline">{c.website}</a></div>)}
+      {c.opmerking && <div className="italic">{c.opmerking}</div>}
+    </div>
+  </div>
+))}
+            </CollapsibleGroup>
+          );
+        })}
+      </div>
+    </div>
+
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl overflow-y-auto max-h-full">
+            <h2 className="text-xl font-semibold mb-4">{(current as any).id ? 'Bewerk bedrijf' : 'Nieuw bedrijf'}</h2>
+            <form onSubmit={e => { e.preventDefault(); save(); }} className="space-y-4">
+              <div className="flex flex-col">
+                <label>Naam</label>
+                <input type="text" className="border rounded px-2 py-1" value={current.naam} onChange={e => updateField('naam', e.target.value)} />
+              </div>
+              <div className="flex flex-col">
+                <label>Bedrijfsnaam</label>
+                <input type="text" className="border rounded px-2 py-1" value={current.bedrijfsnaam} onChange={e => updateField('bedrijfsnaam', e.target.value)} />
+              </div>
+              <div className="flex flex-col">
+                <label>Type</label>
+                <select className="border rounded px-2 py-1" value={current.type} onChange={e => updateField('type', e.target.value)}>
+                  <option value="">Selecteer type</option>
+                  {typeOrder.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col">
+                <label>Opmerking</label>
+                <textarea className="border rounded px-2 py-1" value={current.opmerking} onChange={e => updateField('opmerking', e.target.value)} />
+              </div>
+              <div>
+                <h3 className="font-semibold">Contactpersonen</h3>
+                {current.personen.map((p, i) => (
+                  <div key={i} className="flex gap-2 items-center mb-2">
+                    <input type="text" placeholder="Naam" className="border px-2 py-1 flex-1" value={p.naam} onChange={e => updatePersoon(i, 'naam', e.target.value)} />
+                    <input type="text" placeholder="Telefoon" className="border px-2 py-1 flex-1" value={p.telefoon} onChange={e => updatePersoon(i, 'telefoon', e.target.value)} />
+                    <input type="email" placeholder="E-mail" className="border px-2 py-1 flex-1" value={p.email} onChange={e => updatePersoon(i, 'email', e.target.value)} />
+                    <button type="button" onClick={() => deletePersoon(i)} className="px-2 py-1 bg-red-500 text-white rounded">Verwijder</button>
+                  </div>
+                ))}
+                <button type="button" onClick={addPersoon} className="px-3 py-1 bg-green-600 text-white rounded flex items-center space-x-1">
+                  <UserPlus className="w-4 h-4" />
+                  <span>Persoon toevoegen</span>
+                </button>
+              </div>
+              <div className="flex justify-end space-x-2 pt-4">
+                <button type="button" onClick={() => setModalOpen(false)} className="px-4 py-2 border rounded hover:bg-gray-100">Annuleer</button>
+                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Opslaan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {corrModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded shadow w-full max-w-md">
+            <h2 className="text-xl font-semibold mb-4">Nieuwe correspondentie</h2>
+            <form
+              onSubmit={async e => {
+                e.preventDefault();
+                await fetch('/api/contacten/correspondentie', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(corrForm),
+                });
+                mutateCorr();
+                setCorrModalOpen(false);
+              }}
+              className="space-y-4"
+            >
+              <div className="flex flex-col">
+                <label>Datum</label>
+                <input type="date" className="border rounded px-2 py-1" value={corrForm.datum} onChange={e => setCorrForm(f => ({ ...f, datum: e.target.value }))} />
+              </div>
+              <div className="flex flex-col">
+                <label>Type</label>
+                <select className="border rounded px-2 py-1" value={corrForm.type} onChange={e => setCorrForm(f => ({ ...f, type: e.target.value }))}>
+                  <option value="">Selecteer type</option>
+                  <option value="email">E‑mail</option>
+                  <option value="telefoon">Telefoon</option>
+                  <option value="bezoek">Bezoek</option>
+                </select>
+              </div>
+              <div className="flex flex-col">
+                <label>Omschrijving</label>
+                <textarea className="border rounded px-2 py-1" rows={3} value={corrForm.omschrijving} onChange={e => setCorrForm(f => ({ ...f, omschrijving: e.target.value }))} />
+              </div>
+              <div className="flex flex-col">
+                <label>PDF upload (optioneel)</label>
+                <input key={corrForm.contact_id} type="file" accept="application/pdf" onChange={handleFileUpload} className="border rounded px-2 py-1" />
+                {corrForm.bijlage_url && (
+                  <a href={corrForm.bijlage_url} target="_blank" className="text-blue-600 underline mt-1">Bekijk geüploade PDF</a>
+                )}
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button type="button" onClick={() => setCorrModalOpen(false)} className="px-4 py-2 border rounded">Annuleer</button>
+                <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded">Opslaan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      })
+      .sort((a, b) => {
+        const idxA = typeOrder.indexOf(a.type);
+        const idxB = typeOrder.indexOf(b.type);
+        return idxA - idxB || a.naam.localeCompare(b.naam);
       });
   }, [bedrijven, zoekterm, typeOrder]);
 
