@@ -58,7 +58,7 @@ const fetcher = (url: string) =>
 import { useSnackbar } from '@/lib/useSnackbar';
 
 // Collapsible group component
-const CollapsibleGroup: React.FC<{ title: string; colorClass: string }> = ({ title, colorClass, children }) => {
+const CollapsibleGroup: React.FC<{ title: string; colorClass: string; children: React.ReactNode }> = ({ title, colorClass, children }) => {
   const [open, setOpen] = useState(false);
   return (
     <div className="border rounded shadow">
