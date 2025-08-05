@@ -101,14 +101,36 @@ const Section = ({ id, title, children, color, activeSection, setActiveSection }
 };
 
 // Bovenin toevoegen:
-const SubSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="col-span-full">
-    <h3 className="text-sm font-semibold text-slate-600 mb-2 mt-4">{title}</h3>
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-      {children}
+const SubSection = ({
+  title,
+  color,
+  children,
+}: {
+  title: string;
+  color?: string;
+  children: React.ReactNode;
+}) => {
+  const [open, setOpen] = React.useState(true);
+  return (
+    <div className="col-span-full border rounded-md mb-2">
+      <button
+        onClick={() => setOpen(!open)}
+        className={`w-full flex items-center justify-between px-3 py-2 font-semibold text-sm tracking-tight ${
+          bgColorMap[color || 'gray']
+        }`}
+      >
+        <span>{title}</span>
+        {open ? <ChevronDown className="w-4 h-4 opacity-70" /> : <ChevronRight className="w-4 h-4 opacity-70" />}
+      </button>
+      {open && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 bg-white">
+          {children}
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
+
 
 function DailyTotalDisplay() {
   const today = new Date().toISOString().slice(0, 10).split('-').reverse().join('-');
@@ -176,28 +198,25 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/aftekenlijsten" label="HACCP-lijsten ingescand" color="purple" Icon={BarChart2} />
       </Section>
 
-     <Section id="medewerkers" title="👥 Medewerkers" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
-  <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} />
-  <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="green" Icon={Users} />
-  <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="green" Icon={FileText} />
-  <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} />
-  <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} />
+      <Section id="medewerkers" title="👥 Medewerkers" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
+        <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} />
+        <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="green" Icon={Users} />
+        <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="green" Icon={FileText} />
+        <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} />
+        <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} />
 
-  <SubSection title="📘 Instructies">
-    <LinkCard href="/admin/instructies" label="Instructies beheren" color="green" Icon={FileText} />
-    <LinkCard href="/instructies" label="Instructies medewerkers" color="green" Icon={Eye} />
-  </SubSection>
+         <SubSection title="📘 Instructies" color="blue">
+            <LinkCard href="/admin/instructies" label="Instructies beheren" color="blue" Icon={FileText} />
+            <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" Icon={Eye} />
+         </SubSection>
 
-  <SubSection title="🧠 Skills">
-    <LinkCard href="/admin/skills/categorieen" label="Beheer categorieën" color="amber" Icon={Tag} />
-    <LinkCard href="/admin/skills" label="Skills beheer" color="amber" Icon={Layers} />
-    <LinkCard href="/admin/skills/toewijzen" label="Skills toewijzen" color="amber" Icon={Activity} />
-    <LinkCard href="/skills" label="Skills medewerkers" color="amber" Icon={Layers} />
-  </SubSection>
-</Section>
-
-
-
+         <SubSection title="🧠 Skills" color="amber">
+            <LinkCard href="/admin/skills/categorieen" label="Beheer categorieën" color="amber" Icon={Tag} />
+            <LinkCard href="/admin/skills" label="Skills beheer" color="amber" Icon={Layers} />
+            <LinkCard href="/admin/skills/toewijzen" label="Skills toewijzen" color="amber" Icon={Activity} />
+            <LinkCard href="/skills" label="Skills medewerkers" color="amber" Icon={Layers} />
+          </SubSection>
+     </Section>
 
       <Section id="voorraad" title="📦 Voorraadbeheer, Recepturen & Allergenen" color="pink" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/leveranciers" label="Leveranciers beheren" color="pink" Icon={CreditCard} />
