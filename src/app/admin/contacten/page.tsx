@@ -260,9 +260,9 @@ export default function ContactenPage() {
                 <input type="text" className="border rounded px-2 py-1" value={current.bedrijfsnaam} onChange={e => updateField('bedrijfsnaam', e.target.value)} />
               </div>
               <div className="flex flex-col">
-                <label>Type</label>
-                <select className="border rounded px-2 py-1" value={current.type} onChange={e => updateField('type', e.target.value)}>
-                  <option value="">Selecteer type</option>
+                <label>Type <span className="text-red-600">*</span></label>
+                <select required className="border rounded px-2 py-1" value={current.type} onChange={e => updateField('type', e.target.value)}>
+                  <option value="" disabled>Selecteer type</option>
                   {typeOrder.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
