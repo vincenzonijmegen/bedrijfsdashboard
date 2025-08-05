@@ -256,41 +256,7 @@ export default function ContactenPage() {
           </div>
         </div>
       )}
-      {corrModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded shadow w-full max-w-md">
-            <h2 className="text-xl font-semibold mb-4">Nieuwe correspondentie</h2>
-            <form onSubmit={async e => { e.preventDefault(); await fetch('/api/contacten/correspondentie', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(corrForm)}); mutateCorr(); setCorrModalOpen(false); }} className="space-y-4">
-              <div className="flex flex-col">
-                <label>Datum</label>
-                <input type="date" className="border rounded px-2 py-1" value={corrForm.datum} onChange={e => setCorrForm(f => ({ ...f, datum: e.target.value }))} />
-              </div>
-              <div className="flex flex-col">
-                <label>Type <span className="text-red-600">*</span></label>
-                <select required className="border rounded px-2 py-1" value={corrForm.type} onChange={e => setCorrForm(f => ({ ...f, type: e.target.value }))}>
-                  <option value="" disabled>Selecteer type</option>
-                  <option value="email">E-mail</option>
-                  <option value="telefoon">Telefoon</option>
-                  <option value="bezoek">Bezoek</option>
-                </select>
-              </div>
-              <div className="flex flex-col">
-                <label>Omschrijving</label>
-                <textarea className="border rounded px-2 py-1" rows={3} value={corrForm.omschrijving} onChange={e => setCorrForm(f => ({ ...f, omschrijving: e.target.value }))} />
-              </div>
-              <div className="flex flex-col">
-                <label>PDF upload (optioneel)</label>
-                <input key={corrForm.contact_id} type="file" accept="application/pdf" onChange={handleFileUpload} className="border rounded px-2 py-1" />
-                {corrForm.bijlage_url && (<a href={corrForm.bijlage_url} target="_blank" className="text-blue-600 underline mt-1">Bekijk geüploade PDF</a>)}
-              </div>
-              <div className="flex justify-end space-x-2">
-                <button type="button" onClick={() => setCorrModalOpen(false)} className="px-4 py-2 border rounded">Annuleer</button>
-                <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Opslaan</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-2xl overflow-y-auto max-h-full">
             <h2 className="text-xl font-semibold mb-4">{(current as any).id ? 'Bewerk bedrijf' : 'Nieuw bedrijf'}</h2>
