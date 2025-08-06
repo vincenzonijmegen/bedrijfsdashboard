@@ -2,6 +2,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from '@/lib/db';
 
+// HULPFUNCTIE alleen intern gebruikt
+async function bestaatKasstaat(datum: string) {
+  const check = await db.query(`SELECT 1 FROM kasstaten WHERE datum = $1`, [datum]);
+  return check.rows.length > 0;
+}
+
 // GET all or by ?datum=YYYY-MM-DD
 export async function GET(req: NextRequest) {
   const datum = req.nextUrl.searchParams.get("datum");
@@ -67,6 +73,12 @@ export async function PUT(req: NextRequest) {
   console.log("PUT kasstaat ontvangen:", body);
 
   try {
+    const bestaat = await bestaatKasstaat(datum);
+    if (!bestaat) {
+      console.warn("PUT kasstaat geen bestaande invoer voor datum:", datum);
+      return NextResponse.json({ error: "Geen kasstaat gevonden voor deze datum" }, { status: 400 });
+    }
+
     const result = await db.query(
       `UPDATE kasstaten
        SET contant = ROUND($1::numeric, 2),
@@ -78,11 +90,6 @@ export async function PUT(req: NextRequest) {
        RETURNING *;`,
       [contant, pin, bon, cadeaubon, vrij, datum]
     );
-
-    if (result.rows.length === 0) {
-      console.warn("PUT kasstaat geen resultaat voor datum:", datum);
-      return NextResponse.json({ error: "Geen kasstaat gevonden voor deze datum" }, { status: 400 });
-    }
 
     return NextResponse.json(result.rows[0]);
   } catch (e) {
