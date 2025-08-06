@@ -72,11 +72,17 @@ export async function PUT(req: NextRequest) {
        RETURNING *;`,
       [contant, pin, bon, cadeaubon, vrij, datum]
     );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "Geen kasstaat gevonden voor deze datum" }, { status: 400 });
+    }
+
     return NextResponse.json(result.rows[0]);
   } catch (e) {
     return NextResponse.json({ error: "Updaten mislukt" }, { status: 400 });
   }
 }
+
 
 // DELETE op datum
 export async function DELETE(req: NextRequest) {
