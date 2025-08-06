@@ -125,6 +125,22 @@ export default function AdminContactenPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(current),
       });
+      // Wait for SWR to revalidate and get updated data
+      await mutateBedrijven();
+      setModalOpen(false);
+      showSnackbar('Bedrijf opgeslagen');
+    } catch (error: any) {
+      showSnackbar(`Fout bij opslaan: ${error.message}`);
+    }
+  }
+    try {
+      const method = (current as any).id ? 'PUT' : 'POST';
+      const url = (current as any).id ? `/api/contacten/${(current as any).id}` : '/api/contacten';
+      await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(current),
+      });
       mutateBedrijven();
       setModalOpen(false);
       showSnackbar('Bedrijf opgeslagen');
