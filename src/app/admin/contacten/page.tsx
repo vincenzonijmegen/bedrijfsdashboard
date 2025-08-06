@@ -369,7 +369,7 @@ export default function AdminContactenPage() {
               </div>
               <div>
                 <h3 className="font-semibold">Contactpersonen</h3>
-                {current.personen.map((p, i) => (
+                {(current.personen ?? []).map((p, i) => (
                   <div key={i} className="flex gap-2 items-center mb-2">
                     <input type="text" placeholder="Naam" className="border px-2 py-1 flex-1" value={p.naam} onChange={e => updatePersoon(i, 'naam', e.target.value)} />
                     <input type="text" placeholder="Telefoon" className="border px-2 py-1 flex-1" value={p.telefoon || ''} onChange={e => updatePersoon(i, 'telefoon', e.target.value)} />
