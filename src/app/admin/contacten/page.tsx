@@ -128,7 +128,7 @@ export default function AdminContactenPage() {
       setModalOpen(false);
       showSnackbar('Bedrijf opgeslagen');
     } catch (error: any) {
-      showMessage(`Fout bij opslaan: ${error.message}`);
+      showSnackbar(`Fout bij opslaan: ${error.message}`);
     }
   }
 
@@ -136,14 +136,14 @@ export default function AdminContactenPage() {
     if (!confirm('Weet je het zeker?')) return;
     await fetch(`/api/contacten/${id}`, { method: 'DELETE' });
     mutateBedrijven();
-    showMessage('Bedrijf verwijderd');
+    showSnackbar('Bedrijf verwijderd');
   }
 
   async function removeCorrItem(id: number) {
     if (!confirm('Weet je het zeker?')) return;
     await fetch(`/api/contacten/correspondentie/${id}`, { method: 'DELETE' });
     mutateCorr();
-    showMessage('Correspondentie verwijderd');
+    showSnackbar('Correspondentie verwijderd');
   }
 
   function updateField<K extends keyof CompanyInput>(field: K, value: CompanyInput[K]) {
