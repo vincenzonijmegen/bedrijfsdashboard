@@ -63,9 +63,17 @@ export default function KasstatenPage() {
     setKasstaat(prev => prev ? { ...prev, [field]: fixedValue } : null);
   }
 
+  async function bestaatKasstaat(datum: string): Promise<boolean> {
+    const res = await fetch(`/api/kasstaten?datum=${datum}`);
+    if (!res.ok) return false;
+    const data = await res.json();
+    return !!data;
+  }
+
   async function opslaan() {
     if (!kasstaat) return;
-    const method = kasstaat?.id ? "PUT" : "POST";
+    const bestaat = await bestaatKasstaat(kasstaat.datum);
+    const method = bestaat ? "PUT" : "POST";
     const roundedKasstaat = {
       ...kasstaat,
       contant: parseFloat(kasstaat.contant.toFixed(2)),
