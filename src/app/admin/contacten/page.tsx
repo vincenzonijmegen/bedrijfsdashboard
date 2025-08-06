@@ -221,30 +221,6 @@ export default function ContactenPage() {
                         + Correspondentie toevoegen
                       </button>
                     </CollapsibleGroup>
-                    <div className="mt-4">
-                      <h3 className="font-semibold">Correspondentie</h3>
-                      <ul className="list-disc list-inside text-sm mt-1 italic text-gray-700">
-                        {(correspondentie || []).filter(item => item.contact_id === c.id).map(item => (
-                          <li key={item.id} className="border-t pt-2 mt-2 flex justify-between items-center">
-                            <div className="flex flex-col">
-                              <span>{new Date(item.datum).toLocaleDateString('nl-NL')} – {item.type}</span>
-                              <span>{item.omschrijving}</span>
-                              {item.bijlage_url && <a href={item.bijlage_url} target="_blank" rel="noreferrer" className="underline">PDF</a>}
-                            </div>
-                            <button onClick={() => removeCorrItem(item.id)} className="text-red-600 hover:underline text-sm">Verwijder</button>
-                          </li>
-                        ))}
-                      </ul>
-                      <button
-                        onClick={() => { setCorrForm(f => ({ ...f, contact_id: c.id })); setCorrModalOpen(true); }}
-                        className="mt-2 text-blue-600 hover:underline text-sm"
-                      >
-                        + Correspondentie toevoegen
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </CollapsibleGroup>
             );
           })}
         </div>
