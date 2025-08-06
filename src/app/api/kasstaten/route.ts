@@ -25,7 +25,15 @@ export async function GET(req: NextRequest) {
 // POST nieuwe kasstaat
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { id, datum, contant, pin, bon, cadeaubon, vrij } = body;
+  const {
+    id,
+    datum,
+    contant = 0,
+    pin = 0,
+    bon = 0,
+    cadeaubon = 0,
+    vrij = 0
+  } = body;
 
   try {
     const result = await db.query(
@@ -43,7 +51,14 @@ export async function POST(req: NextRequest) {
 // PUT update bestaande kasstaat
 export async function PUT(req: NextRequest) {
   const body = await req.json();
-  const { datum, contant, pin, bon, cadeaubon, vrij } = body;
+  const {
+    datum,
+    contant = 0,
+    pin = 0,
+    bon = 0,
+    cadeaubon = 0,
+    vrij = 0
+  } = body;
 
   try {
     const result = await db.query(
