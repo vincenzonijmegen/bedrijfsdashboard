@@ -16,8 +16,8 @@ interface Props {
   corrCount?: number;
 }
 
-export default function CompanyCard({ company: c, correspondentie, onEdit, onDelete, onCorrDelete, onAddCorr }: Props) {
-  const [showCorrespondentie, setShowCorrespondentie] = useState(correspondentie.length > 0);
+export default function CompanyCard({ company: c, correspondentie, onEdit, onDelete, onCorrDelete, onAddCorr, startCollapsed = false, corrCount = 0 }: Props) {
+  const [showCorrespondentie, setShowCorrespondentie] = useState(!startCollapsed);
 
   async function removeCompany(id: number) {
     if (!confirm('Weet je het zeker?')) return;
@@ -68,7 +68,7 @@ export default function CompanyCard({ company: c, correspondentie, onEdit, onDel
           onClick={() => setShowCorrespondentie(v => !v)}
           className="font-semibold text-left w-full text-sm text-blue-700 hover:underline"
         >
-          📎 Correspondentie {showCorrespondentie ? 'verbergen' : 'tonen'}
+          📎 Correspondentie {showCorrespondentie ? 'verbergen' : `tonen (${corrCount})`}
         </button>
 
         {showCorrespondentie && (

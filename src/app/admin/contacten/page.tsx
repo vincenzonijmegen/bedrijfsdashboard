@@ -105,19 +105,22 @@ export default function AdminContactenPage() {
                 title={type}
                 colorClass={kleurPerType[type] || 'bg-gray-600'}
               >
-                {group.map(c => (
-                  <CompanyCard
-                    key={c.id}
-                    company={c}
-                    correspondentie={correspondentie.filter(item => item.contact_id === c.id)}
-                    onEdit={() => openEdit(c)}
-                    onDelete={() => handleDeleteContact(c.id)}
-                    onCorrDelete={mutateCorr}
-                    onAddCorr={() => handleAddCorr(c.id)}
-                    startCollapsed={true}
-                    corrCount={correspondentie.filter(item => item.contact_id === c.id).length}
-                  />
-                ))}
+                {group.map(c => {
+                  const corrItems = correspondentie.filter(item => item.contact_id === c.id);
+                  return (
+                    <CompanyCard
+                      key={c.id}
+                      company={c}
+                      correspondentie={corrItems}
+                      onEdit={() => openEdit(c)}
+                      onDelete={() => handleDeleteContact(c.id)}
+                      onCorrDelete={mutateCorr}
+                      onAddCorr={() => handleAddCorr(c.id)}
+                      startCollapsed={true}
+                      corrCount={corrItems.length}
+                    />
+                  );
+                })}
               </CollapsibleGroup>
             );
           })}
