@@ -37,7 +37,7 @@ export default function CompanyModal({ open, current, setCurrent, onClose, onSav
 
 async function save() {
   const method = current.id ? 'PUT' : 'POST';
-  const url = current.id ? `/api/contacten/${current.id}` : '/api/contacten';
+const url = `/api/contacten`;
 
   await fetch(url, {
     method,
