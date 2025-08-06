@@ -36,6 +36,13 @@ export default function AdminContactenPage() {
     'overheid',
   ], []);
 
+  const kleurPerType: Record<string, string> = {
+    'leverancier artikelen': 'bg-green-600',
+    'leverancier diensten': 'bg-orange-500',
+    'financieel': 'bg-blue-600',
+    'overheid': 'bg-purple-600',
+  };
+
   const filteredSorted = useMemo(
     () => bedrijven
       .filter(c => c.naam.toLowerCase().includes(zoekterm.toLowerCase()))
@@ -87,7 +94,7 @@ export default function AdminContactenPage() {
             const group = filteredSorted.filter(c => c.type === type);
             if (!group.length) return null;
             return (
-              <CollapsibleGroup key={type} title={type} colorClass={`bg-gray-700`}>
+              <CollapsibleGroup key={type} title={type} colorClass={kleurPerType[type] || 'bg-gray-600'}>
                 {group.map(c => (
                   <CompanyCard
                     key={c.id}
@@ -113,16 +120,14 @@ export default function AdminContactenPage() {
         onSave={mutateBedrijven}
       />
 
-<CorrespondentieModal
-  open={corrModalOpen}
-  corrForm={corrForm}
-  setCorrForm={setCorrForm}
-  onClose={() => setCorrModalOpen(false)}
-  onSave={mutateCorr}
-  contactId={corrForm.contact_id!}
-/>
-
-
+      <CorrespondentieModal
+        open={corrModalOpen}
+        corrForm={corrForm}
+        setCorrForm={setCorrForm}
+        onClose={() => setCorrModalOpen(false)}
+        onSave={mutateCorr}
+        contactId={corrForm.contact_id!}
+      />
     </>
   );
 }
