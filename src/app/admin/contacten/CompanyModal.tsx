@@ -47,7 +47,7 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
               type="date"
               className="border rounded px-2 py-1"
               value={corrForm.datum || ''}
-              onChange={e => setCorrForm(f => ({ ...f, datum: e.target.value }))}
+              onChange={e => setCorrForm(prev => ({ ...prev, datum: e.target.value }))})}
             />
           </div>
           <div className="flex flex-col">
@@ -56,7 +56,7 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
               required
               className="border rounded px-2 py-1"
               value={corrForm.type || ''}
-              onChange={e => setCorrForm(f => ({ ...f, type: e.target.value }))}
+              onChange={e => setCorrForm(prev => ({ ...prev, type: e.target.value }))})}
             >
               <option value="" disabled>Selecteer type</option>
               <option value="email">E-mail</option>
@@ -70,7 +70,7 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
               className="border rounded px-2 py-1"
               rows={3}
               value={corrForm.omschrijving || ''}
-              onChange={e => setCorrForm(f => ({ ...f, omschrijving: e.target.value }))}
+              onChange={e => setCorrForm(prev => ({ ...prev, omschrijving: e.target.value }))})}
             />
           </div>
           <div className="flex flex-col">
