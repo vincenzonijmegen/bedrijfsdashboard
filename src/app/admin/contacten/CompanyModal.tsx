@@ -61,7 +61,7 @@ export default function CompanyModal({ open, current, setCurrent, onClose, onSav
           </div>
           <div className="flex flex-col">
             <label>Type <span className="text-red-600">*</span></label>
-            <select required className="border rounded px-2 py-1" value={current.type || ''} onChange={e => updateField('type', e.target.value)}>
+            <select required className="border rounded px-2 py-1" value={current.type || ''} onChange={e => updateField('type', e.target.value as Company['type'])}>
               <option value="" disabled>Selecteer type</option>
               <option value="leverancier artikelen">leverancier artikelen</option>
               <option value="leverancier diensten">leverancier diensten</option>
