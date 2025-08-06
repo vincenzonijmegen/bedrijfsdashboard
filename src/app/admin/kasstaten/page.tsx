@@ -219,6 +219,10 @@ export default function KasstatenPage() {
             <span>€ {kassaBon.toFixed(2)}</span>
           </div>
           
+          <div className="border-t pt-2 flex justify-between font-bold">
+            <span>TOTAAL</span>
+            <span>€ {kassaTotal.toFixed(2)}</span>
+          </div>
           <div className="flex justify-between text-gray-500">
             <span>Bonnen verkocht</span>
             <span>€ {Number(record?.isvoucher || 0).toFixed(2)}</span>
