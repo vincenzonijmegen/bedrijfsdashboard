@@ -2,17 +2,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
-  const id = Number(params.id);
-  if (!id || isNaN(id)) {
-    return NextResponse.json({ error: 'Ongeldig ID' }, { status: 400 });
-  }
-
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const id = Number(params.id);
+    if (!id || Number.isNaN(id)) {
+      return NextResponse.json({ error: 'ID ontbreekt of ongeldig' }, { status: 400 });
+    }
+
     await db.query(`DELETE FROM contact_correspondentie WHERE id = $1`, [id]);
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error('[DELETE_correspondentie_id] fout:', err);
+    console.error('[DELETE_correspondentie] fout:', err);
     return NextResponse.json({ error: 'Verwijderen mislukt' }, { status: 500 });
   }
 }
