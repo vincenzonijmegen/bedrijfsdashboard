@@ -13,7 +13,6 @@ import {
   CorrespondentieModal,
 } from '@/app/admin/contacten';
 
-
 const fetcher = (url: string) => fetch(url).then(res => {
   if (!res.ok) throw new Error(res.statusText);
   return res.json();
@@ -28,7 +27,7 @@ export default function AdminContactenPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [corrModalOpen, setCorrModalOpen] = useState(false);
   const [current, setCurrent] = useState<Partial<Company>>({ personen: [] });
-  const [corrForm, setCorrForm] = useState<Partial<Correspondentie>>({ datum: '', type: '', omschrijving: '' });
+  const [corrForm, setCorrForm] = useState<Partial<Correspondentie>>({ datum: '', type: undefined, omschrijving: '' });
 
   const typeOrder = useMemo(() => [
     'leverancier artikelen',
@@ -52,6 +51,12 @@ export default function AdminContactenPage() {
   function openEdit(c: Company) {
     setCurrent(c);
     setModalOpen(true);
+  }
+
+  function handleAddCorr(contactId: number | undefined) {
+    if (typeof contactId !== 'number') return;
+    setCorrForm({ datum: '', type: undefined, omschrijving: '', contact_id: contactId });
+    setCorrModalOpen(true);
   }
 
   return (
@@ -91,10 +96,7 @@ export default function AdminContactenPage() {
                     onEdit={() => openEdit(c)}
                     onDelete={mutateBedrijven}
                     onCorrDelete={mutateCorr}
-                    onAddCorr={() => {
-                      setCorrForm({ ...corrForm, contact_id: c.id });
-                      setCorrModalOpen(true);
-                    }}
+                    onAddCorr={() => handleAddCorr(c.id)}
                   />
                 ))}
               </CollapsibleGroup>
