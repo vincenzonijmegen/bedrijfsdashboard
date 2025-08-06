@@ -62,7 +62,7 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
     if (!corrForm.id) return;
     if (!confirm('Weet je zeker dat je deze correspondentie wilt verwijderen?')) return;
     try {
-      const res = await fetch(`/api/contacten/correspondentie?id=${corrForm.id}`, {
+      const res = await fetch(`/api/contacten/correspondentie/${corrForm.id}`, {
         method: 'DELETE'
       });
       if (!res.ok) throw new Error('Verwijderen mislukt');
