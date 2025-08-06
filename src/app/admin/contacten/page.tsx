@@ -147,7 +147,9 @@ export default function AdminContactenPage() {
     showSnackbar('Correspondentie verwijderd');
   }
 
-  function updateField<K extends keyof Company>(field: K, value: Company[K])(field: K, value: CompanyInput[K]) {
+  function updateField<K extends keyof Company>(field: K, value: Company[K]) {
+    setCurrent(prev => ({ ...prev, [field]: value }));
+  }
     setCurrent(prev => ({ ...prev, [field]: value }));
   }
 
