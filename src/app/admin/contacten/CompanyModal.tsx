@@ -1,13 +1,13 @@
 // src/app/admin/contacten/CorrespondentieModal.tsx
 "use client";
 
-import React from 'react';
+import React, { Dispatch, SetStateAction } from 'react';
 import { Correspondentie } from '@/types/contacten';
 
 interface Props {
   open: boolean;
   corrForm: Partial<Correspondentie>;
-  setCorrForm: (f: Partial<Correspondentie>) => void;
+  setCorrForm: Dispatch<SetStateAction<Partial<Correspondentie>>>;
   onClose: () => void;
   onSave: () => void;
 }
@@ -20,7 +20,7 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
     formData.append('file', file);
     fetch('/api/contacten/upload', { method: 'POST', body: formData })
       .then(res => res.json())
-      .then(data => setCorrForm((f: Partial<Correspondentie>) => ({ ...f, bijlage_url: data.url })));
+      .then(data => setCorrForm(prev => ({ ...prev, bijlage_url: data.url })));
   }
 
   async function save() {
