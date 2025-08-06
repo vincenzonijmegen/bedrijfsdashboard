@@ -71,7 +71,15 @@ export default function CompanyCard({ company: c, correspondentie, onEdit, onDel
                 <span>{item.omschrijving}</span>
                 {item.bijlage_url && <a href={item.bijlage_url} target="_blank" rel="noreferrer" className="underline">PDF</a>}
               </div>
-              <button onClick={() => removeCorrItem(item.id)} className="text-red-600 hover:underline text-sm">Verwijder</button>
+              <button
+              onClick={() => {
+                if (item.id !== undefined) removeCorrItem(item.id);
+                }}
+            className="text-red-600 hover:underline text-sm"
+            >
+            Verwijder
+            </button>
+
             </li>
           ))}
         </ul>
