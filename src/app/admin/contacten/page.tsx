@@ -151,7 +151,7 @@ export default function AdminContactenPage() {
     setCurrent(prev => ({ ...prev, [field]: value }));
   }
 
-  function updatePersoon(index: number, field: keyof Contactpersoon, value: string) {(index: number, field: keyof Contactpersoon, value: string) {
+  function updatePersoon(index: number, field: keyof Contactpersoon, value: string) {
     setCurrent(prev => {
       const newPers = [...prev.personen];
       newPers[index] = { ...newPers[index], [field]: value };
