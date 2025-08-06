@@ -23,7 +23,7 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const res = await fetch('/api/contacten/upload', { method: 'POST', body: formData });
+      const res = await fetch('/api/contacten/correspondentie/upload', { method: 'POST', body: formData });
       const data: { url: string } = await res.json();
       setCorrForm(prev => ({ ...prev, bijlage_url: data.url }));
     } catch (err) {
