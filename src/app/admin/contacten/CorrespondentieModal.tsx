@@ -36,13 +36,25 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
   async function save() {
     if (uploading) return alert('Wacht tot de upload is voltooid.');
     const payload = { ...corrForm, contact_id: contactId }; // ← zorg dat contact_id wordt meegestuurd
-    await fetch('/api/contacten/correspondentie', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    onSave();
-    onClose();
+    try {
+      const res = await fetch('/api/contacten/correspondentie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        console.error('Opslaan mislukt:', errData);
+        return alert('Opslaan mislukt');
+      }
+
+      onSave();
+      onClose();
+    } catch (err) {
+      console.error('Fout tijdens opslaan:', err);
+      alert('Er ging iets mis bij het opslaan.');
+    }
   }
 
   if (!open) return null;

@@ -113,13 +113,16 @@ export default function AdminContactenPage() {
         onSave={mutateBedrijven}
       />
 
-      <CorrespondentieModal
-        open={corrModalOpen}
-        corrForm={corrForm}
-        setCorrForm={setCorrForm}
-        onClose={() => setCorrModalOpen(false)}
-        onSave={mutateCorr}
-      />
+<CorrespondentieModal
+  open={corrModalOpen}
+  corrForm={corrForm}
+  setCorrForm={setCorrForm}
+  onClose={() => setCorrModalOpen(false)}
+  onSave={mutateCorr}
+  contactId={corrForm.contact_id!}
+/>
+
+
     </>
   );
 }
