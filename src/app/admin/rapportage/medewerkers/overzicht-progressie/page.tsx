@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import Link from "next/link";
 import { useState } from "react";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
 interface Medewerker {
   id: number;
@@ -166,6 +167,7 @@ return (
             })}
           </tbody>
         </table>
+           <ScrollToTopButton />
       </div>
     </main>
   );

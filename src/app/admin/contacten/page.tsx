@@ -4,7 +4,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import useSWR from 'swr';
 import { Users, UserPlus, ChevronUp } from 'lucide-react';
-import { useSnackbar } from '@/lib/useSnackbar';
 import { Company, Correspondentie } from '@/types/contacten';
 import {
   CollapsibleGroup,
@@ -21,7 +20,6 @@ const fetcher = (url: string) => fetch(url).then(res => {
 export default function AdminContactenPage() {
   const { data: bedrijven = [], mutate: mutateBedrijven } = useSWR<Company[]>('/api/contacten', fetcher);
   const { data: correspondentie = [], mutate: mutateCorr } = useSWR<Correspondentie[]>('/api/contacten/correspondentie', fetcher);
-  const { showSnackbar } = useSnackbar();
 
   const [zoekterm, setZoekterm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);

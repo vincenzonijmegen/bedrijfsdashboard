@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
 interface Medewerker {
   id: string;
@@ -92,6 +93,7 @@ export default function MedewerkersOverzicht() {
       >
         ← Terug naar startpagina
       </Link>
+         <ScrollToTopButton />
     </div>
   );
 }

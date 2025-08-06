@@ -6,6 +6,7 @@ import Link from 'next/link';
 import useSWR from "swr";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -102,6 +103,7 @@ return (
           </div>
         ))
       )}
+       <ScrollToTopButton />
     </div>
   );
 }

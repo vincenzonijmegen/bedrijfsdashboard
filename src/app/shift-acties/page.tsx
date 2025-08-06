@@ -8,6 +8,7 @@ import isoWeek from "dayjs/plugin/isoWeek";
 import Link from "next/link";
 import { useRouter } from 'next/navigation';
 import "dayjs/locale/nl";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
 dayjs.extend(isoWeek);
 dayjs.locale("nl");
@@ -201,6 +202,7 @@ export default function ShiftActiesPage() {
       >
         ➕ Nieuwe shiftactie invoeren
       </Link>
+         <ScrollToTopButton />
     </div>
   );
 }

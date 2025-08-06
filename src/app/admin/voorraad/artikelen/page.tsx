@@ -3,6 +3,7 @@
 
 import useSWR, { mutate } from "swr";
 import { useEffect, useState } from "react";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
 interface Leverancier {
   id: number;
@@ -237,6 +238,7 @@ export default function Productbeheer() {
           </tbody>
         </table>
       )}
+         <ScrollToTopButton />
     </main>
   );
 }

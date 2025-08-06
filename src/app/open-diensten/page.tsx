@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { format, parseISO } from "date-fns";
 import { nl } from "date-fns/locale";
 import Link from "next/link";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
 type Dienst = {
   id: string;
@@ -133,6 +134,7 @@ export default function OpenDienstenPerWeek() {
             </div>
           ))}
       </div>
+       <ScrollToTopButton />
     </div>
   );
 }

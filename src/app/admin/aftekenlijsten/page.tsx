@@ -4,7 +4,7 @@
 import useSWR from "swr";
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronUp } from "lucide-react";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
 interface Lijst {
   id: number;
@@ -26,10 +26,6 @@ const categorieNamen: Record<string, string> = {
 export default function AftekenlijstenOverzicht() {
   const { data, mutate, error } = useSWR<Lijst[]>("/api/aftekenlijsten", (url: string) => fetch(url).then((r) => r.json()));
   const [snackbar, setSnackbar] = useState<string | null>(null);
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Weet je zeker dat je deze aftekenlijst wilt verwijderen?")) return;
@@ -131,14 +127,7 @@ export default function AftekenlijstenOverzicht() {
           </table>
         </>
       )}
-      <div className="fixed bottom-6 left-6 z-50">
-        <button
-          onClick={scrollToTop}
-          className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-2 rounded-full shadow-lg hover:from-blue-600 hover:to-purple-700"
-        >
-          <ChevronUp className="w-5 h-5" />
-        </button>
-      </div>
+       <ScrollToTopButton />
     </div>
   );
 }

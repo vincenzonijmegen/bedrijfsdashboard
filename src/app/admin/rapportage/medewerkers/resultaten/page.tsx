@@ -4,6 +4,7 @@ import useSWR, { mutate } from "swr";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
 interface Resultaat {
   id: string;
@@ -118,6 +119,7 @@ return (
           ))}
         </tbody>
       </table>
+       <ScrollToTopButton />
     </div>
   );
 }

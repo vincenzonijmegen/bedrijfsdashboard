@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from "react";
 import useSWR, { mutate } from "swr";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
 interface Product {
   id: number;
@@ -279,6 +280,7 @@ export default function ReceptenBeheer() {
           </li>
         ))}
       </ul>
+          <ScrollToTopButton />
     </main>
   );
 }
