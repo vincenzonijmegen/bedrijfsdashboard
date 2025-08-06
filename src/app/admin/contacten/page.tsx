@@ -47,7 +47,8 @@ export interface Company {
   personen: Contactpersoon[];
 }
 
-type CompanyInput = Omit<Company, 'id'>;
+// Removed CompanyInput; using Partial<Company> for current state instead
+// type CompanyInput = Omit<Company, 'id'>;
 
 const fetcher = (url: string) =>
   fetch(url).then(res => {
@@ -80,7 +81,7 @@ export default function AdminContactenPage() {
   const [zoekterm, setZoekterm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [corrModalOpen, setCorrModalOpen] = useState(false);
-  const [current, setCurrent] = useState<CompanyInput>({ naam: '', type: '', personen: [] });
+  const [current, setCurrent] = useState<Partial<Company>>({ personen: [] });
   const [corrForm, setCorrForm] = useState<Partial<Correspondentie>>({ datum: '', type: '', omschrijving: '' });
 
   const typeOrder = useMemo(() => [
@@ -146,7 +147,7 @@ export default function AdminContactenPage() {
     showSnackbar('Correspondentie verwijderd');
   }
 
-  function updateField<K extends keyof CompanyInput>(field: K, value: CompanyInput[K]) {
+  function updateField<K extends keyof Company>(field: K, value: Company[K])(field: K, value: CompanyInput[K]) {
     setCurrent(prev => ({ ...prev, [field]: value }));
   }
 
@@ -270,6 +271,18 @@ export default function AdminContactenPage() {
                       )}
                       {c.opmerking && <div className="italic">{c.opmerking}</div>}
                     </div>
+                    {/* Contactpersonen */}
+                    {c.personen.length > 0 && (
+                      <div className="mt-2 space-y-2 text-sm">
+                        <h3 className="font-semibold">Contactpersonen</h3>
+                        {c.personen.map(person => (
+                          <div key={person.id ?? person.naam} className="flex items-center space-x-2">
+                            <Users className="w-4 h-4 text-gray-500" />
+                            <span>{person.naam}{person.telefoon ? `, ${person.telefoon}` : ''}{person.email ? `, ${person.email}` : ''}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {/* Correspondentie group below */}
                     <CollapsibleGroup title="📎 Correspondentie" colorClass="bg-gray-600">
                       <ul className="list-disc list-inside text-sm mt-1 italic text-gray-700">
