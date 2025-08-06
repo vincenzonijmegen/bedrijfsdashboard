@@ -20,7 +20,9 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
     formData.append('file', file);
     fetch('/api/contacten/upload', { method: 'POST', body: formData })
       .then(res => res.json())
-      .then(data => setCorrForm(prev => ({ ...prev, bijlage_url: data.url })));
+      .then((data: { url: string }) => 
+        setCorrForm((prev: Partial<Correspondentie>) => ({ ...prev, bijlage_url: data.url }))
+      );
   }
 
   async function save() {
@@ -47,7 +49,7 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
               type="date"
               className="border rounded px-2 py-1"
               value={corrForm.datum || ''}
-              onChange={e => setCorrForm(prev => ({ ...prev, datum: e.target.value }))}
+              onChange={e => setCorrForm((prev: Partial<Correspondentie>) => ({ ...prev, datum: e.target.value }))}
             />
           </div>
           <div className="flex flex-col">
@@ -56,7 +58,7 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
               required
               className="border rounded px-2 py-1"
               value={corrForm.type || ''}
-              onChange={e => setCorrForm(prev => ({ ...prev, type: e.target.value }))}
+              onChange={e => setCorrForm((prev: Partial<Correspondentie>) => ({ ...prev, type: e.target.value }))}
             >
               <option value="" disabled>Selecteer type</option>
               <option value="email">E-mail</option>
@@ -70,13 +72,13 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
               className="border rounded px-2 py-1"
               rows={3}
               value={corrForm.omschrijving || ''}
-              onChange={e => setCorrForm(prev => ({ ...prev, omschrijving: e.target.value }))}
+              onChange={e => setCorrForm((prev: Partial<Correspondentie>) => ({ ...prev, omschrijving: e.target.value }))}
             />
           </div>
           <div className="flex flex-col">
             <label>PDF upload (optioneel)</label>
             <input
-              key={corrForm.contact_id}
+              key={corrForm.contact_id ?? ''}
               type="file"
               accept="application/pdf"
               onChange={handleFileUpload}
