@@ -2,9 +2,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, context: { params: { id: string } }) {
   try {
-    const id = Number(params.id);
+    const id = Number(context.params.id);
     if (!id || Number.isNaN(id)) {
       return NextResponse.json({ error: 'ID ontbreekt of ongeldig' }, { status: 400 });
     }
