@@ -100,10 +100,10 @@ export default function KasstatenPage() {
   }
 
   return (
-    <div className="max-w-xl mx-auto p-4 space-y-4">
-      <h1 className="text-2xl font-bold">Kasstaat</h1>
+    <div className="max-w-md mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Dagomzet</h1>
 
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-2 mb-4">
         <button onClick={() => wijzigDatum(-1)} className="px-2 py-1 bg-gray-200 rounded">◀</button>
         <input
           type="date"
@@ -114,52 +114,44 @@ export default function KasstatenPage() {
         <button onClick={() => wijzigDatum(1)} className="px-2 py-1 bg-gray-200 rounded">▶</button>
       </div>
 
-      {loading ? <p>Laden…</p> : (
-        <form onSubmit={(e) => { e.preventDefault(); opslaan(); }} className="space-y-3">
-          {[
-            { label: "Contant geteld", field: "contant" },
-            { label: "Pin uit myPOS", field: "pin" },
-            { label: "Bonbetalingen", field: "bon" },
-            { label: "Cadeaubon verkocht", field: "cadeaubon" },
-          ].map(({ label, field }) => (
-            <div key={field} className="flex justify-between">
-              <label>{label}</label>
-              <input
-                type="number"
-                step="0.01"
-                inputMode="decimal"
-                className="border px-2 py-1 w-32 text-right"
-                value={kasstaat?.[field as keyof Kasstaat] ?? ""}
-                onChange={(e) => updateField(field as keyof Kasstaat, parseFloat(e.target.value) || 0)}
-              />
-            </div>
-          ))}
-
+      {loading ? <p>Laden…</p> : kasstaat && (
+        <div className="bg-white shadow p-4 rounded border text-sm space-y-2">
           <div className="flex justify-between">
-            <label>Opmerking</label>
+            <span>Contant</span>
+            <span>€ {kasstaat.contant.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Pin</span>
+            <span>€ {kasstaat.pin.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Cadeaubon</span>
+            <span>€ {kasstaat.cadeaubon.toFixed(2)}</span>
+          </div>
+          <div className="border-t pt-2 flex justify-between font-bold">
+            <span>TOTAAL</span>
+            <span>€ {(kasstaat.contant + kasstaat.pin + kasstaat.bon).toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-gray-500">
+            <span>Bonnen verkocht</span>
+            <span>€ {kasstaat.bon.toFixed(2)}</span>
+          </div>
+          <div className="pt-2">
+            <label className="block text-xs font-medium text-gray-500">Opmerking</label>
             <input
               type="text"
-              className="border px-2 py-1 w-full text-left"
-              value={kasstaat?.opmerking ?? ""}
+              className="w-full border rounded px-2 py-1 mt-1"
+              value={kasstaat.opmerking}
               onChange={(e) => updateField("opmerking", e.target.value)}
             />
           </div>
-
-          <div className="flex justify-between font-semibold">
-            <label>Totaal</label>
-            <span>
-              € {(Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.bon ?? 0)).toFixed(2)}
-            </span>
+          <div className="flex space-x-2 pt-4">
+            <button type="button" onClick={opslaan} className="bg-blue-600 text-white px-4 py-2 rounded">Opslaan</button>
+            {kasstaat.id && <button type="button" onClick={verwijderen} className="bg-red-600 text-white px-4 py-2 rounded">Verwijderen</button>}
           </div>
-
-          <div className="flex space-x-2">
-            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Opslaan</button>
-            {kasstaat && kasstaat.id && <button type="button" onClick={verwijderen} className="bg-red-600 text-white px-4 py-2 rounded">Verwijderen</button>}
-          </div>
-        </form>
+          {message && <p className="text-green-700 font-medium pt-2">{message}</p>}
+        </div>
       )}
-
-      {message && <p className="text-green-700 font-medium">{message}</p>}
     </div>
   );
 }
