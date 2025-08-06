@@ -75,10 +75,10 @@ export default function KasstatenPage() {
     const method = bestaat ? "PUT" : "POST";
     const roundedKasstaat = {
       ...kasstaat,
-      contant: parseFloat(kasstaat.contant.toFixed(2)),
-      pin: parseFloat(kasstaat.pin.toFixed(2)),
-      bon: parseFloat(kasstaat.bon.toFixed(2)),
-      cadeaubon: parseFloat(kasstaat.cadeaubon.toFixed(2))
+      contant: parseFloat(Number(kasstaat.contant).toFixed(2)),
+      pin: parseFloat(Number(kasstaat.pin).toFixed(2)),
+      bon: parseFloat(Number(kasstaat.bon).toFixed(2)),
+      cadeaubon: parseFloat(Number(kasstaat.cadeaubon).toFixed(2))
     };
     const res = await fetch("/api/kasstaten", {
       method,
@@ -130,7 +130,7 @@ export default function KasstatenPage() {
           </div>
           <div className="border-t pt-2 flex justify-between font-bold">
             <span>TOTAAL</span>
-            <span>€ {(kasstaat.contant + kasstaat.pin + kasstaat.bon).toFixed(2)}</span>
+            <span>€ {(Number(kasstaat.contant) + Number(kasstaat.pin) + Number(kasstaat.bon)).toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-gray-500">
             <span>Bonnen verkocht</span>
