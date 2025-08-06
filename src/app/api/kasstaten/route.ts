@@ -2,12 +2,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from '@/lib/db';
 
-// HULPFUNCTIE: check of kasstaat bestaat
-export async function bestaatKasstaat(datum: string): Promise<boolean> {
-  const result = await db.query(`SELECT 1 FROM kasstaten WHERE datum = $1`, [datum]);
-  return result.rows.length > 0;
-}
-
 // GET all or by ?datum=YYYY-MM-DD
 export async function GET(req: NextRequest) {
   const datum = req.nextUrl.searchParams.get("datum");
@@ -67,11 +61,6 @@ export async function PUT(req: NextRequest) {
   } = body;
 
   try {
-    const bestaat = await db.query(`SELECT 1 FROM kasstaten WHERE datum = $1`, [datum]);
-    if (bestaat.rows.length === 0) {
-      return NextResponse.json({ error: "Kasstaat bestaat niet" }, { status: 400 });
-    }
-
     const result = await db.query(
       `UPDATE kasstaten
        SET contant = ROUND($1::numeric, 2),
