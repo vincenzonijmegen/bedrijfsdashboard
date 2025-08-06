@@ -1,13 +1,13 @@
 // src/app/admin/contacten/CorrespondentieModal.tsx
 "use client";
 
-import React from 'react';
+import React, { Dispatch, SetStateAction } from 'react';
 import { Correspondentie } from '@/types/contacten';
 
 interface Props {
   open: boolean;
   corrForm: Partial<Correspondentie>;
-  setCorrForm: (val: Partial<Correspondentie>) => void;
+  setCorrForm: Dispatch<SetStateAction<Partial<Correspondentie>>>;
   onClose: () => void;
   onSave: () => void;
 }
@@ -20,7 +20,12 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
     formData.append('file', file);
     fetch('/api/contacten/upload', { method: 'POST', body: formData })
       .then(res => res.json())
-      .then(data => setCorrForm(f => ({ ...f, bijlage_url: data.url })));
+      .then((data: { url: string }) =>
+        setCorrForm((prev: Partial<Correspondentie>) => ({
+          ...prev,
+          bijlage_url: data.url
+        }))
+      );
   }
 
   async function save() {
@@ -47,7 +52,12 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
               type="date"
               className="border rounded px-2 py-1"
               value={corrForm.datum || ''}
-              onChange={e => setCorrForm(f => ({ ...f, datum: e.target.value }))}
+              onChange={e =>
+                setCorrForm((prev: Partial<Correspondentie>) => ({
+                  ...prev,
+                  datum: e.target.value
+                }))
+              }
             />
           </div>
           <div className="flex flex-col">
@@ -56,7 +66,12 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
               required
               className="border rounded px-2 py-1"
               value={corrForm.type || ''}
-              onChange={e => setCorrForm(f => ({ ...f, type: e.target.value }))}
+              onChange={e =>
+                setCorrForm((prev: Partial<Correspondentie>) => ({
+                  ...prev,
+                  type: e.target.value as 'email' | 'telefoon' | 'bezoek'
+                }))
+              }
             >
               <option value="" disabled>Selecteer type</option>
               <option value="email">E-mail</option>
@@ -70,13 +85,18 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
               className="border rounded px-2 py-1"
               rows={3}
               value={corrForm.omschrijving || ''}
-              onChange={e => setCorrForm(f => ({ ...f, omschrijving: e.target.value }))}
+              onChange={e =>
+                setCorrForm((prev: Partial<Correspondentie>) => ({
+                  ...prev,
+                  omschrijving: e.target.value
+                }))
+              }
             />
           </div>
           <div className="flex flex-col">
             <label>PDF upload (optioneel)</label>
             <input
-              key={corrForm.contact_id}
+              key={corrForm.contact_id ?? 'file'}
               type="file"
               accept="application/pdf"
               onChange={handleFileUpload}

@@ -1,4 +1,6 @@
 // src/app/admin/contacten/CompanyCard.tsx
+"use client";
+
 import React from 'react';
 import { Building, Tag, Hash, List, Phone, Mail, Globe, Users } from 'lucide-react';
 import { Company, Correspondentie } from '@/types/contacten';
@@ -63,7 +65,9 @@ export default function CompanyCard({ company: c, correspondentie, onEdit, onDel
           {correspondentie.map(item => (
             <li key={item.id} className="border-t pt-2 mt-2 flex justify-between items-center">
               <div className="flex flex-col">
-                <span>{new Date(item.datum).toLocaleDateString('nl-NL')} – {item.type}</span>
+                {item.datum && (
+                  <span>{new Date(item.datum).toLocaleDateString('nl-NL')} – {item.type}</span>
+                )}
                 <span>{item.omschrijving}</span>
                 {item.bijlage_url && <a href={item.bijlage_url} target="_blank" rel="noreferrer" className="underline">PDF</a>}
               </div>
