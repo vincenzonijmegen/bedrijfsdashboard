@@ -83,7 +83,6 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-
 // DELETE op datum
 export async function DELETE(req: NextRequest) {
   const datum = req.nextUrl.searchParams.get("datum");
