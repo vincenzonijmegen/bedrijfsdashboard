@@ -6,13 +6,17 @@ import { db } from '@/lib/db';
 export async function GET(req: NextRequest) {
   const datum = req.nextUrl.searchParams.get("datum");
 
-  if (datum) {
-    const result = await db.query(`SELECT * FROM kasstaten WHERE datum = ${datum}`);
-    return NextResponse.json(result.rows?.[0] || null);
-  }
+  try {
+    if (datum) {
+      const result = await db.query(`SELECT * FROM kasstaten WHERE datum = $1`, [datum]);
+      return NextResponse.json(result.rows?.[0] || null);
+    }
 
-  const result = await db.query(`SELECT * FROM kasstaten ORDER BY datum DESC`);
-  return NextResponse.json(result.rows);
+    const result = await db.query(`SELECT * FROM kasstaten ORDER BY datum DESC`);
+    return NextResponse.json(result.rows);
+  } catch (e) {
+    return NextResponse.json({ error: "Fout bij ophalen" }, { status: 500 });
+  }
 }
 
 // POST nieuwe kasstaat
@@ -21,8 +25,11 @@ export async function POST(req: NextRequest) {
   const { datum, contant, pin, bon, cadeaubon, vrij } = body;
 
   try {
-    const result = await db.query(`INSERT INTO kasstaten (datum, contant, pin, bon, cadeaubon, vrij)
-      VALUES (${datum}, ${contant}, ${pin}, ${bon}, ${cadeaubon}, ${vrij}) RETURNING *;`);
+    const result = await db.query(
+      `INSERT INTO kasstaten (datum, contant, pin, bon, cadeaubon, vrij)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;`,
+      [datum, contant, pin, bon, cadeaubon, vrij]
+    );
     return NextResponse.json(result.rows[0]);
   } catch (e) {
     return NextResponse.json({ error: "Invoeren mislukt" }, { status: 400 });
@@ -35,16 +42,17 @@ export async function PUT(req: NextRequest) {
   const { datum, contant, pin, bon, cadeaubon, vrij } = body;
 
   try {
-    const result = await db.query(`
-      UPDATE kasstaten
-      SET contant = ${contant},
-          pin = ${pin},
-          bon = ${bon},
-          cadeaubon = ${cadeaubon},
-          vrij = ${vrij}
-      WHERE datum = ${datum}
-      RETURNING *;
-    `);
+    const result = await db.query(
+      `UPDATE kasstaten
+       SET contant = $1,
+           pin = $2,
+           bon = $3,
+           cadeaubon = $4,
+           vrij = $5
+       WHERE datum = $6
+       RETURNING *;`,
+      [contant, pin, bon, cadeaubon, vrij, datum]
+    );
     return NextResponse.json(result.rows[0]);
   } catch (e) {
     return NextResponse.json({ error: "Updaten mislukt" }, { status: 400 });
@@ -57,6 +65,10 @@ export async function DELETE(req: NextRequest) {
 
   if (!datum) return NextResponse.json({ error: "Geen datum opgegeven" }, { status: 400 });
 
-  await db.query(`DELETE FROM kasstaten WHERE datum = ${datum}`);
-  return NextResponse.json({ message: "Verwijderd" });
+  try {
+    await db.query(`DELETE FROM kasstaten WHERE datum = $1`, [datum]);
+    return NextResponse.json({ message: "Verwijderd" });
+  } catch (e) {
+    return NextResponse.json({ error: "Verwijderen mislukt" }, { status: 400 });
+  }
 }

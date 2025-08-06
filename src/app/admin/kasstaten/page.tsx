@@ -24,13 +24,18 @@ export default function KasstatenPage() {
     fetchData();
   }, [datum]);
 
-  async function fetchData() {
-    setLoading(true);
-    const res = await fetch(`/api/kasstaten?datum=${datum}`);
-    const json = await res.json();
-    setKasstaat(json);
+async function fetchData() {
+  setLoading(true);
+  const res = await fetch(`/api/kasstaten?datum=${datum}`);
+  if (!res.ok) {
+    setKasstaat(null);
     setLoading(false);
+    return;
   }
+  const json = await res.json();
+  setKasstaat(json);
+  setLoading(false);
+}
 
   function wijzigDatum(dagen: number) {
     const nieuweDatum = format(addDays(parseISO(datum), dagen), "yyyy-MM-dd");
