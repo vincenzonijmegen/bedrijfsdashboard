@@ -100,7 +100,11 @@ export default function AdminContactenPage() {
             const group = filteredSorted.filter(c => c.type === type);
             if (!group.length) return null;
             return (
-              <CollapsibleGroup key={type} title={type} colorClass={kleurPerType[type] || 'bg-gray-600'}>
+              <CollapsibleGroup
+                key={type}
+                title={type}
+                colorClass={kleurPerType[type] || 'bg-gray-600'}
+              >
                 {group.map(c => (
                   <CompanyCard
                     key={c.id}
@@ -110,6 +114,8 @@ export default function AdminContactenPage() {
                     onDelete={() => handleDeleteContact(c.id)}
                     onCorrDelete={mutateCorr}
                     onAddCorr={() => handleAddCorr(c.id)}
+                    startCollapsed={true}
+                    corrCount={correspondentie.filter(item => item.contact_id === c.id).length}
                   />
                 ))}
               </CollapsibleGroup>
