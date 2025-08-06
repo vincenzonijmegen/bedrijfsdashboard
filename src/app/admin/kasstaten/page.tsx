@@ -140,7 +140,7 @@ export default function KasstatenPage() {
           <div className="flex justify-between font-semibold">
             <label>Totaal</label>
             <span>
-              € {((kasstaat?.contant || 0) + (kasstaat?.pin || 0) + (kasstaat?.bon || 0)).toFixed(2)}
+              € {(Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.bon ?? 0)).toFixed(2)}
             </span>
           </div>
 
