@@ -75,7 +75,7 @@ const CollapsibleGroup: React.FC<{ title: string; colorClass: string; children: 
 export default function AdminContactenPage() {
   const { data: bedrijven = [], mutate: mutateBedrijven } = useSWR<Company[]>('/api/contacten', fetcher);
   const { data: correspondentie = [], mutate: mutateCorr } = useSWR<Correspondentie[]>('/api/contacten/correspondentie', fetcher);
-  const { showMessage } = useSnackbar();
+  const { showSnackbar } = useSnackbar();
 
   const [zoekterm, setZoekterm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -126,7 +126,7 @@ export default function AdminContactenPage() {
       });
       mutateBedrijven();
       setModalOpen(false);
-      showMessage('Bedrijf opgeslagen');
+      showSnackbar('Bedrijf opgeslagen');
     } catch (error: any) {
       showMessage(`Fout bij opslaan: ${error.message}`);
     }
