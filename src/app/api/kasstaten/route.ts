@@ -9,7 +9,18 @@ export async function GET(req: NextRequest) {
   try {
     if (datum) {
       const result = await db.query(`SELECT * FROM kasstaten WHERE datum = $1`, [datum]);
-      return NextResponse.json(result.rows?.[0] || null);
+      if (result.rows.length === 0) {
+        return NextResponse.json({
+          datum,
+          contant: 0,
+          pin: 0,
+          bon: 0,
+          cadeaubon: 0,
+          vrij: 0,
+          totaal: 0
+        });
+      }
+      return NextResponse.json(result.rows[0]);
     }
 
     const result = await db.query(`SELECT * FROM kasstaten ORDER BY datum DESC`);
