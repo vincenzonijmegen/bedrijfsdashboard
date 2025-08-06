@@ -204,7 +204,7 @@ export default function KasstatenPage() {
           {message && <p className="text-green-700 font-medium pt-2">{message}</p>}
         </div>
 
-        <div className="bg-white shadow p-4 rounded border text-sm space-y-2 flex flex-col justify-between">
+        <div className="bg-white shadow p-4 rounded border text-sm space-y-2 flex flex-col justify-start h-full">
           <h2 className="font-semibold mb-2">Kassa</h2>
           <div className="flex justify-between">
             <span>Contant</span>
