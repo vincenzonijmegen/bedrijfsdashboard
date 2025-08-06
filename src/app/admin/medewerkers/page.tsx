@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import BewerkMedewerkerModal from "@/components/BewerkMedewerkerModal";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
 interface Medewerker {
   id: number;
@@ -176,6 +177,7 @@ export default function MedewerkersBeheer() {
           }}
         />
       )}
+      <ScrollToTopButton />
     </div>
   );
 }

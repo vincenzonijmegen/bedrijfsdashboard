@@ -173,6 +173,7 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/dossier" label="Dossiers" color="slate" Icon={Folder} />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="slate" Icon={Wrench} />
         <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="slate" Icon={BarChart2} />
+        <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="slate" Icon={BarChart2} />
       </Section>
 
       <Section id="management" title="📘 Management" color="blue" activeSection={activeSection} setActiveSection={setActiveSection}>
@@ -233,6 +234,7 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/mypos" label="Inlezen myPOS (maand)" color="teal" Icon={Archive} />
         <LinkCard href="/admin/omzet/loonkosten" label="Invoeren loonkosten" color="teal" Icon={Archive} />
         <LinkCard href="/admin/aftekenlijsten/upload" label="Upload HACCP-formulieren" color="teal" Icon={Archive} />
+        <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} />
       </Section>
     </main>
   );
