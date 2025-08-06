@@ -21,11 +21,21 @@ export interface Company {
   personen: Contactpersoon[];
 }
 
+
+/**
+ * Correspondentie represents a single correspondence entry linked to a contact.
+ */
 export interface Correspondentie {
-  id: number;
-  contact_id: number;
-  datum: string;
-  type: string;
-  omschrijving: string;
+  /** Unique identifier */
+  id?: number;
+  /** ID of the contact this correspondence belongs to */
+  contact_id?: number;
+  /** ISO date string of the correspondence */
+  datum?: string;
+  /** Type of correspondence: e-mail, telefoon, bezoek */
+  type?: 'email' | 'telefoon' | 'bezoek';
+  /** Description or notes */
+  omschrijving?: string;
+  /** URL to an uploaded PDF attachment */
   bijlage_url?: string;
 }

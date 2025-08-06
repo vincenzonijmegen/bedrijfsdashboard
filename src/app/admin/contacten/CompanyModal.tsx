@@ -20,7 +20,7 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
     formData.append('file', file);
     fetch('/api/contacten/upload', { method: 'POST', body: formData })
       .then(res => res.json())
-      .then((data: { url: string }) => 
+      .then((data: { url: string }) =>
         setCorrForm((prev: Partial<Correspondentie>) => ({ ...prev, bijlage_url: data.url }))
       );
   }
