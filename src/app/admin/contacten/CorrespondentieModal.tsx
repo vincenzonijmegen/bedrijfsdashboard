@@ -1,7 +1,7 @@
 // src/app/admin/contacten/CorrespondentieModal.tsx
 "use client";
 
-import React, { Dispatch, SetStateAction } from 'react';
+import React, { Dispatch, SetStateAction, useState } from 'react';
 import { Correspondentie } from '@/types/contacten';
 
 interface Props {
@@ -13,22 +13,27 @@ interface Props {
 }
 
 export default function CorrespondentieModal({ open, corrForm, setCorrForm, onClose, onSave }: Props) {
-  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    setUploading(true);
     const formData = new FormData();
     formData.append('file', file);
-    fetch('/api/contacten/upload', { method: 'POST', body: formData })
-      .then(res => res.json())
-      .then((data: { url: string }) =>
-        setCorrForm((prev: Partial<Correspondentie>) => ({
-          ...prev,
-          bijlage_url: data.url
-        }))
-      );
+    try {
+      const res = await fetch('/api/contacten/upload', { method: 'POST', body: formData });
+      const data: { url: string } = await res.json();
+      setCorrForm(prev => ({ ...prev, bijlage_url: data.url }));
+    } catch (err) {
+      console.error('Upload mislukt:', err);
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function save() {
+    if (uploading) return alert('Wacht tot de upload is voltooid.');
     await fetch('/api/contacten/correspondentie', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -53,7 +58,7 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
               className="border rounded px-2 py-1"
               value={corrForm.datum || ''}
               onChange={e =>
-                setCorrForm((prev: Partial<Correspondentie>) => ({
+                setCorrForm(prev => ({
                   ...prev,
                   datum: e.target.value
                 }))
@@ -67,7 +72,7 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
               className="border rounded px-2 py-1"
               value={corrForm.type || ''}
               onChange={e =>
-                setCorrForm((prev: Partial<Correspondentie>) => ({
+                setCorrForm(prev => ({
                   ...prev,
                   type: e.target.value as 'email' | 'telefoon' | 'bezoek'
                 }))
@@ -86,7 +91,7 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
               rows={3}
               value={corrForm.omschrijving || ''}
               onChange={e =>
-                setCorrForm((prev: Partial<Correspondentie>) => ({
+                setCorrForm(prev => ({
                   ...prev,
                   omschrijving: e.target.value
                 }))
@@ -101,7 +106,9 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
               accept="application/pdf"
               onChange={handleFileUpload}
               className="border rounded px-2 py-1"
+              disabled={uploading}
             />
+            {uploading && <span className="text-sm text-gray-500 mt-1">Bezig met uploaden...</span>}
             {corrForm.bijlage_url && (
               <a
                 href={corrForm.bijlage_url}
@@ -115,7 +122,9 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
           </div>
           <div className="flex justify-end space-x-2 pt-4">
             <button type="button" onClick={onClose} className="px-4 py-2 border rounded hover:bg-gray-100">Annuleer</button>
-            <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Opslaan</button>
+            <button type="submit" disabled={uploading} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+              {uploading ? 'Even wachten...' : 'Opslaan'}
+            </button>
           </div>
         </form>
       </div>
