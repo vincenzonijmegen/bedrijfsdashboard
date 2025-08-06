@@ -2,28 +2,23 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-
 // GET: alle bedrijven + hun contactpersonen ophalen
 export async function GET() {
-  // Haal bedrijven met algemene contactgegevens
   const compRes = await db.query(
     `SELECT id, naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking
      FROM admin_contacten ORDER BY naam ASC`
   );
-  // Haal personen
   const pplRes = await db.query(
     `SELECT id, bedrijf_id, naam, telefoon, email
      FROM admin_contactpersonen ORDER BY volgorde ASC`
   );
 
-  // Groepeer personen per bedrijf
   const personsByCompany: Record<number, any[]> = {};
   for (const p of pplRes.rows) {
     if (!personsByCompany[p.bedrijf_id]) personsByCompany[p.bedrijf_id] = [];
     personsByCompany[p.bedrijf_id].push({ id: p.id, naam: p.naam, telefoon: p.telefoon, email: p.email });
   }
 
-  // Combineer
   const result = compRes.rows.map(c => ({
     ...c,
     personen: personsByCompany[c.id] || []
@@ -37,7 +32,6 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { personen, naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking } = body;
 
-  // 1) Insert bedrijf
   const compInsert = await db.query(
     `INSERT INTO admin_contacten
        (naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking)
@@ -46,7 +40,6 @@ export async function POST(req: Request) {
   );
   const newId = compInsert.rows[0].id;
 
-  // 2) Insert personen in volgorde
   for (let i = 0; i < (personen || []).length; i++) {
     const p = personen[i];
     await db.query(
@@ -59,10 +52,10 @@ export async function POST(req: Request) {
   return NextResponse.json({ success: true, id: newId });
 }
 
+// PUT: update bedrijf en contactpersonen
 export async function PUT(req: Request) {
   const body = await req.json();
-  console.log('[PUT] ontvangen:', body); // << LOGGEN
-  
+  console.log('[PUT] ontvangen:', body);
   const { id, personen, naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking } = body;
 
   if (!id || !naam || !type) {
@@ -71,7 +64,6 @@ export async function PUT(req: Request) {
   }
 
   try {
-    // Update bedrijf
     await db.query(
       `UPDATE admin_contacten
        SET naam=$1, bedrijfsnaam=$2, type=$3, debiteurennummer=$4,
@@ -80,10 +72,8 @@ export async function PUT(req: Request) {
       [naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking, id]
     );
 
-    // Oude personen weg
     await db.query(`DELETE FROM admin_contactpersonen WHERE bedrijf_id=$1`, [id]);
 
-    // Nieuwe personen invoegen
     for (let i = 0; i < (personen || []).length; i++) {
       const p = personen[i];
       await db.query(
@@ -100,9 +90,31 @@ export async function PUT(req: Request) {
   }
 }
 
-// DELETE: delete bedrijf (cascade delete personen)
+// DELETE: bedrijf + gekoppelde personen verwijderen
 export async function DELETE(req: Request) {
   const id = Number(new URL(req.url).searchParams.get('id'));
   await db.query(`DELETE FROM admin_contacten WHERE id=$1`, [id]);
   return NextResponse.json({ success: true });
+}
+
+// ✅ EXTRA: correspondentie toevoegen
+export async function POST_correspondentie(req: Request) {
+  const { contact_id, datum, type, omschrijving, bijlage_url } = await req.json();
+
+  if (!contact_id || !type) {
+    return NextResponse.json({ success: false, error: 'contact_id of type ontbreekt' }, { status: 400 });
+  }
+
+  try {
+    await db.query(
+      `INSERT INTO admin_correspondentie (contact_id, datum, type, omschrijving, bijlage_url)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [contact_id, datum, type, omschrijving, bijlage_url]
+    );
+
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    console.error('[POST_correspondentie] fout:', e);
+    return NextResponse.json({ success: false, error: 'Opslaan mislukt' }, { status: 500 });
+  }
 }
