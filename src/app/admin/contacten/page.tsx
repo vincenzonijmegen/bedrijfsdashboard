@@ -1,9 +1,9 @@
 // Bestand opgesplitst: dit is alleen nog de hoofdcomponent
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import useSWR from 'swr';
-import { Users, UserPlus } from 'lucide-react';
+import { Users, UserPlus, ChevronUp } from 'lucide-react';
 import { useSnackbar } from '@/lib/useSnackbar';
 import { Company, Correspondentie } from '@/types/contacten';
 import {
@@ -72,6 +72,10 @@ export default function AdminContactenPage() {
     setCorrModalOpen(true);
   }
 
+  function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   return (
     <>
       <div className="p-6 max-w-4xl mx-auto">
@@ -124,6 +128,11 @@ export default function AdminContactenPage() {
               </CollapsibleGroup>
             );
           })}
+        </div>
+        <div className="fixed bottom-6 right-6 z-50">
+          <button onClick={scrollToTop} className="bg-gray-800 text-white p-2 rounded-full shadow-lg hover:bg-gray-700">
+            <ChevronUp className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
