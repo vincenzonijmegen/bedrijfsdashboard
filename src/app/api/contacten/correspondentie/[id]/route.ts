@@ -1,10 +1,11 @@
 // src/app/api/contacten/correspondentie/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import type { NextApiRequest } from 'next';
 
-export async function DELETE(req: NextRequest, context: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const id = Number(context.params.id);
+    const id = Number(params.id);
     if (!id || Number.isNaN(id)) {
       return NextResponse.json({ error: 'ID ontbreekt of ongeldig' }, { status: 400 });
     }
