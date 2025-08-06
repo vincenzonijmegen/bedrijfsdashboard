@@ -10,7 +10,7 @@ interface Props {
   setCorrForm: Dispatch<SetStateAction<Partial<Correspondentie>>>;
   onClose: () => void;
   onSave: () => void;
-  contactId: number; // ← toegevoegd
+  contactId: number;
 }
 
 export default function CorrespondentieModal({ open, corrForm, setCorrForm, onClose, onSave, contactId }: Props) {
@@ -22,6 +22,7 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
     setUploading(true);
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('contact_id', contactId.toString());
     try {
       const res = await fetch('/api/contacten/correspondentie/upload', { method: 'POST', body: formData });
       const data: { url: string } = await res.json();
@@ -35,7 +36,7 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
 
   async function save() {
     if (uploading) return alert('Wacht tot de upload is voltooid.');
-    const payload = { ...corrForm, contact_id: contactId }; // ← zorg dat contact_id wordt meegestuurd
+    const payload = { ...corrForm, contact_id: contactId };
     try {
       const res = await fetch('/api/contacten/correspondentie', {
         method: 'POST',
