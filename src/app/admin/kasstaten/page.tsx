@@ -12,7 +12,7 @@ interface Kasstaat {
   pin: number;
   bon: number;
   cadeaubon: number;
-  vrij: number;
+  opmerking: string;
   totaal: number;
 }
 
@@ -40,12 +40,12 @@ export default function KasstatenPage() {
       setKasstaat({
         id: uuidv4(),
         datum,
-        contant: 0.00,
-        pin: 0.00,
-        bon: 0.00,
-        cadeaubon: 0.00,
-        vrij: 0.00,
-        totaal: 0.00,
+        contant: 0.0,
+        pin: 0.0,
+        bon: 0.0,
+        cadeaubon: 0.0,
+        opmerking: "",
+        totaal: 0.0,
       });
     } else {
       setKasstaat(json);
@@ -58,9 +58,8 @@ export default function KasstatenPage() {
     setDatum(nieuweDatum);
   }
 
-  function updateField(field: keyof Kasstaat, value: number) {
-    const fixedValue = parseFloat(value.toFixed(2));
-    setKasstaat(prev => prev ? { ...prev, [field]: fixedValue } : null);
+  function updateField(field: keyof Kasstaat, value: any) {
+    setKasstaat(prev => prev ? { ...prev, [field]: value } : null);
   }
 
   async function bestaatKasstaat(datum: string): Promise<boolean> {
@@ -79,8 +78,7 @@ export default function KasstatenPage() {
       contant: parseFloat(kasstaat.contant.toFixed(2)),
       pin: parseFloat(kasstaat.pin.toFixed(2)),
       bon: parseFloat(kasstaat.bon.toFixed(2)),
-      cadeaubon: parseFloat(kasstaat.cadeaubon.toFixed(2)),
-      vrij: parseFloat(kasstaat.vrij.toFixed(2))
+      cadeaubon: parseFloat(kasstaat.cadeaubon.toFixed(2))
     };
     const res = await fetch("/api/kasstaten", {
       method,
@@ -123,19 +121,29 @@ export default function KasstatenPage() {
             { label: "Pin uit myPOS", field: "pin" },
             { label: "Bonbetalingen", field: "bon" },
             { label: "Cadeaubon verkocht", field: "cadeaubon" },
-            { label: "Vrij veld", field: "vrij" },
           ].map(({ label, field }) => (
             <div key={field} className="flex justify-between">
               <label>{label}</label>
               <input
                 type="number"
                 step="0.01"
+                inputMode="decimal"
                 className="border px-2 py-1 w-32 text-right"
                 value={kasstaat?.[field as keyof Kasstaat] ?? ""}
                 onChange={(e) => updateField(field as keyof Kasstaat, parseFloat(e.target.value) || 0)}
               />
             </div>
           ))}
+
+          <div className="flex justify-between">
+            <label>Opmerking</label>
+            <input
+              type="text"
+              className="border px-2 py-1 w-full text-left"
+              value={kasstaat?.opmerking ?? ""}
+              onChange={(e) => updateField("opmerking", e.target.value)}
+            />
+          </div>
 
           <div className="flex justify-between font-semibold">
             <label>Totaal</label>
