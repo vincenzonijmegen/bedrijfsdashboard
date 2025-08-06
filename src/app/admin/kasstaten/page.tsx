@@ -116,26 +116,58 @@ export default function KasstatenPage() {
 
       {loading ? <p>Laden…</p> : kasstaat && (
         <div className="bg-white shadow p-4 rounded border text-sm space-y-2">
-          <div className="flex justify-between">
-            <span>Contant</span>
-            <span>€ {Number(kasstaat.contant ?? 0).toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Pin</span>
-            <span>€ {Number(kasstaat.pin ?? 0).toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Cadeaubon</span>
-            <span>€ {Number(kasstaat.cadeaubon ?? 0).toFixed(2)}</span>
-          </div>
+          <div className="flex justify-between items-center">
+  <label htmlFor="contant" className="text-sm">Contant</label>
+  <input
+    id="contant"
+    type="number"
+    step="0.01"
+    inputMode="decimal"
+    className="border px-2 py-1 w-32 text-right"
+    value={kasstaat.contant}
+    onChange={(e) => updateField("contant", parseFloat(e.target.value) || 0)}
+  />
+</div>
+          <div className="flex justify-between items-center">
+  <label htmlFor="pin" className="text-sm">Pin</label>
+  <input
+    id="pin"
+    type="number"
+    step="0.01"
+    inputMode="decimal"
+    className="border px-2 py-1 w-32 text-right"
+    value={kasstaat.pin}
+    onChange={(e) => updateField("pin", parseFloat(e.target.value) || 0)}
+  />
+</div>
+          <div className="flex justify-between items-center">
+  <label htmlFor="cadeaubon" className="text-sm">Cadeaubon</label>
+  <input
+    id="cadeaubon"
+    type="number"
+    step="0.01"
+    inputMode="decimal"
+    className="border px-2 py-1 w-32 text-right"
+    value={kasstaat.cadeaubon}
+    onChange={(e) => updateField("cadeaubon", parseFloat(e.target.value) || 0)}
+  />
+</div>
           <div className="border-t pt-2 flex justify-between font-bold">
             <span>TOTAAL</span>
             <span>€ {(Number(kasstaat.contant) + Number(kasstaat.pin) + Number(kasstaat.bon)).toFixed(2)}</span>
           </div>
-          <div className="flex justify-between text-gray-500">
-            <span>Bonnen verkocht</span>
-            <span>€ {Number(kasstaat.bon ?? 0).toFixed(2)}</span>
-          </div>
+          <div className="flex justify-between items-center text-gray-500">
+  <label htmlFor="bon" className="text-sm">Bonnen verkocht</label>
+  <input
+    id="bon"
+    type="number"
+    step="0.01"
+    inputMode="decimal"
+    className="border px-2 py-1 w-32 text-right"
+    value={kasstaat.bon}
+    onChange={(e) => updateField("bon", parseFloat(e.target.value) || 0)}
+  />
+</div>
           <div className="pt-2">
             <label className="block text-xs font-medium text-gray-500">Opmerking</label>
             <input
