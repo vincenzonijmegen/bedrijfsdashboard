@@ -35,17 +35,20 @@ export default function CompanyModal({ open, current, setCurrent, onClose, onSav
     setCurrent(prev => ({ ...prev, personen: [...personen, { naam: '', telefoon: '', email: '' }] }));
   }
 
-  async function save() {
-    const method = current.id ? 'PUT' : 'POST';
-    const url = current.id ? `/api/contacten/${current.id}` : '/api/contacten';
-    await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(current),
-    });
-    onSave();
-    onClose();
-  }
+async function save() {
+  const method = current.id ? 'PUT' : 'POST';
+  const url = current.id ? `/api/contacten/${current.id}` : '/api/contacten';
+
+  await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(current),
+  });
+
+  onSave();
+  onClose();
+}
+
 
   if (!open) return null;
 

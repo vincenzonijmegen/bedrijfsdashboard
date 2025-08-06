@@ -2,16 +2,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-// SQL migration (run once):
-// ALTER TABLE admin_contacten ADD COLUMN bedrijfsnaam TEXT, ADD COLUMN debiteurennummer TEXT, ADD COLUMN rubriek TEXT;
-// CREATE TABLE admin_contactpersonen (
-//   id SERIAL PRIMARY KEY,
-//   bedrijf_id INTEGER NOT NULL REFERENCES admin_contacten(id) ON DELETE CASCADE,
-//   naam TEXT NOT NULL,
-//   telefoon TEXT,
-//   email TEXT,
-//   volgorde INTEGER DEFAULT 0
-// );
 
 // GET: alle bedrijven + hun contactpersonen ophalen
 export async function GET() {
@@ -69,34 +59,45 @@ export async function POST(req: Request) {
   return NextResponse.json({ success: true, id: newId });
 }
 
-// PUT: update bedrijf en contactpersonen
 export async function PUT(req: Request) {
   const body = await req.json();
+  console.log('[PUT] ontvangen:', body); // << LOGGEN
+  
   const { id, personen, naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking } = body;
 
-  // Update bedrijf met algemene gegevens
-  await db.query(
-    `UPDATE admin_contacten
-     SET naam=$1, bedrijfsnaam=$2, type=$3, debiteurennummer=$4,
-         rubriek=$5, telefoon=$6, email=$7, website=$8, opmerking=$9
-     WHERE id=$10`,
-    [naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking, id]
-  );
-
-  // Verwijder oude personen
-  await db.query(`DELETE FROM admin_contactpersonen WHERE bedrijf_id=$1`, [id]);
-
-  // Reinsert personen
-  for (let i = 0; i < (personen || []).length; i++) {
-    const p = personen[i];
-    await db.query(
-      `INSERT INTO admin_contactpersonen (bedrijf_id, naam, telefoon, email, volgorde)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [id, p.naam, p.telefoon, p.email, i]
-    );
+  if (!id || !naam || !type) {
+    console.error('[PUT] Ontbrekende velden:', { id, naam, type });
+    return NextResponse.json({ success: false, error: 'Verplichte velden ontbreken' }, { status: 400 });
   }
 
-  return NextResponse.json({ success: true });
+  try {
+    // Update bedrijf
+    await db.query(
+      `UPDATE admin_contacten
+       SET naam=$1, bedrijfsnaam=$2, type=$3, debiteurennummer=$4,
+           rubriek=$5, telefoon=$6, email=$7, website=$8, opmerking=$9
+       WHERE id=$10`,
+      [naam, bedrijfsnaam, type, debiteurennummer, rubriek, telefoon, email, website, opmerking, id]
+    );
+
+    // Oude personen weg
+    await db.query(`DELETE FROM admin_contactpersonen WHERE bedrijf_id=$1`, [id]);
+
+    // Nieuwe personen invoegen
+    for (let i = 0; i < (personen || []).length; i++) {
+      const p = personen[i];
+      await db.query(
+        `INSERT INTO admin_contactpersonen (bedrijf_id, naam, telefoon, email, volgorde)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [id, p.naam, p.telefoon, p.email, i]
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    console.error('[PUT] fout:', e);
+    return NextResponse.json({ success: false, error: 'Update mislukt' }, { status: 500 });
+  }
 }
 
 // DELETE: delete bedrijf (cascade delete personen)
