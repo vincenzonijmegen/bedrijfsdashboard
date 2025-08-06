@@ -10,9 +10,10 @@ interface Props {
   setCorrForm: Dispatch<SetStateAction<Partial<Correspondentie>>>;
   onClose: () => void;
   onSave: () => void;
+  contactId: number; // ← toegevoegd
 }
 
-export default function CorrespondentieModal({ open, corrForm, setCorrForm, onClose, onSave }: Props) {
+export default function CorrespondentieModal({ open, corrForm, setCorrForm, onClose, onSave, contactId }: Props) {
   const [uploading, setUploading] = useState(false);
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -34,10 +35,11 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
 
   async function save() {
     if (uploading) return alert('Wacht tot de upload is voltooid.');
+    const payload = { ...corrForm, contact_id: contactId }; // ← zorg dat contact_id wordt meegestuurd
     await fetch('/api/contacten/correspondentie', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(corrForm),
+      body: JSON.stringify(payload),
     });
     onSave();
     onClose();
