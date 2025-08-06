@@ -12,6 +12,8 @@ interface Props {
   onDelete: () => void;
   onCorrDelete: () => void;
   onAddCorr: () => void;
+  startCollapsed?: boolean;
+corrCount?: number;
 }
 
 export default function CompanyCard({ company: c, correspondentie, onEdit, onDelete, onCorrDelete, onAddCorr }: Props) {
