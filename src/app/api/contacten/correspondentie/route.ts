@@ -25,6 +25,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'contact_id of type ontbreekt' }, { status: 400 });
     }
 
+    console.log('[POST_correspondentie] ontvangen:', { contact_id, datum, type, omschrijving, bijlage_url });
+
     const res = await db.query(
       `INSERT INTO contact_correspondentie
          (contact_id, datum, type, omschrijving, bijlage_url)
