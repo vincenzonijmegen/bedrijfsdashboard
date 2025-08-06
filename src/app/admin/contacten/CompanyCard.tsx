@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Building, Tag, Hash, List, Phone, Mail, Globe, Users, ChevronUp } from 'lucide-react';
+import { Building, Tag, Hash, List, Phone, Mail, Globe, Users } from 'lucide-react';
 import { Company, Correspondentie } from '@/types/contacten';
 
 interface Props {
@@ -32,7 +32,7 @@ export default function CompanyCard({ company: c, correspondentie, onEdit, onDel
   }
 
   return (
-    <div key={c.id} className="p-4 border rounded shadow relative">
+    <div key={c.id} className="p-4 border rounded shadow">
       <div className="flex justify-between items-start">
         <strong className="text-lg">{c.naam}</strong>
         <div className="space-x-2">
@@ -65,16 +65,10 @@ export default function CompanyCard({ company: c, correspondentie, onEdit, onDel
 
       <div className="mt-4">
         <button
-          onClick={() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            setShowCorrespondentie(v => !v);
-          }}
-          className="font-semibold text-left w-full text-sm text-blue-700 hover:underline flex items-center justify-between"
+          onClick={() => setShowCorrespondentie(v => !v)}
+          className="font-semibold text-left w-full text-sm text-blue-700 hover:underline"
         >
-          <span>
-            📎 Correspondentie {showCorrespondentie ? 'verbergen' : `tonen (${corrCount})`}
-          </span>
-          {showCorrespondentie && <ChevronUp className="w-4 h-4 text-gray-500" />}
+          📎 Correspondentie {showCorrespondentie ? 'verbergen' : `tonen (${corrCount})`}
         </button>
 
         {showCorrespondentie && (
