@@ -118,15 +118,15 @@ export default function KasstatenPage() {
         <div className="bg-white shadow p-4 rounded border text-sm space-y-2">
           <div className="flex justify-between">
             <span>Contant</span>
-            <span>€ {kasstaat.contant.toFixed(2)}</span>
+            <span>€ {Number(kasstaat.contant ?? 0).toFixed(2)}</span>
           </div>
           <div className="flex justify-between">
             <span>Pin</span>
-            <span>€ {kasstaat.pin.toFixed(2)}</span>
+            <span>€ {Number(kasstaat.pin ?? 0).toFixed(2)}</span>
           </div>
           <div className="flex justify-between">
             <span>Cadeaubon</span>
-            <span>€ {kasstaat.cadeaubon.toFixed(2)}</span>
+            <span>€ {Number(kasstaat.cadeaubon ?? 0).toFixed(2)}</span>
           </div>
           <div className="border-t pt-2 flex justify-between font-bold">
             <span>TOTAAL</span>
@@ -134,7 +134,7 @@ export default function KasstatenPage() {
           </div>
           <div className="flex justify-between text-gray-500">
             <span>Bonnen verkocht</span>
-            <span>€ {kasstaat.bon.toFixed(2)}</span>
+            <span>€ {Number(kasstaat.bon ?? 0).toFixed(2)}</span>
           </div>
           <div className="pt-2">
             <label className="block text-xs font-medium text-gray-500">Opmerking</label>
