@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { addDays, format, parseISO } from "date-fns";
 
 interface Kasstaat {
+  id?: number;
   datum: string;
   contant: number;
   pin: number;
@@ -24,18 +25,31 @@ export default function KasstatenPage() {
     fetchData();
   }, [datum]);
 
-async function fetchData() {
-  setLoading(true);
-  const res = await fetch(`/api/kasstaten?datum=${datum}`);
-  if (!res.ok) {
-    setKasstaat(null);
+  async function fetchData() {
+    setLoading(true);
+    const res = await fetch(`/api/kasstaten?datum=${datum}`);
+    if (!res.ok) {
+      setKasstaat(null);
+      setLoading(false);
+      return;
+    }
+    const json = await res.json();
+
+    if (json === null) {
+      setKasstaat({
+        datum,
+        contant: 0,
+        pin: 0,
+        bon: 0,
+        cadeaubon: 0,
+        vrij: 0,
+        totaal: 0,
+      });
+    } else {
+      setKasstaat(json);
+    }
     setLoading(false);
-    return;
   }
-  const json = await res.json();
-  setKasstaat(json);
-  setLoading(false);
-}
 
   function wijzigDatum(dagen: number) {
     const nieuweDatum = format(addDays(parseISO(datum), dagen), "yyyy-MM-dd");
@@ -48,7 +62,7 @@ async function fetchData() {
 
   async function opslaan() {
     if (!kasstaat) return;
-    const method = kasstaat?.totaal !== undefined ? "PUT" : "POST";
+    const method = kasstaat?.id ? "PUT" : "POST";
     const res = await fetch("/api/kasstaten", {
       method,
       headers: { "Content-Type": "application/json" },
@@ -112,7 +126,7 @@ async function fetchData() {
 
           <div className="flex space-x-2">
             <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">Opslaan</button>
-            {kasstaat && <button type="button" onClick={verwijderen} className="bg-red-600 text-white px-4 py-2 rounded">Verwijderen</button>}
+            {kasstaat && kasstaat.id && <button type="button" onClick={verwijderen} className="bg-red-600 text-white px-4 py-2 rounded">Verwijderen</button>}
           </div>
         </form>
       )}

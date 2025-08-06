@@ -10,15 +10,7 @@ export async function GET(req: NextRequest) {
     if (datum) {
       const result = await db.query(`SELECT * FROM kasstaten WHERE datum = $1`, [datum]);
       if (result.rows.length === 0) {
-        return NextResponse.json({
-          datum,
-          contant: 0,
-          pin: 0,
-          bon: 0,
-          cadeaubon: 0,
-          vrij: 0,
-          totaal: 0
-        });
+        return NextResponse.json(null);
       }
       return NextResponse.json(result.rows[0]);
     }
