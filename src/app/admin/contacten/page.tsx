@@ -153,18 +153,25 @@ export default function AdminContactenPage() {
 
   function updatePersoon(index: number, field: keyof Contactpersoon, value: string) {
     setCurrent(prev => {
-      const newPers = [...prev.personen];
+      const pers = prev.personen ?? [];
+      const newPers = [...pers];
       newPers[index] = { ...newPers[index], [field]: value };
       return { ...prev, personen: newPers };
     });
   }
 
   function deletePersoon(index: number) {
-    setCurrent(prev => ({ ...prev, personen: prev.personen.filter((_, i) => i !== index) }));
+    setCurrent(prev => {
+      const pers = prev.personen ?? [];
+      return { ...prev, personen: pers.filter((_, i) => i !== index) };
+    });
   }
 
   function addPersoon() {
-    setCurrent(prev => ({ ...prev, personen: [...prev.personen, { naam: '', telefoon: '', email: '' }] }));
+    setCurrent(prev => {
+      const pers = prev.personen ?? [];
+      return { ...prev, personen: [...pers, { naam: '', telefoon: '', email: '' }] };
+    });
   }
 
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
