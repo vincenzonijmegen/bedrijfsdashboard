@@ -58,6 +58,22 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
     }
   }
 
+  async function handleDelete() {
+    if (!corrForm.id) return;
+    if (!confirm('Weet je zeker dat je deze correspondentie wilt verwijderen?')) return;
+    try {
+      const res = await fetch(`/api/contacten/correspondentie?id=${corrForm.id}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) throw new Error('Verwijderen mislukt');
+      onSave();
+      onClose();
+    } catch (err) {
+      console.error('Fout bij verwijderen:', err);
+      alert('Verwijderen mislukt.');
+    }
+  }
+
   if (!open) return null;
 
   return (
@@ -135,8 +151,11 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
               </a>
             )}
           </div>
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="flex justify-between space-x-2 pt-4">
             <button type="button" onClick={onClose} className="px-4 py-2 border rounded hover:bg-gray-100">Annuleer</button>
+            {corrForm.id && (
+              <button type="button" onClick={handleDelete} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Verwijder</button>
+            )}
             <button type="submit" disabled={uploading} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
               {uploading ? 'Even wachten...' : 'Opslaan'}
             </button>
