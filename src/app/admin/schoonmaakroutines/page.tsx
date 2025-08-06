@@ -6,7 +6,7 @@ import useSWR from "swr";
 import dayjs from "dayjs";
 import "dayjs/locale/nl";
 import clsx from "clsx";
-
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 dayjs.locale("nl");
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
@@ -225,6 +225,8 @@ export default function AdminSchoonmaakRoutinesPagina() {
         <h2 className="text-lg font-semibold mb-4">Nieuwe routine toevoegen</h2>
         <RoutineForm onToegevoegd={mutate} />
       </div>
+
+          <ScrollToTopButton />
     </div>
   );
 }
