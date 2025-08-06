@@ -60,6 +60,12 @@ export default function AdminContactenPage() {
     setModalOpen(true);
   }
 
+  async function handleDeleteContact(id: number) {
+    if (!confirm('Weet je zeker dat je dit contact wilt verwijderen?')) return;
+    await fetch(`/api/contacten?id=${id}`, { method: 'DELETE' });
+    mutateBedrijven();
+  }
+
   function handleAddCorr(contactId: number | undefined) {
     if (typeof contactId !== 'number') return;
     setCorrForm({ datum: '', type: undefined, omschrijving: '', contact_id: contactId });
@@ -101,7 +107,7 @@ export default function AdminContactenPage() {
                     company={c}
                     correspondentie={correspondentie.filter(item => item.contact_id === c.id)}
                     onEdit={() => openEdit(c)}
-                    onDelete={mutateBedrijven}
+                    onDelete={() => handleDeleteContact(c.id)}
                     onCorrDelete={mutateCorr}
                     onAddCorr={() => handleAddCorr(c.id)}
                   />
