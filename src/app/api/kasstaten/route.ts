@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
     const result = await db.query(`SELECT * FROM kasstaten ORDER BY datum DESC`);
     return NextResponse.json(result.rows);
   } catch (e) {
+    console.error("GET kasstaten error:", e);
     return NextResponse.json({ error: "Fout bij ophalen" }, { status: 500 });
   }
 }
@@ -35,6 +36,8 @@ export async function POST(req: NextRequest) {
     vrij = 0
   } = body;
 
+  console.log("POST kasstaat ontvangen:", body);
+
   try {
     const result = await db.query(
       `INSERT INTO kasstaten (id, datum, contant, pin, bon, cadeaubon, vrij)
@@ -44,6 +47,7 @@ export async function POST(req: NextRequest) {
     );
     return NextResponse.json(result.rows[0]);
   } catch (e) {
+    console.error("POST kasstaat error:", e);
     return NextResponse.json({ error: "Invoeren mislukt" }, { status: 400 });
   }
 }
@@ -60,6 +64,8 @@ export async function PUT(req: NextRequest) {
     vrij = 0
   } = body;
 
+  console.log("PUT kasstaat ontvangen:", body);
+
   try {
     const result = await db.query(
       `UPDATE kasstaten
@@ -74,11 +80,13 @@ export async function PUT(req: NextRequest) {
     );
 
     if (result.rows.length === 0) {
+      console.warn("PUT kasstaat geen resultaat voor datum:", datum);
       return NextResponse.json({ error: "Geen kasstaat gevonden voor deze datum" }, { status: 400 });
     }
 
     return NextResponse.json(result.rows[0]);
   } catch (e) {
+    console.error("PUT kasstaat error:", e);
     return NextResponse.json({ error: "Updaten mislukt" }, { status: 400 });
   }
 }
@@ -93,6 +101,7 @@ export async function DELETE(req: NextRequest) {
     await db.query(`DELETE FROM kasstaten WHERE datum = $1`, [datum]);
     return NextResponse.json({ message: "Verwijderd" });
   } catch (e) {
+    console.error("DELETE kasstaat error:", e);
     return NextResponse.json({ error: "Verwijderen mislukt" }, { status: 400 });
   }
 }
