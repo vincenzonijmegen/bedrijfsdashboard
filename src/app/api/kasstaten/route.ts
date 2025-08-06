@@ -39,17 +39,17 @@ export async function POST(req: NextRequest) {
     pin = 0,
     bon = 0,
     cadeaubon = 0,
-    vrij = 0
+    opmerking = ""
   } = body;
 
   console.log("POST kasstaat ontvangen:", body);
 
   try {
     const result = await db.query(
-      `INSERT INTO kasstaten (id, datum, contant, pin, bon, cadeaubon, vrij)
-       VALUES ($1, $2, ROUND($3::numeric, 2), ROUND($4::numeric, 2), ROUND($5::numeric, 2), ROUND($6::numeric, 2), ROUND($7::numeric, 2))
+      `INSERT INTO kasstaten (id, datum, contant, pin, bon, cadeaubon, opmerking)
+       VALUES ($1, $2, ROUND($3::numeric, 2), ROUND($4::numeric, 2), ROUND($5::numeric, 2), ROUND($6::numeric, 2), $7)
        RETURNING *;`,
-      [id, datum, contant, pin, bon, cadeaubon, vrij]
+      [id, datum, contant, pin, bon, cadeaubon, opmerking]
     );
     return NextResponse.json(result.rows[0]);
   } catch (e) {
@@ -67,7 +67,7 @@ export async function PUT(req: NextRequest) {
     pin = 0,
     bon = 0,
     cadeaubon = 0,
-    vrij = 0
+    opmerking = ""
   } = body;
 
   console.log("PUT kasstaat ontvangen:", body);
@@ -85,10 +85,10 @@ export async function PUT(req: NextRequest) {
            pin = ROUND($2::numeric, 2),
            bon = ROUND($3::numeric, 2),
            cadeaubon = ROUND($4::numeric, 2),
-           vrij = ROUND($5::numeric, 2)
+           opmerking = $5
        WHERE datum = $6
        RETURNING *;`,
-      [contant, pin, bon, cadeaubon, vrij, datum]
+      [contant, pin, bon, cadeaubon, opmerking, datum]
     );
 
     return NextResponse.json(result.rows[0]);
