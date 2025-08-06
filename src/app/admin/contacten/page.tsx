@@ -330,7 +330,7 @@ export default function AdminContactenPage() {
             <form onSubmit={e => { e.preventDefault(); saveCompany(); }} className="space-y-4">
               <div className="flex flex-col">
                 <label>Naam <span className="text-red-600">*</span></label>
-                <input required type="text" className="border rounded px-2 py-1" value={current.naam} onChange={e => updateField('naam', e.target.value)} />
+                <input required type="text" className="border rounded px-2 py-1" value={current.naam || ''} onChange={e => updateField('naam', e.target.value)} />
               </div>
               <div className="flex flex-col">
                 <label>Bedrijfsnaam</label>
@@ -338,7 +338,7 @@ export default function AdminContactenPage() {
               </div>
               <div className="flex flex-col">
                 <label>Type <span className="text-red-600">*</span></label>
-                <select required className="border rounded px-2 py-1" value={current.type} onChange={e => updateField('type', e.target.value)}>
+                <select required className="border rounded px-2 py-1" value={current.type || ''} onChange={e => updateField('type', e.target.value)}>
                   <option value="" disabled>Selecteer type</option>
                   {typeOrder.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
