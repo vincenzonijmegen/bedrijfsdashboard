@@ -204,7 +204,7 @@ export default function KasstatenPage() {
           {message && <p className="text-green-700 font-medium pt-2">{message}</p>}
         </div>
 
-        <div className="bg-white shadow p-4 rounded border text-sm space-y-2">
+        <div className="bg-white shadow p-4 rounded border text-sm space-y-2 flex flex-col justify-between">
           <h2 className="font-semibold mb-2">Kassa</h2>
           <div className="flex justify-between">
             <span>Contant</span>
@@ -218,9 +218,10 @@ export default function KasstatenPage() {
             <span>Cadeaubon</span>
             <span>€ {kassaBon.toFixed(2)}</span>
           </div>
-          <div className="border-t pt-2 flex justify-between font-bold">
-            <span>TOTAAL</span>
-            <span>€ {kassaTotal.toFixed(2)}</span>
+          $1
+          <div className="flex justify-between text-gray-500">
+            <span>Bonnen verkocht</span>
+            <span>€ {kassaBon.toFixed(2)}</span>
           </div>
         </div>
       </div>
