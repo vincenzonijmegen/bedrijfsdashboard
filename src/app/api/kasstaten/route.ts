@@ -25,13 +25,14 @@ export async function GET(req: NextRequest) {
 // POST nieuwe kasstaat
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { datum, contant, pin, bon, cadeaubon, vrij } = body;
+  const { id, datum, contant, pin, bon, cadeaubon, vrij } = body;
 
   try {
     const result = await db.query(
-      `INSERT INTO kasstaten (datum, contant, pin, bon, cadeaubon, vrij)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *;`,
-      [datum, contant, pin, bon, cadeaubon, vrij]
+      `INSERT INTO kasstaten (id, datum, contant, pin, bon, cadeaubon, vrij)
+       VALUES ($1, $2, ROUND($3::numeric, 2), ROUND($4::numeric, 2), ROUND($5::numeric, 2), ROUND($6::numeric, 2), ROUND($7::numeric, 2))
+       RETURNING *;`,
+      [id, datum, contant, pin, bon, cadeaubon, vrij]
     );
     return NextResponse.json(result.rows[0]);
   } catch (e) {
@@ -47,11 +48,11 @@ export async function PUT(req: NextRequest) {
   try {
     const result = await db.query(
       `UPDATE kasstaten
-       SET contant = $1,
-           pin = $2,
-           bon = $3,
-           cadeaubon = $4,
-           vrij = $5
+       SET contant = ROUND($1::numeric, 2),
+           pin = ROUND($2::numeric, 2),
+           bon = ROUND($3::numeric, 2),
+           cadeaubon = ROUND($4::numeric, 2),
+           vrij = ROUND($5::numeric, 2)
        WHERE datum = $6
        RETURNING *;`,
       [contant, pin, bon, cadeaubon, vrij, datum]

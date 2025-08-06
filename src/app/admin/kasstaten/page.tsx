@@ -3,9 +3,10 @@
 
 import { useEffect, useState } from "react";
 import { addDays, format, parseISO } from "date-fns";
+import { v4 as uuidv4 } from "uuid";
 
 interface Kasstaat {
-  id?: number;
+  id?: string;
   datum: string;
   contant: number;
   pin: number;
@@ -37,13 +38,14 @@ export default function KasstatenPage() {
 
     if (json === null) {
       setKasstaat({
+        id: uuidv4(),
         datum,
-        contant: 0,
-        pin: 0,
-        bon: 0,
-        cadeaubon: 0,
-        vrij: 0,
-        totaal: 0,
+        contant: 0.00,
+        pin: 0.00,
+        bon: 0.00,
+        cadeaubon: 0.00,
+        vrij: 0.00,
+        totaal: 0.00,
       });
     } else {
       setKasstaat(json);
@@ -57,16 +59,25 @@ export default function KasstatenPage() {
   }
 
   function updateField(field: keyof Kasstaat, value: number) {
-    setKasstaat(prev => prev ? { ...prev, [field]: value } : null);
+    const fixedValue = parseFloat(value.toFixed(2));
+    setKasstaat(prev => prev ? { ...prev, [field]: fixedValue } : null);
   }
 
   async function opslaan() {
     if (!kasstaat) return;
     const method = kasstaat?.id ? "PUT" : "POST";
+    const roundedKasstaat = {
+      ...kasstaat,
+      contant: parseFloat(kasstaat.contant.toFixed(2)),
+      pin: parseFloat(kasstaat.pin.toFixed(2)),
+      bon: parseFloat(kasstaat.bon.toFixed(2)),
+      cadeaubon: parseFloat(kasstaat.cadeaubon.toFixed(2)),
+      vrij: parseFloat(kasstaat.vrij.toFixed(2))
+    };
     const res = await fetch("/api/kasstaten", {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...kasstaat, datum })
+      body: JSON.stringify({ ...roundedKasstaat, datum })
     });
     const json = await res.json();
     setMessage("Opgeslagen");
@@ -110,6 +121,7 @@ export default function KasstatenPage() {
               <label>{label}</label>
               <input
                 type="number"
+                step="0.01"
                 className="border px-2 py-1 w-32 text-right"
                 value={kasstaat?.[field as keyof Kasstaat] ?? ""}
                 onChange={(e) => updateField(field as keyof Kasstaat, parseFloat(e.target.value) || 0)}
