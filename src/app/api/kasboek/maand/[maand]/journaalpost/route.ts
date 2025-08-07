@@ -1,6 +1,8 @@
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 const grootboekMapping: Record<string, { gb: string | null; omschrijving: string; btw: '9%' | 'geen' }> = {
   verkopen_laag:         { gb: '8001', omschrijving: 'Verkopen laag',         btw: '9%' },
   verkoop_kadobonnen:    { gb: '8003', omschrijving: 'Verkoop kadobonnen',    btw: '9%' },

@@ -1,6 +1,8 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   const res = await db.query(
     `SELECT * FROM kasboek_transacties WHERE dag_id = $1 ORDER BY id`,
