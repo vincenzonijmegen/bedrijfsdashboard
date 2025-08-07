@@ -2,30 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
-
-const CATEGORIEEN = [
-  { key: 'verkopen_laag', label: 'Verkopen laag', type: 'ontvangst', btw: '9%' },
-  { key: 'verkoop_kadobonnen', label: 'Verkoop kadobonnen', type: 'ontvangst', btw: '9%' },
-  { key: 'wisselgeld_van_bank', label: 'Wisselgeld van bank', type: 'ontvangst', btw: 'geen' },
-  { key: 'prive_opname_herman', label: 'Privé opname Herman', type: 'uitgave', btw: 'geen' },
-  { key: 'prive_opname_erik', label: 'Privé opname Erik', type: 'uitgave', btw: 'geen' },
-  { key: 'ingenomen_kadobon', label: 'Ingenomen kadobonnen', type: 'uitgave', btw: '9%' },
-  { key: 'naar_bank_afgestort', label: 'Naar bank afgestort', type: 'uitgave', btw: 'geen' },
-  { key: 'kasverschil', label: 'Kasverschil', type: 'uitgave', btw: 'geen' },
-];
 
 export default function KasboekPage() {
   const [datum, setDatum] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [dagId, setDagId] = useState<number | null>(null);
   const [startbedrag, setStartbedrag] = useState('');
-  const [bedragen, setBedragen] = useState<Record<string, string>>({});
-  const [inkoopRijen, setInkoopRijen] = useState<string[]>(['']);
+  const [magWijzigen, setMagWijzigen] = useState(false);
 
   const { data: dagen } = useSWR(`/api/kasboek/dagen?maand=${datum.slice(0, 7)}`, fetcher);
-  const { data: transacties } = useSWR(dagId ? `/api/kasboek/dagen/${dagId}/transacties` : null, fetcher);
 
   useEffect(() => {
     const bestaande = dagen?.find((d: any) => d.datum === datum);
@@ -36,89 +23,34 @@ export default function KasboekPage() {
       setDagId(null);
       setStartbedrag('');
     }
-    setBedragen({});
-    setInkoopRijen(['']);
+
+    const date = parseISO(datum);
+    const isJan1 = date.getDate() === 1 && date.getMonth() === 0;
+    setMagWijzigen(isJan1);
   }, [datum, dagen]);
 
-  useEffect(() => {
-    if (transacties && transacties.length > 0) {
-      const nieuweBedragen: Record<string, string> = {};
-      const nieuweInkoop: string[] = [];
-
-      transacties.forEach((t: any) => {
-        if (t.categorie === 'contant_inkoop') {
-          nieuweInkoop.push(t.bedrag);
-        } else {
-          nieuweBedragen[t.categorie] = t.bedrag;
-        }
-      });
-
-      setBedragen(nieuweBedragen);
-      setInkoopRijen(nieuweInkoop.length > 0 ? nieuweInkoop : ['']);
-    }
-  }, [transacties]);
-
-  const maakDagAan = async () => {
-    if (!datum) return;
-    const vorige = await fetch(`/api/kasboek/dagen/voorafgaand?datum=${datum}`).then((r) => r.json());
-    const start = vorige?.eindsaldo ?? 0;
-
-    const res = await fetch('/api/kasboek/dagen', {
-      method: 'POST',
-      body: JSON.stringify({ datum, startbedrag: start }),
-    });
-    const dag = await res.json();
-    setDagId(dag.id);
-    setStartbedrag(start.toString());
-  };
-
-  const opslaan = async () => {
+  const slaStartbedragOp = async () => {
     if (!dagId) return;
-
-    const transacties = [
-      ...CATEGORIEEN.map((cat) => {
-        const bedrag = bedragen[cat.key];
-        return bedrag
-          ? {
-              type: cat.type,
-              categorie: cat.key,
-              bedrag: parseFloat(bedrag),
-              btw: cat.btw === 'geen' ? null : cat.btw,
-              omschrijving: null,
-            }
-          : null;
-      }).filter(Boolean),
-      ...inkoopRijen
-        .filter((val) => val)
-        .map((val) => ({
-          type: 'uitgave',
-          categorie: 'contant_inkoop',
-          bedrag: parseFloat(val),
-          btw: null,
-          omschrijving: null,
-        })),
-    ];
-
-    await fetch(`/api/kasboek/dagen/${dagId}/transacties`, {
-      method: 'PUT',
-      body: JSON.stringify(transacties),
+    await fetch(`/api/kasboek/dagen/${dagId}/startbedrag`, {
+      method: 'PATCH',
+      body: JSON.stringify({ startbedrag: parseFloat(startbedrag), datum }),
     });
-
-    await fetch(`/api/kasboek/dagen/herbereken`, {
-      method: 'POST',
-      body: JSON.stringify({ vanafDatum: datum }),
-    });
-
-    alert('Opgeslagen en herberekend');
+    alert('Beginsaldo opgeslagen');
   };
 
   return (
-    <div className="p-4 space-y-4 max-w-3xl">
-      <h1 className="text-xl font-bold">Kasboek – {datum}</h1>
+    <div className="p-4 space-y-4 max-w-xl">
+      <h1 className="text-xl font-bold">Start kasboek</h1>
+
       <div className="flex gap-4 items-end">
         <div>
           <label>Datum:</label>
-          <input type="date" value={datum} onChange={(e) => setDatum(e.target.value)} className="border px-2" />
+          <input
+            type="date"
+            value={datum}
+            onChange={(e) => setDatum(e.target.value)}
+            className="border px-2"
+          />
         </div>
         <div>
           <label>Startbedrag:</label>
@@ -126,81 +58,20 @@ export default function KasboekPage() {
             type="number"
             step="0.01"
             value={startbedrag}
-            readOnly
-            className="border px-2 bg-gray-100"
+            onChange={(e) => setStartbedrag(e.target.value)}
+            className="border px-2"
+            readOnly={!magWijzigen}
           />
         </div>
-        {!dagId && (
-          <button onClick={maakDagAan} className="bg-blue-600 text-white px-4 py-2 rounded">Maak dag aan</button>
+        {magWijzigen && (
+          <button
+            onClick={slaStartbedragOp}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            Opslaan
+          </button>
         )}
       </div>
-
-      {dagId && (
-        <>
-          <table className="w-full text-sm border mt-6">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="text-left px-2 py-1">Categorie</th>
-                <th>Type</th>
-                <th>BTW</th>
-                <th>Bedrag</th>
-              </tr>
-            </thead>
-            <tbody>
-              {CATEGORIEEN.map((cat) => (
-                <tr key={cat.key} className="border-t">
-                  <td className="px-2 py-1">{cat.label}</td>
-                  <td>{cat.type}</td>
-                  <td>{cat.btw}</td>
-                  <td>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={bedragen[cat.key] || ''}
-                      onChange={(e) => setBedragen({ ...bedragen, [cat.key]: e.target.value })}
-                      className="border px-2 w-32"
-                    />
-                  </td>
-                </tr>
-              ))}
-              {inkoopRijen.map((val, i) => (
-                <tr key={`inkoop-${i}`} className="border-t">
-                  <td className="px-2 py-1">Contant betaalde inkoop</td>
-                  <td>uitgave</td>
-                  <td>–</td>
-                  <td>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={val}
-                      onChange={(e) => {
-                        const kopie = [...inkoopRijen];
-                        kopie[i] = e.target.value;
-                        setInkoopRijen(kopie);
-                      }}
-                      className="border px-2 w-32"
-                    />
-                  </td>
-                </tr>
-              ))}
-              <tr>
-                <td colSpan={4}>
-                  <button
-                    className="text-blue-600 underline px-2 mt-2"
-                    onClick={() => setInkoopRijen([...inkoopRijen, ''])}
-                  >
-                    + Extra inkoopregel
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <div className="mt-4 flex items-center gap-4">
-            <button onClick={opslaan} className="bg-green-600 text-white px-4 py-2 rounded">Sla wijzigingen op</button>
-          </div>
-        </>
-      )}
     </div>
   );
 }
