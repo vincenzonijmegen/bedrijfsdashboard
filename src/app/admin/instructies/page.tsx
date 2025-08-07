@@ -67,7 +67,7 @@ export default function InstructieOverzicht() {
               <tr key={i.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                 <td className="px-4 py-3 align-top">{i.nummer || "-"}</td>
                 <td className="px-4 py-3 align-top font-medium">
-                  <Link href={`/instructies/${i.slug}`} className="text-blue-600 hover:underline">
+                  <Link href={`/admin/instructies/${i.slug}/preview`} className="text-blue-600 hover:underline">
                     {i.titel}
                   </Link>
                 </td>
