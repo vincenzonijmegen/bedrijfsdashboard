@@ -33,13 +33,16 @@ export default function KasstatenPage() {
     return `${dd}-${mm}-${yyyy}`;
   };
 
-  const { data: kassadata } = useSWR(() => datum ? `/api/kassa/omzet?start=${formatDMY(datum)}&totalen=1` : null, fetcher);
+  const { data: kassadata } = useSWR(
+    () => datum ? `/api/kassa/omzet?start=${formatDMY(datum)}&totalen=1` : null,
+    fetcher
+  );
 
-  const record = Array.isArray(kassadata) ? kassadata[0] as Record<string, string> : null;
-  const kassaContant = record ? (parseFloat(record.Cash) || 0) : 0;
-  const kassaPin = record ? (parseFloat(record.Pin) || 0) : 0;
-  const kassaBon = record ? (parseFloat(record.Bon) || 0) : 0;
-  const kassaIsvoucher = record ? (parseFloat(record.isvoucher) || 0) : 0;
+  const record = Array.isArray(kassadata) ? (kassadata[0] as Record<string, string>) : null;
+  const kassaContant = record ? parseFloat(record.Cash) || 0 : 0;
+  const kassaPin = record ? parseFloat(record.Pin) || 0 : 0;
+  const kassaBon = record ? parseFloat(record.Bon) || 0 : 0;
+  const kassaIsvoucher = record ? parseFloat(record.isvoucher) || 0 : 0;
   const kassaTotal = kassaContant + kassaPin + kassaBon;
 
   useEffect(() => {
@@ -98,7 +101,7 @@ export default function KasstatenPage() {
       contant: parseFloat(Number(kasstaat.contant).toFixed(2)),
       pin: parseFloat(Number(kasstaat.pin).toFixed(2)),
       bon: parseFloat(Number(kasstaat.bon).toFixed(2)),
-      cadeaubon: parseFloat(Number(kasstaat.cadeaubon).toFixed(2))
+      cadeaubon: parseFloat(Number(kasstaat.cadeaubon).toFixed(2)),
     };
     const res = await fetch("/api/kasstaten", {
       method,
@@ -150,77 +153,129 @@ export default function KasstatenPage() {
             <tr>
               <td className="p-2">Contant</td>
               <td className="p-2 text-right">
-  <input
-    type="number"
-    step="0.01"
-    inputMode="decimal"
-    className="w-full text-right border rounded px-1"
-    value={kasstaat?.contant ?? 0}
-    onChange={(e) => updateField("contant", parseFloat(e.target.value) || 0)}
-  />
-</td>
-              <td className="p-2 text-right">{kassaContant.toFixed(2)}</td>
+                <input
+                  type="number"
+                  step="0.01"
+                  inputMode="decimal"
+                  className="w-full text-right border rounded px-1"
+                  value={kasstaat?.contant ?? 0}
+                  onChange={(e) => updateField("contant", parseFloat(e.target.value) || 0)}
+                />
+              </td>
+              <td className="p-2 text-right">{Number(kassaContant).toFixed(2)}</td>
               <td className="p-2 text-right">
-  <span className={parseFloat(verschil($1, $2)) === 0 ? '' : parseFloat(verschil($1, $2)) > 0 ? 'text-green-600' : 'text-red-600'}>
-    {verschil($1, $2)}
-  </span>
-</td>
+                <span className={
+                  parseFloat(verschil(kasstaat?.contant ?? 0, kassaContant)) > 0
+                    ? 'text-green-600'
+                    : parseFloat(verschil(kasstaat?.contant ?? 0, kassaContant)) < 0
+                    ? 'text-red-600'
+                    : ''
+                }>
+                  {verschil(kasstaat?.contant ?? 0, kassaContant)}
+                </span>
+              </td>
             </tr>
             <tr>
               <td className="p-2">Pin</td>
               <td className="p-2 text-right">
-  <input
-    type="number"
-    step="0.01"
-    inputMode="decimal"
-    className="w-full text-right border rounded px-1"
-    value={kasstaat?.pin ?? 0}
-    onChange={(e) => updateField("pin", parseFloat(e.target.value) || 0)}
-  />
-</td>
-              <td className="p-2 text-right">{kassaPin.toFixed(2)}</td>
-              <td className="p-2 text-right">{verschil(kasstaat?.pin ?? 0, kassaPin)}</td>
+                <input
+                  type="number"
+                  step="0.01"
+                  inputMode="decimal"
+                  className="w-full text-right border rounded px-1"
+                  value={kasstaat?.pin ?? 0}
+                  onChange={(e) => updateField("pin", parseFloat(e.target.value) || 0)}
+                />
+              </td>
+              <td className="p-2 text-right">{Number(kassaPin).toFixed(2)}</td>
+              <td className="p-2 text-right">
+                <span className={
+                  parseFloat(verschil(kasstaat?.pin ?? 0, kassaPin)) > 0
+                    ? 'text-green-600'
+                    : parseFloat(verschil(kasstaat?.pin ?? 0, kassaPin)) < 0
+                    ? 'text-red-600'
+                    : ''
+                }>
+                  {verschil(kasstaat?.pin ?? 0, kassaPin)}
+                </span>
+              </td>
             </tr>
             <tr>
               <td className="p-2">Cadeaubon</td>
               <td className="p-2 text-right">
-  <input
-    type="number"
-    step="0.01"
-    inputMode="decimal"
-    className="w-full text-right border rounded px-1"
-    value={kasstaat?.cadeaubon ?? 0}
-    onChange={(e) => updateField("cadeaubon", parseFloat(e.target.value) || 0)}
-  />
-</td>
-              <td className="p-2 text-right">{kassaBon.toFixed(2)}</td>
-              <td className="p-2 text-right">{verschil(kasstaat?.cadeaubon ?? 0, kassaBon)}</td>
+                <input
+                  type="number"
+                  step="0.01"
+                  inputMode="decimal"
+                  className="w-full text-right border rounded px-1"
+                  value={kasstaat?.cadeaubon ?? 0}
+                  onChange={(e) => updateField("cadeaubon", parseFloat(e.target.value) || 0)}
+                />
+              </td>
+              <td className="p-2 text-right">{Number(kassaBon).toFixed(2)}</td>
+              <td className="p-2 text-right">
+                <span className={
+                  parseFloat(verschil(kasstaat?.cadeaubon ?? 0, kassaBon)) > 0
+                    ? 'text-green-600'
+                    : parseFloat(verschil(kasstaat?.cadeaubon ?? 0, kassaBon)) < 0
+                    ? 'text-red-600'
+                    : ''
+                }>
+                  {verschil(kasstaat?.cadeaubon ?? 0, kassaBon)}
+                </span>
+              </td>
             </tr>
             <tr className="font-bold border-t">
               <td className="p-2">TOTAAL</td>
-              <td className="p-2 text-right">{(Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.bon ?? 0)).toFixed(2)}</td>
+              <td className="p-2 text-right">{(
+                Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.bon ?? 0)
+              ).toFixed(2)}</td>
               <td className="p-2 text-right">{kassaTotal.toFixed(2)}</td>
-              <td className="p-2 text-right">{
-  verschil(
-    Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.cadeaubon ?? 0),
-    kassaTotal
-  )
-}</td>
+              <td className="p-2 text-right">
+                <span className={
+                  parseFloat(verschil(
+                    Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.bon ?? 0),
+                    kassaTotal
+                  )) > 0
+                    ? 'text-green-600'
+                    : parseFloat(verschil(
+                        Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.bon ?? 0),
+                        kassaTotal
+                      )) < 0
+                    ? 'text-red-600'
+                    : ''
+                }>
+                  {verschil(
+                    Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.bon ?? 0),
+                    kassaTotal
+                  )}
+                </span>
+              </td>
             </tr>
             <tr className="text-gray-600">
               <td className="p-2">Bonnen verkocht</td>
               <td className="p-2 text-right">
-  <input
-    type="number"
-    step="0.01"
-    inputMode="decimal"
-    className="w-full text-right border rounded px-1"
-    value={kasstaat?.bon ?? 0}
-    onChange={(e) => updateField("bon", parseFloat(e.target.value) || 0)}
-  />
-</td>
-              <td className="p-2 text-right">{kassaIsvoucher.toFixed(2)}</td>
-              <td className="p-2 text-right">{verschil(kasstaat?.bon ?? 0, kassaIsvoucher)}</td>
+                <input
+                  type="number"
+                  step="0.01"
+                  inputMode="decimal"
+                  className="w-full text-right border rounded px-1"
+                  value={kasstaat?.bon ?? 0}
+                  onChange={(e) => updateField("bon", parseFloat(e.target.value) || 0)}
+                />
+              </td>
+              <td className="p-2 text-right">{Number(kassaIsvoucher).toFixed(2)}</td>
+              <td className="p-2 text-right">
+                <span className={
+                  parseFloat(verschil(kasstaat?.bon ?? 0, kassaIsvoucher)) > 0
+                    ? 'text-green-600'
+                    : parseFloat(verschil(kasstaat?.bon ?? 0, kassaIsvoucher)) < 0
+                    ? 'text-red-600'
+                    : ''
+                }>
+                  {verschil(kasstaat?.bon ?? 0, kassaIsvoucher)}
+                </span>
+              </td>
             </tr>
             <tr>
               <td className="p-2 align-top">Opmerking</td>
