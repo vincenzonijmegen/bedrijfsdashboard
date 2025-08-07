@@ -58,15 +58,16 @@ export default function KasstatenPage() {
 
     if (json === null) {
       setKasstaat({
-        id: uuidv4(),
-        datum,
-        contant: 0.0,
-        pin: 0.0,
-        bon: 0.0,
-        cadeaubon: 0.0,
-        opmerking: "",
-        totaal: 0.0,
-      });
+  id: uuidv4(),
+  datum,
+  contant: 0.0,
+  pin: 0.0,
+  bon: kassaIsvoucher,
+  cadeaubon: kassaBon,
+  opmerking: "",
+  totaal: 0.0,
+});
+
     } else {
       setKasstaat(json);
     }
@@ -196,7 +197,12 @@ export default function KasstatenPage() {
               <td className="p-2">TOTAAL</td>
               <td className="p-2 text-right">{(Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.bon ?? 0)).toFixed(2)}</td>
               <td className="p-2 text-right">{kassaTotal.toFixed(2)}</td>
-              <td className="p-2 text-right">{verschil((kasstaat?.contant ?? 0) + (kasstaat?.pin ?? 0) + (kasstaat?.bon ?? 0), kassaTotal)}</td>
+              <td className="p-2 text-right">{
+  verschil(
+    Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.cadeaubon ?? 0),
+    kassaTotal
+  )
+}</td>
             </tr>
             <tr className="text-gray-600">
               <td className="p-2">Bonnen verkocht</td>
