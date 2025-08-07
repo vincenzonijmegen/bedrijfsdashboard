@@ -14,6 +14,7 @@ const maandNamen = [
 ];
 
 interface MaandData {
+  jaar: number;
   maand: number;
   prognoseOmzet: number;
   prognoseDagen: number;
@@ -296,8 +297,7 @@ export default function PrognosePage() {
 }
 
 ].map(({ label, fn, format }) => {
-  const startIndex = (geselecteerdJaar - 2022) * 7;
-  const rows = data.slice(startIndex, startIndex + 7);
+ const rows = data.filter((d) => d.jaar === geselecteerdJaar); 
   const total = maandNamen.reduce((sum, _, i) => {
     const maand = i + 3;
     return sum + (fn(maand) || 0);
