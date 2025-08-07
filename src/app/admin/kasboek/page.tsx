@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { format } from 'date-fns';
 
@@ -25,16 +25,13 @@ export default function KasboekPage() {
   const [inkoopRijen, setInkoopRijen] = useState<string[]>(['']);
 
   const { data: dagen } = useSWR(`/api/kasboek/dagen?maand=${datum.slice(0, 7)}`, fetcher);
-  const { data: transacties, mutate } = useSWR(
-    dagId ? `/api/kasboek/dagen/${dagId}/transacties` : null,
-    fetcher
-  );
+  const { data: transacties } = useSWR(dagId ? `/api/kasboek/dagen/${dagId}/transacties` : null, fetcher);
 
   useEffect(() => {
     const bestaande = dagen?.find((d: any) => d.datum === datum);
     if (bestaande) {
       setDagId(bestaande.id);
-      setStartbedrag(bestaande.startbedrag);
+      setStartbedrag(bestaande.startbedrag?.toString() || '');
     } else {
       setDagId(null);
       setStartbedrag('');
@@ -43,74 +40,77 @@ export default function KasboekPage() {
     setInkoopRijen(['']);
   }, [datum, dagen]);
 
-  const maakDagAan = async () => {
-    if (!datum || isNaN(parseFloat(startbedrag))) {
-      alert('Voer een geldige datum en startbedrag in.');
-      return;
-    }
+  useEffect(() => {
+    if (transacties && transacties.length > 0) {
+      const nieuweBedragen: Record<string, string> = {};
+      const nieuweInkoop: string[] = [];
 
-    try {
-      const res = await fetch('/api/kasboek/dagen', {
-        method: 'POST',
-        body: JSON.stringify({ datum, startbedrag: parseFloat(startbedrag) }),
+      transacties.forEach((t: any) => {
+        if (t.categorie === 'contant_inkoop') {
+          nieuweInkoop.push(t.bedrag);
+        } else {
+          nieuweBedragen[t.categorie] = t.bedrag;
+        }
       });
-      const dag = await res.json();
-      setDagId(dag.id);
-    } catch (err) {
-      console.error('Fout bij aanmaken dag:', err);
+
+      setBedragen(nieuweBedragen);
+      setInkoopRijen(nieuweInkoop.length > 0 ? nieuweInkoop : ['']);
     }
+  }, [transacties]);
+
+  const maakDagAan = async () => {
+    if (!datum) return;
+    const vorige = await fetch(`/api/kasboek/dagen/voorafgaand?datum=${datum}`).then((r) => r.json());
+    const start = vorige?.eindsaldo ?? 0;
+
+    const res = await fetch('/api/kasboek/dagen', {
+      method: 'POST',
+      body: JSON.stringify({ datum, startbedrag: start }),
+    });
+    const dag = await res.json();
+    setDagId(dag.id);
+    setStartbedrag(start.toString());
   };
 
   const opslaan = async () => {
     if (!dagId) return;
-    for (const cat of CATEGORIEEN) {
-      const val = bedragen[cat.key];
-      if (val) {
-        await fetch(`/api/kasboek/dagen/${dagId}/transacties`, {
-          method: 'POST',
-          body: JSON.stringify({
-            type: cat.type,
-            categorie: cat.key,
-            bedrag: parseFloat(val),
-            btw: cat.btw === 'geen' ? null : cat.btw,
-            omschrijving: null,
-          }),
-        });
-      }
-    }
-    for (const bedrag of inkoopRijen) {
-      if (bedrag) {
-        await fetch(`/api/kasboek/dagen/${dagId}/transacties`, {
-          method: 'POST',
-          body: JSON.stringify({
-            type: 'uitgave',
-            categorie: 'contant_inkoop',
-            bedrag: parseFloat(bedrag),
-            btw: null,
-            omschrijving: null,
-          }),
-        });
-      }
-    }
-    await mutate();
+
+    const transacties = [
+      ...CATEGORIEEN.map((cat) => {
+        const bedrag = bedragen[cat.key];
+        return bedrag
+          ? {
+              type: cat.type,
+              categorie: cat.key,
+              bedrag: parseFloat(bedrag),
+              btw: cat.btw === 'geen' ? null : cat.btw,
+              omschrijving: null,
+            }
+          : null;
+      }).filter(Boolean),
+      ...inkoopRijen
+        .filter((val) => val)
+        .map((val) => ({
+          type: 'uitgave',
+          categorie: 'contant_inkoop',
+          bedrag: parseFloat(val),
+          btw: null,
+          omschrijving: null,
+        })),
+    ];
+
+    await fetch(`/api/kasboek/dagen/${dagId}/transacties`, {
+      method: 'PUT',
+      body: JSON.stringify(transacties),
+    });
+
+    await fetch(`/api/kasboek/dagen/herbereken`, {
+      method: 'POST',
+      body: JSON.stringify({ vanafDatum: datum }),
+    });
+
+    alert('Opgeslagen en herberekend');
   };
-
-  const berekendEindsaldo = useMemo(() => {
-    const start = parseFloat(startbedrag) || 0;
-    let totaalOntvangst = 0;
-    let totaalUitgave = 0;
-
-    for (const cat of CATEGORIEEN) {
-      const bedrag = parseFloat(bedragen[cat.key] || '0');
-      if (cat.type === 'ontvangst') totaalOntvangst += bedrag;
-      else totaalUitgave += bedrag;
-    }
-    for (const bedrag of inkoopRijen) {
-      totaalUitgave += parseFloat(bedrag || '0');
-    }
-
-    return (start + totaalOntvangst - totaalUitgave).toFixed(2);
-  }, [bedragen, inkoopRijen, startbedrag]);
 
   return (
     <div className="p-4 space-y-4 max-w-3xl">
@@ -126,8 +126,8 @@ export default function KasboekPage() {
             type="number"
             step="0.01"
             value={startbedrag}
-            onChange={(e) => setStartbedrag(e.target.value)}
-            className="border px-2"
+            readOnly
+            className="border px-2 bg-gray-100"
           />
         </div>
         {!dagId && (
@@ -197,16 +197,7 @@ export default function KasboekPage() {
           </table>
 
           <div className="mt-4 flex items-center gap-4">
-            <button onClick={opslaan} className="bg-green-600 text-white px-4 py-2 rounded">Sla transacties op</button>
-            <div>
-              <label>Eindsaldo (automatisch):</label>
-              <input
-                type="text"
-                value={berekendEindsaldo}
-                readOnly
-                className="bg-gray-100 text-gray-800 border px-2 ml-2 w-32"
-              />
-            </div>
+            <button onClick={opslaan} className="bg-green-600 text-white px-4 py-2 rounded">Sla wijzigingen op</button>
           </div>
         </>
       )}
