@@ -14,17 +14,6 @@ import {
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-const CATEGORIEEN = [
-  { key: 'verkopen_laag', label: 'Verkopen laag', type: 'ontvangst', btw: '9%' },
-  { key: 'verkoop_kadobonnen', label: 'Verkoop kadobonnen', type: 'ontvangst', btw: '9%' },
-  { key: 'wisselgeld_van_bank', label: 'Wisselgeld van bank', type: 'ontvangst', btw: 'geen' },
-  { key: 'prive_opname_herman', label: 'Privé opname Herman', type: 'uitgave', btw: 'geen' },
-  { key: 'prive_opname_erik', label: 'Privé opname Erik', type: 'uitgave', btw: 'geen' },
-  { key: 'ingenomen_kadobon', label: 'Ingenomen kadobonnen', type: 'uitgave', btw: '9%' },
-  { key: 'naar_bank_afgestort', label: 'Naar bank afgestort', type: 'uitgave', btw: 'geen' },
-  { key: 'kasverschil', label: 'Kasverschil', type: 'uitgave', btw: 'geen' },
-];
-
 export default function KasboekPage() {
   const [datum, setDatum] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [dagId, setDagId] = useState<number | null>(null);
@@ -81,7 +70,16 @@ export default function KasboekPage() {
     if (!dagId) return;
 
     const transacties = [
-      ...CATEGORIEEN.map((cat) => {
+      ...[
+        { key: 'verkopen_laag', label: 'Verkopen laag', type: 'ontvangst', btw: '9%' },
+        { key: 'verkoop_kadobonnen', label: 'Verkoop kadobonnen', type: 'ontvangst', btw: '9%' },
+        { key: 'wisselgeld_van_bank', label: 'Wisselgeld van bank', type: 'ontvangst', btw: 'geen' },
+        { key: 'prive_opname_herman', label: 'Privé opname Herman', type: 'uitgave', btw: 'geen' },
+        { key: 'prive_opname_erik', label: 'Privé opname Erik', type: 'uitgave', btw: 'geen' },
+        { key: 'ingenomen_kadobon', label: 'Ingenomen kadobonnen', type: 'uitgave', btw: '9%' },
+        { key: 'naar_bank_afgestort', label: 'Naar bank afgestort', type: 'uitgave', btw: 'geen' },
+        { key: 'kasverschil', label: 'Kasverschil', type: 'uitgave', btw: 'geen' },
+      ].map((cat) => {
         const bedrag = bedragen[cat.key];
         return bedrag
           ? {
@@ -131,7 +129,7 @@ export default function KasboekPage() {
         <div className="space-y-1">
           {alleDagenVanMaand.map((dag) => {
             const formatted = format(dag, 'yyyy-MM-dd');
-            const record = dagen?.find((d) => d.datum === formatted);
+            const record = dagen?.find((d: any) => d.datum === formatted);
             const status = record && parseInt(record.aantal_transacties) > 0 ? '✅' : '⬜';
             const active = datum === formatted;
 
@@ -166,18 +164,22 @@ export default function KasboekPage() {
                 </tr>
               </thead>
               <tbody>
-                {CATEGORIEEN.map((cat) => (
-                  <tr key={cat.key} className="border-t">
-                    <td className="px-2 py-1">{cat.label}</td>
-                    <td>{cat.type}</td>
-                    <td>{cat.btw}</td>
+                {[
+                  'verkopen_laag', 'verkoop_kadobonnen', 'wisselgeld_van_bank',
+                  'prive_opname_herman', 'prive_opname_erik', 'ingenomen_kadobon',
+                  'naar_bank_afgestort', 'kasverschil'
+                ].map((key) => (
+                  <tr key={key} className="border-t">
+                    <td className="px-2 py-1">{key}</td>
+                    <td>{CATEGORIEEN.find(c => c.key === key)?.type}</td>
+                    <td>{CATEGORIEEN.find(c => c.key === key)?.btw}</td>
                     <td>
                       <input
                         type="number"
                         step="0.01"
-                        value={bedragen[cat.key] || ''}
+                        value={bedragen[key] || ''}
                         onChange={(e) =>
-                          setBedragen({ ...bedragen, [cat.key]: e.target.value })
+                          setBedragen({ ...bedragen, [key]: e.target.value })
                         }
                         className="border px-2 w-32"
                       />
