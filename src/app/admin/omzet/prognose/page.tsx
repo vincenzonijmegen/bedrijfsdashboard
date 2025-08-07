@@ -198,6 +198,41 @@ export default function PrognosePage() {
           Gedaan <strong>{omzetPercent}%</strong> van de omzet in <strong>{dagenPercent}%</strong> van de dagen
         </p>
       </div>
-    </main>
+    <section className="mt-12">
+  <h2 className="text-xl font-bold mb-4">Realisatie per jaar</h2>
+<div className="mb-10">
+  <h3 className="font-semibold text-md mb-2">Jaar 2022</h3>
+  <table className="table-auto border border-collapse w-full text-sm mb-2">
+    <thead>
+      <tr>
+        <th className="text-left px-2 py-1">REALISATIE</th>
+        {maandNamen.map((m) => (
+          <th key={m} className="text-right px-2 py-1">{m}</th>
+        ))}
+        <th className="text-right px-2 py-1">TOTAAL</th>
+      </tr>
+    </thead>
+    <tbody>
+      {/* omzet, dagen, omzet/dag rijen komen hier — op basis van eigen filtering */}
+    </tbody>
+  </table>
+  <table className="table-auto border border-collapse w-full text-sm">
+    <thead>
+      <tr>
+        <th className="text-left px-2 py-1">LONEN</th>
+        {maandNamen.map((m) => (
+          <th key={m} className="text-right px-2 py-1">{m}</th>
+        ))}
+        <th className="text-right px-2 py-1">TOTAAL</th>
+      </tr>
+    </thead>
+    <tbody>
+      {/* loonkosten, % van omzet rijen komen hier — op basis van loonkosten.filter(l => l.jaar === 2022) */}
+    </tbody>
+  </table>
+</div>
+
+</section>
+</main>
   );
 }
