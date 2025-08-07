@@ -149,19 +149,46 @@ export default function KasstatenPage() {
           <tbody>
             <tr>
               <td className="p-2">Contant</td>
-              <td className="p-2 text-right">{Number(kasstaat?.contant ?? 0).toFixed(2)}</td>
+              <td className="p-2 text-right">
+  <input
+    type="number"
+    step="0.01"
+    inputMode="decimal"
+    className="w-full text-right border rounded px-1"
+    value={kasstaat?.contant ?? 0}
+    onChange={(e) => updateField("contant", parseFloat(e.target.value) || 0)}
+  />
+</td>
               <td className="p-2 text-right">{kassaContant.toFixed(2)}</td>
               <td className="p-2 text-right">{verschil(kasstaat?.contant ?? 0, kassaContant)}</td>
             </tr>
             <tr>
               <td className="p-2">Pin</td>
-              <td className="p-2 text-right">{Number(kasstaat?.pin ?? 0).toFixed(2)}</td>
+              <td className="p-2 text-right">
+  <input
+    type="number"
+    step="0.01"
+    inputMode="decimal"
+    className="w-full text-right border rounded px-1"
+    value={kasstaat?.pin ?? 0}
+    onChange={(e) => updateField("pin", parseFloat(e.target.value) || 0)}
+  />
+</td>
               <td className="p-2 text-right">{kassaPin.toFixed(2)}</td>
               <td className="p-2 text-right">{verschil(kasstaat?.pin ?? 0, kassaPin)}</td>
             </tr>
             <tr>
               <td className="p-2">Cadeaubon</td>
-              <td className="p-2 text-right">{Number(kasstaat?.cadeaubon ?? 0).toFixed(2)}</td>
+              <td className="p-2 text-right">
+  <input
+    type="number"
+    step="0.01"
+    inputMode="decimal"
+    className="w-full text-right border rounded px-1"
+    value={kasstaat?.cadeaubon ?? 0}
+    onChange={(e) => updateField("cadeaubon", parseFloat(e.target.value) || 0)}
+  />
+</td>
               <td className="p-2 text-right">{kassaBon.toFixed(2)}</td>
               <td className="p-2 text-right">{verschil(kasstaat?.cadeaubon ?? 0, kassaBon)}</td>
             </tr>
@@ -173,7 +200,16 @@ export default function KasstatenPage() {
             </tr>
             <tr className="text-gray-600">
               <td className="p-2">Bonnen verkocht</td>
-              <td className="p-2 text-right">{Number(kasstaat?.bon ?? 0).toFixed(2)}</td>
+              <td className="p-2 text-right">
+  <input
+    type="number"
+    step="0.01"
+    inputMode="decimal"
+    className="w-full text-right border rounded px-1"
+    value={kasstaat?.bon ?? 0}
+    onChange={(e) => updateField("bon", parseFloat(e.target.value) || 0)}
+  />
+</td>
               <td className="p-2 text-right">{kassaIsvoucher.toFixed(2)}</td>
               <td className="p-2 text-right">{verschil(kasstaat?.bon ?? 0, kassaIsvoucher)}</td>
             </tr>
