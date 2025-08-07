@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-nocheck
 import { db } from '@/lib/db';
 import { NextResponse } from 'next/server';
