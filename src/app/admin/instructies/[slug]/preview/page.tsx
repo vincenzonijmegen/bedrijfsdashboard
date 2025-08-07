@@ -4,7 +4,9 @@
 
 import { notFound, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import parse from "html-react-parser";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
 interface Vraag {
   vraag: string;
@@ -42,7 +44,10 @@ export default function InstructiePreview() {
 
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-8">
-      <h1 className="text-3xl font-bold text-gray-800">{data.titel}</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-800">{data.titel}</h1>
+        <Link href="/admin/instructies" className="text-sm text-blue-600 hover:underline">← Terug naar instructies</Link>
+      </div>
 
       <section className="prose prose-sm sm:prose lg:prose-lg max-w-none">
         {chunks.map((chunk, index) => (
@@ -72,6 +77,7 @@ export default function InstructiePreview() {
           </ol>
         </section>
       )}
+          <ScrollToTopButton />
     </main>
   );
 }
