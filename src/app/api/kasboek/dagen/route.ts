@@ -2,7 +2,7 @@ import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
-  const maand = req.nextUrl.searchParams.get('maand'); // formaat: '2025-08'
+  const maand = req.nextUrl.searchParams.get('maand');
   const query = maand
     ? `SELECT * FROM kasboek_dagen WHERE TO_CHAR(datum, 'YYYY-MM') = $1 ORDER BY datum`
     : `SELECT * FROM kasboek_dagen ORDER BY datum`;

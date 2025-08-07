@@ -13,8 +13,8 @@ const grootboekMapping: Record<string, { gb: string | null; omschrijving: string
   kasverschil:           { gb: '8880', omschrijving: 'Kasverschil',           btw: 'geen' },
 };
 
-export async function GET(_: Request, { params }: { params: { maand: string } }) {
-  const maand = params.maand;
+export async function GET(_: Request, context: { params: { maand: string } }) {
+  const maand = context.params.maand;
 
   const { rows } = await db.query(`
     SELECT categorie, type, bedrag, btw
