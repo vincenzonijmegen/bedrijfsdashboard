@@ -158,7 +158,7 @@ export default function KasstatenPage() {
                   step="0.01"
                   inputMode="decimal"
                   className="w-full text-right border rounded px-1"
-                  value={kasstaat?.contant === 0 ? '' : kasstaat?.contant} onChange={(e) => updateField("contant", parseFloat(e.target.value.replace(',', '.')) || 0)) || 0)}
+                  value={kasstaat?.contant === 0 ? '' : kasstaat?.contant} onChange={(e) => updateField("contant", parseFloat(e.target.value.replace(',', '.')) || 0)}
                 />
               </td>
               <td className="p-2 text-right">{Number(kassaContant).toFixed(2)}</td>
@@ -182,7 +182,7 @@ export default function KasstatenPage() {
                   step="0.01"
                   inputMode="decimal"
                   className="w-full text-right border rounded px-1"
-                  value={kasstaat?.pin === 0 ? '' : kasstaat?.pin} onChange={(e) => updateField("pin", parseFloat(e.target.value.replace(',', '.')) || 0)) || 0)}
+                  value={kasstaat?.pin === 0 ? '' : kasstaat?.pin} onChange={(e) => updateField("pin", parseFloat(e.target.value.replace(',', '.')) || 0)}
                 />
               </td>
               <td className="p-2 text-right">{Number(kassaPin).toFixed(2)}</td>
@@ -206,7 +206,7 @@ export default function KasstatenPage() {
                   step="0.01"
                   inputMode="decimal"
                   className="w-full text-right border rounded px-1"
-                  value={kasstaat?.cadeaubon === 0 ? '' : kasstaat?.cadeaubon} onChange={(e) => updateField("cadeaubon", parseFloat(e.target.value.replace(',', '.')) || 0)) || 0)}
+                  value={kasstaat?.cadeaubon === 0 ? '' : kasstaat?.cadeaubon} onChange={(e) => updateField("cadeaubon", parseFloat(e.target.value.replace(',', '.')) || 0)}
                 />
               </td>
               <td className="p-2 text-right">{Number(kassaBon).toFixed(2)}</td>
@@ -261,7 +261,7 @@ export default function KasstatenPage() {
                   step="0.01"
                   inputMode="decimal"
                   className="w-full text-right border rounded px-1"
-                  value={kasstaat?.bon === 0 ? '' : kasstaat?.bon} onChange={(e) => updateField("bon", parseFloat(e.target.value.replace(',', '.')) || 0)) || 0)}
+                  value={kasstaat?.bon === 0 ? '' : kasstaat?.bon} onChange={(e) => updateField("bon", parseFloat(e.target.value.replace(',', '.')) || 0)}
                 />
               </td>
               <td className="p-2 text-right">{Number(kassaIsvoucher).toFixed(2)}</td>
