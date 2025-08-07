@@ -213,7 +213,38 @@ export default function PrognosePage() {
       </tr>
     </thead>
     <tbody>
-      {/* omzet, dagen, omzet/dag rijen komen hier — op basis van eigen filtering */}
+      {[
+  {
+    label: 'omzet',
+    fn: (m: MaandData) => m.realisatieOmzet,
+    format: (val: number) => '€ ' + val.toLocaleString('nl-NL', { maximumFractionDigits: 0 })
+  },
+  {
+    label: 'dagen',
+    fn: (m: MaandData) => m.realisatieDagen,
+    format: (val: number) => val.toLocaleString('nl-NL')
+  },
+  {
+    label: 'omzet/dag',
+    fn: (m: MaandData) => m.realisatiePerDag ?? 0,
+    format: (val: number) => '€ ' + Math.round(val).toLocaleString('nl-NL')
+  }
+].map(({ label, fn, format }) => {
+  const rows = data.filter(d => d.jaar === 2022);
+  const total = rows.reduce((sum, m) => sum + (fn(m) || 0), 0);
+  return (
+    <tr key={label} className="border-t">
+      <td className="px-2 py-1 text-left font-medium">{label}</td>
+      {maandNamen.map((_, i) => {
+        const maandIndex = i + 3;
+        const match = rows.find(r => r.maand === maandIndex);
+        const val = match ? fn(match) : 0;
+        return <td key={i} className="px-2 py-1 text-right font-mono">{val ? format(val) : ''}</td>;
+      })}
+      <td className="px-2 py-1 text-right font-bold">{format(total)}</td>
+    </tr>
+  );
+})}
     </tbody>
   </table>
   <table className="table-auto border border-collapse w-full text-sm">
