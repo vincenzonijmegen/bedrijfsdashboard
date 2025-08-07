@@ -245,6 +245,7 @@ export default function PrognosePage() {
 ].map(({ label, fn, format }) => {
   const startIndex = (geselecteerdJaar - 2022) * 7;
   const rows = data.slice(startIndex, startIndex + 7);
+  
   const total = rows.reduce((sum, m) => sum + (fn(m) || 0), 0);
   return (
     <tr key={label} className="border-t">
@@ -285,13 +286,15 @@ export default function PrognosePage() {
     label: '% van omzet',
     fn: (maand: number) => {
       const loonk = loonkosten.find((l) => l.jaar === geselecteerdJaar && l.maand === maand);
-      const omzet = data.find((d) => d.maand === maand)?.realisatieOmzet || 0;
+      const omzet = rows.find((d) => d.maand === maand)?.realisatieOmzet || 0;
       const totaal = loonk ? loonk.lonen + loonk.loonheffing + loonk.pensioenpremie : 0;
       return omzet > 0 ? (totaal / omzet) * 100 : 0;
     },
     format: (val: number) => val.toFixed(1) + '%'
   }
 ].map(({ label, fn, format }) => {
+  const startIndex = (geselecteerdJaar - 2022) * 7;
+  const rows = data.slice(startIndex, startIndex + 7);
   const total = maandNamen.reduce((sum, _, i) => {
     const maand = i + 3;
     return sum + (fn(maand) || 0);
