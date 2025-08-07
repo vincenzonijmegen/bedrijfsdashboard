@@ -8,6 +8,8 @@ import {
   parseISO,
   startOfMonth,
   endOfMonth,
+  addMonths,
+  subMonths,
 } from 'date-fns';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -25,13 +27,16 @@ const CATEGORIEEN = [
 
 export default function KasboekPage() {
   const [datum, setDatum] = useState(() => format(new Date(), 'yyyy-MM-dd'));
-  const maand = datum.slice(0, 7);
   const [dagId, setDagId] = useState<number | null>(null);
   const [startbedrag, setStartbedrag] = useState('');
   const [bedragen, setBedragen] = useState<Record<string, string>>({});
   const [inkoopRijen, setInkoopRijen] = useState<string[]>(['']);
 
-  const { data: dagen } = useSWR(`/api/kasboek/dagen?maand=${maand}`, fetcher);
+  const maandDate = parseISO(`${datum.slice(0, 7)}-01`);
+  const vorigeMaand = () => setDatum(format(subMonths(maandDate, 1), 'yyyy-MM-01'));
+  const volgendeMaand = () => setDatum(format(addMonths(maandDate, 1), 'yyyy-MM-01'));
+
+  const { data: dagen } = useSWR(`/api/kasboek/dagen?maand=${datum.slice(0, 7)}`, fetcher);
   const { data: transacties } = useSWR(
     dagId ? `/api/kasboek/dagen/${dagId}/transacties` : null,
     fetcher
@@ -68,8 +73,8 @@ export default function KasboekPage() {
   }, [transacties]);
 
   const alleDagenVanMaand = eachDayOfInterval({
-    start: startOfMonth(parseISO(`${maand}-01`)),
-    end: endOfMonth(parseISO(`${maand}-01`)),
+    start: startOfMonth(maandDate),
+    end: endOfMonth(maandDate),
   });
 
   const opslaan = async () => {
@@ -113,13 +118,20 @@ export default function KasboekPage() {
   };
 
   return (
-    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl">
+    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl">
       <div>
-        <h1 className="text-xl font-bold mb-2">Kasboek {maand}</h1>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-xl font-bold">Kasboek {datum.slice(0, 7)}</h1>
+          <div className="space-x-2">
+            <button onClick={vorigeMaand} className="px-2 py-1 border rounded">←</button>
+            <button onClick={volgendeMaand} className="px-2 py-1 border rounded">→</button>
+          </div>
+        </div>
+
         <div className="space-y-1">
           {alleDagenVanMaand.map((dag) => {
             const formatted = format(dag, 'yyyy-MM-dd');
-            const record = dagen?.find((d: any) => d.datum === formatted);
+            const record = dagen?.find((d) => d.datum === formatted);
             const status = record && parseInt(record.aantal_transacties) > 0 ? '✅' : '⬜';
             const active = datum === formatted;
 
