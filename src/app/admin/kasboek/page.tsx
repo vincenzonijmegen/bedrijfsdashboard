@@ -2,17 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
-import { format, parseISO } from 'date-fns';
+import { format, eachDayOfInterval, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export default function KasboekPage() {
   const [datum, setDatum] = useState(() => format(new Date(), 'yyyy-MM-dd'));
+  const maand = datum.slice(0, 7);
+  const { data: dagen } = useSWR(`/api/kasboek/dagen?maand=${maand}`, fetcher);
+
   const [dagId, setDagId] = useState<number | null>(null);
   const [startbedrag, setStartbedrag] = useState('');
-  const [magWijzigen, setMagWijzigen] = useState(false);
-
-  const { data: dagen } = useSWR(`/api/kasboek/dagen?maand=${datum.slice(0, 7)}`, fetcher);
 
   useEffect(() => {
     const bestaande = dagen?.find((d: any) => d.datum === datum);
@@ -23,54 +23,62 @@ export default function KasboekPage() {
       setDagId(null);
       setStartbedrag('');
     }
-
-    const date = parseISO(datum);
-    const isJan1 = date.getDate() === 1 && date.getMonth() === 0;
-    setMagWijzigen(isJan1);
   }, [datum, dagen]);
 
-  const slaStartbedragOp = async () => {
-    if (!dagId) return;
-    await fetch(`/api/kasboek/dagen/${dagId}/startbedrag`, {
-      method: 'PATCH',
-      body: JSON.stringify({ startbedrag: parseFloat(startbedrag), datum }),
-    });
-    alert('Beginsaldo opgeslagen');
-  };
+  const alleDagenVanMaand = eachDayOfInterval({
+    start: startOfMonth(parseISO(`${maand}-01`)),
+    end: endOfMonth(parseISO(`${maand}-01`)),
+  });
 
   return (
-    <div className="p-4 space-y-4 max-w-xl">
-      <h1 className="text-xl font-bold">Start kasboek</h1>
+    <div className="p-4 space-y-6 max-w-xl">
+      <h1 className="text-xl font-bold">Kasboek {maand}</h1>
 
-      <div className="flex gap-4 items-end">
-        <div>
+      <div className="space-y-1">
+        {alleDagenVanMaand.map((dag) => {
+          const formatted = format(dag, 'yyyy-MM-dd');
+          const record = dagen?.find((d: any) => d.datum === formatted);
+          const status = record
+            ? parseFloat(record.startbedrag) !== 0 || record.eindsaldo !== null
+              ? '✅'
+              : '⬜'
+            : '⬜';
+          const active = datum === formatted;
+
+          return (
+            <div
+              key={formatted}
+              onClick={() => setDatum(formatted)}
+              className={`cursor-pointer px-2 py-1 rounded ${
+                active ? 'bg-blue-100 font-bold' : ''
+              }`}
+            >
+              {status} {formatted}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="pt-6 border-t">
+        <h2 className="font-semibold text-lg">Geselecteerde dag</h2>
+        <div className="mt-2">
           <label>Datum:</label>
           <input
             type="date"
             value={datum}
             onChange={(e) => setDatum(e.target.value)}
-            className="border px-2"
+            className="border px-2 ml-2"
           />
         </div>
-        <div>
+        <div className="mt-2">
           <label>Startbedrag:</label>
           <input
-            type="number"
-            step="0.01"
+            type="text"
             value={startbedrag}
-            onChange={(e) => setStartbedrag(e.target.value)}
-            className="border px-2"
-            readOnly={!magWijzigen}
+            readOnly
+            className="bg-gray-100 border px-2 ml-2"
           />
         </div>
-        {magWijzigen && (
-          <button
-            onClick={slaStartbedragOp}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
-          >
-            Opslaan
-          </button>
-        )}
       </div>
     </div>
   );
