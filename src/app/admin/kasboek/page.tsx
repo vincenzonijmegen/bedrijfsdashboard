@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
 import { format } from 'date-fns';
 
@@ -21,7 +21,6 @@ export default function KasboekPage() {
   const [datum, setDatum] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [dagId, setDagId] = useState<number | null>(null);
   const [startbedrag, setStartbedrag] = useState('');
-  const [eindsaldo, setEindsaldo] = useState('');
   const [bedragen, setBedragen] = useState<Record<string, string>>({});
   const [inkoopRijen, setInkoopRijen] = useState<string[]>(['']);
 
@@ -36,23 +35,30 @@ export default function KasboekPage() {
     if (bestaande) {
       setDagId(bestaande.id);
       setStartbedrag(bestaande.startbedrag);
-      setEindsaldo(bestaande.eindsaldo ?? '');
     } else {
       setDagId(null);
       setStartbedrag('');
-      setEindsaldo('');
     }
     setBedragen({});
     setInkoopRijen(['']);
   }, [datum, dagen]);
 
   const maakDagAan = async () => {
-    const res = await fetch('/api/kasboek/dagen', {
-      method: 'POST',
-      body: JSON.stringify({ datum, startbedrag: parseFloat(startbedrag) }),
-    });
-    const dag = await res.json();
-    setDagId(dag.id);
+    if (!datum || isNaN(parseFloat(startbedrag))) {
+      alert('Voer een geldige datum en startbedrag in.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/kasboek/dagen', {
+        method: 'POST',
+        body: JSON.stringify({ datum, startbedrag: parseFloat(startbedrag) }),
+      });
+      const dag = await res.json();
+      setDagId(dag.id);
+    } catch (err) {
+      console.error('Fout bij aanmaken dag:', err);
+    }
   };
 
   const opslaan = async () => {
@@ -89,13 +95,22 @@ export default function KasboekPage() {
     await mutate();
   };
 
-  const slaEindsaldoOp = async () => {
-    if (!dagId) return;
-    await fetch(`/api/kasboek/dagen/${dagId}/eindsaldo`, {
-      method: 'PATCH',
-      body: JSON.stringify({ eindsaldo: parseFloat(eindsaldo) }),
-    });
-  };
+  const berekendEindsaldo = useMemo(() => {
+    const start = parseFloat(startbedrag) || 0;
+    let totaalOntvangst = 0;
+    let totaalUitgave = 0;
+
+    for (const cat of CATEGORIEEN) {
+      const bedrag = parseFloat(bedragen[cat.key] || '0');
+      if (cat.type === 'ontvangst') totaalOntvangst += bedrag;
+      else totaalUitgave += bedrag;
+    }
+    for (const bedrag of inkoopRijen) {
+      totaalUitgave += parseFloat(bedrag || '0');
+    }
+
+    return (start + totaalOntvangst - totaalUitgave).toFixed(2);
+  }, [bedragen, inkoopRijen, startbedrag]);
 
   return (
     <div className="p-4 space-y-4 max-w-3xl">
@@ -184,15 +199,13 @@ export default function KasboekPage() {
           <div className="mt-4 flex items-center gap-4">
             <button onClick={opslaan} className="bg-green-600 text-white px-4 py-2 rounded">Sla transacties op</button>
             <div>
-              <label>Eindsaldo:</label>
+              <label>Eindsaldo (automatisch):</label>
               <input
-                type="number"
-                step="0.01"
-                value={eindsaldo}
-                onChange={(e) => setEindsaldo(e.target.value)}
-                className="border px-2 ml-2"
+                type="text"
+                value={berekendEindsaldo}
+                readOnly
+                className="bg-gray-100 text-gray-800 border px-2 ml-2 w-32"
               />
-              <button onClick={slaEindsaldoOp} className="ml-4 bg-blue-500 text-white px-4 py-1 rounded">Opslaan</button>
             </div>
           </div>
         </>
