@@ -66,7 +66,12 @@ export default function InstructieOverzicht() {
             {gesorteerd.map((i: Instructie, idx) => (
               <tr key={i.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                 <td className="px-4 py-3 align-top">{i.nummer || "-"}</td>
-                <td className="px-4 py-3 align-top font-medium">{i.titel}</td>
+                <td className="px-4 py-3 align-top font-medium">
+                  <Link href={`/instructies/${i.slug}`} className="text-blue-600 hover:underline">
+                    {i.titel}
+                  </Link>
+                </td>
+
                 <td className="px-4 py-3 align-top text-gray-600 text-sm">
                   {Array.isArray(i.functies) ? (
                     <ul className="list-disc list-inside">
