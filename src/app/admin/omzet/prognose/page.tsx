@@ -258,7 +258,43 @@ export default function PrognosePage() {
       </tr>
     </thead>
     <tbody>
-      {/* loonkosten, % van omzet rijen komen hier — op basis van loonkosten.filter(l => l.jaar === 2022) */}
+      {[
+  {
+    label: 'Loonkosten',
+    fn: (maand: number) => {
+      const l = loonkosten.find((l) => l.jaar === 2022 && l.maand === maand);
+      return l ? l.lonen + l.loonheffing + l.pensioenpremie : 0;
+    },
+    format: (val: number) => '€ ' + val.toLocaleString('nl-NL', { maximumFractionDigits: 0 })
+  },
+  {
+    label: '% van omzet',
+    fn: (maand: number) => {
+      const loonk = loonkosten.find((l) => l.jaar === 2022 && l.maand === maand);
+      const omzet = data.find((d) => d.maand === maand)?.realisatieOmzet || 0;
+      const totaal = loonk ? loonk.lonen + loonk.loonheffing + loonk.pensioenpremie : 0;
+      return omzet > 0 ? (totaal / omzet) * 100 : 0;
+    },
+    format: (val: number) => val.toFixed(1) + '%'
+  }
+].map(({ label, fn, format }) => {
+  const total = maandNamen.reduce((sum, _, i) => {
+    const maand = i + 3;
+    return sum + (fn(maand) || 0);
+  }, 0);
+
+  return (
+    <tr key={label} className="border-t">
+      <td className="px-2 py-1 text-left font-medium">{label}</td>
+      {maandNamen.map((_, i) => {
+        const maand = i + 3;
+        const val = fn(maand);
+        return <td key={i} className="px-2 py-1 text-right font-mono">{val ? format(val) : ''}</td>;
+      })}
+      <td className="px-2 py-1 text-right font-bold">{format(total)}</td>
+    </tr>
+  );
+})}
     </tbody>
   </table>
 </div>
