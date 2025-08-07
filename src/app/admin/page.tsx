@@ -230,12 +230,12 @@ export default function AdminDashboard() {
       </Section>
 
       <Section id="import_invoer" title="📊 Import / Invoer" color="teal" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} />
         <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="teal" Icon={Wrench} />
         <LinkCard href="/admin/mypos" label="Inlezen myPOS (maand)" color="teal" Icon={Archive} />
         <LinkCard href="/admin/omzet/loonkosten" label="Invoeren loonkosten" color="teal" Icon={Archive} />
         <LinkCard href="/admin/aftekenlijsten/upload" label="Upload HACCP-formulieren" color="teal" Icon={Archive} />
         <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} />
+        <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} />
       </Section>
     </main>
   );
