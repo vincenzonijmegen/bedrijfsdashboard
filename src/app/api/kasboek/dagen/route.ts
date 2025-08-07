@@ -8,51 +8,24 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   const maand = req.nextUrl.searchParams.get('maand');
-  const query = maand
-    ? `SELECT * FROM kasboek_dagen WHERE TO_CHAR(datum, 'YYYY-MM') = $1 ORDER BY datum`
-    : `SELECT * FROM kasboek_dagen ORDER BY datum`;
   const values = maand ? [maand] : [];
+  const query = maand
+    ? `
+      SELECT d.*, COUNT(t.id) AS aantal_transacties
+      FROM kasboek_dagen d
+      LEFT JOIN kasboek_transacties t ON d.id = t.dag_id
+      WHERE TO_CHAR(d.datum, 'YYYY-MM') = $1
+      GROUP BY d.id
+      ORDER BY d.datum
+    `
+    : `
+      SELECT d.*, COUNT(t.id) AS aantal_transacties
+      FROM kasboek_dagen d
+      LEFT JOIN kasboek_transacties t ON d.id = t.dag_id
+      GROUP BY d.id
+      ORDER BY d.datum
+    `;
+
   const res = await db.query(query, values);
   return NextResponse.json(res.rows);
-}
-
-export async function POST(req: NextRequest) {
-  try {
-    const { datum } = await req.json();
-
-    if (!datum) {
-      return NextResponse.json({ error: 'Datum ontbreekt' }, { status: 400 });
-    }
-
-    const parsedDate = parseISO(datum);
-
-    // Als dag al bestaat → geef terug
-    const bestaande = await db.query(
-      `SELECT * FROM kasboek_dagen WHERE datum = $1`,
-      [parsedDate]
-    );
-
-    if (bestaande.rows.length > 0) {
-      return NextResponse.json(bestaande.rows[0]);
-    }
-
-    // Bepaal startbedrag
-    const vorige = await db.query(
-      `SELECT eindsaldo FROM kasboek_dagen WHERE datum < $1 ORDER BY datum DESC LIMIT 1`,
-      [parsedDate]
-    );
-
-    const startbedrag = vorige.rows[0]?.eindsaldo ?? 0;
-
-    // Voeg toe
-    const result = await db.query(
-      `INSERT INTO kasboek_dagen (datum, startbedrag) VALUES ($1, $2) RETURNING *`,
-      [datum, startbedrag]
-    );
-
-    return NextResponse.json(result.rows[0]);
-  } catch (err) {
-    console.error('Fout in POST /kasboek/dagen:', err);
-    return NextResponse.json({ error: 'Interne serverfout' }, { status: 500 });
-  }
 }
