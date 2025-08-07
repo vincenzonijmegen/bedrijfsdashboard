@@ -10,4 +10,3 @@ export async function PATCH(req: NextRequest, context: { params: { id: string } 
   );
   return NextResponse.json(res.rows[0]);
 }
-
