@@ -39,6 +39,7 @@ export default function KasstatenPage() {
   const kassaContant = record ? (parseFloat(record.Cash) || 0) : 0;
   const kassaPin = record ? (parseFloat(record.Pin) || 0) : 0;
   const kassaBon = record ? (parseFloat(record.Bon) || 0) : 0;
+  const kassaIsvoucher = record ? (parseFloat(record.isvoucher) || 0) : 0;
   const kassaTotal = kassaContant + kassaPin + kassaBon;
 
   useEffect(() => {
@@ -118,6 +119,8 @@ export default function KasstatenPage() {
     setTimeout(() => setMessage(null), 3000);
   }
 
+  const verschil = (geteld: number, kassa: number) => (geteld - kassa).toFixed(2);
+
   return (
     <div className="max-w-3xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">Dagomzet</h1>
@@ -133,101 +136,65 @@ export default function KasstatenPage() {
         <button onClick={() => wijzigDatum(1)} className="px-2 py-1 bg-gray-200 rounded">▶</button>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
-        <div className="bg-white shadow p-4 rounded border text-sm space-y-2">
-          <h2 className="font-semibold mb-2">Geteld</h2>
-          <div className="flex justify-between items-center">
-            <label htmlFor="contant" className="text-sm">Contant</label>
-            <input
-              id="contant"
-              type="number"
-              step="0.01"
-              inputMode="decimal"
-              className="border px-2 py-1 w-32 text-right"
-              value={kasstaat?.contant}
-              onChange={(e) => updateField("contant", parseFloat(e.target.value) || 0)}
-            />
-          </div>
-          <div className="flex justify-between items-center">
-            <label htmlFor="pin" className="text-sm">Pin</label>
-            <input
-              id="pin"
-              type="number"
-              step="0.01"
-              inputMode="decimal"
-              className="border px-2 py-1 w-32 text-right"
-              value={kasstaat?.pin}
-              onChange={(e) => updateField("pin", parseFloat(e.target.value) || 0)}
-            />
-          </div>
-          <div className="flex justify-between items-center">
-            <label htmlFor="cadeaubon" className="text-sm">Cadeaubon</label>
-            <input
-              id="cadeaubon"
-              type="number"
-              step="0.01"
-              inputMode="decimal"
-              className="border px-2 py-1 w-32 text-right"
-              value={kasstaat?.cadeaubon}
-              onChange={(e) => updateField("cadeaubon", parseFloat(e.target.value) || 0)}
-            />
-          </div>
-          <div className="border-t pt-2 flex justify-between font-bold">
-            <span>TOTAAL</span>
-            <span>€ {(Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.bon ?? 0)).toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between items-center text-gray-500">
-            <label htmlFor="bon" className="text-sm">Bonnen verkocht</label>
-            <input
-              id="bon"
-              type="number"
-              step="0.01"
-              inputMode="decimal"
-              className="border px-2 py-1 w-32 text-right"
-              value={kasstaat?.bon}
-              onChange={(e) => updateField("bon", parseFloat(e.target.value) || 0)}
-            />
-          </div>
-          <div className="pt-2">
-            <label className="block text-xs font-medium text-gray-500">Opmerking</label>
-            <input
-              type="text"
-              className="w-full border rounded px-2 py-1 mt-1"
-              value={kasstaat?.opmerking}
-              onChange={(e) => updateField("opmerking", e.target.value)}
-            />
-          </div>
-          <div className="flex space-x-2 pt-4">
-            <button type="button" onClick={opslaan} className="bg-blue-600 text-white px-4 py-2 rounded">Opslaan</button>
-            {kasstaat?.id && <button type="button" onClick={verwijderen} className="bg-red-600 text-white px-4 py-2 rounded">Verwijderen</button>}
-          </div>
-          {message && <p className="text-green-700 font-medium pt-2">{message}</p>}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border border-gray-300">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="p-2 text-left">Categorie</th>
+              <th className="p-2 text-right">Geteld</th>
+              <th className="p-2 text-right">Kassa</th>
+              <th className="p-2 text-right">Verschil</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="p-2">Contant</td>
+              <td className="p-2 text-right">{Number(kasstaat?.contant ?? 0).toFixed(2)}</td>
+              <td className="p-2 text-right">{kassaContant.toFixed(2)}</td>
+              <td className="p-2 text-right">{verschil(kasstaat?.contant ?? 0, kassaContant)}</td>
+            </tr>
+            <tr>
+              <td className="p-2">Pin</td>
+              <td className="p-2 text-right">{Number(kasstaat?.pin ?? 0).toFixed(2)}</td>
+              <td className="p-2 text-right">{kassaPin.toFixed(2)}</td>
+              <td className="p-2 text-right">{verschil(kasstaat?.pin ?? 0, kassaPin)}</td>
+            </tr>
+            <tr>
+              <td className="p-2">Cadeaubon</td>
+              <td className="p-2 text-right">{Number(kasstaat?.cadeaubon ?? 0).toFixed(2)}</td>
+              <td className="p-2 text-right">{kassaBon.toFixed(2)}</td>
+              <td className="p-2 text-right">{verschil(kasstaat?.cadeaubon ?? 0, kassaBon)}</td>
+            </tr>
+            <tr className="font-bold border-t">
+              <td className="p-2">TOTAAL</td>
+              <td className="p-2 text-right">{(Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.bon ?? 0)).toFixed(2)}</td>
+              <td className="p-2 text-right">{kassaTotal.toFixed(2)}</td>
+              <td className="p-2 text-right">{verschil((kasstaat?.contant ?? 0) + (kasstaat?.pin ?? 0) + (kasstaat?.bon ?? 0), kassaTotal)}</td>
+            </tr>
+            <tr className="text-gray-600">
+              <td className="p-2">Bonnen verkocht</td>
+              <td className="p-2 text-right">{Number(kasstaat?.bon ?? 0).toFixed(2)}</td>
+              <td className="p-2 text-right">{kassaIsvoucher.toFixed(2)}</td>
+              <td className="p-2 text-right">{verschil(kasstaat?.bon ?? 0, kassaIsvoucher)}</td>
+            </tr>
+            <tr>
+              <td className="p-2 align-top">Opmerking</td>
+              <td colSpan={3} className="p-2">
+                <input
+                  type="text"
+                  className="w-full border rounded px-2 py-1"
+                  value={kasstaat?.opmerking}
+                  onChange={(e) => updateField("opmerking", e.target.value)}
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div className="flex space-x-2 pt-4">
+          <button type="button" onClick={opslaan} className="bg-blue-600 text-white px-4 py-2 rounded">Opslaan</button>
+          {kasstaat?.id && <button type="button" onClick={verwijderen} className="bg-red-600 text-white px-4 py-2 rounded">Verwijderen</button>}
         </div>
-
-        <div className="bg-white shadow p-4 rounded border text-sm space-y-2 flex flex-col justify-start h-full">
-          <h2 className="font-semibold mb-2">Kassa</h2>
-          <div className="flex justify-between">
-            <span>Contant</span>
-            <span>€ {kassaContant.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Pin</span>
-            <span>€ {kassaPin.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Cadeaubon</span>
-            <span>€ {kassaBon.toFixed(2)}</span>
-          </div>
-          
-          <div className="border-t pt-2 flex justify-between font-bold">
-            <span>TOTAAL</span>
-            <span>€ {kassaTotal.toFixed(2)}</span>
-          </div>
-          <div className="flex justify-between text-gray-500">
-            <span>Bonnen verkocht</span>
-            <span>€ {Number(record?.isvoucher || 0).toFixed(2)}</span>
-          </div>
-        </div>
+        {message && <p className="text-green-700 font-medium pt-2">{message}</p>}
       </div>
     </div>
   );
