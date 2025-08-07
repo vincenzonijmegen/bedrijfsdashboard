@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-const grootboekMapping: Record<string, { gb: string | null; omschrijving: string; btw: '9%' | 'geen' }> = {
+const grootboekMapping = {
   verkopen_laag:         { gb: '8001', omschrijving: 'Verkopen laag',         btw: '9%' },
   verkoop_kadobonnen:    { gb: '8003', omschrijving: 'Verkoop kadobonnen',    btw: '9%' },
   wisselgeld_van_bank:   { gb: '1221', omschrijving: 'Wisselgeld van bank',   btw: 'geen' },
@@ -15,7 +15,7 @@ const grootboekMapping: Record<string, { gb: string | null; omschrijving: string
   kasverschil:           { gb: '8880', omschrijving: 'Kasverschil',           btw: 'geen' },
 };
 
-export async function GET(_: Request, { params }: { params: { maand: string } }) {
+export async function GET(_, { params }) {
   const maand = params.maand;
 
   const { rows } = await db.query(`
@@ -26,7 +26,7 @@ export async function GET(_: Request, { params }: { params: { maand: string } })
     )
   `, [maand]);
 
-  const samenvatting: Record<string, number> = {};
+  const samenvatting = {};
   let totaalBTW = 0;
 
   for (const tx of rows) {

@@ -1,13 +1,10 @@
 import { db } from '@/lib/db';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-): Promise<NextResponse> {
-  const { eindsaldo } = await request.json();
+export async function PATCH(req, { params }) {
+  const { eindsaldo } = await req.json();
   const res = await db.query(
     'UPDATE kasboek_dagen SET eindsaldo = $1 WHERE id = $2 RETURNING *',
     [eindsaldo, params.id]

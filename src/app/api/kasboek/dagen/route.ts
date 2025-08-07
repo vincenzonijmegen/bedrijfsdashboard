@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: NextRequest) {
+export async function GET(req) {
   const maand = req.nextUrl.searchParams.get('maand');
   const query = maand
     ? `SELECT * FROM kasboek_dagen WHERE TO_CHAR(datum, 'YYYY-MM') = $1 ORDER BY datum`
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(res.rows);
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(req) {
   const { datum, startbedrag } = await req.json();
   const res = await db.query(
     `INSERT INTO kasboek_dagen (datum, startbedrag) VALUES ($1, $2) RETURNING *`,
