@@ -232,24 +232,28 @@ export default function KasstatenPage() {
               ).toFixed(2)}</td>
               <td className="p-2 text-right">{kassaTotal.toFixed(2)}</td>
               <td className="p-2 text-right">
-                <span className={
-                  parseFloat(verschil(
-                    Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.bon ?? 0),
-                    kassaTotal
-                  )) > 0
-                    ? 'text-green-600'
-                    : parseFloat(verschil(
-                        Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.bon ?? 0),
-                        kassaTotal
-                      )) < 0
-                    ? 'text-red-600'
-                    : ''
-                }>
-                  {verschil(
-                    Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.bon ?? 0),
-                    kassaTotal
-                  )}
-                </span>
+               <span className={
+  parseFloat(verschil(
+    Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.cadeaubon ?? 0),
+    kassaTotal
+  )) > 0
+    ? 'text-green-600'
+    : parseFloat(verschil(
+        Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.cadeaubon ?? 0),
+        kassaTotal
+      )) < 0
+    ? 'text-red-600'
+    : ''
+}>
+  {verschil(
+    Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.cadeaubon ?? 0),
+    kassaTotal
+  )}
+</span>
+
+
+
+
               </td>
             </tr>
             <tr className="text-gray-600">
