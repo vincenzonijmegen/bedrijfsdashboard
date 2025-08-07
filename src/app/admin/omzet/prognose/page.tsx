@@ -286,7 +286,8 @@ export default function PrognosePage() {
     label: '% van omzet',
     fn: (maand: number) => {
       const loonk = loonkosten.find((l) => l.jaar === geselecteerdJaar && l.maand === maand);
-      const omzet = rows.find((d) => d.maand === maand)?.realisatieOmzet || 0;
+      const match = rows.find((d): d is MaandData => 'maand' in d && typeof d.maand === 'number' && 'realisatieOmzet' in d);
+      const omzet = match ? match.realisatieOmzet : 0;
       const totaal = loonk ? loonk.lonen + loonk.loonheffing + loonk.pensioenpremie : 0;
       return omzet > 0 ? (totaal / omzet) * 100 : 0;
     },
