@@ -47,6 +47,7 @@ export default function PrognosePage() {
   const [jaaromzet, setJaaromzet] = useState<number>(0);
   const [vorigJaarOmzet, setVorigJaarOmzet] = useState<number>(0);
   const [loonkosten, setLoonkosten] = useState<LoonkostenItem[]>([]);
+  const [geselecteerdJaar, setGeselecteerdJaar] = useState<number>(new Date().getFullYear() - 1);
 
   useEffect(() => {
     fetch("/api/prognose/analyse")
