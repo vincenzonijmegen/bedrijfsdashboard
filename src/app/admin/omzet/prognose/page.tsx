@@ -282,17 +282,19 @@ export default function PrognosePage() {
     },
     format: (val: number) => '€ ' + val.toLocaleString('nl-NL', { maximumFractionDigits: 0 })
   },
-  {
-    label: '% van omzet',
-    fn: (maand: number) => {
-      const loonk = loonkosten.find((l) => l.jaar === geselecteerdJaar && l.maand === maand);
-      const match = rows.find((d): d is MaandData => 'maand' in d && typeof d.maand === 'number' && 'realisatieOmzet' in d);
-      const omzet = match ? match.realisatieOmzet : 0;
-      const totaal = loonk ? loonk.lonen + loonk.loonheffing + loonk.pensioenpremie : 0;
-      return omzet > 0 ? (totaal / omzet) * 100 : 0;
-    },
-    format: (val: number) => val.toFixed(1) + '%'
-  }
+
+    {
+  label: '% van omzet',
+  fn: (maand: number) => {
+    const loonk = loonkosten.find((l) => l.jaar === geselecteerdJaar && l.maand === maand);
+    const maandData = data.find((d) => d.maand === maand);
+    const omzet = maandData?.realisatieOmzet ?? 0;
+    const totaal = loonk ? loonk.lonen + loonk.loonheffing + loonk.pensioenpremie : 0;
+    return omzet > 0 ? (totaal / omzet) * 100 : 0;
+  },
+  format: (val: number) => val.toFixed(1) + '%'
+}
+
 ].map(({ label, fn, format }) => {
   const startIndex = (geselecteerdJaar - 2022) * 7;
   const rows = data.slice(startIndex, startIndex + 7);
