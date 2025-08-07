@@ -38,12 +38,19 @@ export default function InstructiePreview() {
   if (error) return <div className="p-6 text-red-600">Fout: {error}</div>;
   if (!data) return <div className="p-6">Laden...</div>;
 
+  const chunks = data.inhoud.split("[end]");
+
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-8">
       <h1 className="text-3xl font-bold text-gray-800">{data.titel}</h1>
 
       <section className="prose prose-sm sm:prose lg:prose-lg max-w-none">
-        {parse(data.inhoud)}
+        {chunks.map((chunk, index) => (
+          <div key={index} className="mb-8">
+            {parse(chunk)}
+            {index < chunks.length - 1 && <hr className="my-6 border-t-2 border-gray-300" />}
+          </div>
+        ))}
       </section>
 
       {data.vragen?.length > 0 && (
