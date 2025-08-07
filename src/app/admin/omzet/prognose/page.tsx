@@ -202,7 +202,19 @@ export default function PrognosePage() {
     <section className="mt-12">
   <h2 className="text-xl font-bold mb-4">Realisatie per jaar</h2>
 <div className="mb-10">
-  <h3 className="font-semibold text-md mb-2">Jaar 2022</h3>
+  <div className="mb-4">
+  <label className="mr-2">Toon jaar:</label>
+  <select
+    value={geselecteerdJaar}
+    onChange={(e) => setGeselecteerdJaar(parseInt(e.target.value))}
+    className="border px-2 py-1 rounded"
+  >
+    {[2022, 2023, 2024].map((jaar) => (
+      <option key={jaar} value={jaar}>{jaar}</option>
+    ))}
+  </select>
+</div>
+<h3 className="font-semibold text-md mb-2">Jaar {geselecteerdJaar}</h3>
   <table className="table-auto border border-collapse w-full text-sm mb-2">
     <thead>
       <tr>
@@ -231,7 +243,8 @@ export default function PrognosePage() {
     format: (val: number) => '€ ' + Math.round(val).toLocaleString('nl-NL')
   }
 ].map(({ label, fn, format }) => {
-  const rows = data.filter(d => d.jaar === 2022);
+  const startIndex = (geselecteerdJaar - 2022) * 7;
+  const rows = data.slice(startIndex, startIndex + 7);
   const total = rows.reduce((sum, m) => sum + (fn(m) || 0), 0);
   return (
     <tr key={label} className="border-t">
@@ -263,7 +276,7 @@ export default function PrognosePage() {
   {
     label: 'Loonkosten',
     fn: (maand: number) => {
-      const l = loonkosten.find((l) => l.jaar === 2022 && l.maand === maand);
+      const l = loonkosten.find((l) => l.jaar === geselecteerdJaar && l.maand === maand);
       return l ? l.lonen + l.loonheffing + l.pensioenpremie : 0;
     },
     format: (val: number) => '€ ' + val.toLocaleString('nl-NL', { maximumFractionDigits: 0 })
@@ -271,7 +284,7 @@ export default function PrognosePage() {
   {
     label: '% van omzet',
     fn: (maand: number) => {
-      const loonk = loonkosten.find((l) => l.jaar === 2022 && l.maand === maand);
+      const loonk = loonkosten.find((l) => l.jaar === geselecteerdJaar && l.maand === maand);
       const omzet = data.find((d) => d.maand === maand)?.realisatieOmzet || 0;
       const totaal = loonk ? loonk.lonen + loonk.loonheffing + loonk.pensioenpremie : 0;
       return omzet > 0 ? (totaal / omzet) * 100 : 0;
