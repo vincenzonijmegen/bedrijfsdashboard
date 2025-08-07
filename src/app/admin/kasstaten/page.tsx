@@ -43,7 +43,7 @@ export default function KasstatenPage() {
   const kassaPin = record ? parseFloat(record.Pin) || 0 : 0;
   const kassaBon = record ? parseFloat(record.Bon) || 0 : 0;
   const kassaIsvoucher = record ? parseFloat(record.isvoucher) || 0 : 0;
-  const kassaTotal = kassaContant + kassaPin + kassaBon;
+  const kassaTotal = kassaContant + kassaPin + kassaIsvoucher;
 
   useEffect(() => {
     fetchData();
@@ -228,7 +228,7 @@ export default function KasstatenPage() {
             <tr className="font-bold border-t">
               <td className="p-2">TOTAAL</td>
               <td className="p-2 text-right">{(
-                Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.bon ?? 0)
+                Number(kasstaat?.contant ?? 0) + Number(kasstaat?.pin ?? 0) + Number(kasstaat?.cadeaubon ?? 0)
               ).toFixed(2)}</td>
               <td className="p-2 text-right">{kassaTotal.toFixed(2)}</td>
               <td className="p-2 text-right">
