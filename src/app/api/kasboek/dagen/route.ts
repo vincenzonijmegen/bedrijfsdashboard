@@ -26,6 +26,17 @@ export async function POST(req: NextRequest) {
 
     const parsedDate = parseISO(datum);
 
+    // Als dag al bestaat → geef terug
+    const bestaande = await db.query(
+      `SELECT * FROM kasboek_dagen WHERE datum = $1`,
+      [parsedDate]
+    );
+
+    if (bestaande.rows.length > 0) {
+      return NextResponse.json(bestaande.rows[0]);
+    }
+
+    // Bepaal startbedrag
     const vorige = await db.query(
       `SELECT eindsaldo FROM kasboek_dagen WHERE datum < $1 ORDER BY datum DESC LIMIT 1`,
       [parsedDate]
@@ -33,6 +44,7 @@ export async function POST(req: NextRequest) {
 
     const startbedrag = vorige.rows[0]?.eindsaldo ?? 0;
 
+    // Voeg toe
     const result = await db.query(
       `INSERT INTO kasboek_dagen (datum, startbedrag) VALUES ($1, $2) RETURNING *`,
       [datum, startbedrag]
