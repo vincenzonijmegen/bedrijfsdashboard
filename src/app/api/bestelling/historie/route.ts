@@ -2,31 +2,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 export async function POST(req: NextRequest) {
-  let { leverancier_id, data, referentie, opmerking } = await req.json();
+  const { leverancier_id, data, referentie, opmerking } = await req.json();
 
   if (!leverancier_id || !data) {
     return NextResponse.json({ error: "Leverancier en data zijn verplicht." }, { status: 400 });
   }
 
-  // Als referentie ontbreekt of leeg is: genereer automatische fallback
-  if (!referentie || referentie.trim() === "") {
-    referentie = `${new Date().toISOString().replace(/[-:T.Z]/g, "")}-${leverancier_id}`;
+  // Fallback-referentie opbouwen
+  let ref = referentie;
+  if (!ref || ref.trim() === "") {
+    ref = `${new Date().toISOString().replace(/[-:T.Z]/g, "")}-${leverancier_id}`;
   }
 
-  console.log("⬇️ Bestelling ontvangen:", { leverancier_id, referentie, data });
+  console.log("⬇️ Bestelling ontvangen:", { leverancier_id, referentie: ref, data });
 
   try {
     await pool.query(
       `INSERT INTO bestellingen (leverancier_id, data, referentie, opmerkingen, besteld_op, kanaal)
        VALUES ($1, $2, $3, $4, now(), 'mail')`,
-      [leverancier_id, data, referentie, opmerking]
+      [leverancier_id, data, ref, opmerking]
     );
     console.log("✅ Bestelling succesvol opgeslagen");
     return NextResponse.json({ success: true });
   } catch (err: any) {
-    // Als duplicate referentie: voeg automatisch timestamp toe
     if (err.code === '23505') {
-      const fallbackReferentie = `${referentie}-${Date.now()}`;
+      const fallbackReferentie = `${ref}-${Date.now()}`;
       try {
         await pool.query(
           `INSERT INTO bestellingen (leverancier_id, data, referentie, opmerkingen, besteld_op, kanaal)
@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: String(err) }, { status: 500 });
   }
 }
+
 
 
 export async function GET(req: NextRequest) {
