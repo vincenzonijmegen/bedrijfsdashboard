@@ -38,11 +38,7 @@ export default function KasboekPage() {
         {alleDagenVanMaand.map((dag) => {
           const formatted = format(dag, 'yyyy-MM-dd');
           const record = dagen?.find((d: any) => d.datum === formatted);
-          const status = record
-            ? parseFloat(record.startbedrag) !== 0 || record.eindsaldo !== null
-              ? '✅'
-              : '⬜'
-            : '⬜';
+          const status = record && parseInt(record.aantal_transacties) > 0 ? '✅' : '⬜';
           const active = datum === formatted;
 
           return (
