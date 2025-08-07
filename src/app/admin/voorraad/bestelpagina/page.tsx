@@ -177,7 +177,18 @@ Opmerkingen: ${opmerking.trim()}`;
                 const naar = prompt("Naar welk e-mailadres?", "info@ijssalonvincenzo.nl");
                 if (!naar) return;
                 await fetch("/api/mail/bestelling", { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ naar, onderwerp: `Bestelling IJssalon Vincenzo – ${leveranciers?.find(l => l.id === leverancierId)?.naam ?? 'Onbekend'} – ${referentie}`, tekst: genereerTekst() }) });
-                await fetch(`/api/bestelling/historie`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ leverancier_id: leverancierId, data: invoer, referentie, opmerking }) });
+                const response = await fetch(`/api/bestelling/historie`, {
+  method: 'POST',
+  headers: {'Content-Type':'application/json'},
+  body: JSON.stringify({ leverancier_id: leverancierId, data: invoer, referentie, opmerking })
+});
+const result = await response.json();
+console.log("Historie:", result);
+if (!response.ok) {
+  alert("❌ Historie NIET opgeslagen:\n" + JSON.stringify(result));
+  return;
+}
+
                 await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, { method: 'DELETE' });
                 setInvoer({});
                 showSnackbar('Bestelling is gereset');
