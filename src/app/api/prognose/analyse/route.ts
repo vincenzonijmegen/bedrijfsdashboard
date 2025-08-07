@@ -105,7 +105,6 @@ export async function GET() {
       const jrPrgDisplay = maand >= currentMonth ? baseJaarPrognose : jrPrg;
 
       return {
-        jaar: currentYear,
         maand,
         prognoseOmzet,
         prognoseDagen,
