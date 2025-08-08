@@ -24,8 +24,11 @@ export async function GET(req: NextRequest) {
   }
 
   // Bepaal maandrange
-  const maandStart = `${maand}-01`;
-  const maandEind = `${maand}-31`; // alle dagen, Postgres is slim
+const maandStart = `${maand}-01`;
+// Laatste dag van de maand: pak eerste dag van de volgende maand, min 1 dag
+const [y, m] = maand.split('-').map(Number);
+const maandEind = new Date(y, m, 0).toISOString().slice(0, 10); // 'YYYY-MM-DD'
+
 
   // Haal alle transacties in de maand op, inclusief kasdag-datum voor robuustheid
   const res = await dbQuery(
