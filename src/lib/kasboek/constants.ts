@@ -13,7 +13,7 @@ export const CATEGORIEEN: KasCategorie[] = [
   { key: 'prive_opname_erik',    label: 'Privé opname Erik',      type: 'uitgave',   btw: '-' },
   { key: 'ingenomen_kadobon',    label: 'Ingenomen cadeaubon',    type: 'uitgave',    btw: 9 },
   { key: 'naar_bank_afgestort',  label: 'Naar bank afgestort',    type: 'uitgave',   btw: '-' },
-  { key: 'kasverschil',          label: 'Kasverschil',            type: 'overig',    btw: '-' },
+  { key: 'kasverschil',          label: 'Kasverschil',            type: 'uitgave',    btw: '-' },
 ];
 
 // Handige helper
