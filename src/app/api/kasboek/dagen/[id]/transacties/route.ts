@@ -3,7 +3,9 @@ import { getClient, query as dbQuery } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-// -------- GET /api/kasboek/dagen/[id]/transacties --------
+/* ===========================
+   GET /api/kasboek/dagen/[id]/transacties
+   =========================== */
 export async function GET(req: NextRequest, { params }: any) {
   const dagId = Number(params?.id);
   if (!Number.isFinite(dagId)) {
@@ -11,22 +13,35 @@ export async function GET(req: NextRequest, { params }: any) {
   }
 
   try {
-    const sql = `
-      SELECT id, dag_id, type, categorie, bedrag, btw_label AS btw, omschrijving, created_at
-      FROM kasboek_transacties
-      WHERE dag_id = $1
-      ORDER BY id ASC
-    `;
-    const res = await dbQuery(sql, [dagId]);
-    return NextResponse.json(res.rows);
+    // Niet verwijzen naar een kolom die er mogelijk niet is (btw_label)
+    const res = await dbQuery(
+      `SELECT * FROM kasboek_transacties WHERE dag_id = $1 ORDER BY id ASC`,
+      [dagId]
+    );
+
+    const rows = res.rows.map((r: any) => ({
+      id: r.id,
+      dag_id: r.dag_id,
+      type: r.type,
+      categorie: r.categorie,
+      bedrag: r.bedrag,
+      // pak btw uit 'btw_label' of 'btw' als die bestaat
+      btw: r.btw_label ?? r.btw ?? null,
+      omschrijving: r.omschrijving ?? null,
+      created_at: r.created_at ?? null,
+    }));
+
+    return NextResponse.json(rows);
   } catch (e) {
     console.error('GET /kasboek/dagen/[id]/transacties error', e);
     return NextResponse.json({ error: 'Kon transacties niet ophalen' }, { status: 500 });
   }
 }
 
-// -------- PUT /api/kasboek/dagen/[id]/transacties --------
-// Body: Array<{ type:'ontvangst'|'uitgave'|'overig', categorie:string, bedrag:number, btw?:string|null, omschrijving?:string|null }>
+/* ===========================
+   PUT /api/kasboek/dagen/[id]/transacties
+   Body: Array<{ type:'ontvangst'|'uitgave'|'overig', categorie:string, bedrag:number, btw?:string|null, omschrijving?:string|null }>
+   =========================== */
 export async function PUT(req: NextRequest, { params }: any) {
   const dagId = Number(params?.id);
   if (!Number.isFinite(dagId)) {
@@ -38,24 +53,22 @@ export async function PUT(req: NextRequest, { params }: any) {
     return NextResponse.json({ error: 'body moet een array met transacties zijn' }, { status: 400 });
   }
 
+  // Normaliseer inkomende btw naar een label of null
+  const normBtw = (v: any): string | null => {
+    if (v == null) return null;
+    const s = String(v).trim();
+    if (!s || s === '-' || s.toLowerCase() === 'geen') return null;
+    return s.endsWith('%') ? s : `${s}%`;
+  };
+
   const rows = payload
-    .map((t: any) => {
-      const s = (v: any) => (v == null ? null : String(v).trim());
-      const lbl = s(t?.btw);
-      const btw =
-        lbl == null || lbl === '' || lbl === '-' || lbl.toLowerCase() === 'geen'
-          ? null
-          : lbl.endsWith('%')
-          ? lbl
-          : `${lbl}%`;
-      return {
-        type: t?.type,
-        categorie: String(t?.categorie ?? ''),
-        bedrag: Number(t?.bedrag),
-        btw_label: btw as string | null,
-        omschrijving: t?.omschrijving ?? null,
-      };
-    })
+    .map((t: any) => ({
+      type: t?.type,
+      categorie: String(t?.categorie ?? ''),
+      bedrag: Number(t?.bedrag),
+      btw_label: normBtw(t?.btw ?? null), // we noemen het hier 'btw_label', maar schrijven dynamisch weg
+      omschrijving: t?.omschrijving ?? null,
+    }))
     .filter(
       (t) =>
         (t.type === 'ontvangst' || t.type === 'uitgave' || t.type === 'overig') &&
@@ -68,28 +81,54 @@ export async function PUT(req: NextRequest, { params }: any) {
   try {
     await client.query('BEGIN');
 
-    // 1) wis bestaande transacties van de dag
+    // 1) Bepaal dynamisch welke btw-kolom bestaat (btw_label of btw), of geen
+    const btwColRes = await client.query<{ column_name: string }>(
+      `
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name   = 'kasboek_transacties'
+        AND column_name IN ('btw_label','btw')
+      ORDER BY CASE column_name WHEN 'btw_label' THEN 0 WHEN 'btw' THEN 1 ELSE 2 END
+      LIMIT 1
+      `
+    );
+    const btwCol: string | null = btwColRes.rows[0]?.column_name ?? null;
+
+    // 2) Wis bestaande transacties van de dag
     await client.query('DELETE FROM kasboek_transacties WHERE dag_id = $1', [dagId]);
 
-    // 2) herinsert in bulk
+    // 3) Insert nieuwe transacties (dynamisch met/zonder btw-kolom)
     if (rows.length > 0) {
+      const baseCols = ['dag_id', 'type', 'categorie', 'bedrag', 'omschrijving'];
+      const cols = btwCol
+        ? ['dag_id', 'type', 'categorie', 'bedrag', btwCol, 'omschrijving']
+        : baseCols;
+
       const values: any[] = [];
       const chunks: string[] = [];
+      const perRow = cols.length;
+
       rows.forEach((t, i) => {
-        const base = i * 6;
-        chunks.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`);
-        values.push(dagId, t.type, t.categorie, t.bedrag, t.btw_label, t.omschrijving);
+        const offset = i * perRow;
+        const placeholders = Array.from({ length: perRow }, (_, k) => `$${offset + k + 1}`);
+        chunks.push(`(${placeholders.join(', ')})`);
+
+        if (btwCol) {
+          values.push(dagId, t.type, t.categorie, t.bedrag, t.btw_label, t.omschrijving);
+        } else {
+          values.push(dagId, t.type, t.categorie, t.bedrag, t.omschrijving);
+        }
       });
 
       const insertSql = `
-        INSERT INTO kasboek_transacties
-          (dag_id, type, categorie, bedrag, btw_label, omschrijving)
+        INSERT INTO kasboek_transacties (${cols.join(', ')})
         VALUES ${chunks.join(', ')}
       `;
       await client.query(insertSql, values);
     }
 
-    // 3) eindsaldo herberekenen (start + ontvangsten − uitgaven)
+    // 4) eindsaldo bijwerken van deze dag
     const s = await client.query<{ startbedrag: string | number }>(
       `SELECT startbedrag FROM kasboek_dagen WHERE id = $1`,
       [dagId]
@@ -124,6 +163,7 @@ export async function PUT(req: NextRequest, { params }: any) {
       eindsaldo,
       inkomsten,
       uitgaven,
+      btw_kolom: btwCol, // handig om even te zien wat er gekozen is
     });
   } catch (e) {
     try { await client.query('ROLLBACK'); } catch {}
