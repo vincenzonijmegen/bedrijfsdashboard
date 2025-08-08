@@ -160,7 +160,10 @@ export default function KasboekPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ vanafDatum: datum }),
     });
-
+        // ✅ eerst transacties opnieuw laden (rechterkant)
+        await mutate(`/api/kasboek/dagen/${dagId}/transacties`);
+        // ✅ daarna de dagenlijst links, zodat de ✅ wordt getoond
+        await mutate(dagenKey);
     alert('Opgeslagen en herberekend');
     mutate(dagenKey);
   };
