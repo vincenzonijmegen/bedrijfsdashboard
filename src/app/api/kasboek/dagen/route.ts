@@ -3,16 +3,22 @@ import { getClient, query as dbQuery } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
+// Helper om datumkolommen consistent te parsen
 const NORM = (alias: string) =>
   `to_date(substr(${alias}.datum::text, 1, 10), 'YYYY-MM-DD')`;
 
-/* GET /api/kasboek/dagen?maand=YYYY-MM
-   → telt transacties per dag via subquery op dag_id */
+/* ======================================================
+   GET  /api/kasboek/dagen?maand=YYYY-MM
+   → Haalt alle dagen in de maand + aantal transacties op
+====================================================== */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const maand = searchParams.get('maand'); // 'YYYY-MM'
+  const maand = searchParams.get('maand');
   if (!maand) {
-    return NextResponse.json({ error: 'maand is verplicht (YYYY-MM)' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'maand is verplicht (YYYY-MM)' },
+      { status: 400 }
+    );
   }
   const maandStart = `${maand}-01`;
 
@@ -20,7 +26,7 @@ export async function GET(req: Request) {
     const sql = `
       SELECT
         d.id,
-        to_char(d.datum::date, 'YYYY-MM-DD') AS datum,
+        to_char(${NORM('d')}, 'YYYY-MM-DD') AS datum,
         d.startbedrag,
         d.eindsaldo,
         COALESCE(t.aantal, 0) AS aantal_transacties
@@ -30,25 +36,37 @@ export async function GET(req: Request) {
         FROM kasboek_transacties
         GROUP BY dag_id
       ) t ON t.dag_id = d.id
-      WHERE date_trunc('month', d.datum::date) = date_trunc('month', $1::date)
-      ORDER BY d.datum ASC
+      WHERE date_trunc('month', ${NORM('d')}) = date_trunc('month', $1::date)
+      ORDER BY ${NORM('d')} ASC
     `;
     const res = await dbQuery(sql, [maandStart]);
 
     return NextResponse.json(res.rows);
   } catch (e: any) {
-    console.error('GET /api/kasboek/dagen error', { code: e?.code, message: e?.message });
-    return NextResponse.json({ error: 'Kon dagen niet ophalen' }, { status: 500 });
+    console.error('GET /api/kasboek/dagen error', e);
+    return NextResponse.json(
+      { error: 'Kon dagen niet ophalen' },
+      { status: 500 }
+    );
   }
 }
 
-/* POST /api/kasboek/dagen  body: { datum: 'YYYY-MM-DD' }
-   → idempotent; bepaalt startbedrag uit vorige dag en geeft dag terug */
+/* ======================================================
+   POST /api/kasboek/dagen
+   Body: { datum: 'YYYY-MM-DD' }
+   → Maakt dag aan (of haalt bestaande op)
+====================================================== */
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
-  const datumStr: string | null = body?.datum ? String(body.datum).slice(0, 10) : null;
+  const datumStr: string | null = body?.datum
+    ? String(body.datum).slice(0, 10)
+    : null;
+
   if (!datumStr) {
-    return NextResponse.json({ error: 'datum (YYYY-MM-DD) is verplicht' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'datum (YYYY-MM-DD) is verplicht' },
+      { status: 400 }
+    );
   }
 
   const client = await getClient();
@@ -71,12 +89,12 @@ export async function POST(req: Request) {
         SELECT (SELECT target_date FROM norm_target), prev.start, prev.start
         FROM prev
         ON CONFLICT (datum) DO NOTHING
-        RETURNING id, to_date(substr(datum::text,1,10),'YYYY-MM-DD') AS datum_norm, startbedrag, eindsaldo
+        RETURNING id, ${NORM('kasboek_dagen')} AS datum_norm, startbedrag, eindsaldo
       )
       SELECT id, datum_norm, startbedrag, eindsaldo FROM ins
       UNION ALL
       SELECT d.id,
-             to_date(substr(d.datum::text,1,10),'YYYY-MM-DD') AS datum_norm,
+             ${NORM('d')} AS datum_norm,
              d.startbedrag,
              d.eindsaldo
       FROM kasboek_dagen d, norm_target nt
@@ -89,20 +107,32 @@ export async function POST(req: Request) {
     await client.query('COMMIT');
 
     const row: any = r.rows[0];
+
+    // Bepaal ook meteen aantal transacties (voor directe vinkjes)
+    const countRes = await client.query(
+      `SELECT COUNT(*)::int AS aantal FROM kasboek_transacties WHERE dag_id = $1`,
+      [row.id]
+    );
+
     return NextResponse.json(
       {
         id: row.id,
         datum: String(row.datum_norm).slice(0, 10),
         startbedrag: row.startbedrag,
         eindsaldo: row.eindsaldo,
-        aantal_transacties: 0,
+        aantal_transacties: countRes.rows[0]?.aantal ?? 0,
       },
       { status: 201 }
     );
   } catch (e) {
-    try { await client.query('ROLLBACK'); } catch {}
+    try {
+      await client.query('ROLLBACK');
+    } catch {}
     console.error('POST /api/kasboek/dagen error', e);
-    return NextResponse.json({ error: 'Kon dag niet aanmaken' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Kon dag niet aanmaken' },
+      { status: 500 }
+    );
   } finally {
     client.release();
   }
