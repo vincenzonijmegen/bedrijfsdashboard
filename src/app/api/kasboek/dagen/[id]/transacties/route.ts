@@ -71,7 +71,7 @@ export async function PUT(req: NextRequest, { params }: any) {
     }))
     .filter(
       (t) =>
-        (t.type === 'ontvangst' || t.type === 'uitgave' || t.type === 'overig') &&
+        (t.type === 'ontvangst' || t.type === 'uitgave' ) &&
         t.categorie &&
         Number.isFinite(t.bedrag) &&
         t.bedrag >= 0
