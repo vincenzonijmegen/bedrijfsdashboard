@@ -306,12 +306,11 @@ export default function KasboekPage() {
               <div
                 key={formatted}
                 onClick={() => setDatum(formatted)}
-                className={`cursor-pointer px-2 py-1 rounded ${
-                  active ? 'bg-blue-100 font-bold' : ''
-                }`}
-              >
+                className={`cursor-pointer px-2 py-0.5 rounded text-xs leading-tight ${active ? 'bg-blue-100 font-bold' : ''}`}
+                >
                 {status} {formatted}
-              </div>
+                </div>
+
             );
           })}
         </div>
