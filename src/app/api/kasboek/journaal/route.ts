@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
   const beginsaldo = eersteDag?.startbedrag ?? 0;
   const eindsaldo = laatsteDag?.eindsaldo ?? 0;
 
-  // Boekingsregels
+  // Boekingsregels verzamelen
   let omzetLaag = 0;
   let omzetKadobon = 0;
   let ingenomenKadobon = 0;
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
       case 'prive_opname_herman': priveOpnameHerman += bedrag; break;
       case 'prive_opname_erik': priveOpnameErik += bedrag; break;
       case 'kasverschil': kasverschil += bedrag; break;
-      case 'naar_bank_afgestort': afstorting += bedrag; break; // let op: negatief in input
+      case 'naar_bank_afgestort': afstorting += bedrag; break; // meestal negatief in input!
       case 'wisselgeld_van_bank': wisselgeld += bedrag; break;
     }
     if (cat === 'mypos_kosten') {
@@ -84,41 +84,76 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Omzet exclusief BTW
-  const brutoOmzetIjs = omzetLaag;
-  const brutoOmzetKado = omzetKadobon + ingenomenKadobon;
-  const nettoOmzetIjs = brutoOmzetIjs / (1 + BTW_LAAG / 100);
-  const btwOmzetIjs = brutoOmzetIjs - nettoOmzetIjs;
-  const nettoOmzetKado = brutoOmzetKado / (1 + BTW_LAAG / 100);
-  const btwOmzetKado = brutoOmzetKado - nettoOmzetKado;
-  const kruisposten = wisselgeld - afstorting; // afstorting is altijd negatief!
+  // Kadobonnen: verkoop = positief, ingenomen = negatief
+  const kadobonnen = omzetKadobon - ingenomenKadobon;
+
+  // Bruto totaalomzet = ijs + kadobonnen
+  const brutoOmzet = omzetLaag + kadobonnen;
+  const nettoOmzet = brutoOmzet / (1 + BTW_LAAG / 100);
+  const btwTotaal = brutoOmzet - nettoOmzet;
+
+  // Voor de regels: splits netto omzet ijs en kadobonnen apart, maar BTW alleen totaal
+  const nettoOmzetIjs = omzetLaag / (1 + BTW_LAAG / 100);
+  const nettoOmzetKado = kadobonnen / (1 + BTW_LAAG / 100);
 
   const regels: { gb: string; omschrijving: string; bedrag: number }[] = [];
 
+  // 8001: netto omzet ijs (alleen als niet nul)
   if (nettoOmzetIjs !== 0) {
-    regels.push({ gb: '8001', omschrijving: 'Omzet ijs (excl. BTW)', bedrag: Math.round(nettoOmzetIjs * 100) / 100 });
-    regels.push({ gb: '0000', omschrijving: 'BTW 9% over omzet ijs', bedrag: Math.round(btwOmzetIjs * 100) / 100 });
+    regels.push({
+      gb: '8001',
+      omschrijving: 'Omzet ijs (excl. BTW)',
+      bedrag: Math.round(nettoOmzetIjs * 100) / 100,
+    });
   }
+  // 8003: netto kadobonnen
   if (nettoOmzetKado !== 0) {
-    regels.push({ gb: '8003', omschrijving: 'Omzet kadobonnen (excl. BTW, incl. ingenomen)', bedrag: Math.round(nettoOmzetKado * 100) / 100 });
-    regels.push({ gb: '0000', omschrijving: 'BTW 9% over kadobonnen', bedrag: Math.round(btwOmzetKado * 100) / 100 });
+    regels.push({
+      gb: '8003',
+      omschrijving: 'Kadobonnen: verkoop - ingenomen (excl. BTW)',
+      bedrag: Math.round(nettoOmzetKado * 100) / 100,
+    });
   }
-  if (myposKosten !== 0) {
-    regels.push({ gb: '4567', omschrijving: 'MyPOS-kosten', bedrag: -Math.abs(myposKosten) });
+  // 0000: één totaalregel BTW over alles
+  if (btwTotaal !== 0) {
+    regels.push({
+      gb: '0000',
+      omschrijving: 'BTW 9% over totale omzet',
+      bedrag: Math.round(btwTotaal * 100) / 100,
+    });
   }
+
   if (priveOpnameHerman !== 0) {
-    regels.push({ gb: '620', omschrijving: 'Privé-opname Herman', bedrag: -Math.abs(priveOpnameHerman) });
+    regels.push({
+      gb: '620',
+      omschrijving: 'Privé-opname Herman',
+      bedrag: -Math.abs(priveOpnameHerman),
+    });
   }
   if (priveOpnameErik !== 0) {
-    regels.push({ gb: '670', omschrijving: 'Privé-opname Erik', bedrag: -Math.abs(priveOpnameErik) });
+    regels.push({
+      gb: '670',
+      omschrijving: 'Privé-opname Erik',
+      bedrag: -Math.abs(priveOpnameErik),
+    });
   }
   if (kasverschil !== 0) {
-    regels.push({ gb: '8880', omschrijving: 'Kasverschil', bedrag: kasverschil });
+    regels.push({
+      gb: '8880',
+      omschrijving: 'Kasverschil',
+      bedrag: kasverschil,
+    });
   }
-if (kruisposten !== 0) {
-    regels.push({ gb: '1221', omschrijving: 'Kruisposten wisselgeld', bedrag: kruisposten,
-  });
-}
+
+  // Kruisposten: wisselgeld + abs(afstorting)
+  const kruisposten = wisselgeld + Math.abs(afstorting);
+  if (kruisposten !== 0) {
+    regels.push({
+      gb: '1221',
+      omschrijving: 'Kruisposten wisselgeld',
+      bedrag: kruisposten,
+    });
+  }
 
   // Saldo-controle = eindsaldo laatste dag - beginsaldo eerste dag
   regels.push({
