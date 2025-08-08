@@ -11,7 +11,6 @@ const GROOTBOEK = {
   naar_bank_afgestort: { code: '1221', oms: 'Afstorting bank/kruisposten' },
   kasverschil: { code: '8880', oms: 'Kasverschil' },
   wisselgeld_van_bank: { code: '1221', oms: 'Wisselgeld ontvangen van bank' },
-  // Contant_inkoop wordt niet meer meegenomen
 };
 
 const BTW_LAAG = 9;
@@ -25,9 +24,8 @@ export async function GET(req: NextRequest) {
   // Bepaal maandrange
   const maandStart = `${maand}-01`;
   const [y, m] = maand.split('-').map(Number);
-  const maandEind = new Date(y, m, 0).toISOString().slice(0, 10); // 'YYYY-MM-DD'
+  const maandEind = new Date(y, m, 0).toISOString().slice(0, 10);
 
-  // Haal alle transacties in de maand op
   const res = await dbQuery(
     `
     SELECT
@@ -40,14 +38,6 @@ export async function GET(req: NextRequest) {
     [maandStart, maandEind]
   );
 
-  const regels: {
-    gb: string;
-    omschrijving: string;
-    bedrag: number;
-    toelichting?: string;
-    type?: string;
-  }[] = [];
-
   let omzetLaag = 0;
   let omzetKadobon = 0;
   let ingenomenKadobon = 0;
@@ -56,10 +46,7 @@ export async function GET(req: NextRequest) {
   let priveOpnameErik = 0;
   let afstorting = 0;
   let wisselgeld = 0;
-  // let contantInkoop = 0; // Wordt niet meer meegenomen
-
   let myposKosten = 0;
-  let btw9 = 0;
 
   for (const t of res.rows) {
     const bedrag = Number(t.bedrag || 0);
@@ -84,11 +71,8 @@ export async function GET(req: NextRequest) {
       case 'kasverschil':
         kasverschil += bedrag;
         break;
-      // case 'contant_inkoop':
-      //   contantInkoop += bedrag;
-      //   break;
       case 'naar_bank_afgestort':
-        afstorting += bedrag;
+        afstorting += bedrag; // meestal negatief in je input!
         break;
       case 'wisselgeld_van_bank':
         wisselgeld += bedrag;
@@ -99,27 +83,49 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Netto omzet voor 9%: omzetLaag + omzetKadobon + ingenomenKadobon
-  const brutoOmzet = omzetLaag + omzetKadobon + ingenomenKadobon;
-  const nettoOmzet = brutoOmzet / (1 + BTW_LAAG / 100);
-  btw9 = brutoOmzet - nettoOmzet;
+  // Omzet exclusief BTW
+  const brutoOmzetIjs = omzetLaag;
+  const brutoOmzetKado = omzetKadobon + ingenomenKadobon;
 
-  regels.push({
-    gb: '8001',
-    omschrijving: 'Omzet ijs (excl. BTW)',
-    bedrag: Math.round(nettoOmzet * 100) / 100,
-  });
-  regels.push({
-    gb: '0000',
-    omschrijving: 'BTW 9% over omzet',
-    bedrag: Math.round(btw9 * 100) / 100,
-  });
+  const nettoOmzetIjs = brutoOmzetIjs / (1 + BTW_LAAG / 100);
+  const btwOmzetIjs = brutoOmzetIjs - nettoOmzetIjs;
 
-  if (omzetKadobon !== 0 || ingenomenKadobon !== 0) {
+  const nettoOmzetKado = brutoOmzetKado / (1 + BTW_LAAG / 100);
+  const btwOmzetKado = brutoOmzetKado - nettoOmzetKado;
+
+  // 1221: Wisselgeld (meestal positief) plus afstorting (meestal negatief!)
+  const kruisposten = wisselgeld + afstorting;
+
+  const regels: {
+    gb: string;
+    omschrijving: string;
+    bedrag: number;
+    toelichting?: string;
+    type?: string;
+  }[] = [];
+
+  if (nettoOmzetIjs !== 0) {
+    regels.push({
+      gb: '8001',
+      omschrijving: 'Omzet ijs (excl. BTW)',
+      bedrag: Math.round(nettoOmzetIjs * 100) / 100,
+    });
+    regels.push({
+      gb: '0000',
+      omschrijving: 'BTW 9% over omzet ijs',
+      bedrag: Math.round(btwOmzetIjs * 100) / 100,
+    });
+  }
+  if (nettoOmzetKado !== 0) {
     regels.push({
       gb: '8003',
-      omschrijving: 'Kadobonnen omzet en ingenomen',
-      bedrag: Math.round((omzetKadobon + ingenomenKadobon) * 100) / 100,
+      omschrijving: 'Omzet kadobonnen (excl. BTW, incl. ingenomen)',
+      bedrag: Math.round(nettoOmzetKado * 100) / 100,
+    });
+    regels.push({
+      gb: '0000',
+      omschrijving: 'BTW 9% over kadobonnen',
+      bedrag: Math.round(btwOmzetKado * 100) / 100,
     });
   }
   if (myposKosten !== 0) {
@@ -129,8 +135,6 @@ export async function GET(req: NextRequest) {
       bedrag: -Math.abs(myposKosten),
     });
   }
-
-  // Prive-opnames per persoon, apart
   if (priveOpnameHerman !== 0) {
     regels.push({
       gb: '620',
@@ -152,9 +156,6 @@ export async function GET(req: NextRequest) {
       bedrag: kasverschil,
     });
   }
-
-  // Wisselgeld + afstorting samen als één kruispost-regel
-  const kruisposten = wisselgeld + afstorting;
   if (kruisposten !== 0) {
     regels.push({
       gb: '1221',
@@ -163,11 +164,10 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Saldo-controle komt straks, kan hieronder blijven als referentie
   regels.push({
     gb: '',
     omschrijving: 'Saldo controle (niet boeken)',
-    bedrag: 0, // later afmaken
+    bedrag: 0, // saldo fixen we evt. straks
   });
 
   return NextResponse.json({
