@@ -6,16 +6,14 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
-// Normaliseer naar DATE zonder errors, ongeacht kolomtype (date/timestamp/text)
-const DATE_EXPR = `
-CASE
-  WHEN pg_typeof(d.datum)::text = 'date' THEN d.datum
-  WHEN pg_typeof(d.datum)::text LIKE 'timestamp%' THEN d.datum::date
-  ELSE to_date(d.datum::text, 'YYYY-MM-DD')
-END
-`;
+// Normalize any date/timestamp/text 'YYYY-MM-DD' to a DATE
+// Works with DATE, TIMESTAMP, TEXT — no alias dependence.
+const NORM = (alias: string) =>
+  `to_date(substr(${alias}.datum::text, 1, 10), 'YYYY-MM-DD')`;
 
-// slice naar YYYY-MM-DD voor response
+// Same, but for RETURNING (no table alias available)
+const NORM_COL = `to_date(substr(datum::text, 1, 10), 'YYYY-MM-DD')`;
+
 const d10 = (v: any) => (v ? String(v).slice(0, 10) : null);
 
 // ---------- GET /api/kasboek/dagen?maand=YYYY-MM ----------
@@ -32,7 +30,7 @@ export async function GET(req: Request) {
     const sql = `
       SELECT
         d.id,
-        ${DATE_EXPR}       AS datum_norm,     -- altijd een DATE
+        ${NORM('d')} AS datum_norm,
         d.startbedrag,
         d.eindsaldo,
         COALESCE((
@@ -41,10 +39,9 @@ export async function GET(req: Request) {
           WHERE kt.dag_id = d.id
         ), 0) AS aantal_transacties
       FROM kasboek_dagen d
-      WHERE date_trunc('month', ${DATE_EXPR}) = date_trunc('month', $1::date)
-      ORDER BY ${DATE_EXPR} ASC
+      WHERE date_trunc('month', ${NORM('d')}) = date_trunc('month', $1::date)
+      ORDER BY ${NORM('d')} ASC
     `;
-
     const res = await client.query(sql, [maandStart]);
 
     const data = res.rows.map((r: any) => ({
@@ -77,15 +74,15 @@ export async function POST(req: Request) {
   try {
     await client.query('BEGIN');
 
-    // Bestaat al? Vergelijk altijd op de genormaliseerde DATE
+    // Bestaat al? Vergelijk op genormaliseerde DATE
     const selectBestaat = `
       SELECT
         d.id,
-        ${DATE_EXPR} AS datum_norm,
+        ${NORM('d')} AS datum_norm,
         d.startbedrag,
         d.eindsaldo
       FROM kasboek_dagen d
-      WHERE ${DATE_EXPR} = $1::date
+      WHERE ${NORM('d')} = $1::date
       LIMIT 1
     `;
     const bestaand = await client.query(selectBestaat, [datumStr]);
@@ -102,25 +99,23 @@ export async function POST(req: Request) {
       });
     }
 
-    // Eindsaldo vorige dag (op basis van genormaliseerde DATE)
+    // Eindsaldo vorige dag
     const selectPrev = `
       SELECT d.eindsaldo
       FROM kasboek_dagen d
-      WHERE ${DATE_EXPR} < $1::date
-      ORDER BY ${DATE_EXPR} DESC
+      WHERE ${NORM('d')} < $1::date
+      ORDER BY ${NORM('d')} DESC
       LIMIT 1
     `;
     const prev = await client.query(selectPrev, [datumStr]);
     const prevRow = prev.rows[0];
     const startbedrag = prevRow ? Number(prevRow.eindsaldo ?? 0) : 0;
 
-    // Invoegen — laat DB kolomtype zijn werk doen:
-    // - als d.datum DATE is, casten we naar date
-    // - is d.datum TEXT, dan kun je ook plain string inserten; date cast is veiliger
+    // Insert en RETURNING (alias-loos variant)
     const insertSql = `
       INSERT INTO kasboek_dagen (datum, startbedrag, eindsaldo)
       VALUES ($1::date, $2, $2)
-      RETURNING id, ${DATE_EXPR} AS datum_norm, startbedrag, eindsaldo
+      RETURNING id, ${NORM_COL} AS datum_norm, startbedrag, eindsaldo
     `;
     const inserted = await client.query(insertSql, [datumStr, startbedrag]);
 
