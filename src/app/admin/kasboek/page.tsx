@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import useSWR, { mutate } from 'swr';
-import { CATEGORIEEN, getCategorie } from '@/lib/kasboek/constants';
+import { CATEGORIEEN } from '@/lib/kasboek/constants';
 import {
   format,
   eachDayOfInterval,
@@ -14,14 +14,14 @@ import {
 } from 'date-fns';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
-const formatBtw = (btw?: 0 | 9 | 21 | '-') => {
-  if (btw === '-' || btw == null) return '—';
-  return `${btw}%`;
-};
+const formatBtw = (btw?: 0 | 9 | 21 | '-') =>
+  btw === '-' || btw == null ? '—' : `${btw}%`;
+
 const toNumber = (v?: string) => {
   const n = parseFloat((v ?? '').toString().replace(',', '.'));
   return Number.isFinite(n) ? n : 0;
 };
+
 const formatEuro = (n: number) =>
   new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n);
 
@@ -31,7 +31,15 @@ export default function KasboekPage() {
   const [startbedrag, setStartbedrag] = useState('');
   const [bedragen, setBedragen] = useState<Record<string, string>>({});
   const [inkoopRijen, setInkoopRijen] = useState<string[]>(['']);
+
   const [isCreating, setIsCreating] = useState(false);
+  const [isOpslaan, setIsOpslaan] = useState(false);
+  const [isHerberekenen, setIsHerberekenen] = useState(false);
+
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({
+    open: false,
+    message: '',
+  });
 
   const maandDate = parseISO(`${datum.slice(0, 7)}-01`);
   const vorigeMaand = () => setDatum(format(subMonths(maandDate, 1), 'yyyy-MM-01'));
@@ -108,46 +116,75 @@ export default function KasboekPage() {
     return start + totals.netto;
   }, [startbedrag, totals.netto]);
 
+  const showSnackbar = (message: string) => {
+    setSnackbar({ open: true, message });
+    setTimeout(() => {
+      setSnackbar({ open: false, message: '' });
+    }, 3000);
+  };
+
+  const herbereken = async () => {
+    try {
+      setIsHerberekenen(true);
+      const res = await fetch(`/api/kasboek/dagen/herbereken`, {
+        method: 'POST',
+        body: JSON.stringify({ vanafDatum: datum }),
+      });
+      if (!res.ok) throw new Error('Fout bij herberekenen');
+      await mutateDagen();
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setIsHerberekenen(false);
+    }
+  };
+
   const opslaan = async () => {
     if (!dagId) return;
+    try {
+      setIsOpslaan(true);
 
-    const transacties = [
-      ...CATEGORIEEN.map((cat) => {
-        const bedrag = bedragen[cat.key];
-        if (!bedrag) return null;
+      const payload = [
+        ...CATEGORIEEN.map((cat) => {
+          const bedrag = bedragen[cat.key];
+          if (!bedrag) return null;
+          return {
+            type: cat.type,
+            categorie: cat.key,
+            bedrag: parseFloat(bedrag),
+            btw: cat.btw === '-' ? null : `${cat.btw}%`,
+            omschrijving: null,
+          };
+        }).filter(Boolean),
+        ...inkoopRijen
+          .filter((val) => val)
+          .map((val) => ({
+            type: 'uitgave',
+            categorie: 'contant_inkoop',
+            bedrag: parseFloat(val),
+            btw: null,
+            omschrijving: null,
+          })),
+      ];
 
-        return {
-          type: cat.type,
-          categorie: cat.key,
-          bedrag: parseFloat(bedrag),
-          btw: cat.btw === '-' ? null : `${cat.btw}%`,
-          omschrijving: null,
-        };
-      }).filter(Boolean),
-      ...inkoopRijen
-        .filter((val) => val)
-        .map((val) => ({
-          type: 'uitgave',
-          categorie: 'contant_inkoop',
-          bedrag: parseFloat(val),
-          btw: null,
-          omschrijving: null,
-        })),
-    ];
+      const putRes = await fetch(`/api/kasboek/dagen/${dagId}/transacties`, {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      });
+      if (!putRes.ok) throw new Error('Opslaan mislukt');
 
-    await fetch(`/api/kasboek/dagen/${dagId}/transacties`, {
-      method: 'PUT',
-      body: JSON.stringify(transacties),
-    });
+      const ok = await herbereken();
+      if (!ok) throw new Error('Herberekenen mislukt');
 
-    await fetch(`/api/kasboek/dagen/herbereken`, {
-      method: 'POST',
-      body: JSON.stringify({ vanafDatum: datum }),
-    });
+      await mutate(`/api/kasboek/dagen/${dagId}/transacties`);
 
-    // Refresh rechterkant én linkerkant
-    await mutate(`/api/kasboek/dagen/${dagId}/transacties`);
-    await mutateDagen();
+      showSnackbar('Transacties opgeslagen en herberekend');
+    } catch (e) {
+      showSnackbar((e as Error)?.message || 'Opslaan mislukt');
+    } finally {
+      setIsOpslaan(false);
+    }
   };
 
   const maakDagAan = async () => {
@@ -158,23 +195,16 @@ export default function KasboekPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ datum }),
       });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        alert(`Dag aanmaken mislukt: ${err?.error || res.statusText}`);
-        return;
-      }
-
+      if (!res.ok) throw new Error('Fout bij dag aanmaken');
       const data = await res.json();
-
-      // Optimistisch: direct state zetten zodat formulier opent
       setDagId(data.id);
       setStartbedrag(String(data.startbedrag ?? ''));
       setBedragen({});
       setInkoopRijen(['']);
-
-      // Daarna de lijst links verversen
       await mutateDagen();
+      showSnackbar('Dag aangemaakt');
+    } catch {
+      showSnackbar('Dag aanmaken mislukt');
     } finally {
       setIsCreating(false);
     }
@@ -328,17 +358,31 @@ export default function KasboekPage() {
               </tfoot>
             </table>
 
-            <div className="mt-4">
+            <div className="mt-4 space-x-2">
               <button
                 onClick={opslaan}
-                className="bg-green-600 text-white px-4 py-2 rounded"
+                className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
+                disabled={isOpslaan}
               >
-                Sla transacties op
+                {isOpslaan ? 'Opslaan...' : 'Sla transacties op'}
+              </button>
+              <button
+                onClick={herbereken}
+                className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+                disabled={isHerberekenen}
+              >
+                {isHerberekenen ? 'Herberekenen...' : 'Herbereken'}
               </button>
             </div>
           </>
         )}
       </div>
+
+      {snackbar.open && (
+        <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow">
+          {snackbar.message}
+        </div>
+      )}
     </div>
   );
 }
