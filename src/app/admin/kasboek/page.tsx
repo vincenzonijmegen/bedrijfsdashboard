@@ -165,19 +165,35 @@ export default function KasboekPage() {
     mutate(dagenKey);
   };
 
-  const maakDagAan = async () => {
-    try {
-      setIsCreating(true);
-      await fetch(`/api/kasboek/dagen`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ datum }),
-      });
-      await mutate(dagenKey);
-    } finally {
-      setIsCreating(false);
+const maakDagAan = async () => {
+  try {
+    setIsCreating(true);
+    const res = await fetch(`/api/kasboek/dagen`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ datum }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert(`Dag aanmaken mislukt: ${err?.error || res.statusText}`);
+      return;
     }
-  };
+
+    const data = await res.json();
+    // ✅ Optimistisch: direct in de UI zetten
+    setDagId(data.id);
+    setStartbedrag(String(data.startbedrag ?? ''));
+    setBedragen({});
+    setInkoopRijen(['']);
+
+    // daarna SWR verversen zodat de linkerkant ook up-to-date is
+    await mutate(dagenKey, undefined, { revalidate: true });
+  } finally {
+    setIsCreating(false);
+  }
+};
+
 
   return (
     <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl">
@@ -206,7 +222,9 @@ export default function KasboekPage() {
           {alleDagenVanMaand.map((dag) => {
             const formatted = format(dag, 'yyyy-MM-dd');
             const record = dagenArr.find((d: any) => getDatumKey(d) === formatted);
-            const status = getTransactieCount(record) > 0 ? '✅' : '⬜';
+            // ✅ laat ook het aantal zien om te debuggen
+            const count = getTransactieCount(record);
+            const status = count > 0 ? `✅` : '⬜';
             const active = datum === formatted;
             return (
               <div
