@@ -303,13 +303,13 @@ export default function KasboekPage() {
             const active = datum === formatted;
 
             return (
-              <div
-                key={formatted}
-                onClick={() => setDatum(formatted)}
-                className={`cursor-pointer px-2 py-0.5 rounded text-xs leading-tight ${active ? 'bg-blue-100 font-bold' : ''}`}
-                >
-                {status} {formatted}
-                </div>
+<div
+  key={formatted}
+  onClick={() => setDatum(formatted)}
+  className={`cursor-pointer px-2 py-0.5 rounded text-sm leading-tight ${active ? 'bg-blue-100 font-bold' : ''}`}
+>
+  {status} {formatted}
+</div>
 
             );
           })}
