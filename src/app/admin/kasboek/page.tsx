@@ -14,17 +14,11 @@ import {
 } from 'date-fns';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
-
-const formatBtw = (btw?: 0 | 9 | 21 | '-') => {
-  if (btw === '-' || btw == null) return '—';
-  return `${btw}%`;
-};
-
+const formatBtw = (btw?: 0 | 9 | 21 | '-') => (btw === '-' || btw == null ? '—' : `${btw}%`);
 const toNumber = (v?: string) => {
   const n = parseFloat((v ?? '').toString().replace(',', '.'));
   return Number.isFinite(n) ? n : 0;
 };
-
 const formatEuro = (n: number) =>
   new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n);
 
@@ -37,15 +31,10 @@ const SECTION_LABEL: Record<'ontvangst' | 'uitgave' | 'overig', string> = {
 
 const getDatumKey = (d: any): string | null => {
   const raw = d?.datum ?? d?.date ?? d?.dag ?? null;
-  if (!raw) return null;
-  return String(raw).slice(0, 10);
+  return raw ? String(raw).slice(0, 10) : null;
 };
-
-const getTransactieCount = (d: any): number => {
-  if (!d) return 0;
-  const v = d.aantal_transacties ?? d.aantalTransacties ?? d.transacties_count ?? 0;
-  return Number(v) || 0;
-};
+const getTransactieCount = (d: any): number =>
+  Number(d?.aantal_transacties ?? d?.aantalTransacties ?? d?.transacties_count ?? 0);
 
 export default function KasboekPage() {
   const [datum, setDatum] = useState(() => format(new Date(), 'yyyy-MM-dd'));
@@ -59,38 +48,31 @@ export default function KasboekPage() {
   const volgendeMaand = () => setDatum(format(addMonths(maandDate, 1), 'yyyy-MM-01'));
 
   const dagenKey = `/api/kasboek/dagen?maand=${datum.slice(0, 7)}`;
-  const { data: dagen } = useSWR(dagenKey, fetcher);
+  const { data: dagen, error: dagenError } = useSWR(dagenKey, fetcher);
+  const dagenArr = Array.isArray(dagen) ? dagen : [];
   const { data: transacties } = useSWR(
     dagId ? `/api/kasboek/dagen/${dagId}/transacties` : null,
     fetcher
   );
 
   useEffect(() => {
-    const bestaande = dagen?.find((d: any) => getDatumKey(d) === datum);
+    const bestaande = dagenArr.find((d: any) => getDatumKey(d) === datum);
     if (bestaande) {
       setDagId(bestaande.id);
-      setStartbedrag(
-        (bestaande.startbedrag ??
-          bestaande.start_bedrag ??
-          bestaande.startSaldo ??
-          '').toString()
-      );
+      setStartbedrag(String(bestaande.startbedrag ?? ''));
     } else {
       setDagId(null);
       setStartbedrag('');
     }
-  }, [datum, dagen]);
+  }, [datum, dagenArr]);
 
   useEffect(() => {
     if (transacties && transacties.length > 0) {
       const nieuweBedragen: Record<string, string> = {};
       const nieuweInkoop: string[] = [];
       transacties.forEach((t: any) => {
-        if (t.categorie === 'contant_inkoop') {
-          nieuweInkoop.push(String(t.bedrag));
-        } else if (t.categorie) {
-          nieuweBedragen[t.categorie] = String(t.bedrag);
-        }
+        if (t.categorie === 'contant_inkoop') nieuweInkoop.push(String(t.bedrag));
+        else nieuweBedragen[t.categorie] = String(t.bedrag);
       });
       setBedragen(nieuweBedragen);
       setInkoopRijen(nieuweInkoop.length > 0 ? nieuweInkoop : ['']);
@@ -117,7 +99,6 @@ export default function KasboekPage() {
     });
 
     const uitgavenTotaal = uitgaven + inkoop;
-
     return {
       ontvangsten,
       uitgavenZonderInkoop: uitgaven,
@@ -127,10 +108,10 @@ export default function KasboekPage() {
     };
   }, [bedragen, inkoopRijen]);
 
-  const eindsaldo = useMemo(() => {
-    const start = toNumber(startbedrag);
-    return start + totals.netto;
-  }, [startbedrag, totals.netto]);
+  const eindsaldo = useMemo(
+    () => toNumber(startbedrag) + totals.netto,
+    [startbedrag, totals.netto]
+  );
 
   const groupedCats = useMemo(() => {
     const byType: Record<'ontvangst' | 'uitgave' | 'overig', typeof CATEGORIEEN> = {
@@ -144,7 +125,6 @@ export default function KasboekPage() {
 
   const opslaan = async () => {
     if (!dagId) return;
-
     const transactiesPayload = [
       ...CATEGORIEEN.map((cat) => {
         const bedrag = bedragen[cat.key];
@@ -156,16 +136,14 @@ export default function KasboekPage() {
           btw: cat.btw === '-' ? null : `${cat.btw}%`,
           omschrijving: null,
         };
-      }).filter((x): x is NonNullable<typeof x> => Boolean(x)),
-      ...inkoopRijen
-        .filter((val) => val)
-        .map((val) => ({
-          type: 'uitgave',
-          categorie: 'contant_inkoop',
-          bedrag: parseFloat(val),
-          btw: null,
-          omschrijving: null,
-        })),
+      }).filter(Boolean),
+      ...inkoopRijen.filter(Boolean).map((val) => ({
+        type: 'uitgave',
+        categorie: 'contant_inkoop',
+        bedrag: parseFloat(val),
+        btw: null,
+        omschrijving: null,
+      })),
     ];
 
     await fetch(`/api/kasboek/dagen/${dagId}/transacties`, {
@@ -196,6 +174,11 @@ export default function KasboekPage() {
   return (
     <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl">
       <div>
+        {dagenError && (
+          <div className="text-red-600 mb-2">
+            Kan dagen niet laden (server gaf {String((dagenError as any)?.status || 500)}).
+          </div>
+        )}
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-xl font-bold">Kasboek {datum.slice(0, 7)}</h1>
           <div className="space-x-2">
@@ -203,21 +186,17 @@ export default function KasboekPage() {
             <button onClick={volgendeMaand} className="px-2 py-1 border rounded">→</button>
           </div>
         </div>
-
         <div className="space-y-1">
           {alleDagenVanMaand.map((dag) => {
             const formatted = format(dag, 'yyyy-MM-dd');
-            const record = dagen?.find((d: any) => getDatumKey(d) === formatted);
+            const record = dagenArr.find((d: any) => getDatumKey(d) === formatted);
             const status = getTransactieCount(record) > 0 ? '✅' : '⬜';
             const active = datum === formatted;
-
             return (
               <div
                 key={formatted}
                 onClick={() => setDatum(formatted)}
-                className={`cursor-pointer px-2 py-1 rounded ${
-                  active ? 'bg-blue-100 font-bold' : ''
-                }`}
+                className={`cursor-pointer px-2 py-1 rounded ${active ? 'bg-blue-100 font-bold' : ''}`}
               >
                 {status} {formatted}
               </div>
@@ -231,11 +210,7 @@ export default function KasboekPage() {
         <p className="mb-2">Startbedrag: € {startbedrag || '–'}</p>
 
         {!dagId && (
-          <button
-            onClick={maakDagAan}
-            className="px-3 py-1 border rounded mb-3"
-            title="Maak de dag aan als deze nog niet bestaat"
-          >
+          <button onClick={maakDagAan} className="px-3 py-1 border rounded mb-3">
             Dag aanmaken
           </button>
         )}
@@ -251,7 +226,6 @@ export default function KasboekPage() {
                   <th>Bedrag</th>
                 </tr>
               </thead>
-
               <tbody>
                 {SECTION_ORDER.map((typeKey) => (
                   <>
@@ -304,7 +278,6 @@ export default function KasboekPage() {
                       ))}
                   </>
                 ))}
-
                 <tr>
                   <td colSpan={4}>
                     <button
@@ -316,27 +289,26 @@ export default function KasboekPage() {
                   </td>
                 </tr>
               </tbody>
-
               <tfoot className="bg-gray-50">
                 <tr className="border-t">
                   <td className="px-2 py-1 font-semibold" colSpan={3}>Totaal ontvangsten</td>
                   <td className="px-2 py-1 font-semibold">{formatEuro(totals.ontvangsten)}</td>
                 </tr>
                 <tr>
-                  <td className="px-2 py-1" colSpan={3}>Totaal uitgaven (excl. contante inkoop)</td>
-                  <td className="px-2 py-1">{formatEuro(totals.uitgavenZonderInkoop)}</td>
+                  <td colSpan={3}>Totaal uitgaven (excl. contante inkoop)</td>
+                  <td>{formatEuro(totals.uitgavenZonderInkoop)}</td>
                 </tr>
                 <tr>
-                  <td className="px-2 py-1" colSpan={3}>Contant betaalde inkoop</td>
-                  <td className="px-2 py-1">{formatEuro(totals.inkoop)}</td>
+                  <td colSpan={3}>Contant betaalde inkoop</td>
+                  <td>{formatEuro(totals.inkoop)}</td>
                 </tr>
                 <tr className="border-t">
                   <td className="px-2 py-1 font-semibold" colSpan={3}>Totaal uitgaven</td>
                   <td className="px-2 py-1 font-semibold">{formatEuro(totals.uitgavenTotaal)}</td>
                 </tr>
                 <tr>
-                  <td className="px-2 py-1" colSpan={3}>Netto (ontvangsten − uitgaven)</td>
-                  <td className="px-2 py-1">{formatEuro(totals.netto)}</td>
+                  <td colSpan={3}>Netto (ontvangsten − uitgaven)</td>
+                  <td>{formatEuro(totals.netto)}</td>
                 </tr>
                 <tr className="border-t">
                   <td className="px-2 py-1 font-bold" colSpan={3}>Eindsaldo (start + netto)</td>
@@ -344,12 +316,8 @@ export default function KasboekPage() {
                 </tr>
               </tfoot>
             </table>
-
             <div className="mt-4">
-              <button
-                onClick={opslaan}
-                className="bg-green-600 text-white px-4 py-2 rounded"
-              >
+              <button onClick={opslaan} className="bg-green-600 text-white px-4 py-2 rounded">
                 Sla transacties op
               </button>
             </div>

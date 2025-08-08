@@ -11,10 +11,12 @@ const d10 = (v: any) => (v ? String(v).slice(0, 10) : null);
 // GET /api/kasboek/dagen?maand=YYYY-MM
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const maand = searchParams.get('maand');
+  const maand = searchParams.get('maand'); // 'YYYY-MM'
   if (!maand) {
     return NextResponse.json({ error: 'maand is verplicht (YYYY-MM)' }, { status: 400 });
   }
+
+  const maandStart = `${maand}-01`;
 
   const client = await pool.connect();
   try {
@@ -31,17 +33,16 @@ export async function GET(req: Request) {
         d.datum,
         d.startbedrag,
         d.eindsaldo,
-        COALESCE(t.aantal, 0) AS aantal_transacties
+        COALESCE((
+          SELECT COUNT(*)::int 
+          FROM kasboek_transacties kt
+          WHERE kt.dag_id = d.id
+        ), 0) AS aantal_transacties
       FROM kasboek_dagen d
-      LEFT JOIN LATERAL (
-        SELECT COUNT(*)::int AS aantal
-        FROM kasboek_transacties kt
-        WHERE kt.dag_id = d.id
-      ) t ON TRUE
-      WHERE TO_CHAR(d.datum, 'YYYY-MM') = $1
+      WHERE date_trunc('month', d.datum) = date_trunc('month', $1::date)
       ORDER BY d.datum ASC
       `,
-      [maand]
+      [maandStart]
     );
 
     const data = res.rows.map((r) => ({
@@ -53,8 +54,8 @@ export async function GET(req: Request) {
     }));
 
     return NextResponse.json(data);
-  } catch (e) {
-    console.error('GET /api/kasboek/dagen error', e);
+  } catch (e: any) {
+    console.error('GET /api/kasboek/dagen error', { code: e?.code, message: e?.message });
     return NextResponse.json({ error: 'Kon dagen niet ophalen' }, { status: 500 });
   } finally {
     client.release();
@@ -80,23 +81,10 @@ export async function POST(req: Request) {
       datum: string;
       startbedrag: number | null;
       eindsaldo: number | null;
-      aantal_transacties: number;
     }>(
-      `
-      SELECT
-        d.id,
-        d.datum,
-        d.startbedrag,
-        d.eindsaldo,
-        COALESCE(t.aantal, 0) AS aantal_transacties
-      FROM kasboek_dagen d
-      LEFT JOIN LATERAL (
-        SELECT COUNT(*)::int AS aantal
-        FROM kasboek_transacties kt
-        WHERE kt.dag_id = d.id
-      ) t ON TRUE
-      WHERE d.datum = $1
-      `,
+      `SELECT id, datum, startbedrag, eindsaldo
+       FROM kasboek_dagen
+       WHERE datum = $1`,
       [datum]
     );
 
@@ -108,7 +96,7 @@ export async function POST(req: Request) {
         datum: d10(r.datum),
         startbedrag: r.startbedrag,
         eindsaldo: r.eindsaldo,
-        aantal_transacties: r.aantal_transacties ?? 0,
+        aantal_transacties: 0,
       });
     }
 
@@ -124,7 +112,7 @@ export async function POST(req: Request) {
     const prevRow = prev.rows[0];
     const startbedrag = prevRow ? Number(prevRow.eindsaldo ?? 0) : 0;
 
-    // 3) Nieuw record (let op: GEEN aantal_transacties kolom)
+    // 3) Nieuw record
     const inserted = await client.query<{
       id: number;
       datum: string;
