@@ -1,26 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { getClient } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-// Normaliseer elke mogelijke datumkolom naar DATE (werkt voor DATE, TIMESTAMP, TEXT)
+// Normaliseer datumkolom (werkt voor DATE, TIMESTAMP, TEXT 'YYYY-MM-DD')
 const NORM = (alias: string) =>
   `to_date(substr(${alias}.datum::text, 1, 10), 'YYYY-MM-DD')`;
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
-  const vanafDatumInput: string | undefined = body?.vanafDatum;
-  const vanaf = (vanafDatumInput ?? '').slice(0, 10);
-
+  const vanaf = String(body?.vanafDatum ?? '').slice(0, 10);
   if (!vanaf) {
     return NextResponse.json({ error: 'vanafDatum (YYYY-MM-DD) is verplicht' }, { status: 400 });
   }
 
-  const client = await db.connect(); // db is een pg.Pool in jouw setup
+  const client = await getClient();
   try {
     await client.query('BEGIN');
 
-    // 1) Alle dagen vanaf (genormaliseerd), in volgorde
+    // 1) Alle dagen vanaf 'vanaf' (genormaliseerd), op volgorde
     const dagenRes = await client.query(
       `
       SELECT id, ${NORM('d')} AS datum_norm
@@ -32,7 +30,7 @@ export async function POST(req: NextRequest) {
     );
     const dagen = dagenRes.rows as Array<{ id: number; datum_norm: string }>;
 
-    // 2) Eindsaldo van dag vóór 'vanaf' (genormaliseerd)
+    // 2) Eindsaldo van laatste dag vóór 'vanaf'
     const prevRes = await client.query(
       `
       SELECT eindsaldo

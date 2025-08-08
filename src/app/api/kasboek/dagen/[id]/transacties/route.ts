@@ -1,22 +1,9 @@
 import { NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { getClient, query as dbQuery } from '@/lib/db';
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+export const dynamic = 'force-dynamic';
 
-// Helper: netjes naar label of null
-const toBtwLabel = (v: any): string | null => {
-  if (v == null) return null;
-  const s = String(v).trim();
-  if (!s) return null;
-  // accepteert '9', '9%', 'geen', '-'
-  if (s === '-' || s.toLowerCase() === 'geen') return null;
-  return s.endsWith('%') ? s : `${s}%`;
-};
-
-// GET /api/kasboek/dagen/[id]/transacties
+// -------- GET /api/kasboek/dagen/[id]/transacties --------
 export async function GET(
   req: Request,
   { params }: { params: { id: string } }
@@ -26,7 +13,6 @@ export async function GET(
     return NextResponse.json({ error: 'ongeldige dag id' }, { status: 400 });
   }
 
-  const client = await pool.connect();
   try {
     const sql = `
       SELECT id, dag_id, type, categorie, bedrag, btw_label AS btw, omschrijving, created_at
@@ -34,17 +20,15 @@ export async function GET(
       WHERE dag_id = $1
       ORDER BY id ASC
     `;
-    const res = await client.query(sql, [dagId]);
+    const res = await dbQuery(sql, [dagId]);
     return NextResponse.json(res.rows);
   } catch (e) {
     console.error('GET /kasboek/dagen/[id]/transacties error', e);
     return NextResponse.json({ error: 'Kon transacties niet ophalen' }, { status: 500 });
-  } finally {
-    client.release();
   }
 }
 
-// PUT /api/kasboek/dagen/[id]/transacties
+// -------- PUT /api/kasboek/dagen/[id]/transacties --------
 // Body: Array<{ type:'ontvangst'|'uitgave'|'overig', categorie:string, bedrag:number, btw?:string|null, omschrijving?:string|null }>
 export async function PUT(
   req: Request,
@@ -60,15 +44,24 @@ export async function PUT(
     return NextResponse.json({ error: 'body moet een array met transacties zijn' }, { status: 400 });
   }
 
-  // Basic shape check
   const rows = payload
-    .map((t: any) => ({
-      type: t?.type,
-      categorie: String(t?.categorie ?? ''),
-      bedrag: Number(t?.bedrag),
-      btw: toBtwLabel(t?.btw ?? null),
-      omschrijving: t?.omschrijving ?? null,
-    }))
+    .map((t: any) => {
+      const s = (v: any) => (v == null ? null : String(v).trim());
+      const lbl = s(t?.btw);
+      const btw =
+        lbl == null || lbl === '' || lbl === '-' || lbl.toLowerCase() === 'geen'
+          ? null
+          : lbl.endsWith('%')
+          ? lbl
+          : `${lbl}%`;
+      return {
+        type: t?.type,
+        categorie: String(t?.categorie ?? ''),
+        bedrag: Number(t?.bedrag),
+        btw_label: btw as string | null,
+        omschrijving: t?.omschrijving ?? null,
+      };
+    })
     .filter(
       (t) =>
         (t.type === 'ontvangst' || t.type === 'uitgave' || t.type === 'overig') &&
@@ -77,7 +70,7 @@ export async function PUT(
         t.bedrag >= 0
     );
 
-  const client = await pool.connect();
+  const client = await getClient();
   try {
     await client.query('BEGIN');
 
@@ -91,14 +84,7 @@ export async function PUT(
       rows.forEach((t, i) => {
         const base = i * 6;
         chunks.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`);
-        values.push(
-          dagId,
-          t.type,
-          t.categorie,
-          t.bedrag,
-          t.btw, // btw_label
-          t.omschrijving
-        );
+        values.push(dagId, t.type, t.categorie, t.bedrag, t.btw_label, t.omschrijving);
       });
 
       const insertSql = `
@@ -109,8 +95,7 @@ export async function PUT(
       await client.query(insertSql, values);
     }
 
-    // 3) eindsaldo herberekenen
-    // start + sum(ontvangst) - sum(uitgave) (inclusief contant_inkoop → is ook 'uitgave')
+    // 3) eindsaldo herberekenen (start + ontvangsten − uitgaven)
     const s = await client.query<{ startbedrag: string | number }>(
       `SELECT startbedrag FROM kasboek_dagen WHERE id = $1`,
       [dagId]
@@ -147,7 +132,7 @@ export async function PUT(
       uitgaven,
     });
   } catch (e) {
-    await client.query('ROLLBACK');
+    try { await client.query('ROLLBACK'); } catch {}
     console.error('PUT /kasboek/dagen/[id]/transacties error', e);
     return NextResponse.json({ error: 'Kon transacties niet opslaan' }, { status: 500 });
   } finally {
