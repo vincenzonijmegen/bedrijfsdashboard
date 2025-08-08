@@ -28,9 +28,14 @@ const toNumber = (v?: string) => {
 const formatEuro = (n: number) =>
   new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n);
 
-/** ---- Helpers voor API-variaties ---- */
+const SECTION_ORDER: Array<'ontvangst' | 'uitgave' | 'overig'> = ['ontvangst', 'uitgave', 'overig'];
+const SECTION_LABEL: Record<'ontvangst' | 'uitgave' | 'overig', string> = {
+  ontvangst: 'Ontvangsten',
+  uitgave: 'Uitgaven',
+  overig: 'Overig',
+};
+
 const getDatumKey = (d: any): string | null => {
-  // accepteer d.datum = '2025-03-12', '2025-03-12T00:00:00.000Z', of d.date
   const raw = d?.datum ?? d?.date ?? d?.dag ?? null;
   if (!raw) return null;
   return String(raw).slice(0, 10);
@@ -41,7 +46,6 @@ const getTransactieCount = (d: any): number => {
   const v = d.aantal_transacties ?? d.aantalTransacties ?? d.transacties_count ?? 0;
   return Number(v) || 0;
 };
-/** ----------------------------------- */
 
 export default function KasboekPage() {
   const [datum, setDatum] = useState(() => format(new Date(), 'yyyy-MM-dd'));
@@ -128,15 +132,23 @@ export default function KasboekPage() {
     return start + totals.netto;
   }, [startbedrag, totals.netto]);
 
+  const groupedCats = useMemo(() => {
+    const byType: Record<'ontvangst' | 'uitgave' | 'overig', typeof CATEGORIEEN> = {
+      ontvangst: [],
+      uitgave: [],
+      overig: [],
+    };
+    CATEGORIEEN.forEach((c) => byType[c.type].push(c));
+    return byType;
+  }, []);
+
   const opslaan = async () => {
     if (!dagId) return;
 
     const transactiesPayload = [
-      // Alle categorieën uit de centrale constants
       ...CATEGORIEEN.map((cat) => {
         const bedrag = bedragen[cat.key];
         if (!bedrag) return null;
-
         return {
           type: cat.type,
           categorie: cat.key,
@@ -145,8 +157,6 @@ export default function KasboekPage() {
           omschrijving: null,
         };
       }).filter((x): x is NonNullable<typeof x> => Boolean(x)),
-
-      // Losse contant inkoop-regels (geen BTW)
       ...inkoopRijen
         .filter((val) => val)
         .map((val) => ({
@@ -175,7 +185,6 @@ export default function KasboekPage() {
   };
 
   const maakDagAan = async () => {
-    // failsafe: maak de dag als hij ontbreekt (je backend zou dit al mogen doen)
     await fetch(`/api/kasboek/dagen`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -244,48 +253,56 @@ export default function KasboekPage() {
               </thead>
 
               <tbody>
-                {CATEGORIEEN.map((cat) => {
-                  const key = cat.key;
-                  return (
-                    <tr key={key} className="border-t">
-                      <td className="px-2 py-1">{cat.label ?? key}</td>
-                      <td>{cat.type ?? '—'}</td>
-                      <td>{formatBtw(cat.btw)}</td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={bedragen[key] || ''}
-                          onChange={(e) =>
-                            setBedragen({ ...bedragen, [key]: e.target.value })
-                          }
-                          className="border px-2 w-32"
-                        />
+                {SECTION_ORDER.map((typeKey) => (
+                  <>
+                    <tr className="bg-gray-100/70 border-t">
+                      <td className="px-2 py-1 font-semibold" colSpan={4}>
+                        {SECTION_LABEL[typeKey]}
                       </td>
                     </tr>
-                  );
-                })}
-
-                {/* Losse contant inkoop-regels (geen BTW/grootboek) */}
-                {inkoopRijen.map((val, i) => (
-                  <tr key={`inkoop-${i}`} className="border-t">
-                    <td className="px-2 py-1">Contant betaalde inkoop</td>
-                    <td>uitgave</td>
-                    <td>–</td>
-                    <td>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={val}
-                        onChange={(e) => {
-                          const kopie = [...inkoopRijen];
-                          kopie[i] = e.target.value;
-                          setInkoopRijen(kopie);
-                        }}
-                        className="border px-2 w-32"
-                      />
-                    </td>
-                  </tr>
+                    {groupedCats[typeKey].map((cat) => {
+                      const key = cat.key;
+                      return (
+                        <tr key={key} className="border-t">
+                          <td className="px-2 py-1">{cat.label ?? key}</td>
+                          <td>{cat.type ?? '—'}</td>
+                          <td>{formatBtw(cat.btw)}</td>
+                          <td>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={bedragen[key] || ''}
+                              onChange={(e) =>
+                                setBedragen({ ...bedragen, [key]: e.target.value })
+                              }
+                              className="border px-2 w-32"
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {typeKey === 'uitgave' &&
+                      inkoopRijen.map((val, i) => (
+                        <tr key={`inkoop-${i}`} className="border-t">
+                          <td className="px-2 py-1">Contant betaalde inkoop</td>
+                          <td>uitgave</td>
+                          <td>–</td>
+                          <td>
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={val}
+                              onChange={(e) => {
+                                const kopie = [...inkoopRijen];
+                                kopie[i] = e.target.value;
+                                setInkoopRijen(kopie);
+                              }}
+                              className="border px-2 w-32"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                  </>
                 ))}
 
                 <tr>
