@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import { CATEGORIEEN } from '@/lib/kasboek/constants';
 import {
   format,
@@ -28,6 +28,21 @@ const toNumber = (v?: string) => {
 const formatEuro = (n: number) =>
   new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n);
 
+/** ---- Helpers voor API-variaties ---- */
+const getDatumKey = (d: any): string | null => {
+  // accepteer d.datum = '2025-03-12', '2025-03-12T00:00:00.000Z', of d.date
+  const raw = d?.datum ?? d?.date ?? d?.dag ?? null;
+  if (!raw) return null;
+  return String(raw).slice(0, 10);
+};
+
+const getTransactieCount = (d: any): number => {
+  if (!d) return 0;
+  const v = d.aantal_transacties ?? d.aantalTransacties ?? d.transacties_count ?? 0;
+  return Number(v) || 0;
+};
+/** ----------------------------------- */
+
 export default function KasboekPage() {
   const [datum, setDatum] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [dagId, setDagId] = useState<number | null>(null);
@@ -39,17 +54,23 @@ export default function KasboekPage() {
   const vorigeMaand = () => setDatum(format(subMonths(maandDate, 1), 'yyyy-MM-01'));
   const volgendeMaand = () => setDatum(format(addMonths(maandDate, 1), 'yyyy-MM-01'));
 
-  const { data: dagen } = useSWR(`/api/kasboek/dagen?maand=${datum.slice(0, 7)}`, fetcher);
+  const dagenKey = `/api/kasboek/dagen?maand=${datum.slice(0, 7)}`;
+  const { data: dagen } = useSWR(dagenKey, fetcher);
   const { data: transacties } = useSWR(
     dagId ? `/api/kasboek/dagen/${dagId}/transacties` : null,
     fetcher
   );
 
   useEffect(() => {
-    const bestaande = dagen?.find((d: any) => d.datum === datum);
+    const bestaande = dagen?.find((d: any) => getDatumKey(d) === datum);
     if (bestaande) {
       setDagId(bestaande.id);
-      setStartbedrag(bestaande.startbedrag?.toString() || '');
+      setStartbedrag(
+        (bestaande.startbedrag ??
+          bestaande.start_bedrag ??
+          bestaande.startSaldo ??
+          '').toString()
+      );
     } else {
       setDagId(null);
       setStartbedrag('');
@@ -62,9 +83,9 @@ export default function KasboekPage() {
       const nieuweInkoop: string[] = [];
       transacties.forEach((t: any) => {
         if (t.categorie === 'contant_inkoop') {
-          nieuweInkoop.push(t.bedrag.toString());
-        } else {
-          nieuweBedragen[t.categorie] = t.bedrag.toString();
+          nieuweInkoop.push(String(t.bedrag));
+        } else if (t.categorie) {
+          nieuweBedragen[t.categorie] = String(t.bedrag);
         }
       });
       setBedragen(nieuweBedragen);
@@ -150,6 +171,17 @@ export default function KasboekPage() {
     });
 
     alert('Opgeslagen en herberekend');
+    mutate(dagenKey);
+  };
+
+  const maakDagAan = async () => {
+    // failsafe: maak de dag als hij ontbreekt (je backend zou dit al mogen doen)
+    await fetch(`/api/kasboek/dagen`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ datum }),
+    });
+    await mutate(dagenKey);
   };
 
   return (
@@ -166,8 +198,8 @@ export default function KasboekPage() {
         <div className="space-y-1">
           {alleDagenVanMaand.map((dag) => {
             const formatted = format(dag, 'yyyy-MM-dd');
-            const record = dagen?.find((d: any) => d.datum === formatted);
-            const status = record && Number(record.aantal_transacties) > 0 ? '✅' : '⬜';
+            const record = dagen?.find((d: any) => getDatumKey(d) === formatted);
+            const status = getTransactieCount(record) > 0 ? '✅' : '⬜';
             const active = datum === formatted;
 
             return (
@@ -189,6 +221,16 @@ export default function KasboekPage() {
         <h2 className="font-semibold text-lg mb-2">Geselecteerde dag: {datum}</h2>
         <p className="mb-2">Startbedrag: € {startbedrag || '–'}</p>
 
+        {!dagId && (
+          <button
+            onClick={maakDagAan}
+            className="px-3 py-1 border rounded mb-3"
+            title="Maak de dag aan als deze nog niet bestaat"
+          >
+            Dag aanmaken
+          </button>
+        )}
+
         {dagId && (
           <>
             <table className="w-full text-sm border mt-2">
@@ -206,9 +248,7 @@ export default function KasboekPage() {
                   const key = cat.key;
                   return (
                     <tr key={key} className="border-t">
-                      {/* label i.p.v. key (fallback naar key) */}
                       <td className="px-2 py-1">{cat.label ?? key}</td>
-                      {/* type en btw via centrale constants */}
                       <td>{cat.type ?? '—'}</td>
                       <td>{formatBtw(cat.btw)}</td>
                       <td>
