@@ -13,7 +13,6 @@ import {
   subMonths,
 } from 'date-fns';
 
-const [isCreating, setIsCreating] = useState(false);
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const formatBtw = (btw?: 0 | 9 | 21 | '-') => (btw === '-' || btw == null ? '—' : `${btw}%`);
 const toNumber = (v?: string) => {
@@ -38,11 +37,13 @@ const getTransactieCount = (d: any): number =>
   Number(d?.aantal_transacties ?? d?.aantalTransacties ?? d?.transacties_count ?? 0);
 
 export default function KasboekPage() {
+  // ✅ alle hooks binnen de component
   const [datum, setDatum] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [dagId, setDagId] = useState<number | null>(null);
   const [startbedrag, setStartbedrag] = useState('');
   const [bedragen, setBedragen] = useState<Record<string, string>>({});
   const [inkoopRijen, setInkoopRijen] = useState<string[]>(['']);
+  const [isCreating, setIsCreating] = useState(false);
 
   const maandDate = parseISO(`${datum.slice(0, 7)}-01`);
   const vorigeMaand = () => setDatum(format(subMonths(maandDate, 1), 'yyyy-MM-01'));
@@ -50,7 +51,8 @@ export default function KasboekPage() {
 
   const dagenKey = `/api/kasboek/dagen?maand=${datum.slice(0, 7)}`;
   const { data: dagen, error: dagenError } = useSWR(dagenKey, fetcher);
-  const dagenArr = Array.isArray(dagen) ? dagen : [];
+  const dagenArr = useMemo(() => (Array.isArray(dagen) ? dagen : []), [dagen]);
+
   const { data: transacties } = useSWR(
     dagId ? `/api/kasboek/dagen/${dagId}/transacties` : null,
     fetcher
@@ -73,7 +75,7 @@ export default function KasboekPage() {
       const nieuweInkoop: string[] = [];
       transacties.forEach((t: any) => {
         if (t.categorie === 'contant_inkoop') nieuweInkoop.push(String(t.bedrag));
-        else nieuweBedragen[t.categorie] = String(t.bedrag);
+        else if (t.categorie) nieuweBedragen[t.categorie] = String(t.bedrag);
       });
       setBedragen(nieuweBedragen);
       setInkoopRijen(nieuweInkoop.length > 0 ? nieuweInkoop : ['']);
@@ -163,20 +165,19 @@ export default function KasboekPage() {
     mutate(dagenKey);
   };
 
-const maakDagAan = async () => {
-  try {
-    setIsCreating(true);
-    await fetch(`/api/kasboek/dagen`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ datum }),
-    });
-    await mutate(dagenKey);
-  } finally {
-    setIsCreating(false);
-  }
-};
-
+  const maakDagAan = async () => {
+    try {
+      setIsCreating(true);
+      await fetch(`/api/kasboek/dagen`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ datum }),
+      });
+      await mutate(dagenKey);
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   return (
     <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl">
@@ -186,6 +187,7 @@ const maakDagAan = async () => {
             Kan dagen niet laden (server gaf {String((dagenError as any)?.status || 500)}).
           </div>
         )}
+
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-xl font-bold">Kasboek {datum.slice(0, 7)}</h1>
           <div className="space-x-2">
@@ -193,6 +195,13 @@ const maakDagAan = async () => {
             <button onClick={volgendeMaand} className="px-2 py-1 border rounded">→</button>
           </div>
         </div>
+
+        {dagenArr.length === 0 && !dagenError && (
+          <div className="text-gray-500 mb-2">
+            Geen dagen gevonden voor {datum.slice(0, 7)}. Klik “Dag aanmaken” om te starten.
+          </div>
+        )}
+
         <div className="space-y-1">
           {alleDagenVanMaand.map((dag) => {
             const formatted = format(dag, 'yyyy-MM-dd');
@@ -217,14 +226,13 @@ const maakDagAan = async () => {
         <p className="mb-2">Startbedrag: € {startbedrag || '–'}</p>
 
         {!dagId && (
-<button
-  onClick={maakDagAan}
-  className="px-3 py-1 border rounded mb-3 disabled:opacity-50"
-  disabled={isCreating}
->
-  {isCreating ? 'Bezig…' : 'Dag aanmaken'}
-</button>
-
+          <button
+            onClick={maakDagAan}
+            className="px-3 py-1 border rounded mb-3 disabled:opacity-50"
+            disabled={isCreating}
+          >
+            {isCreating ? 'Bezig…' : 'Dag aanmaken'}
+          </button>
         )}
 
         {dagId && (
