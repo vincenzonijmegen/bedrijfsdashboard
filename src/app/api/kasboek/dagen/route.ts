@@ -20,30 +20,22 @@ export async function GET(req: Request) {
     const sql = `
       SELECT
         d.id,
-        ${NORM('d')} AS datum_norm,
+        to_char(d.datum::date, 'YYYY-MM-DD') AS datum,
         d.startbedrag,
         d.eindsaldo,
-        (
-          SELECT COUNT(*)::int
-          FROM kasboek_transacties kt
-          WHERE kt.dag_id = d.id
-        ) AS aantal_transacties
+        COALESCE(t.aantal, 0) AS aantal_transacties
       FROM kasboek_dagen d
-      WHERE ${NORM('d')} >= $1::date
-        AND ${NORM('d')} <  ($1::date + INTERVAL '1 month')
-      ORDER BY ${NORM('d')} ASC
+      LEFT JOIN (
+        SELECT dag_id, COUNT(*)::int AS aantal
+        FROM kasboek_transacties
+        GROUP BY dag_id
+      ) t ON t.dag_id = d.id
+      WHERE date_trunc('month', d.datum::date) = date_trunc('month', $1::date)
+      ORDER BY d.datum ASC
     `;
     const res = await dbQuery(sql, [maandStart]);
 
-    return NextResponse.json(
-      res.rows.map((r: any) => ({
-        id: r.id,
-        datum: String(r.datum_norm).slice(0, 10),
-        startbedrag: r.startbedrag,
-        eindsaldo: r.eindsaldo,
-        aantal_transacties: r.aantal_transacties ?? 0,
-      }))
-    );
+    return NextResponse.json(res.rows);
   } catch (e: any) {
     console.error('GET /api/kasboek/dagen error', { code: e?.code, message: e?.message });
     return NextResponse.json({ error: 'Kon dagen niet ophalen' }, { status: 500 });
