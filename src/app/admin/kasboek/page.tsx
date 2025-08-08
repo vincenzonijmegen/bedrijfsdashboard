@@ -13,6 +13,7 @@ import {
   subMonths,
 } from 'date-fns';
 
+const [isCreating, setIsCreating] = useState(false);
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const formatBtw = (btw?: 0 | 9 | 21 | '-') => (btw === '-' || btw == null ? '—' : `${btw}%`);
 const toNumber = (v?: string) => {
@@ -162,14 +163,20 @@ export default function KasboekPage() {
     mutate(dagenKey);
   };
 
-  const maakDagAan = async () => {
+const maakDagAan = async () => {
+  try {
+    setIsCreating(true);
     await fetch(`/api/kasboek/dagen`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ datum }),
     });
     await mutate(dagenKey);
-  };
+  } finally {
+    setIsCreating(false);
+  }
+};
+
 
   return (
     <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl">
@@ -210,9 +217,14 @@ export default function KasboekPage() {
         <p className="mb-2">Startbedrag: € {startbedrag || '–'}</p>
 
         {!dagId && (
-          <button onClick={maakDagAan} className="px-3 py-1 border rounded mb-3">
-            Dag aanmaken
-          </button>
+<button
+  onClick={maakDagAan}
+  className="px-3 py-1 border rounded mb-3 disabled:opacity-50"
+  disabled={isCreating}
+>
+  {isCreating ? 'Bezig…' : 'Dag aanmaken'}
+</button>
+
         )}
 
         {dagId && (
