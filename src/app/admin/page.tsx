@@ -172,7 +172,7 @@ export default function AdminDashboard() {
         <LinkCard href="/open-diensten" label="Open Shifts" color="slate" Icon={CalendarDays} />
         <LinkCard href="/admin/dossier" label="Dossiers" color="slate" Icon={Folder} />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="slate" Icon={Wrench} />
-        <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="slate" Icon={BarChart2} />
+        <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="slate" Icon={Wrench} />
         <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="slate" Icon={BarChart2} />
       </Section>
 
