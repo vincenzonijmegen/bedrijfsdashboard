@@ -1,14 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getClient, query as dbQuery } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
 // -------- GET /api/kasboek/dagen/[id]/transacties --------
-export async function GET(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  const dagId = Number(params.id);
+export async function GET(req: NextRequest, { params }: any) {
+  const dagId = Number(params?.id);
   if (!Number.isFinite(dagId)) {
     return NextResponse.json({ error: 'ongeldige dag id' }, { status: 400 });
   }
@@ -30,11 +27,8 @@ export async function GET(
 
 // -------- PUT /api/kasboek/dagen/[id]/transacties --------
 // Body: Array<{ type:'ontvangst'|'uitgave'|'overig', categorie:string, bedrag:number, btw?:string|null, omschrijving?:string|null }>
-export async function PUT(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  const dagId = Number(params.id);
+export async function PUT(req: NextRequest, { params }: any) {
+  const dagId = Number(params?.id);
   if (!Number.isFinite(dagId)) {
     return NextResponse.json({ error: 'ongeldige dag id' }, { status: 400 });
   }

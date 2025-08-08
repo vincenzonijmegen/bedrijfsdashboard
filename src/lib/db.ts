@@ -1,7 +1,6 @@
 import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 
 declare global {
-  // voorkom meerdere pools bij hot reload in dev
   // eslint-disable-next-line no-var
   var __PG_POOL__: Pool | undefined;
 }
@@ -17,7 +16,6 @@ if (process.env.NODE_ENV !== 'production') {
   global.__PG_POOL__ = pool;
 }
 
-// Losse query helper (blijft hetzelfde)
 export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params: any[] = []
@@ -25,14 +23,13 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
   return pool.query<T>(text, params);
 }
 
-// Client voor transacties
 export async function getClient(): Promise<PoolClient> {
   return pool.connect();
 }
 
 export { pool };
 
-// 💡 Backwards-compatible wrapper voor bestaande code:
+/** Backwards-compatible wrapper so old code keeps working */
 export interface DB {
   query: typeof query;
   getClient: typeof getClient;
