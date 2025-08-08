@@ -4,33 +4,30 @@ import { query as dbQuery } from '@/lib/db';
 // Grootboekmapping: per categorie een code
 const GROOTBOEK = {
   verkopen_laag: { code: '8001', oms: 'Omzet (laag tarief)' },
-  verkoop_kadobonnen: { code: '8001', oms: 'Omzet (kadobonnen)' },
-  prive_opname_herman: { code: '4900', oms: 'Privé opname Herman' },
-  prive_opname_erik: { code: '4900', oms: 'Privé opname Erik' },
-  ingenomen_kadobon: { code: '8001', oms: 'Ingenomen kadobon' },
-  naar_bank_afgestort: { code: '1223', oms: 'Afstorting bank/kruisposten' },
-  kasverschil: { code: '9999', oms: 'Kasverschil' },
-  wisselgeld_van_bank: { code: '1223', oms: 'Wisselgeld ontvangen van bank' },
-  contant_inkoop: { code: '4569', oms: 'Contant betaalde inkoop' },
-  // Vul andere categorieën aan indien nodig
+  verkoop_kadobonnen: { code: '8003', oms: 'Omzet (kadobonnen)' },
+  prive_opname_herman: { code: '620', oms: 'Privé opname Herman' },
+  prive_opname_erik: { code: '670', oms: 'Privé opname Erik' },
+  ingenomen_kadobon: { code: '8003', oms: 'Ingenomen kadobon' },
+  naar_bank_afgestort: { code: '1221', oms: 'Afstorting bank/kruisposten' },
+  kasverschil: { code: '8880', oms: 'Kasverschil' },
+  wisselgeld_van_bank: { code: '1221', oms: 'Wisselgeld ontvangen van bank' },
+  // Contant_inkoop wordt niet meer meegenomen
 };
 
 const BTW_LAAG = 9;
 
 export async function GET(req: NextRequest) {
-  const maand = req.nextUrl.searchParams.get('maand'); // bv. "2025-03"
+  const maand = req.nextUrl.searchParams.get('maand');
   if (!maand || !/^\d{4}-\d{2}$/.test(maand)) {
     return NextResponse.json({ error: 'Geef ?maand=YYYY-MM mee' }, { status: 400 });
   }
 
   // Bepaal maandrange
-const maandStart = `${maand}-01`;
-// Laatste dag van de maand: pak eerste dag van de volgende maand, min 1 dag
-const [y, m] = maand.split('-').map(Number);
-const maandEind = new Date(y, m, 0).toISOString().slice(0, 10); // 'YYYY-MM-DD'
+  const maandStart = `${maand}-01`;
+  const [y, m] = maand.split('-').map(Number);
+  const maandEind = new Date(y, m, 0).toISOString().slice(0, 10); // 'YYYY-MM-DD'
 
-
-  // Haal alle transacties in de maand op, inclusief kasdag-datum voor robuustheid
+  // Haal alle transacties in de maand op
   const res = await dbQuery(
     `
     SELECT
@@ -55,15 +52,12 @@ const maandEind = new Date(y, m, 0).toISOString().slice(0, 10); // 'YYYY-MM-DD'
   let omzetKadobon = 0;
   let ingenomenKadobon = 0;
   let kasverschil = 0;
-  let priveOpnames = 0;
-  let contantInkoop = 0;
+  let priveOpnameHerman = 0;
+  let priveOpnameErik = 0;
   let afstorting = 0;
   let wisselgeld = 0;
+  // let contantInkoop = 0; // Wordt niet meer meegenomen
 
-  // Totaal ontvangen (voor kruispost)
-  let ontvangsten = 0;
-
-  // Totaal MyPOS (voor kosten, placeholder)
   let myposKosten = 0;
   let btw9 = 0;
 
@@ -82,32 +76,26 @@ const maandEind = new Date(y, m, 0).toISOString().slice(0, 10); // 'YYYY-MM-DD'
         ingenomenKadobon += bedrag;
         break;
       case 'prive_opname_herman':
+        priveOpnameHerman += bedrag;
+        break;
       case 'prive_opname_erik':
-        priveOpnames += bedrag;
+        priveOpnameErik += bedrag;
         break;
       case 'kasverschil':
         kasverschil += bedrag;
         break;
-      case 'contant_inkoop':
-        contantInkoop += bedrag;
-        break;
+      // case 'contant_inkoop':
+      //   contantInkoop += bedrag;
+      //   break;
       case 'naar_bank_afgestort':
         afstorting += bedrag;
         break;
       case 'wisselgeld_van_bank':
         wisselgeld += bedrag;
         break;
-      // Voeg hier andere gevallen toe als nodig
     }
-
-    // (optioneel) zet hieronder MyPOS-categorieën als je die in je transacties hebt
     if (cat === 'mypos_kosten') {
       myposKosten += bedrag;
-    }
-
-    // Alles wat 'ontvangst' is, telt voor ontvangsten/kruispost
-    if (t.type === 'ontvangst') {
-      ontvangsten += bedrag;
     }
   }
 
@@ -118,7 +106,7 @@ const maandEind = new Date(y, m, 0).toISOString().slice(0, 10); // 'YYYY-MM-DD'
 
   regels.push({
     gb: '8001',
-    omschrijving: 'Omzet ijs en kadobonnen (excl. BTW)',
+    omschrijving: 'Omzet ijs (excl. BTW)',
     bedrag: Math.round(nettoOmzet * 100) / 100,
   });
   regels.push({
@@ -127,69 +115,64 @@ const maandEind = new Date(y, m, 0).toISOString().slice(0, 10); // 'YYYY-MM-DD'
     bedrag: Math.round(btw9 * 100) / 100,
   });
 
+  if (omzetKadobon !== 0 || ingenomenKadobon !== 0) {
+    regels.push({
+      gb: '8003',
+      omschrijving: 'Kadobonnen omzet en ingenomen',
+      bedrag: Math.round((omzetKadobon + ingenomenKadobon) * 100) / 100,
+    });
+  }
   if (myposKosten !== 0) {
     regels.push({
       gb: '4567',
       omschrijving: 'MyPOS-kosten',
-      bedrag: -Math.abs(myposKosten), // kosten altijd negatief
+      bedrag: -Math.abs(myposKosten),
     });
   }
-  if (contantInkoop !== 0) {
+
+  // Prive-opnames per persoon, apart
+  if (priveOpnameHerman !== 0) {
     regels.push({
-      gb: '4569',
-      omschrijving: 'Contant betaalde inkoop',
-      bedrag: -Math.abs(contantInkoop),
+      gb: '620',
+      omschrijving: 'Privé-opname Herman',
+      bedrag: -Math.abs(priveOpnameHerman),
     });
   }
-  if (priveOpnames !== 0) {
+  if (priveOpnameErik !== 0) {
     regels.push({
-      gb: '4900',
-      omschrijving: 'Privé-opnames',
-      bedrag: -Math.abs(priveOpnames),
+      gb: '670',
+      omschrijving: 'Privé-opname Erik',
+      bedrag: -Math.abs(priveOpnameErik),
     });
   }
   if (kasverschil !== 0) {
     regels.push({
-      gb: '9999',
+      gb: '8880',
       omschrijving: 'Kasverschil',
       bedrag: kasverschil,
     });
   }
-  if (wisselgeld !== 0) {
+
+  // Wisselgeld + afstorting samen als één kruispost-regel
+  const kruisposten = wisselgeld + afstorting;
+  if (kruisposten !== 0) {
     regels.push({
-      gb: '1223',
-      omschrijving: 'Wisselgeld ontvangen',
-      bedrag: wisselgeld,
-    });
-  }
-  if (afstorting !== 0) {
-    regels.push({
-      gb: '1223',
-      omschrijving: 'Afstorting bank/kruispost',
-      bedrag: afstorting,
+      gb: '1221',
+      omschrijving: 'Kruisposten wisselgeld + afstorting',
+      bedrag: kruisposten,
     });
   }
 
-  // Eindcontrole: saldo
-  const saldo =
-    nettoOmzet +
-    (afstorting || 0) +
-    (wisselgeld || 0) -
-    Math.abs(myposKosten) -
-    Math.abs(contantInkoop) -
-    Math.abs(priveOpnames) +
-    kasverschil;
-
-  // Saldo als losse regel
+  // Saldo-controle komt straks, kan hieronder blijven als referentie
   regels.push({
     gb: '',
     omschrijving: 'Saldo controle (niet boeken)',
-    bedrag: Math.round(saldo * 100) / 100,
+    bedrag: 0, // later afmaken
   });
 
   return NextResponse.json({
     maand,
     regels,
-    toelichting: 'Let op: controleer altijd of de grootboekcodes overeenkomen met je boekhoudpakket.',
+    toelichting: 'Controleer altijd de grootboekcodes vóór boeking.',
   });
 }
