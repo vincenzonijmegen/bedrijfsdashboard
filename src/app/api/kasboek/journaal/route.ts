@@ -133,14 +133,6 @@ export async function GET(req: NextRequest) {
       bedrag: kruisposten,
     });
   }
-
-  // Saldo-controle = eindsaldo laatste dag - beginsaldo eerste dag
-  regels.push({
-    gb: '',
-    omschrijving: 'Saldo controle (niet boeken)',
-    bedrag: Math.round((eindsaldo - beginsaldo) * 100) / 100,
-  });
-
   // BTW-regel als laatste en markeer als italic in frontend
   if (btwTotaal !== 0) {
     regels.push({
@@ -149,6 +141,15 @@ export async function GET(req: NextRequest) {
       bedrag: Math.round(btwTotaal * 100) / 100,
     });
   }
+  // Saldo-controle = eindsaldo laatste dag - beginsaldo eerste dag
+const saldocontrole = regels.reduce((t, regel) => t + regel.bedrag, 0);
+regels.push({
+  gb: '',
+  omschrijving: 'Saldo controle (niet boeken)',
+  bedrag: Math.round(saldocontrole * 100) / 100,
+});
+
+
 
   return NextResponse.json({
     maand,
