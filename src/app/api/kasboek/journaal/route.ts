@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Kruisposten: wisselgeld + abs(afstorting)
-  const kruisposten = wisselgeld + Math.abs(afstorting);
+  const kruisposten = wisselgeld + afstorting;
   if (kruisposten !== 0) {
     regels.push({
       gb: '1221',
