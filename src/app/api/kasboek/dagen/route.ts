@@ -3,11 +3,11 @@ import { getClient, query as dbQuery } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-// Normaliseer datumkolom (werkt voor DATE, TIMESTAMP, TEXT 'YYYY-MM-DD')
 const NORM = (alias: string) =>
   `to_date(substr(${alias}.datum::text, 1, 10), 'YYYY-MM-DD')`;
 
-// ---------- GET /api/kasboek/dagen?maand=YYYY-MM ----------
+/* GET /api/kasboek/dagen?maand=YYYY-MM
+   → telt transacties per dag via subquery op dag_id */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const maand = searchParams.get('maand'); // 'YYYY-MM'
@@ -23,11 +23,11 @@ export async function GET(req: Request) {
         ${NORM('d')} AS datum_norm,
         d.startbedrag,
         d.eindsaldo,
-        COALESCE((
+        (
           SELECT COUNT(*)::int
           FROM kasboek_transacties kt
           WHERE kt.dag_id = d.id
-        ), 0) AS aantal_transacties
+        ) AS aantal_transacties
       FROM kasboek_dagen d
       WHERE ${NORM('d')} >= $1::date
         AND ${NORM('d')} <  ($1::date + INTERVAL '1 month')
@@ -35,22 +35,23 @@ export async function GET(req: Request) {
     `;
     const res = await dbQuery(sql, [maandStart]);
 
-    const data = res.rows.map((r: any) => ({
-      id: r.id,
-      datum: String(r.datum_norm).slice(0, 10),
-      startbedrag: r.startbedrag,
-      eindsaldo: r.eindsaldo,
-      aantal_transacties: r.aantal_transacties ?? 0,
-    }));
-
-    return NextResponse.json(data);
+    return NextResponse.json(
+      res.rows.map((r: any) => ({
+        id: r.id,
+        datum: String(r.datum_norm).slice(0, 10),
+        startbedrag: r.startbedrag,
+        eindsaldo: r.eindsaldo,
+        aantal_transacties: r.aantal_transacties ?? 0,
+      }))
+    );
   } catch (e: any) {
     console.error('GET /api/kasboek/dagen error', { code: e?.code, message: e?.message });
     return NextResponse.json({ error: 'Kon dagen niet ophalen' }, { status: 500 });
   }
 }
 
-// ---------- POST /api/kasboek/dagen  body: { datum: 'YYYY-MM-DD' } ----------
+/* POST /api/kasboek/dagen  body: { datum: 'YYYY-MM-DD' }
+   → idempotent; bepaalt startbedrag uit vorige dag en geeft dag terug */
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const datumStr: string | null = body?.datum ? String(body.datum).slice(0, 10) : null;
@@ -62,11 +63,8 @@ export async function POST(req: Request) {
   try {
     await client.query('BEGIN');
 
-    // Idempotent insert: bepaal startbedrag, probeer te inserten, geef anders bestaande terug
     const sql = `
-      WITH norm_target AS (
-        SELECT $1::date AS target_date
-      ),
+      WITH norm_target AS ( SELECT $1::date AS target_date ),
       prev AS (
         SELECT COALESCE((
           SELECT d.eindsaldo

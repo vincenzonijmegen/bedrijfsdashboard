@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import useSWR, { mutate } from 'swr';
-import { CATEGORIEEN } from '@/lib/kasboek/constants';
+import { CATEGORIEEN, getCategorie } from '@/lib/kasboek/constants';
 import {
   format,
   eachDayOfInterval,
@@ -14,7 +14,10 @@ import {
 } from 'date-fns';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
-const formatBtw = (btw?: 0 | 9 | 21 | '-') => (btw === '-' || btw == null ? '—' : `${btw}%`);
+const formatBtw = (btw?: 0 | 9 | 21 | '-') => {
+  if (btw === '-' || btw == null) return '—';
+  return `${btw}%`;
+};
 const toNumber = (v?: string) => {
   const n = parseFloat((v ?? '').toString().replace(',', '.'));
   return Number.isFinite(n) ? n : 0;
@@ -22,22 +25,7 @@ const toNumber = (v?: string) => {
 const formatEuro = (n: number) =>
   new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n);
 
-const SECTION_ORDER: Array<'ontvangst' | 'uitgave' | 'overig'> = ['ontvangst', 'uitgave', 'overig'];
-const SECTION_LABEL: Record<'ontvangst' | 'uitgave' | 'overig', string> = {
-  ontvangst: 'Ontvangsten',
-  uitgave: 'Uitgaven',
-  overig: 'Overig',
-};
-
-const getDatumKey = (d: any): string | null => {
-  const raw = d?.datum ?? d?.date ?? d?.dag ?? null;
-  return raw ? String(raw).slice(0, 10) : null;
-};
-const getTransactieCount = (d: any): number =>
-  Number(d?.aantal_transacties ?? d?.aantalTransacties ?? d?.transacties_count ?? 0);
-
 export default function KasboekPage() {
-  // ✅ alle hooks binnen de component
   const [datum, setDatum] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [dagId, setDagId] = useState<number | null>(null);
   const [startbedrag, setStartbedrag] = useState('');
@@ -50,8 +38,8 @@ export default function KasboekPage() {
   const volgendeMaand = () => setDatum(format(addMonths(maandDate, 1), 'yyyy-MM-01'));
 
   const dagenKey = `/api/kasboek/dagen?maand=${datum.slice(0, 7)}`;
-  const { data: dagen, error: dagenError } = useSWR(dagenKey, fetcher);
-  const dagenArr = useMemo(() => (Array.isArray(dagen) ? dagen : []), [dagen]);
+  const { data: dagen, mutate: mutateDagen } = useSWR(dagenKey, fetcher);
+  const dagenArr = Array.isArray(dagen) ? dagen : [];
 
   const { data: transacties } = useSWR(
     dagId ? `/api/kasboek/dagen/${dagId}/transacties` : null,
@@ -59,10 +47,10 @@ export default function KasboekPage() {
   );
 
   useEffect(() => {
-    const bestaande = dagenArr.find((d: any) => getDatumKey(d) === datum);
+    const bestaande = dagenArr.find((d: any) => d.datum === datum);
     if (bestaande) {
       setDagId(bestaande.id);
-      setStartbedrag(String(bestaande.startbedrag ?? ''));
+      setStartbedrag(bestaande.startbedrag?.toString() || '');
     } else {
       setDagId(null);
       setStartbedrag('');
@@ -74,8 +62,11 @@ export default function KasboekPage() {
       const nieuweBedragen: Record<string, string> = {};
       const nieuweInkoop: string[] = [];
       transacties.forEach((t: any) => {
-        if (t.categorie === 'contant_inkoop') nieuweInkoop.push(String(t.bedrag));
-        else if (t.categorie) nieuweBedragen[t.categorie] = String(t.bedrag);
+        if (t.categorie === 'contant_inkoop') {
+          nieuweInkoop.push(t.bedrag.toString());
+        } else {
+          nieuweBedragen[t.categorie] = t.bedrag.toString();
+        }
       });
       setBedragen(nieuweBedragen);
       setInkoopRijen(nieuweInkoop.length > 0 ? nieuweInkoop : ['']);
@@ -102,6 +93,7 @@ export default function KasboekPage() {
     });
 
     const uitgavenTotaal = uitgaven + inkoop;
+
     return {
       ontvangsten,
       uitgavenZonderInkoop: uitgaven,
@@ -111,27 +103,19 @@ export default function KasboekPage() {
     };
   }, [bedragen, inkoopRijen]);
 
-  const eindsaldo = useMemo(
-    () => toNumber(startbedrag) + totals.netto,
-    [startbedrag, totals.netto]
-  );
-
-  const groupedCats = useMemo(() => {
-    const byType: Record<'ontvangst' | 'uitgave' | 'overig', typeof CATEGORIEEN> = {
-      ontvangst: [],
-      uitgave: [],
-      overig: [],
-    };
-    CATEGORIEEN.forEach((c) => byType[c.type].push(c));
-    return byType;
-  }, []);
+  const eindsaldo = useMemo(() => {
+    const start = toNumber(startbedrag);
+    return start + totals.netto;
+  }, [startbedrag, totals.netto]);
 
   const opslaan = async () => {
     if (!dagId) return;
-    const transactiesPayload = [
+
+    const transacties = [
       ...CATEGORIEEN.map((cat) => {
         const bedrag = bedragen[cat.key];
         if (!bedrag) return null;
+
         return {
           type: cat.type,
           categorie: cat.key,
@@ -140,73 +124,65 @@ export default function KasboekPage() {
           omschrijving: null,
         };
       }).filter(Boolean),
-      ...inkoopRijen.filter(Boolean).map((val) => ({
-        type: 'uitgave',
-        categorie: 'contant_inkoop',
-        bedrag: parseFloat(val),
-        btw: null,
-        omschrijving: null,
-      })),
+      ...inkoopRijen
+        .filter((val) => val)
+        .map((val) => ({
+          type: 'uitgave',
+          categorie: 'contant_inkoop',
+          bedrag: parseFloat(val),
+          btw: null,
+          omschrijving: null,
+        })),
     ];
 
     await fetch(`/api/kasboek/dagen/${dagId}/transacties`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(transactiesPayload),
+      body: JSON.stringify(transacties),
     });
 
     await fetch(`/api/kasboek/dagen/herbereken`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ vanafDatum: datum }),
     });
-        // ✅ eerst transacties opnieuw laden (rechterkant)
-        await mutate(`/api/kasboek/dagen/${dagId}/transacties`);
-        // ✅ daarna de dagenlijst links, zodat de ✅ wordt getoond
-        await mutate(dagenKey);
-    alert('Opgeslagen en herberekend');
-    mutate(dagenKey);
+
+    // Refresh rechterkant én linkerkant
+    await mutate(`/api/kasboek/dagen/${dagId}/transacties`);
+    await mutateDagen();
   };
 
-const maakDagAan = async () => {
-  try {
-    setIsCreating(true);
-    const res = await fetch(`/api/kasboek/dagen`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ datum }),
-    });
+  const maakDagAan = async () => {
+    try {
+      setIsCreating(true);
+      const res = await fetch(`/api/kasboek/dagen`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ datum }),
+      });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      alert(`Dag aanmaken mislukt: ${err?.error || res.statusText}`);
-      return;
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(`Dag aanmaken mislukt: ${err?.error || res.statusText}`);
+        return;
+      }
+
+      const data = await res.json();
+
+      // Optimistisch: direct state zetten zodat formulier opent
+      setDagId(data.id);
+      setStartbedrag(String(data.startbedrag ?? ''));
+      setBedragen({});
+      setInkoopRijen(['']);
+
+      // Daarna de lijst links verversen
+      await mutateDagen();
+    } finally {
+      setIsCreating(false);
     }
-
-    const data = await res.json();
-    // ✅ Optimistisch: direct in de UI zetten
-    setDagId(data.id);
-    setStartbedrag(String(data.startbedrag ?? ''));
-    setBedragen({});
-    setInkoopRijen(['']);
-
-    // daarna SWR verversen zodat de linkerkant ook up-to-date is
-    await mutate(dagenKey, undefined, { revalidate: true });
-  } finally {
-    setIsCreating(false);
-  }
-};
-
+  };
 
   return (
     <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl">
       <div>
-        {dagenError && (
-          <div className="text-red-600 mb-2">
-            Kan dagen niet laden (server gaf {String((dagenError as any)?.status || 500)}).
-          </div>
-        )}
-
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-xl font-bold">Kasboek {datum.slice(0, 7)}</h1>
           <div className="space-x-2">
@@ -215,7 +191,7 @@ const maakDagAan = async () => {
           </div>
         </div>
 
-        {dagenArr.length === 0 && !dagenError && (
+        {dagenArr.length === 0 && (
           <div className="text-gray-500 mb-2">
             Geen dagen gevonden voor {datum.slice(0, 7)}. Klik “Dag aanmaken” om te starten.
           </div>
@@ -224,16 +200,20 @@ const maakDagAan = async () => {
         <div className="space-y-1">
           {alleDagenVanMaand.map((dag) => {
             const formatted = format(dag, 'yyyy-MM-dd');
-            const record = dagenArr.find((d: any) => getDatumKey(d) === formatted);
-            // ✅ laat ook het aantal zien om te debuggen
-            const count = getTransactieCount(record);
-            const status = count > 0 ? `✅` : '⬜';
+            const record = dagenArr.find((d: any) => d.datum === formatted);
+            const count = typeof record?.aantal_transacties === 'number'
+              ? record.aantal_transacties
+              : parseInt(record?.aantal_transacties as any, 10) || 0;
+            const status = count > 0 ? '✅' : '⬜';
             const active = datum === formatted;
+
             return (
               <div
                 key={formatted}
                 onClick={() => setDatum(formatted)}
-                className={`cursor-pointer px-2 py-1 rounded ${active ? 'bg-blue-100 font-bold' : ''}`}
+                className={`cursor-pointer px-2 py-1 rounded ${
+                  active ? 'bg-blue-100 font-bold' : ''
+                }`}
               >
                 {status} {formatted}
               </div>
@@ -268,56 +248,46 @@ const maakDagAan = async () => {
                 </tr>
               </thead>
               <tbody>
-                {SECTION_ORDER.map((typeKey) => (
-                  <>
-                    <tr className="bg-gray-100/70 border-t">
-                      <td className="px-2 py-1 font-semibold" colSpan={4}>
-                        {SECTION_LABEL[typeKey]}
+                {CATEGORIEEN.map((cat) => {
+                  const key = cat.key;
+                  return (
+                    <tr key={key} className="border-t">
+                      <td className="px-2 py-1">{cat.label ?? key}</td>
+                      <td>{cat.type ?? '—'}</td>
+                      <td>{formatBtw(cat.btw)}</td>
+                      <td>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={bedragen[key] || ''}
+                          onChange={(e) =>
+                            setBedragen({ ...bedragen, [key]: e.target.value })
+                          }
+                          className="border px-2 w-32"
+                        />
                       </td>
                     </tr>
-                    {groupedCats[typeKey].map((cat) => {
-                      const key = cat.key;
-                      return (
-                        <tr key={key} className="border-t">
-                          <td className="px-2 py-1">{cat.label ?? key}</td>
-                          <td>{cat.type ?? '—'}</td>
-                          <td>{formatBtw(cat.btw)}</td>
-                          <td>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={bedragen[key] || ''}
-                              onChange={(e) =>
-                                setBedragen({ ...bedragen, [key]: e.target.value })
-                              }
-                              className="border px-2 w-32"
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    {typeKey === 'uitgave' &&
-                      inkoopRijen.map((val, i) => (
-                        <tr key={`inkoop-${i}`} className="border-t">
-                          <td className="px-2 py-1">Contant betaalde inkoop</td>
-                          <td>uitgave</td>
-                          <td>–</td>
-                          <td>
-                            <input
-                              type="number"
-                              step="0.01"
-                              value={val}
-                              onChange={(e) => {
-                                const kopie = [...inkoopRijen];
-                                kopie[i] = e.target.value;
-                                setInkoopRijen(kopie);
-                              }}
-                              className="border px-2 w-32"
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                  </>
+                  );
+                })}
+                {inkoopRijen.map((val, i) => (
+                  <tr key={`inkoop-${i}`} className="border-t">
+                    <td className="px-2 py-1">Contant betaalde inkoop</td>
+                    <td>uitgave</td>
+                    <td>–</td>
+                    <td>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={val}
+                        onChange={(e) => {
+                          const kopie = [...inkoopRijen];
+                          kopie[i] = e.target.value;
+                          setInkoopRijen(kopie);
+                        }}
+                        className="border px-2 w-32"
+                      />
+                    </td>
+                  </tr>
                 ))}
                 <tr>
                   <td colSpan={4}>
@@ -357,8 +327,12 @@ const maakDagAan = async () => {
                 </tr>
               </tfoot>
             </table>
+
             <div className="mt-4">
-              <button onClick={opslaan} className="bg-green-600 text-white px-4 py-2 rounded">
+              <button
+                onClick={opslaan}
+                className="bg-green-600 text-white px-4 py-2 rounded"
+              >
                 Sla transacties op
               </button>
             </div>
