@@ -52,13 +52,24 @@ function Journaalpost({ maand }: { maand: string }) {
           </thead>
           <tbody>
             {regels.map((r, i) => (
-              <tr key={i} className={r.gb === '' ? 'bg-yellow-100' : ''}>
-                <td className="px-2 py-1">{r.gb}</td>
-                <td className="px-2 py-1">{r.omschrijving}</td>
-                <td className="px-2 py-1 text-right">{r.bedrag.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })}</td>
-              </tr>
-            ))}
-          </tbody>
+    <tr
+      key={i}
+      className={
+        r.gb === ''
+          ? 'bg-yellow-100'
+          : r.gb === '0000'
+            ? 'italic text-blue-700'
+            : ''
+      }
+    >
+      <td className="px-2 py-1">{r.gb}</td>
+      <td className="px-2 py-1">{r.omschrijving}</td>
+      <td className="px-2 py-1 text-right">
+        {r.bedrag.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })}
+      </td>
+    </tr>
+  ))}
+</tbody>
         </table>
       )}
     </div>
@@ -354,25 +365,26 @@ export default function KasboekPage() {
                   );
                 })}
                 {inkoopRijen.map((val, i) => (
-                  <tr key={`inkoop-${i}`} className="border-t">
-                    <td className="px-2 py-1">Contant betaalde inkoop</td>
-                    <td>uitgave</td>
-                    <td>–</td>
-                    <td>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={val}
-                        onChange={(e) => {
-                          const kopie = [...inkoopRijen];
-                          kopie[i] = e.target.value;
-                          setInkoopRijen(kopie);
-                        }}
-                        className="border px-2 w-32"
-                      />
-                    </td>
-                  </tr>
-                ))}
+                    <tr key={`inkoop-${i}`} className="border-t bg-green-100">
+                        <td className="px-2 py-1">Contant betaalde inkoop</td>
+                        <td>uitgave</td>
+                        <td>–</td>
+                        <td>
+                        <input
+                            type="number"
+                            step="0.01"
+                            value={val}
+                            onChange={(e) => {
+                            const kopie = [...inkoopRijen];
+                            kopie[i] = e.target.value;
+                            setInkoopRijen(kopie);
+                            }}
+                            className="border px-2 w-32"
+                        />
+                        </td>
+                    </tr>
+                    ))}
+
                 <tr>
                   <td colSpan={4}>
                     <button

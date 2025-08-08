@@ -1,17 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query as dbQuery } from '@/lib/db';
 
-const GROOTBOEK = {
-  verkopen_laag: { code: '8001', oms: 'Omzet (laag tarief)' },
-  verkoop_kadobonnen: { code: '8003', oms: 'Omzet (kadobonnen)' },
-  prive_opname_herman: { code: '620', oms: 'Privé opname Herman' },
-  prive_opname_erik: { code: '670', oms: 'Privé opname Erik' },
-  ingenomen_kadobon: { code: '8003', oms: 'Ingenomen kadobon' },
-  naar_bank_afgestort: { code: '1221', oms: 'Afstorting bank/kruisposten' },
-  kasverschil: { code: '8880', oms: 'Kasverschil' },
-  wisselgeld_van_bank: { code: '1221', oms: 'Wisselgeld ontvangen van bank' },
-};
-
 const BTW_LAAG = 9;
 
 export async function GET(req: NextRequest) {
@@ -49,7 +38,6 @@ export async function GET(req: NextRequest) {
     [maandStart, maandEind]
   );
 
-  // Begin/eindsaldo bepalen
   const eersteDag = dagen.rows[0];
   const laatsteDag = dagen.rows[dagen.rows.length - 1];
   const beginsaldo = eersteDag?.startbedrag ?? 0;
@@ -76,7 +64,7 @@ export async function GET(req: NextRequest) {
       case 'prive_opname_herman': priveOpnameHerman += bedrag; break;
       case 'prive_opname_erik': priveOpnameErik += bedrag; break;
       case 'kasverschil': kasverschil += bedrag; break;
-      case 'naar_bank_afgestort': afstorting += bedrag; break; // meestal negatief in input!
+      case 'naar_bank_afgestort': afstorting += bedrag; break;
       case 'wisselgeld_van_bank': wisselgeld += bedrag; break;
     }
     if (cat === 'mypos_kosten') {
@@ -114,15 +102,6 @@ export async function GET(req: NextRequest) {
       bedrag: Math.round(nettoOmzetKado * 100) / 100,
     });
   }
-  // 0000: één totaalregel BTW over alles
-  if (btwTotaal !== 0) {
-    regels.push({
-      gb: '0000',
-      omschrijving: 'BTW 9% over totale omzet',
-      bedrag: Math.round(btwTotaal * 100) / 100,
-    });
-  }
-
   if (priveOpnameHerman !== 0) {
     regels.push({
       gb: '620',
@@ -141,11 +120,11 @@ export async function GET(req: NextRequest) {
     regels.push({
       gb: '8880',
       omschrijving: 'Kasverschil',
-      bedrag: kasverschil,
+      bedrag: -kasverschil, // Teken omgedraaid
     });
   }
 
-  // Kruisposten: wisselgeld + abs(afstorting)
+  // Kruisposten: wisselgeld - afstorting (want afstorting is positief)
   const kruisposten = wisselgeld - afstorting;
   if (kruisposten !== 0) {
     regels.push({
@@ -161,6 +140,15 @@ export async function GET(req: NextRequest) {
     omschrijving: 'Saldo controle (niet boeken)',
     bedrag: Math.round((eindsaldo - beginsaldo) * 100) / 100,
   });
+
+  // BTW-regel als laatste en markeer als italic in frontend
+  if (btwTotaal !== 0) {
+    regels.push({
+      gb: '0000',
+      omschrijving: 'BTW 9% over totale omzet',
+      bedrag: Math.round(btwTotaal * 100) / 100,
+    });
+  }
 
   return NextResponse.json({
     maand,
