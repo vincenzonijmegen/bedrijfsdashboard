@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
+import { CATEGORIEEN } from '@/lib/kasboek/constants';
 import {
   format,
   eachDayOfInterval,
@@ -13,6 +14,19 @@ import {
 } from 'date-fns';
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+const formatBtw = (btw?: 0 | 9 | 21 | '-') => {
+  if (btw === '-' || btw == null) return '—';
+  return `${btw}%`;
+};
+
+const toNumber = (v?: string) => {
+  const n = parseFloat((v ?? '').toString().replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
+};
+
+const formatEuro = (n: number) =>
+  new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n);
 
 export default function KasboekPage() {
   const [datum, setDatum] = useState(() => format(new Date(), 'yyyy-MM-dd'));
@@ -66,31 +80,52 @@ export default function KasboekPage() {
     end: endOfMonth(maandDate),
   });
 
+  const totals = useMemo(() => {
+    let ontvangsten = 0;
+    let uitgaven = 0;
+    const inkoop = inkoopRijen.reduce((sum, val) => sum + toNumber(val), 0);
+
+    CATEGORIEEN.forEach((cat) => {
+      const val = toNumber(bedragen[cat.key]);
+      if (cat.type === 'ontvangst') ontvangsten += val;
+      if (cat.type === 'uitgave') uitgaven += val;
+    });
+
+    const uitgavenTotaal = uitgaven + inkoop;
+
+    return {
+      ontvangsten,
+      uitgavenZonderInkoop: uitgaven,
+      inkoop,
+      uitgavenTotaal,
+      netto: ontvangsten - uitgavenTotaal,
+    };
+  }, [bedragen, inkoopRijen]);
+
+  const eindsaldo = useMemo(() => {
+    const start = toNumber(startbedrag);
+    return start + totals.netto;
+  }, [startbedrag, totals.netto]);
+
   const opslaan = async () => {
     if (!dagId) return;
 
-    const transacties = [
-      ...[
-        { key: 'verkopen_laag', label: 'Verkopen laag', type: 'ontvangst', btw: '9%' },
-        { key: 'verkoop_kadobonnen', label: 'Verkoop kadobonnen', type: 'ontvangst', btw: '9%' },
-        { key: 'wisselgeld_van_bank', label: 'Wisselgeld van bank', type: 'ontvangst', btw: 'geen' },
-        { key: 'prive_opname_herman', label: 'Privé opname Herman', type: 'uitgave', btw: 'geen' },
-        { key: 'prive_opname_erik', label: 'Privé opname Erik', type: 'uitgave', btw: 'geen' },
-        { key: 'ingenomen_kadobon', label: 'Ingenomen kadobonnen', type: 'uitgave', btw: '9%' },
-        { key: 'naar_bank_afgestort', label: 'Naar bank afgestort', type: 'uitgave', btw: 'geen' },
-        { key: 'kasverschil', label: 'Kasverschil', type: 'uitgave', btw: 'geen' },
-      ].map((cat) => {
+    const transactiesPayload = [
+      // Alle categorieën uit de centrale constants
+      ...CATEGORIEEN.map((cat) => {
         const bedrag = bedragen[cat.key];
-        return bedrag
-          ? {
-              type: cat.type,
-              categorie: cat.key,
-              bedrag: parseFloat(bedrag),
-              btw: cat.btw === 'geen' ? null : cat.btw,
-              omschrijving: null,
-            }
-          : null;
-      }).filter(Boolean),
+        if (!bedrag) return null;
+
+        return {
+          type: cat.type,
+          categorie: cat.key,
+          bedrag: parseFloat(bedrag),
+          btw: cat.btw === '-' ? null : `${cat.btw}%`,
+          omschrijving: null,
+        };
+      }).filter((x): x is NonNullable<typeof x> => Boolean(x)),
+
+      // Losse contant inkoop-regels (geen BTW)
       ...inkoopRijen
         .filter((val) => val)
         .map((val) => ({
@@ -104,11 +139,13 @@ export default function KasboekPage() {
 
     await fetch(`/api/kasboek/dagen/${dagId}/transacties`, {
       method: 'PUT',
-      body: JSON.stringify(transacties),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(transactiesPayload),
     });
 
     await fetch(`/api/kasboek/dagen/herbereken`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ vanafDatum: datum }),
     });
 
@@ -130,7 +167,7 @@ export default function KasboekPage() {
           {alleDagenVanMaand.map((dag) => {
             const formatted = format(dag, 'yyyy-MM-dd');
             const record = dagen?.find((d: any) => d.datum === formatted);
-            const status = record && parseInt(record.aantal_transacties) > 0 ? '✅' : '⬜';
+            const status = record && Number(record.aantal_transacties) > 0 ? '✅' : '⬜';
             const active = datum === formatted;
 
             return (
@@ -163,29 +200,33 @@ export default function KasboekPage() {
                   <th>Bedrag</th>
                 </tr>
               </thead>
+
               <tbody>
-                {[
-                  'verkopen_laag', 'verkoop_kadobonnen', 'wisselgeld_van_bank',
-                  'prive_opname_herman', 'prive_opname_erik', 'ingenomen_kadobon',
-                  'naar_bank_afgestort', 'kasverschil'
-                ].map((key) => (
-                  <tr key={key} className="border-t">
-                    <td className="px-2 py-1">{key}</td>
-                    <td>{CATEGORIEEN.find(c => c.key === key)?.type}</td>
-                    <td>{CATEGORIEEN.find(c => c.key === key)?.btw}</td>
-                    <td>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={bedragen[key] || ''}
-                        onChange={(e) =>
-                          setBedragen({ ...bedragen, [key]: e.target.value })
-                        }
-                        className="border px-2 w-32"
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {CATEGORIEEN.map((cat) => {
+                  const key = cat.key;
+                  return (
+                    <tr key={key} className="border-t">
+                      {/* label i.p.v. key (fallback naar key) */}
+                      <td className="px-2 py-1">{cat.label ?? key}</td>
+                      {/* type en btw via centrale constants */}
+                      <td>{cat.type ?? '—'}</td>
+                      <td>{formatBtw(cat.btw)}</td>
+                      <td>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={bedragen[key] || ''}
+                          onChange={(e) =>
+                            setBedragen({ ...bedragen, [key]: e.target.value })
+                          }
+                          className="border px-2 w-32"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {/* Losse contant inkoop-regels (geen BTW/grootboek) */}
                 {inkoopRijen.map((val, i) => (
                   <tr key={`inkoop-${i}`} className="border-t">
                     <td className="px-2 py-1">Contant betaalde inkoop</td>
@@ -206,6 +247,7 @@ export default function KasboekPage() {
                     </td>
                   </tr>
                 ))}
+
                 <tr>
                   <td colSpan={4}>
                     <button
@@ -217,6 +259,33 @@ export default function KasboekPage() {
                   </td>
                 </tr>
               </tbody>
+
+              <tfoot className="bg-gray-50">
+                <tr className="border-t">
+                  <td className="px-2 py-1 font-semibold" colSpan={3}>Totaal ontvangsten</td>
+                  <td className="px-2 py-1 font-semibold">{formatEuro(totals.ontvangsten)}</td>
+                </tr>
+                <tr>
+                  <td className="px-2 py-1" colSpan={3}>Totaal uitgaven (excl. contante inkoop)</td>
+                  <td className="px-2 py-1">{formatEuro(totals.uitgavenZonderInkoop)}</td>
+                </tr>
+                <tr>
+                  <td className="px-2 py-1" colSpan={3}>Contant betaalde inkoop</td>
+                  <td className="px-2 py-1">{formatEuro(totals.inkoop)}</td>
+                </tr>
+                <tr className="border-t">
+                  <td className="px-2 py-1 font-semibold" colSpan={3}>Totaal uitgaven</td>
+                  <td className="px-2 py-1 font-semibold">{formatEuro(totals.uitgavenTotaal)}</td>
+                </tr>
+                <tr>
+                  <td className="px-2 py-1" colSpan={3}>Netto (ontvangsten − uitgaven)</td>
+                  <td className="px-2 py-1">{formatEuro(totals.netto)}</td>
+                </tr>
+                <tr className="border-t">
+                  <td className="px-2 py-1 font-bold" colSpan={3}>Eindsaldo (start + netto)</td>
+                  <td className="px-2 py-1 font-bold">{formatEuro(eindsaldo)}</td>
+                </tr>
+              </tfoot>
             </table>
 
             <div className="mt-4">
