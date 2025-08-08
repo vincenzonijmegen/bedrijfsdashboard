@@ -343,47 +343,55 @@ export default function KasboekPage() {
                 </tr>
               </thead>
               <tbody>
-                {CATEGORIEEN.map((cat) => {
-                  const key = cat.key;
-                  return (
-                    <tr key={key} className="border-t">
-                      <td className="px-2 py-1">{cat.label ?? key}</td>
-                      <td>{cat.type ?? '—'}</td>
-                      <td>{formatBtw(cat.btw)}</td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={bedragen[key] || ''}
-                          onChange={(e) =>
-                            setBedragen({ ...bedragen, [key]: e.target.value })
-                          }
-                          className="border px-2 w-32"
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-                {inkoopRijen.map((val, i) => (
-                    <tr key={`inkoop-${i}`} className="border-t bg-green-100">
-                        <td className="px-2 py-1">Contant betaalde inkoop</td>
-                        <td>uitgave</td>
-                        <td>–</td>
-                        <td>
-                        <input
-                            type="number"
-                            step="0.01"
-                            value={val}
-                            onChange={(e) => {
-                            const kopie = [...inkoopRijen];
-                            kopie[i] = e.target.value;
-                            setInkoopRijen(kopie);
-                            }}
-                            className="border px-2 w-32"
-                        />
-                        </td>
-                    </tr>
-                    ))}
+{CATEGORIEEN.map((cat) => {
+  const key = cat.key;
+  let kleur = '';
+  if (key === 'verkopen_laag') kleur = 'bg-blue-50';
+  if (key === 'verkoop_kadobonnen' || key === 'ingenomen_kadobon') kleur = 'bg-yellow-50';
+  if (key === 'prive_opname_herman' || key === 'prive_opname_erik') kleur = 'bg-purple-50';
+  if (key === 'wisselgeld_van_bank' || key === 'naar_bank_afgestort') kleur = 'bg-orange-50';
+  if (key === 'kasverschil') kleur = 'bg-red-50';
+  // contant_inkoop wordt apart hieronder gemapt!
+  return (
+    <tr key={key} className={`border-t ${kleur}`}>
+      <td className="px-2 py-1">{cat.label ?? key}</td>
+      <td>{cat.type ?? '—'}</td>
+      <td>{formatBtw(cat.btw)}</td>
+      <td>
+        <input
+          type="number"
+          step="0.01"
+          value={bedragen[key] || ''}
+          onChange={(e) =>
+            setBedragen({ ...bedragen, [key]: e.target.value })
+          }
+          className="border px-2 w-32"
+        />
+      </td>
+    </tr>
+  );
+})}
+{inkoopRijen.map((val, i) => (
+  <tr key={`inkoop-${i}`} className="border-t bg-green-100">
+    <td className="px-2 py-1">Contant betaalde inkoop</td>
+    <td>uitgave</td>
+    <td>–</td>
+    <td>
+      <input
+        type="number"
+        step="0.01"
+        value={val}
+        onChange={(e) => {
+          const kopie = [...inkoopRijen];
+          kopie[i] = e.target.value;
+          setInkoopRijen(kopie);
+        }}
+        className="border px-2 w-32"
+      />
+    </td>
+  </tr>
+))}
+
 
                 <tr>
                   <td colSpan={4}>
