@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
   const btwOmzetIjs = brutoOmzetIjs - nettoOmzetIjs;
   const nettoOmzetKado = brutoOmzetKado / (1 + BTW_LAAG / 100);
   const btwOmzetKado = brutoOmzetKado - nettoOmzetKado;
-  const kruisposten = wisselgeld + afstorting; // afstorting is vaak negatief!
+  const kruisposten = wisselgeld - afstorting; // afstorting is altijd negatief!
 
   const regels: { gb: string; omschrijving: string; bedrag: number }[] = [];
 
@@ -115,9 +115,10 @@ export async function GET(req: NextRequest) {
   if (kasverschil !== 0) {
     regels.push({ gb: '8880', omschrijving: 'Kasverschil', bedrag: kasverschil });
   }
-  if (kruisposten !== 0) {
-    regels.push({ gb: '1221', omschrijving: 'Kruisposten wisselgeld + afstorting', bedrag: kruisposten });
-  }
+if (kruisposten !== 0) {
+    regels.push({ gb: '1221', omschrijving: 'Kruisposten wisselgeld', bedrag: kruisposten,
+  });
+}
 
   // Saldo-controle = eindsaldo laatste dag - beginsaldo eerste dag
   regels.push({
