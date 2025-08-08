@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // Railway/Cloud: meestal nodig
+  ssl: { rejectUnauthorized: false },
 });
 
 const d10 = (v: any) => (v ? String(v).slice(0, 10) : null);
@@ -11,7 +11,7 @@ const d10 = (v: any) => (v ? String(v).slice(0, 10) : null);
 // GET /api/kasboek/dagen?maand=YYYY-MM
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const maand = searchParams.get('maand'); // 'YYYY-MM'
+  const maand = searchParams.get('maand');
   if (!maand) {
     return NextResponse.json({ error: 'maand is verplicht (YYYY-MM)' }, { status: 400 });
   }
@@ -23,18 +23,23 @@ export async function GET(req: Request) {
       datum: string;
       startbedrag: number | null;
       eindsaldo: number | null;
-      aantal_transacties: number | null;
+      aantal_transacties: number;
     }>(
       `
       SELECT
-        id,
-        datum,
-        startbedrag,
-        eindsaldo,
-        COALESCE(aantal_transacties, 0) AS aantal_transacties
-      FROM kasboek_dagen
-      WHERE TO_CHAR(datum, 'YYYY-MM') = $1
-      ORDER BY datum ASC
+        d.id,
+        d.datum,
+        d.startbedrag,
+        d.eindsaldo,
+        COALESCE(t.aantal, 0) AS aantal_transacties
+      FROM kasboek_dagen d
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS aantal
+        FROM kasboek_transacties kt
+        WHERE kt.dag_id = d.id
+      ) t ON TRUE
+      WHERE TO_CHAR(d.datum, 'YYYY-MM') = $1
+      ORDER BY d.datum ASC
       `,
       [maand]
     );
@@ -44,7 +49,7 @@ export async function GET(req: Request) {
       datum: d10(r.datum),
       startbedrag: r.startbedrag,
       eindsaldo: r.eindsaldo,
-      aantal_transacties: Number(r.aantal_transacties ?? 0),
+      aantal_transacties: r.aantal_transacties ?? 0,
     }));
 
     return NextResponse.json(data);
@@ -75,11 +80,23 @@ export async function POST(req: Request) {
       datum: string;
       startbedrag: number | null;
       eindsaldo: number | null;
-      aantal_transacties: number | null;
+      aantal_transacties: number;
     }>(
-      `SELECT id, datum, startbedrag, eindsaldo, COALESCE(aantal_transacties,0) AS aantal_transacties
-       FROM kasboek_dagen
-       WHERE datum = $1`,
+      `
+      SELECT
+        d.id,
+        d.datum,
+        d.startbedrag,
+        d.eindsaldo,
+        COALESCE(t.aantal, 0) AS aantal_transacties
+      FROM kasboek_dagen d
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS aantal
+        FROM kasboek_transacties kt
+        WHERE kt.dag_id = d.id
+      ) t ON TRUE
+      WHERE d.datum = $1
+      `,
       [datum]
     );
 
@@ -91,7 +108,7 @@ export async function POST(req: Request) {
         datum: d10(r.datum),
         startbedrag: r.startbedrag,
         eindsaldo: r.eindsaldo,
-        aantal_transacties: Number(r.aantal_transacties ?? 0),
+        aantal_transacties: r.aantal_transacties ?? 0,
       });
     }
 
@@ -107,17 +124,16 @@ export async function POST(req: Request) {
     const prevRow = prev.rows[0];
     const startbedrag = prevRow ? Number(prevRow.eindsaldo ?? 0) : 0;
 
-    // 3) Nieuw record
+    // 3) Nieuw record (let op: GEEN aantal_transacties kolom)
     const inserted = await client.query<{
       id: number;
       datum: string;
       startbedrag: number | null;
       eindsaldo: number | null;
-      aantal_transacties: number | null;
     }>(
-      `INSERT INTO kasboek_dagen (datum, startbedrag, eindsaldo, aantal_transacties)
-       VALUES ($1, $2, $2, 0)
-       RETURNING id, datum, startbedrag, eindsaldo, COALESCE(aantal_transacties,0) AS aantal_transacties`,
+      `INSERT INTO kasboek_dagen (datum, startbedrag, eindsaldo)
+       VALUES ($1, $2, $2)
+       RETURNING id, datum, startbedrag, eindsaldo`,
       [datum, startbedrag]
     );
 
@@ -129,7 +145,7 @@ export async function POST(req: Request) {
         datum: d10(r.datum),
         startbedrag: r.startbedrag,
         eindsaldo: r.eindsaldo,
-        aantal_transacties: Number(r.aantal_transacties ?? 0),
+        aantal_transacties: 0,
       },
       { status: 201 }
     );
