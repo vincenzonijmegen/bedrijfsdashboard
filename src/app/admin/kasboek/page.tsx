@@ -336,20 +336,14 @@ export default function KasboekPage() {
                   <td className="px-2 py-1 font-semibold">{formatEuro(totals.ontvangsten)}</td>
                 </tr>
                 <tr>
-                  <td colSpan={3}>Totaal uitgaven (excl. contante inkoop)</td>
-                  <td>{formatEuro(totals.uitgavenZonderInkoop)}</td>
                 </tr>
                 <tr>
-                  <td colSpan={3}>Contant betaalde inkoop</td>
-                  <td>{formatEuro(totals.inkoop)}</td>
                 </tr>
                 <tr className="border-t">
                   <td className="px-2 py-1 font-semibold" colSpan={3}>Totaal uitgaven</td>
                   <td className="px-2 py-1 font-semibold">{formatEuro(totals.uitgavenTotaal)}</td>
                 </tr>
                 <tr>
-                  <td colSpan={3}>Netto (ontvangsten − uitgaven)</td>
-                  <td>{formatEuro(totals.netto)}</td>
                 </tr>
                 <tr className="border-t">
                   <td className="px-2 py-1 font-bold" colSpan={3}>Eindsaldo (start + netto)</td>

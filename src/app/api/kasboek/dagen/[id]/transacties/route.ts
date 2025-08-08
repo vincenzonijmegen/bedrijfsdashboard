@@ -3,7 +3,9 @@ import { getClient, query as dbQuery } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-/* GET */
+/* ===========================
+   GET /api/kasboek/dagen/[id]/transacties
+   =========================== */
 export async function GET(req: NextRequest, { params }: any) {
   const dagId = Number(params?.id);
   if (!Number.isFinite(dagId)) {
@@ -31,7 +33,10 @@ export async function GET(req: NextRequest, { params }: any) {
   }
 }
 
-/* PUT */
+/* ===========================
+   PUT /api/kasboek/dagen/[id]/transacties
+   Body: Array<{ type:'ontvangst'|'uitgave'|'overig', categorie:string, bedrag:number, btw?:string|null, omschrijving?:string|null }>
+   =========================== */
 export async function PUT(req: NextRequest, { params }: any) {
   const dagId = Number(params?.id);
   if (!Number.isFinite(dagId)) {
@@ -53,6 +58,7 @@ export async function PUT(req: NextRequest, { params }: any) {
   // Map "overig" naar 'uitgave' (enum-veilig)
   const normType = (t: any): 'ontvangst' | 'uitgave' => (t === 'ontvangst' ? 'ontvangst' : 'uitgave');
 
+  // ⬇️ Belangrijk: we laten nu NEGatieve bedragen toe (alleen check op Number.isFinite)
   const rows = payload
     .map((t: any) => ({
       type: normType(t?.type),
@@ -65,15 +71,14 @@ export async function PUT(req: NextRequest, { params }: any) {
       (t) =>
         (t.type === 'ontvangst' || t.type === 'uitgave') &&
         t.categorie &&
-        Number.isFinite(t.bedrag) &&
-        t.bedrag >= 0
+        Number.isFinite(t.bedrag) // <— GEEN t.bedrag >= 0 meer
     );
 
   const client = await getClient();
   try {
     await client.query('BEGIN');
 
-    // Welke btw-kolom bestaat?
+    // 1) Bepaal welke btw-kolom bestaat
     const btwColRes = await client.query<{ column_name: string }>(
       `
       SELECT column_name
@@ -87,10 +92,10 @@ export async function PUT(req: NextRequest, { params }: any) {
     );
     const btwCol: string | null = btwColRes.rows[0]?.column_name ?? null;
 
-    // Wis bestaande
+    // 2) Wis bestaande transacties voor deze dag
     await client.query('DELETE FROM kasboek_transacties WHERE dag_id = $1', [dagId]);
 
-    // Insert nieuwe
+    // 3) Insert nieuwe transacties
     if (rows.length > 0) {
       const baseCols = ['dag_id', 'type', 'categorie', 'bedrag', 'omschrijving'];
       const cols = btwCol
@@ -119,7 +124,7 @@ export async function PUT(req: NextRequest, { params }: any) {
       await client.query(insertSql, values);
     }
 
-    // eindsaldo direct bijwerken (snel)
+    // 4) eindsaldo direct bijwerken voor deze dag
     const sums = await client.query<{ start: number; inkomsten: number; uitgaven: number }>(
       `
       WITH s AS (
