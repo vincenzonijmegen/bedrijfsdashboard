@@ -13,6 +13,60 @@ import {
   subMonths,
 } from 'date-fns';
 
+function Journaalpost({ maand }: { maand: string }) {
+  const [regels, setRegels] = useState<{ gb: string; omschrijving: string; bedrag: number }[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!maand) return;
+    setLoading(true);
+    setError(null);
+    fetch(`/api/kasboek/journaal?maand=${maand}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data && Array.isArray(data.regels)) setRegels(data.regels);
+        else setError('Geen regels gevonden');
+      })
+      .catch(() => setError('Fout bij ophalen journaalpost'))
+      .finally(() => setLoading(false));
+  }, [maand]);
+
+  if (!maand) return null;
+
+  return (
+    <div className="mt-8 bg-white p-4 rounded shadow max-w-3xl">
+      <h2 className="text-lg font-bold mb-2">
+        Maandelijkse journaalpost – {maand}
+      </h2>
+      {loading && <div className="mb-2">Journaalpost wordt opgehaald...</div>}
+      {error && <div className="text-red-700 mb-2">{error}</div>}
+      {!loading && !error && (
+        <table className="w-full text-sm border">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="text-left px-2 py-1">Grootboek</th>
+              <th className="text-left px-2 py-1">Omschrijving</th>
+              <th className="text-right px-2 py-1">Bedrag</th>
+            </tr>
+          </thead>
+          <tbody>
+            {regels.map((r, i) => (
+              <tr key={i} className={r.gb === '' ? 'bg-yellow-100' : ''}>
+                <td className="px-2 py-1">{r.gb}</td>
+                <td className="px-2 py-1">{r.omschrijving}</td>
+                <td className="px-2 py-1 text-right">{r.bedrag.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+
+
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const formatBtw = (btw?: 0 | 9 | 21 | '-') =>
   btw === '-' || btw == null ? '—' : `${btw}%`;
@@ -377,6 +431,7 @@ export default function KasboekPage() {
           {snackbar.message}
         </div>
       )}
+      <Journaalpost maand={datum.slice(0, 7)} />
     </div>
   );
 }
