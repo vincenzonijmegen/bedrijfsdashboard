@@ -220,12 +220,29 @@ function NumInput({ value, onChange }: { value: number; onChange: (v: number) =>
   );
 }
 
-function parseLocaleNumber(s: string): number {
-  // accepteert "1.234,56" en "1234.56"
-  const cleaned = s.replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
-  const v = Number(cleaned);
-  return v;
+function parseLocaleNumber(input: string): number {
+  if (!input) return 0;
+
+  let s = input.trim().replace(/\s/g, ""); // spaties eruit, o.a. "1 000"
+  const lastComma = s.lastIndexOf(",");
+  const lastDot = s.lastIndexOf(".");
+
+  if (lastComma > lastDot) {
+    // KOMMA is decimaal → alle punten zijn duizendtallen
+    s = s.replace(/\./g, "").replace(",", ".");
+  } else if (lastDot > lastComma) {
+    // PUNT is decimaal → alle komma's zijn duizendtallen
+    s = s.replace(/,/g, "");
+    // punt blijft staan als decimaal
+  } else {
+    // Geen separator → alleen cijfers (en optioneel -) overhouden
+    s = s.replace(/[^\d-]/g, "");
+  }
+
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
 }
+
 
 function fill12(partial: Rij[]): Rij[] {
   const map = new Map(partial.map(r => [r.maand, r]));
