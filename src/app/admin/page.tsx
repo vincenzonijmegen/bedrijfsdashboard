@@ -141,7 +141,12 @@ function DailyTotalDisplay() {
 }
 
 export default function AdminDashboard() {
-  // User ophalen uit localStorage
+  // Hooks altijd helemaal bovenaan!
+  const [activeSection, setActive] = React.useState<string>(() => {
+    if (typeof window === 'undefined') return 'meest';
+    return localStorage.getItem('activeSection') || 'meest';
+  });
+
   let user = null;
   if (typeof window !== "undefined") {
     try {
@@ -151,19 +156,13 @@ export default function AdminDashboard() {
     }
   }
 
-  // Autorisatiecheck direct boven return
+  // Nu pas autorisatiecheck!
   if (!user || user.rol !== "beheerder") {
     if (typeof window !== "undefined") {
       window.location.href = "/sign-in";
     }
     return null;
   }
-
-  // activeSection state persisted in localStorage
-  const [activeSection, setActive] = React.useState<string>(() => {
-    if (typeof window === 'undefined') return 'meest';
-    return localStorage.getItem('activeSection') || 'meest';
-  });
 
   const setActiveSection = (id: string) => {
     setActive(id);
