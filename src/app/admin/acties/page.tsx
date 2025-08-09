@@ -1,9 +1,21 @@
-// Versie zonder drag-and-drop, met debug logging op voltooid toggle
-
 "use client";
 
 import { useEffect, useState } from "react";
 import useSWR from "swr";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -13,13 +25,82 @@ interface Actie {
   voltooid: boolean;
   deadline?: string;
   verantwoordelijke?: string;
-  volgorde?: number;
+  volgorde: number;
 }
 
 interface ActieLijst {
   id: number;
   naam: string;
   icoon: string;
+}
+
+type SorteerbareActieProps = {
+  actie: Actie;
+  listeners: any;
+  attributes: any;
+  setNodeRef: (element: HTMLElement | null) => void;
+  style: React.CSSProperties;
+  isDragging: boolean;
+  toggleActie: (id: number, voltooid: boolean) => void;
+  setActieEdit: (value: { id: number; tekst: string } | null) => void;
+};
+
+function SorteerbareActie({
+  actie,
+  listeners,
+  attributes,
+  setNodeRef,
+  style,
+  isDragging,
+  toggleActie,
+  setActieEdit,
+}: SorteerbareActieProps) {
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center justify-between border p-3 rounded bg-white shadow-sm ${isDragging ? "opacity-50" : ""}`}
+      {...attributes}
+      {...listeners}
+    >
+      <label className="flex items-center gap-3">
+        <input
+          type="checkbox"
+          checked={actie.voltooid}
+          onChange={() => toggleActie(actie.id, actie.voltooid)}
+        />
+        <button
+          onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })}
+          className="text-left w-full"
+        >
+          📝 {actie.tekst}
+        </button>
+      </label>
+      <div className="text-sm text-gray-500">
+        {actie.deadline && <span className="mr-2">{actie.deadline}</span>}
+        {actie.verantwoordelijke && <span>{actie.verantwoordelijke}</span>}
+      </div>
+    </div>
+  );
+}
+
+function useSortableActie(actieId: number) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: actieId });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    cursor: 'grab',
+    zIndex: isDragging ? 50 : 1,
+  };
+  return { attributes, listeners, setNodeRef, style, isDragging };
 }
 
 export default function ActieLijstPagina() {
@@ -37,31 +118,26 @@ export default function ActieLijstPagina() {
 
   useEffect(() => {
     if (!actiesRaw) return;
-    const openActies = actiesRaw.filter((a) => !a.voltooid);
+    // Sorteer op volgorde en filter op open acties
+    const openActies = actiesRaw
+      .filter((a) => !a.voltooid)
+      .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
     setActies(openActies);
   }, [actiesRaw]);
 
   const toggleActie = async (id: number, voltooid: boolean) => {
     try {
       const nieuwVoltooid = !voltooid;
-      console.log('Toggle actie', { id, nieuwVoltooid });
-      const res = await fetch('/api/acties', {
+      await fetch('/api/acties', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, voltooid: nieuwVoltooid })
       });
-      const json = await res.json();
-      console.log('PATCH response:', res.status, json);
-      if (!res.ok) {
-        console.error('Fout bij opslaan voltooid-status:', json);
-      } else {
-        await mutate();
-      }
+      await mutate();
     } catch (error) {
       console.error('Netwerkfout bij toggleActie:', error);
     }
   };
-
 
   const updateActieTekst = async (id: number, tekst: string) => {
     await fetch('/api/acties', {
@@ -122,6 +198,9 @@ export default function ActieLijstPagina() {
     }
   }, [lijsten]);
 
+  // DnD-kit sensors
+  const sensors = useSensors(useSensor(PointerSensor));
+
   if (lijstLoading) return <div className="p-6">Bezig met laden...</div>;
   if (lijstError) return <div className="p-6 text-red-600">Fout bij laden actielijsten.</div>;
   if (!lijsten || lijsten.length === 0) return <div className="p-6">Geen actielijsten gevonden.</div>;
@@ -179,24 +258,47 @@ export default function ActieLijstPagina() {
       <div className="col-span-2">
         <h2 className="text-lg font-semibold mb-4">{geselecteerdeLijst?.naam}</h2>
 
-        <div className="space-y-2">
-          {acties.map((actie) => (
-            <div key={actie.id} className="flex items-center justify-between border p-3 rounded bg-white shadow-sm">
-              <label className="flex items-center gap-3">
-                <input
-  type="checkbox"
-  checked={actie.voltooid}
-  onChange={() => toggleActie(actie.id, actie.voltooid)}
-/>
-                <button onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })} className="text-left w-full">📝 {actie.tekst}</button>
-              </label>
-              <div className="text-sm text-gray-500">
-                {actie.deadline && <span className="mr-2">{actie.deadline}</span>}
-                {actie.verantwoordelijke && <span>{actie.verantwoordelijke}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* DRAG & DROP + AFVINKEN VOOR OPEN ACTIES */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={async (event) => {
+            const { active, over } = event;
+            if (!over || active.id === over.id) return;
+            const oudeIndex = acties.findIndex((a) => a.id === active.id);
+            const nieuweIndex = acties.findIndex((a) => a.id === over.id);
+            if (oudeIndex === -1 || nieuweIndex === -1) return;
+            const nieuweActies = arrayMove(acties, oudeIndex, nieuweIndex);
+            setActies(nieuweActies);
+            // Update volgorde in backend
+            await fetch('/api/acties/volgorde', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ids: nieuweActies.map((a, i) => ({ id: a.id, volgorde: i })),
+              }),
+            });
+            mutate();
+          }}
+        >
+          <SortableContext
+            items={acties.map((a) => a.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {acties.map((actie) => {
+              const sortable = useSortableActie(actie.id);
+              return (
+                <SorteerbareActie
+                  key={actie.id}
+                  actie={actie}
+                  {...sortable}
+                  toggleActie={toggleActie}
+                  setActieEdit={setActieEdit}
+                />
+              );
+            })}
+          </SortableContext>
+        </DndContext>
 
         <div className="flex gap-2 pt-2">
           <input
@@ -252,22 +354,26 @@ export default function ActieLijstPagina() {
           </div>
         )}
 
+        {/* Afgehandeld, onderaan */}
         {actiesRaw.some((a) => a.voltooid) && (
           <div className="mt-8">
             <h3 className="text-sm font-semibold text-gray-600 mb-2">Afgehandeld</h3>
             <div className="space-y-2">
-              {actiesRaw.filter((a) => a.voltooid).map((actie) => (
-                <div key={actie.id} className="flex items-center justify-between border p-3 rounded bg-gray-50 text-gray-500">
-                  <label className="flex items-center gap-3">
-                    <input
-  type="checkbox"
-  checked={actie.voltooid}
-  onChange={() => toggleActie(actie.id, actie.voltooid)}
-/>
-                    <span className="line-through">{actie.tekst}</span>
-                  </label>
-                </div>
-              ))}
+              {actiesRaw
+                .filter((a) => a.voltooid)
+                .sort((a, b) => (b.volgorde ?? 0) - (a.volgorde ?? 0))
+                .map((actie) => (
+                  <div key={actie.id} className="flex items-center justify-between border p-3 rounded bg-gray-50 text-gray-500">
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={actie.voltooid}
+                        onChange={() => toggleActie(actie.id, actie.voltooid)}
+                      />
+                      <span className="line-through">{actie.tekst}</span>
+                    </label>
+                  </div>
+                ))}
             </div>
           </div>
         )}
