@@ -250,6 +250,7 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/aftekenlijsten/upload" label="Upload HACCP-formulieren" color="teal" Icon={Archive} />
         <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} />
         <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} />
+        <LinkCard href="/admin/omzet/omzetdagen" label="Omzetdagen aanpassen" color="teal" Icon={Wrench} />
       </Section>
     </main>
   );
