@@ -30,7 +30,7 @@ export default function SignInPage() {
 } else if (data.rol === "accountant") {
   router.push("/accountant");
 } else if (data.rol === "beheerder") {
-  router.push("/");
+  router.push("/admin");
 } else {
   router.push("/medewerker");
 }
