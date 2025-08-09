@@ -51,15 +51,30 @@ export async function PATCH(req: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: 'id ontbreekt' }, { status: 400 });
     }
-    const resultaat = await db.query(
-      `UPDATE acties SET
-         tekst = COALESCE($2, tekst),
-         voltooid = COALESCE($3::boolean, voltooid),
-         volgorde = COALESCE($4::int, volgorde)
-       WHERE id = $1
-       RETURNING *`,
-      [id, tekst ?? null, voltooid ?? null, volgorde ?? null]
-    );
+    // Bouw dynamisch je SET clause
+    const sets = [];
+    const params = [id];
+    let paramIdx = 2;
+
+    if (typeof tekst !== "undefined") {
+      sets.push(`tekst = $${paramIdx++}`);
+      params.push(tekst);
+    }
+    if (typeof voltooid !== "undefined") {
+      sets.push(`voltooid = $${paramIdx++}`);
+      params.push(voltooid);
+    }
+    if (typeof volgorde !== "undefined") {
+      sets.push(`volgorde = $${paramIdx++}`);
+      params.push(volgorde);
+    }
+    if (!sets.length) {
+      return NextResponse.json({ error: 'Geen velden om bij te werken' }, { status: 400 });
+    }
+
+    const sql = `UPDATE acties SET ${sets.join(', ')} WHERE id = $1 RETURNING *`;
+    const resultaat = await db.query(sql, params);
+
     if (resultaat.rows.length === 0) {
       return NextResponse.json({ error: 'Actie niet gevonden' }, { status: 404 });
     }
