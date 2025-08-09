@@ -1,135 +1,131 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { format } from "date-fns";
-import { nl } from "date-fns/locale";
+import { useState } from "react";
+import useSWR from "swr";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-interface Loonkosten {
-  jaar: number;
-  maand: number;
-  lonen: number;
-  loonheffing: number;
-  pensioenpremie: number;
-}
+const fetcher = (u: string) => fetch(u).then(r => r.json());
+const maanden = ["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
 
-export default function LoonkostenBeheerPage() {
-  const [data, setData] = useState<Loonkosten[]>([]);
-  const [loading, setLoading] = useState(true);
+type Rij = { maand: number; lonen: number; loonheffing: number; pensioenpremie: number };
+type Data = { jaar: number; maanden: Rij[] };
 
-  useEffect(() => {
-    fetch("/api/rapportage/loonkosten")
-      .then((res) => res.json())
-      .then((data) => {
-        setData(data);
-        setLoading(false);
-      });
-  }, []);
+export default function Loonkosten() {
+  const now = new Date().getFullYear();
+  const [jaar, setJaar] = useState<number>(now);
+  const { data, mutate, isLoading } = useSWR<Data>(`/api/loonkosten?jaar=${jaar}`, fetcher);
 
-  const maanden = Array.from({ length: 12 }, (_, i) => i + 1);
-  const jaar = new Date().getFullYear();
-
-  const getValue = (maand: number, veld: keyof Loonkosten) =>
-    Number(data.find((r) => r.jaar === jaar && r.maand === maand)?.[veld]) || 0;
-
-  const updateField = (maand: number, veld: keyof Loonkosten, waarde: number) => {
-    setData((prev) => {
-      const bestaand = prev.find((r) => r.jaar === jaar && r.maand === maand);
-      if (bestaand) {
-        return prev.map((r) =>
-          r.jaar === jaar && r.maand === maand ? { ...r, [veld]: waarde } : r
-        );
-      } else {
-        return [...prev, { jaar, maand, lonen: 0, loonheffing: 0, pensioenpremie: 0, [veld]: waarde }];
-      }
+  async function save(veld: keyof Rij, maand: number, value: number) {
+    await fetch("/api/loonkosten", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jaar, maand, [veld]: value }),
     });
-  };
+    mutate();
+  }
 
-  const opslaan = async (maand: number) => {
-    const record = data.find((r) => r.jaar === jaar && r.maand === maand);
-    if (!record) return;
-
-    await fetch("/api/rapportage/loonkosten", {
-      method: "POST",
-      body: JSON.stringify(record),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-    alert("Opgeslagen!");
-  };
-
-  if (loading) return <div>Bezig met laden...</div>;
+  if (isLoading || !data) return <div className="p-6">Laden…</div>;
 
   return (
-    <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold">Loonkosten {jaar}</h1>
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-gray-200 text-left">
-            <th className="p-2">Maand</th>
-            <th className="p-2">Lonen (€)</th>
-            <th className="p-2">Loonheffing (€)</th>
-            <th className="p-2">Pensioenpremie (€)</th>
-            <th className="p-2">Totaal</th>
-            <th className="p-2"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {maanden.map((maand) => {
-            const lonen = getValue(maand, "lonen");
-            const loonheffing = getValue(maand, "loonheffing");
-            const pensioen = getValue(maand, "pensioenpremie");
-            const totaal = Number(lonen) + Number(loonheffing) + Number(pensioen);
+    <main className="p-6 space-y-6">
+      <header className="flex items-center gap-2">
+        <button className="p-2 border rounded hover:bg-gray-50" onClick={() => setJaar(j => j - 1)}>
+          <ChevronLeft />
+        </button>
+        <div className="text-2xl font-semibold w-24 text-center tabular-nums">{jaar}</div>
+        <button className="p-2 border rounded hover:bg-gray-50" onClick={() => setJaar(j => j + 1)}>
+          <ChevronRight />
+        </button>
+      </header>
 
-            return (
-              <tr key={maand} className="border-t">
-                <td className="p-2">
-                  {format(new Date(jaar, maand - 1, 1), "MMMM", { locale: nl })}
-                </td>
-                <td className="p-2">
-                  <input
-                    type="number"
-                    value={lonen}
-                    className="border rounded px-2 py-1 w-28"
-                    onChange={(e) =>
-                      updateField(maand, "lonen", parseFloat(e.target.value) || 0)
-                    }
-                  />
-                </td>
-                <td className="p-2">
-                  <input
-                    type="number"
-                    value={loonheffing}
-                    className="border rounded px-2 py-1 w-28"
-                    onChange={(e) =>
-                      updateField(maand, "loonheffing", parseFloat(e.target.value) || 0)
-                    }
-                  />
-                </td>
-                <td className="p-2">
-                  <input
-                    type="number"
-                    value={pensioen}
-                    className="border rounded px-2 py-1 w-28"
-                    onChange={(e) =>
-                      updateField(maand, "pensioenpremie", parseFloat(e.target.value) || 0)
-                    }
-                  />
-                </td>
-                <td className="p-2 font-semibold">€ {Number(totaal).toFixed(2)}</td>
-                <td className="p-2">
-                  <button
-                    onClick={() => opslaan(maand)}
-                    className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                  >
-                    Opslaan
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-[900px] table-auto border-collapse border">
+          <thead>
+            <tr className="bg-gray-100">
+              <th className="border px-3 py-2 text-left">maand</th>
+              <th className="border px-3 py-2 text-right">lonen</th>
+              <th className="border px-3 py-2 text-right">loonheffing</th>
+              <th className="border px-3 py-2 text-right">pensioenpremie</th>
+              <th className="border px-3 py-2 text-right">totaal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.maanden.map((r) => {
+              const totaal = (r.lonen ?? 0) + (r.loonheffing ?? 0) + (r.pensioenpremie ?? 0);
+              return (
+                <tr key={r.maand} className="bg-white">
+                  <td className="border px-3 py-2">{maanden[r.maand - 1]}</td>
+
+                  <td className="border px-3 py-1">
+                    <NumInput
+                      defaultValue={r.lonen}
+                      onCommit={(v) => save("lonen", r.maand, v)}
+                    />
+                  </td>
+
+                  <td className="border px-3 py-1">
+                    <NumInput
+                      defaultValue={r.loonheffing}
+                      onCommit={(v) => save("loonheffing", r.maand, v)}
+                    />
+                  </td>
+
+                  <td className="border px-3 py-1">
+                    <NumInput
+                      defaultValue={r.pensioenpremie}
+                      onCommit={(v) => save("pensioenpremie", r.maand, v)}
+                    />
+                  </td>
+
+                  <td className="border px-3 py-2 text-right tabular-nums">{totaal.toFixed(2)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="bg-gray-50 font-semibold">
+              <td className="border px-3 py-2 text-right">Totaal</td>
+              {(() => {
+                const sum = (k: keyof Rij) => data.maanden.reduce((a, r) => a + (r[k] ?? 0), 0);
+                const T = sum("lonen") + sum("loonheffing") + sum("pensioenpremie");
+                return (
+                  <>
+                    <td className="border px-3 py-2 text-right tabular-nums">{sum("lonen").toFixed(2)}</td>
+                    <td className="border px-3 py-2 text-right tabular-nums">{sum("loonheffing").toFixed(2)}</td>
+                    <td className="border px-3 py-2 text-right tabular-nums">{sum("pensioenpremie").toFixed(2)}</td>
+                    <td className="border px-3 py-2 text-right tabular-nums">{T.toFixed(2)}</td>
+                  </>
+                );
+              })()}
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </main>
+  );
+}
+
+function NumInput({ defaultValue, onCommit }: { defaultValue: number; onCommit: (value: number) => void; }) {
+  return (
+    <input
+      type="number"
+      inputMode="decimal"
+      step="0.01"
+      className="w-full max-w-[160px] border rounded px-2 py-1 text-right tabular-nums"
+      defaultValue={Number(defaultValue ?? 0).toFixed(2)}
+      onBlur={(e) => {
+        const v = Number(String(e.currentTarget.value).replace(",", "."));
+        if (!Number.isFinite(v)) return;
+        if (v === defaultValue) return;
+        onCommit(v);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+        if (e.key === "Escape") {
+          (e.currentTarget as HTMLInputElement).value = Number(defaultValue ?? 0).toFixed(2);
+          (e.currentTarget as HTMLInputElement).blur();
+        }
+      }}
+    />
   );
 }
