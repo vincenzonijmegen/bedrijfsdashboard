@@ -81,12 +81,13 @@ function SorteerbareActie({ actie, toggleActie, setActieEdit, isAfgehandeld, dnd
       <label className="flex items-center gap-3">
         <input
           type="checkbox"
-          checked={actie.voltooid}
-          onChange={() => {
-            console.log("TOGGLE PATCH", { id: actie.id, nieuwVoltooid: !actie.voltooid });
-            toggleActie(actie.id, actie.voltooid);
-          }}
-        />
+  checked={actie.voltooid}
+  onPointerDown={e => e.stopPropagation()}
+  onChange={() => {
+    console.log("TOGGLE PATCH", { id: actie.id, nieuwVoltooid: !actie.voltooid });
+    toggleActie(actie.id, actie.voltooid);
+  }}
+/>
         <span className={isAfgehandeld ? "line-through" : ""}>
           <button
             type="button"
