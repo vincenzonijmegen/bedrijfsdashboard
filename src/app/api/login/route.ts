@@ -44,10 +44,11 @@ const res = NextResponse.json({
   success: true,
   naam: medewerker.naam,
   functie: medewerker.functie,
-  rol: medewerker.rol, // <-- toevoegen!
+  rol: medewerker.rol,        // <-- deze toevoegen!
   email: medewerker.email,
   moetWachtwoordWijzigen: medewerker.moet_wachtwoord_wijzigen,
 });
+
 
 
     res.cookies.set("sessie_token", token, {

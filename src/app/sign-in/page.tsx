@@ -21,7 +21,7 @@ export default function SignInPage() {
       });
 
       const data = await res.json();
-
+console.log("DEBUG LOGIN DATA:", data);
       if (data.success) {
         localStorage.setItem("gebruiker", JSON.stringify(data));
 
