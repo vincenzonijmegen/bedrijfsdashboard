@@ -42,39 +42,31 @@ type SorteerbareActieProps = {
   dnd?: boolean;
 };
 
-function SorteerbareActie({
-  actie,
-  toggleActie,
-  setActieEdit,
-  isAfgehandeld,
-  dnd = true,
-}: SorteerbareActieProps) {
-  // Alleen DnD en drag styling voor open acties!
-  let dragProps = {};
-  let dragStyle: React.CSSProperties = {};
+function SorteerbareActie({ actie, toggleActie, setActieEdit, isAfgehandeld, dnd = true }: SorteerbareActieProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: actie.id });
 
-  if (dnd) {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging,
-    } = useSortable({ id: actie.id });
+  const dragProps = dnd
+    ? { ref: setNodeRef, ...attributes, ...listeners }
+    : {};
 
-    dragProps = {
-      ref: setNodeRef,
-      ...attributes,
-      ...listeners,
-    };
-    dragStyle = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      cursor: 'grab',
-      zIndex: isDragging ? 50 : 1,
-    };
-  }
+  const dragStyle: React.CSSProperties = dnd
+    ? {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        cursor: 'grab',
+        zIndex: isDragging ? 50 : 1,
+      }
+    : {};
+
+
+
 
   return (
     <div
