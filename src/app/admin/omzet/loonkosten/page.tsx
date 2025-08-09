@@ -16,7 +16,7 @@ export default function Loonkosten() {
 
   // SWR: nieuwe (GET ?jaar=YYYY). Als je oude route nog gebruikt die alles retourneert,
   // vangen we dat op in useEffect hieronder.
-  const { data, isLoading, mutate } = useSWR<Data>(`/api/loonkosten?jaar=${jaar}`, fetcher);
+  const { data, isLoading, mutate } = useSWR<Data>(`/api/rapportage/loonkosten?jaar=${jaar}`, fetcher);
 
   // lokale draft state (bewerkbare kopie)
   const [draft, setDraft] = useState<Rij[] | null>(null);
