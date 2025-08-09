@@ -70,7 +70,7 @@ export default function Loonkosten() {
     try {
       // 12 upserts via bestaande POST /api/loonkosten
       for (const r of draft) {
-        await fetch("/api/loonkosten", {
+        await fetch("/api/rapportage/loonkosten", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
