@@ -13,7 +13,7 @@ type Data = { jaar: number; maanden: Rij[] };
 export default function Loonkosten() {
   const now = new Date().getFullYear();
   const [jaar, setJaar] = useState<number>(now);
-  const { data, mutate, isLoading } = useSWR<Data>(`/api/loonkosten?jaar=${jaar}`, fetcher);
+  const { data, mutate, isLoading } = useSWR<Data>(`/api/rapportage/loonkosten?jaar=${jaar}`, fetcher);
 
   async function save(veld: keyof Rij, maand: number, value: number) {
     await fetch("/api/loonkosten", {
