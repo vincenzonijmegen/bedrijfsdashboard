@@ -1,4 +1,3 @@
-// src/components/AdminDashboard.tsx
 "use client";
 
 import * as React from 'react';
@@ -100,7 +99,6 @@ const Section = ({ id, title, children, color, activeSection, setActiveSection }
   );
 };
 
-// Bovenin toevoegen:
 const SubSection = ({
   title,
   color,
@@ -131,7 +129,6 @@ const SubSection = ({
   );
 };
 
-
 function DailyTotalDisplay() {
   const today = new Date().toISOString().slice(0, 10).split('-').reverse().join('-');
   const { data } = useSWR('/api/kassa/omzet?start=' + today + '&totalen=1', fetcher);
@@ -144,6 +141,24 @@ function DailyTotalDisplay() {
 }
 
 export default function AdminDashboard() {
+  // User ophalen uit localStorage
+  let user = null;
+  if (typeof window !== "undefined") {
+    try {
+      user = JSON.parse(localStorage.getItem("gebruiker") || "null");
+    } catch {
+      user = null;
+    }
+  }
+
+  // Autorisatiecheck direct boven return
+  if (!user || user.rol !== "beheerder") {
+    if (typeof window !== "undefined") {
+      window.location.href = "/sign-in";
+    }
+    return null;
+  }
+
   // activeSection state persisted in localStorage
   const [activeSection, setActive] = React.useState<string>(() => {
     if (typeof window === 'undefined') return 'meest';
