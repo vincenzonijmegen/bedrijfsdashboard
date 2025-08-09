@@ -38,45 +38,72 @@ type SorteerbareActieProps = {
   actie: Actie;
   toggleActie: (id: number, voltooid: boolean) => void;
   setActieEdit: (value: { id: number; tekst: string } | null) => void;
+  isAfgehandeld?: boolean;
+  dnd?: boolean;
 };
 
-function SorteerbareActie({ actie, toggleActie, setActieEdit }: SorteerbareActieProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: actie.id });
+function SorteerbareActie({
+  actie,
+  toggleActie,
+  setActieEdit,
+  isAfgehandeld,
+  dnd = true,
+}: SorteerbareActieProps) {
+  // Alleen DnD en drag styling voor open acties!
+  let dragProps = {};
+  let dragStyle: React.CSSProperties = {};
 
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    cursor: 'grab',
-    zIndex: isDragging ? 50 : 1,
-  };
+  if (dnd) {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: actie.id });
+
+    dragProps = {
+      ref: setNodeRef,
+      ...attributes,
+      ...listeners,
+    };
+    dragStyle = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      cursor: 'grab',
+      zIndex: isDragging ? 50 : 1,
+    };
+  }
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center justify-between border p-3 rounded bg-white shadow-sm ${isDragging ? "opacity-50" : ""}`}
-      {...attributes}
-      {...listeners}
+      {...dragProps}
+      style={dragStyle}
+      className={
+        isAfgehandeld
+          ? "flex items-center justify-between border p-3 rounded bg-gray-50 text-gray-500"
+          : `flex items-center justify-between border p-3 rounded bg-white shadow-sm`
+      }
     >
       <label className="flex items-center gap-3">
         <input
           type="checkbox"
           checked={actie.voltooid}
-          onChange={() => toggleActie(actie.id, actie.voltooid)}
+          onChange={() => {
+            console.log("TOGGLE PATCH", { id: actie.id, nieuwVoltooid: !actie.voltooid });
+            toggleActie(actie.id, actie.voltooid);
+          }}
         />
-        <button
-          onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })}
-          className="text-left w-full"
-        >
-          📝 {actie.tekst}
-        </button>
+        <span className={isAfgehandeld ? "line-through" : ""}>
+          <button
+            type="button"
+            onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })}
+            className="text-left w-full"
+          >
+            📝 {actie.tekst}
+          </button>
+        </span>
       </label>
       <div className="text-sm text-gray-500">
         {actie.deadline && <span className="mr-2">{actie.deadline}</span>}
@@ -93,9 +120,7 @@ export default function ActieLijstPagina() {
     geselecteerdeLijst ? `/api/acties?lijst_id=${geselecteerdeLijst.id}` : null,
     fetcher
   );
-  // State voor tijdelijke DnD-volgorde
   const [dndVolgorde, setDndVolgorde] = useState<number[]>([]);
-
   const [nieuweLijstNaam, setNieuweLijstNaam] = useState("");
   const [nieuweActieTekst, setNieuweActieTekst] = useState("");
   const [lijstEdit, setLijstEdit] = useState<{ id: number; naam: string; icoon: string } | null>(null);
@@ -118,18 +143,17 @@ export default function ActieLijstPagina() {
   }, [actiesRaw]);
 
   const toggleActie = async (id: number, voltooid: boolean) => {
-  const nieuwVoltooid = !voltooid;
-  console.log("TOGGLE PATCH", { id, nieuwVoltooid });
-  const res = await fetch('/api/acties', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, voltooid: nieuwVoltooid })
-  });
-  const json = await res.json();
-  console.log("PATCH response", res.status, json);
-  await mutate();
-};
-
+    const nieuwVoltooid = !voltooid;
+    console.log("TOGGLE PATCH", { id, nieuwVoltooid });
+    const res = await fetch('/api/acties', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, voltooid: nieuwVoltooid })
+    });
+    const json = await res.json();
+    console.log("PATCH response", res.status, json);
+    await mutate();
+  };
 
   const updateActieTekst = async (id: number, tekst: string) => {
     await fetch('/api/acties', {
@@ -196,6 +220,11 @@ export default function ActieLijstPagina() {
     .filter((a) => !a.voltooid)
     .sort((a, b) => dndVolgorde.indexOf(a.id) - dndVolgorde.indexOf(b.id));
 
+  // Afgehandelde acties gesorteerd
+  const afgehandeldSorted = (actiesRaw || [])
+    .filter((a) => a.voltooid)
+    .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
+
   return (
     <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="col-span-1 space-y-2">
@@ -249,56 +278,56 @@ export default function ActieLijstPagina() {
       <div className="col-span-2">
         <h2 className="text-lg font-semibold mb-4">{geselecteerdeLijst?.naam}</h2>
 
-{/* DRAG & DROP + AFVINKEN VOOR OPEN ACTIES */}
-<DndContext
-  sensors={sensors}
-  collisionDetection={closestCenter}
-  onDragEnd={async (event) => {
-    console.log("onDragEnd trigger!", event);
+        {/* DRAG & DROP + AFVINKEN VOOR OPEN ACTIES */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={async (event) => {
+            console.log("onDragEnd trigger!", event);
 
-    const { active, over } = event;
-    if (!over || active.id === over.id) {
-      console.log("Geen geldige drop (geen 'over' of hetzelfde id)");
-      return;
-    }
+            const { active, over } = event;
+            if (!over || active.id === over.id) {
+              console.log("Geen geldige drop (geen 'over' of hetzelfde id)");
+              return;
+            }
 
-    const oudeIndex = dndVolgorde.indexOf(active.id as number);
-    const nieuweIndex = dndVolgorde.indexOf(over.id as number);
-    if (oudeIndex === -1 || nieuweIndex === -1) {
-      console.log("Kan index niet bepalen", { oudeIndex, nieuweIndex });
-      return;
-    }
+            const oudeIndex = dndVolgorde.indexOf(active.id as number);
+            const nieuweIndex = dndVolgorde.indexOf(over.id as number);
+            if (oudeIndex === -1 || nieuweIndex === -1) {
+              console.log("Kan index niet bepalen", { oudeIndex, nieuweIndex });
+              return;
+            }
 
-    const nieuweVolgorde = arrayMove(dndVolgorde, oudeIndex, nieuweIndex);
-    setDndVolgorde(nieuweVolgorde);
+            const nieuweVolgorde = arrayMove(dndVolgorde, oudeIndex, nieuweIndex);
+            setDndVolgorde(nieuweVolgorde);
 
-    // Debug: log welke volgorde je naar backend stuurt
-    const idsPayload = nieuweVolgorde.map((id, i) => ({ id, volgorde: i }));
-    console.log("POST naar /api/acties/volgorde:", idsPayload);
+            // Debug: log welke volgorde je naar backend stuurt
+            const idsPayload = nieuweVolgorde.map((id, i) => ({ id, volgorde: i }));
+            console.log("POST naar /api/acties/volgorde:", idsPayload);
 
-    try {
-      const response = await fetch('/api/acties/volgorde', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids: idsPayload }),
-      });
+            try {
+              const response = await fetch('/api/acties/volgorde', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: idsPayload }),
+              });
 
-      console.log("Response van /api/acties/volgorde:", response.status);
-      if (!response.ok) {
-        const error = await response.text();
-        console.error("Fout in backend-volgorde:", error);
-      } else {
-        const json = await response.json();
-        console.log("Resultaat backend:", json);
-      }
-    } catch (err) {
-      console.error("Netwerkfout bij backend-volgorde:", err);
-    }
+              console.log("Response van /api/acties/volgorde:", response.status);
+              if (!response.ok) {
+                const error = await response.text();
+                console.error("Fout in backend-volgorde:", error);
+              } else {
+                const json = await response.json();
+                console.log("Resultaat backend:", json);
+              }
+            } catch (err) {
+              console.error("Netwerkfout bij backend-volgorde:", err);
+            }
 
-    // SWR refresh
-    mutate();
-  }}
->
+            // SWR refresh
+            mutate();
+          }}
+        >
           <SortableContext
             items={dndVolgorde}
             strategy={verticalListSortingStrategy}
@@ -309,6 +338,7 @@ export default function ActieLijstPagina() {
                 actie={actie}
                 toggleActie={toggleActie}
                 setActieEdit={setActieEdit}
+                dnd={true}
               />
             ))}
           </SortableContext>
@@ -369,25 +399,20 @@ export default function ActieLijstPagina() {
         )}
 
         {/* Afgehandeld, onderaan */}
-        {actiesRaw.some((a) => a.voltooid) && (
+        {afgehandeldSorted.length > 0 && (
           <div className="mt-8">
             <h3 className="text-sm font-semibold text-gray-600 mb-2">Afgehandeld</h3>
             <div className="space-y-2">
-              {actiesRaw
-                .filter((a) => a.voltooid)
-                .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0))
-                .map((actie) => (
-                  <div key={actie.id} className="flex items-center justify-between border p-3 rounded bg-gray-50 text-gray-500">
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={actie.voltooid}
-                        onChange={() => toggleActie(actie.id, actie.voltooid)}
-                      />
-                      <span className="line-through">{actie.tekst}</span>
-                    </label>
-                  </div>
-                ))}
+              {afgehandeldSorted.map((actie) => (
+                <SorteerbareActie
+                  key={actie.id}
+                  actie={actie}
+                  toggleActie={toggleActie}
+                  setActieEdit={setActieEdit}
+                  isAfgehandeld={true}
+                  dnd={false}
+                />
+              ))}
             </div>
           </div>
         )}
