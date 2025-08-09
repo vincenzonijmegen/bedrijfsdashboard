@@ -118,18 +118,18 @@ export default function ActieLijstPagina() {
   }, [actiesRaw]);
 
   const toggleActie = async (id: number, voltooid: boolean) => {
-    try {
-      const nieuwVoltooid = !voltooid;
-      await fetch('/api/acties', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, voltooid: nieuwVoltooid })
-      });
-      await mutate();
-    } catch (error) {
-      console.error('Netwerkfout bij toggleActie:', error);
-    }
-  };
+  const nieuwVoltooid = !voltooid;
+  console.log("TOGGLE PATCH", { id, nieuwVoltooid });
+  const res = await fetch('/api/acties', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id, voltooid: nieuwVoltooid })
+  });
+  const json = await res.json();
+  console.log("PATCH response", res.status, json);
+  await mutate();
+};
+
 
   const updateActieTekst = async (id: number, tekst: string) => {
     await fetch('/api/acties', {
