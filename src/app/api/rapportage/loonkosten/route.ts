@@ -9,10 +9,14 @@ export async function GET(req: NextRequest) {
 
   if (!jaar) {
     const result = await pool.query(`
-      SELECT jaar, maand, lonen, loonheffing, pensioenpremie
-      FROM rapportage.loonkosten
-      ORDER BY jaar, maand;
-    `);
+SELECT 
+  jaar, 
+  maand, 
+  COALESCE(lonen, 0) AS lonen, 
+  COALESCE(loonheffing, 0) AS loonheffing, 
+  COALESCE(pensioenpremie, 0) AS pensioenpremie
+FROM rapportage.loonkosten
+ORDER BY jaar, maand;`);
     return NextResponse.json(result.rows);
   }
 
