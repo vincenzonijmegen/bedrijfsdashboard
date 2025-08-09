@@ -249,30 +249,56 @@ export default function ActieLijstPagina() {
       <div className="col-span-2">
         <h2 className="text-lg font-semibold mb-4">{geselecteerdeLijst?.naam}</h2>
 
-        {/* DRAG & DROP + AFVINKEN VOOR OPEN ACTIES */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={async (event) => {
-             console.log("onDragEnd trigger!", event); // <--- ZET DIT BOVENAAN
-            const { active, over } = event;
-            if (!over || active.id === over.id) return;
-            const oudeIndex = dndVolgorde.indexOf(active.id as number);
-            const nieuweIndex = dndVolgorde.indexOf(over.id as number);
-            if (oudeIndex === -1 || nieuweIndex === -1) return;
-            const nieuweVolgorde = arrayMove(dndVolgorde, oudeIndex, nieuweIndex);
-            setDndVolgorde(nieuweVolgorde);
-            // Update volgorde in backend
-            await fetch('/api/acties/volgorde', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                ids: nieuweVolgorde.map((id, i) => ({ id, volgorde: i })),
-              }),
-            });
-            mutate();
-          }}
-        >
+{/* DRAG & DROP + AFVINKEN VOOR OPEN ACTIES */}
+<DndContext
+  sensors={sensors}
+  collisionDetection={closestCenter}
+  onDragEnd={async (event) => {
+    console.log("onDragEnd trigger!", event);
+
+    const { active, over } = event;
+    if (!over || active.id === over.id) {
+      console.log("Geen geldige drop (geen 'over' of hetzelfde id)");
+      return;
+    }
+
+    const oudeIndex = dndVolgorde.indexOf(active.id as number);
+    const nieuweIndex = dndVolgorde.indexOf(over.id as number);
+    if (oudeIndex === -1 || nieuweIndex === -1) {
+      console.log("Kan index niet bepalen", { oudeIndex, nieuweIndex });
+      return;
+    }
+
+    const nieuweVolgorde = arrayMove(dndVolgorde, oudeIndex, nieuweIndex);
+    setDndVolgorde(nieuweVolgorde);
+
+    // Debug: log welke volgorde je naar backend stuurt
+    const idsPayload = nieuweVolgorde.map((id, i) => ({ id, volgorde: i }));
+    console.log("POST naar /api/acties/volgorde:", idsPayload);
+
+    try {
+      const response = await fetch('/api/acties/volgorde', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: idsPayload }),
+      });
+
+      console.log("Response van /api/acties/volgorde:", response.status);
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("Fout in backend-volgorde:", error);
+      } else {
+        const json = await response.json();
+        console.log("Resultaat backend:", json);
+      }
+    } catch (err) {
+      console.error("Netwerkfout bij backend-volgorde:", err);
+    }
+
+    // SWR refresh
+    mutate();
+  }}
+>
           <SortableContext
             items={dndVolgorde}
             strategy={verticalListSortingStrategy}
