@@ -16,7 +16,7 @@ export default function Page() {
   const handleLogout = () => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("gebruiker");
-      window.location.href = "/login"; // of /, afhankelijk van je flow
+      window.location.href = "/sign-in"; // of /, afhankelijk van je flow
     }
   };
 
