@@ -89,14 +89,16 @@ function SorteerbareActie({ actie, toggleActie, setActieEdit, isAfgehandeld, dnd
   }}
 />
         <span className={isAfgehandeld ? "line-through" : ""}>
-          <button
-            type="button"
-            onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })}
-            className="text-left w-full"
-          >
-            📝 {actie.tekst}
-          </button>
-        </span>
+  <button
+    type="button"
+    onPointerDown={e => e.stopPropagation()}   // <--- FIX
+    onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })}
+    className="text-left w-full"
+  >
+    📝 {actie.tekst}
+  </button>
+</span>
+
       </label>
       <div className="text-sm text-gray-500">
         {actie.deadline && <span className="mr-2">{actie.deadline}</span>}
