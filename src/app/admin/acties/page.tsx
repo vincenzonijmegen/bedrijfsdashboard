@@ -16,6 +16,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { Pencil } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -42,7 +43,13 @@ type SorteerbareActieProps = {
   dnd?: boolean;
 };
 
-function SorteerbareActie({ actie, toggleActie, setActieEdit, isAfgehandeld, dnd = true }: SorteerbareActieProps) {
+function SorteerbareActie({
+  actie,
+  toggleActie,
+  setActieEdit,
+  isAfgehandeld,
+  dnd = true,
+}: SorteerbareActieProps) {
   const {
     attributes,
     listeners,
@@ -65,9 +72,6 @@ function SorteerbareActie({ actie, toggleActie, setActieEdit, isAfgehandeld, dnd
       }
     : {};
 
-
-
-
   return (
     <div
       {...dragProps}
@@ -75,35 +79,30 @@ function SorteerbareActie({ actie, toggleActie, setActieEdit, isAfgehandeld, dnd
       className={
         isAfgehandeld
           ? "flex items-center justify-between border p-3 rounded bg-gray-50 text-gray-500"
-          : `flex items-center justify-between border p-3 rounded bg-white shadow-sm`
+          : "flex items-center justify-between border p-3 rounded bg-white shadow-sm"
       }
     >
-      <label className="flex items-center gap-3">
+      <label className="flex items-center gap-3 flex-1 select-none">
         <input
           type="checkbox"
-  checked={actie.voltooid}
-  onPointerDown={e => e.stopPropagation()}
-  onChange={() => {
-    console.log("TOGGLE PATCH", { id: actie.id, nieuwVoltooid: !actie.voltooid });
-    toggleActie(actie.id, actie.voltooid);
-  }}
-/>
+          checked={actie.voltooid}
+          onPointerDown={e => e.stopPropagation()}
+          onChange={() => toggleActie(actie.id, actie.voltooid)}
+        />
         <span className={isAfgehandeld ? "line-through" : ""}>
-  <button
-    type="button"
-    onPointerDown={e => e.stopPropagation()}   // <--- FIX
-    onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })}
-    className="text-left w-full"
-  >
-    📝 {actie.tekst}
-  </button>
-</span>
-
+          {actie.tekst}
+        </span>
       </label>
-      <div className="text-sm text-gray-500">
-        {actie.deadline && <span className="mr-2">{actie.deadline}</span>}
-        {actie.verantwoordelijke && <span>{actie.verantwoordelijke}</span>}
-      </div>
+      <button
+        type="button"
+        title="Bewerken"
+        className="ml-2 p-1 rounded hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition"
+        onPointerDown={e => e.stopPropagation()}
+        onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })}
+        tabIndex={0}
+      >
+        <Pencil size={18} />
+      </button>
     </div>
   );
 }
@@ -139,14 +138,12 @@ export default function ActieLijstPagina() {
 
   const toggleActie = async (id: number, voltooid: boolean) => {
     const nieuwVoltooid = !voltooid;
-    console.log("TOGGLE PATCH", { id, nieuwVoltooid });
     const res = await fetch('/api/acties', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, voltooid: nieuwVoltooid })
     });
-    const json = await res.json();
-    console.log("PATCH response", res.status, json);
+    await res.json();
     await mutate();
   };
 
@@ -278,48 +275,23 @@ export default function ActieLijstPagina() {
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={async (event) => {
-            console.log("onDragEnd trigger!", event);
-
             const { active, over } = event;
-            if (!over || active.id === over.id) {
-              console.log("Geen geldige drop (geen 'over' of hetzelfde id)");
-              return;
-            }
+            if (!over || active.id === over.id) return;
 
             const oudeIndex = dndVolgorde.indexOf(active.id as number);
             const nieuweIndex = dndVolgorde.indexOf(over.id as number);
-            if (oudeIndex === -1 || nieuweIndex === -1) {
-              console.log("Kan index niet bepalen", { oudeIndex, nieuweIndex });
-              return;
-            }
-
+            if (oudeIndex === -1 || nieuweIndex === -1) return;
             const nieuweVolgorde = arrayMove(dndVolgorde, oudeIndex, nieuweIndex);
             setDndVolgorde(nieuweVolgorde);
 
-            // Debug: log welke volgorde je naar backend stuurt
-            const idsPayload = nieuweVolgorde.map((id, i) => ({ id, volgorde: i }));
-            console.log("POST naar /api/acties/volgorde:", idsPayload);
-
-            try {
-              const response = await fetch('/api/acties/volgorde', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ids: idsPayload }),
-              });
-
-              console.log("Response van /api/acties/volgorde:", response.status);
-              if (!response.ok) {
-                const error = await response.text();
-                console.error("Fout in backend-volgorde:", error);
-              } else {
-                const json = await response.json();
-                console.log("Resultaat backend:", json);
-              }
-            } catch (err) {
-              console.error("Netwerkfout bij backend-volgorde:", err);
-            }
-
-            // SWR refresh
+            // Update volgorde in backend
+            await fetch('/api/acties/volgorde', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ids: nieuweVolgorde.map((id, i) => ({ id, volgorde: i })),
+              }),
+            });
             mutate();
           }}
         >
@@ -362,6 +334,7 @@ export default function ActieLijstPagina() {
               />
               <div className="flex justify-between items-center gap-2">
                 <button
+                  type="button"
                   onClick={async () => {
                     if (confirm('Weet je zeker dat je deze actie wilt verwijderen?')) {
                       await fetch('/api/acties', {
@@ -376,10 +349,12 @@ export default function ActieLijstPagina() {
                   className="text-red-600 mr-auto"
                 >🗑️ Verwijderen</button>
                 <button
+                  type="button"
                   onClick={() => setActieEdit(null)}
                   className="text-gray-600"
                 >Annuleer</button>
                 <button
+                  type="button"
                   onClick={async () => {
                     await updateActieTekst(actieEdit.id, actieEdit.tekst);
                     setActieEdit(null);
