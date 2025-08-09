@@ -93,18 +93,28 @@ export default function ActieLijstPagina() {
     geselecteerdeLijst ? `/api/acties?lijst_id=${geselecteerdeLijst.id}` : null,
     fetcher
   );
-  const [acties, setActies] = useState<Actie[]>([]);
+  // State voor tijdelijke DnD-volgorde
+  const [dndVolgorde, setDndVolgorde] = useState<number[]>([]);
+
   const [nieuweLijstNaam, setNieuweLijstNaam] = useState("");
   const [nieuweActieTekst, setNieuweActieTekst] = useState("");
   const [lijstEdit, setLijstEdit] = useState<{ id: number; naam: string; icoon: string } | null>(null);
   const [actieEdit, setActieEdit] = useState<{ id: number; tekst: string } | null>(null);
 
+  // Kies de eerste lijst na ophalen (initialisatie)
+  useEffect(() => {
+    if (lijsten && lijsten.length > 0 && !geselecteerdeLijst) {
+      setGeselecteerdeLijst(lijsten[0]);
+    }
+  }, [lijsten, geselecteerdeLijst]);
+
+  // Reset DnD-volgorde naar server na elke fetch
   useEffect(() => {
     if (!actiesRaw) return;
     const openActies = actiesRaw
       .filter((a) => !a.voltooid)
       .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
-    setActies(openActies);
+    setDndVolgorde(openActies.map((a) => a.id));
   }, [actiesRaw]);
 
   const toggleActie = async (id: number, voltooid: boolean) => {
@@ -174,18 +184,17 @@ export default function ActieLijstPagina() {
     mutate();
   };
 
-  useEffect(() => {
-    if (lijsten && lijsten.length > 0 && !geselecteerdeLijst) {
-      setGeselecteerdeLijst(lijsten[0]);
-    }
-  }, [lijsten, geselecteerdeLijst]);
-
   // DnD-kit sensors
   const sensors = useSensors(useSensor(PointerSensor));
 
   if (lijstLoading) return <div className="p-6">Bezig met laden...</div>;
   if (lijstError) return <div className="p-6 text-red-600">Fout bij laden actielijsten.</div>;
   if (!lijsten || lijsten.length === 0) return <div className="p-6">Geen actielijsten gevonden.</div>;
+
+  // Huidige volgorde van open acties op basis van dndVolgorde
+  const openActiesSorted = (actiesRaw || [])
+    .filter((a) => !a.voltooid)
+    .sort((a, b) => dndVolgorde.indexOf(a.id) - dndVolgorde.indexOf(b.id));
 
   return (
     <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -247,27 +256,27 @@ export default function ActieLijstPagina() {
           onDragEnd={async (event) => {
             const { active, over } = event;
             if (!over || active.id === over.id) return;
-            const oudeIndex = acties.findIndex((a) => a.id === active.id);
-            const nieuweIndex = acties.findIndex((a) => a.id === over.id);
+            const oudeIndex = dndVolgorde.indexOf(active.id as number);
+            const nieuweIndex = dndVolgorde.indexOf(over.id as number);
             if (oudeIndex === -1 || nieuweIndex === -1) return;
-            const nieuweActies = arrayMove(acties, oudeIndex, nieuweIndex);
-            setActies(nieuweActies);
+            const nieuweVolgorde = arrayMove(dndVolgorde, oudeIndex, nieuweIndex);
+            setDndVolgorde(nieuweVolgorde);
             // Update volgorde in backend
             await fetch('/api/acties/volgorde', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                ids: nieuweActies.map((a, i) => ({ id: a.id, volgorde: i })),
+                ids: nieuweVolgorde.map((id, i) => ({ id, volgorde: i })),
               }),
             });
             mutate();
           }}
         >
           <SortableContext
-            items={acties.map((a) => a.id)}
+            items={dndVolgorde}
             strategy={verticalListSortingStrategy}
           >
-            {acties.map((actie) => (
+            {openActiesSorted.map((actie) => (
               <SorteerbareActie
                 key={actie.id}
                 actie={actie}
@@ -339,7 +348,7 @@ export default function ActieLijstPagina() {
             <div className="space-y-2">
               {actiesRaw
                 .filter((a) => a.voltooid)
-                .sort((a, b) => (b.volgorde ?? 0) - (a.volgorde ?? 0))
+                .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0))
                 .map((actie) => (
                   <div key={actie.id} className="flex items-center justify-between border p-3 rounded bg-gray-50 text-gray-500">
                     <label className="flex items-center gap-3">

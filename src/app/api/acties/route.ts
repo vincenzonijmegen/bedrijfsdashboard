@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
-// GET: lijst acties per lijst_id
+// GET: lijst acties per lijst_id, gesorteerd op voltooid + volgorde
 export async function GET(req: NextRequest) {
   const lijst_id = req.nextUrl.searchParams.get('lijst_id');
   if (!lijst_id) {
@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   }
   try {
     const acties = await db.query(
-      'SELECT * FROM acties WHERE lijst_id = $1 ORDER BY voltooid, aangemaakt_op',
+      'SELECT * FROM acties WHERE lijst_id = $1 ORDER BY voltooid, volgorde, aangemaakt_op',
       [lijst_id]
     );
     return NextResponse.json(acties.rows);
@@ -19,17 +19,23 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST: nieuwe actie
+// POST: nieuwe actie krijgt automatisch de hoogste volgorde binnen de lijst
 export async function POST(req: NextRequest) {
   try {
     const { lijst_id, tekst, deadline, verantwoordelijke } = await req.json();
     if (!lijst_id || !tekst) {
       return NextResponse.json({ error: 'lijst_id en tekst zijn verplicht' }, { status: 400 });
     }
+    // Bepaal hoogste volgorde binnen deze lijst
+    const { rows } = await db.query(
+      'SELECT COALESCE(MAX(volgorde), -1) AS max_volgorde FROM acties WHERE lijst_id = $1',
+      [lijst_id]
+    );
+    const nieuweVolgorde = Number(rows[0].max_volgorde) + 1;
     const resultaat = await db.query(
-      `INSERT INTO acties (lijst_id, tekst, deadline, verantwoordelijke)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [lijst_id, tekst, deadline ?? null, verantwoordelijke ?? null]
+      `INSERT INTO acties (lijst_id, tekst, deadline, verantwoordelijke, volgorde)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [lijst_id, tekst, deadline ?? null, verantwoordelijke ?? null, nieuweVolgorde]
     );
     return NextResponse.json(resultaat.rows[0]);
   } catch (err) {
@@ -38,7 +44,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PATCH: update actie
+// PATCH: update actie (tekst, voltooid, volgorde)
 export async function PATCH(req: NextRequest) {
   try {
     const { id, tekst, voltooid, volgorde } = await req.json();
