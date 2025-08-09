@@ -8,33 +8,31 @@ const fetcher = (u: string) => fetch(u).then(r => r.json());
 const maandenKort = ["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
 
 type Rij = { maand: number; lonen: number; loonheffing: number; pensioenpremie: number };
-type Data = { jaar: number; maanden: Rij[] } | Rij[]; // ondersteunt ook oude GET (alle jaren)
+type Data = { jaar: number; maanden: Rij[] } | Rij[]; // ondersteunt ook oudere API die alle rijen teruggeeft
 
 export default function Loonkosten() {
   const current = new Date().getFullYear();
   const [jaar, setJaar] = useState<number>(current);
 
-  // SWR: nieuwe (GET ?jaar=YYYY). Als je oude route nog gebruikt die alles retourneert,
-  // vangen we dat op in useEffect hieronder.
+  // Gebruik jouw endpoint-basis
   const { data, isLoading, mutate } = useSWR<Data>(`/api/rapportage/loonkosten?jaar=${jaar}`, fetcher);
 
   // lokale draft state (bewerkbare kopie)
   const [draft, setDraft] = useState<Rij[] | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // normalize data → 12 maanden voor gekozen jaar
+  // normaliseer data -> altijd 12 maanden voor gekozen jaar
   useEffect(() => {
     if (!data) return;
 
-    // Als data de nieuwe vorm { jaar, maanden } is:
     if (Array.isArray((data as any).maanden)) {
-      const d = (data as any).maanden as Rij[];
-      setDraft(fill12(d));
+      // nieuwe vorm { jaar, maanden }
+      setDraft(fill12((data as any).maanden as Rij[]));
       return;
     }
 
-    // Anders: oude vorm (alle rijen). Filter op jaar.
-    const alle = data as Rij[] & { jaar?: number }[];
+    // oude vorm: alle rijen; filter op jaar
+    const alle = data as (Rij & { jaar?: number })[];
     const vanJaar = alle
       .filter((r: any) => Number((r as any).jaar) === jaar)
       .map((r: any) => ({
@@ -68,7 +66,7 @@ export default function Loonkosten() {
     if (!draft) return;
     setSaving(true);
     try {
-      // 12 upserts via bestaande POST /api/loonkosten
+      // 12 upserts via bestaande POST /api/rapportage/loonkosten
       for (const r of draft) {
         await fetch("/api/rapportage/loonkosten", {
           method: "POST",
@@ -89,7 +87,6 @@ export default function Loonkosten() {
   }
 
   function resetDraft() {
-    // herlaad vanaf server
     mutate();
   }
 
@@ -155,27 +152,18 @@ export default function Loonkosten() {
                   <td className="border px-3 py-2">{maandenKort[r.maand - 1]}</td>
 
                   <td className="border px-3 py-1">
-                    <NumInput
-                      value={r.lonen ?? 0}
-                      onChange={(v) => setCell(r.maand, "lonen", v)}
-                    />
+                    <IntInput value={r.lonen ?? 0} onChange={(v) => setCell(r.maand, "lonen", v)} />
                   </td>
 
                   <td className="border px-3 py-1">
-                    <NumInput
-                      value={r.loonheffing ?? 0}
-                      onChange={(v) => setCell(r.maand, "loonheffing", v)}
-                    />
+                    <IntInput value={r.loonheffing ?? 0} onChange={(v) => setCell(r.maand, "loonheffing", v)} />
                   </td>
 
                   <td className="border px-3 py-1">
-                    <NumInput
-                      value={r.pensioenpremie ?? 0}
-                      onChange={(v) => setCell(r.maand, "pensioenpremie", v)}
-                    />
+                    <IntInput value={r.pensioenpremie ?? 0} onChange={(v) => setCell(r.maand, "pensioenpremie", v)} />
                   </td>
 
-                  <td className="border px-3 py-2 text-right tabular-nums">{totaal.toFixed(2)}</td>
+                  <td className="border px-3 py-2 text-right tabular-nums">{fmtInt(totaal)}</td>
                 </tr>
               );
             })}
@@ -183,10 +171,10 @@ export default function Loonkosten() {
           <tfoot>
             <tr className="bg-gray-50 font-semibold">
               <td className="border px-3 py-2 text-right">Totaal</td>
-              <td className="border px-3 py-2 text-right tabular-nums">{totals.lonen.toFixed(2)}</td>
-              <td className="border px-3 py-2 text-right tabular-nums">{totals.loonheffing.toFixed(2)}</td>
-              <td className="border px-3 py-2 text-right tabular-nums">{totals.pensioenpremie.toFixed(2)}</td>
-              <td className="border px-3 py-2 text-right tabular-nums">{totals.totaal.toFixed(2)}</td>
+              <td className="border px-3 py-2 text-right tabular-nums">{fmtInt(totals.lonen)}</td>
+              <td className="border px-3 py-2 text-right tabular-nums">{fmtInt(totals.loonheffing)}</td>
+              <td className="border px-3 py-2 text-right tabular-nums">{fmtInt(totals.pensioenpremie)}</td>
+              <td className="border px-3 py-2 text-right tabular-nums">{fmtInt(totals.totaal)}</td>
             </tr>
           </tfoot>
         </table>
@@ -197,52 +185,37 @@ export default function Loonkosten() {
 
 /* Helpers */
 
-function NumInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const [text, setText] = useState<string>(value.toFixed(2));
-  useEffect(() => { setText(value.toFixed(2)); }, [value]);
+// Alleen integers in input; geen scheidingstekens of decimalen
+function IntInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [text, setText] = useState<string>(String(Number.isFinite(value) ? value : 0));
+  useEffect(() => { setText(String(Number.isFinite(value) ? value : 0)); }, [value]);
 
   return (
     <input
       type="text"
-      inputMode="decimal"
+      inputMode="numeric"
+      pattern="\d*"
       className="w-full max-w-[160px] border rounded px-2 py-1 text-right tabular-nums"
       value={text}
       onChange={(e) => {
-        setText(e.target.value);
-        const v = parseLocaleNumber(e.target.value);
-        if (Number.isFinite(v)) onChange(v);
+        // sta alleen cijfers toe
+        const cleaned = e.target.value.replace(/[^\d]/g, "");
+        setText(cleaned);
+        if (cleaned === "") {
+          onChange(0);
+        } else {
+          const v = parseInt(cleaned, 10);
+          if (Number.isFinite(v)) onChange(v);
+        }
       }}
       onBlur={() => {
-        const v = parseLocaleNumber(text);
-        setText(Number.isFinite(v) ? (v as number).toFixed(2) : value.toFixed(2));
+        setText(prev => (prev === "" ? "0" : String(parseInt(prev, 10))));
       }}
     />
   );
 }
 
-function parseLocaleNumber(input: string): number {
-  if (!input) return 0;
-
-  let s = input.trim().replace(/\s/g, ""); // spaties eruit, o.a. "1 000"
-  const lastComma = s.lastIndexOf(",");
-  const lastDot = s.lastIndexOf(".");
-
-  if (lastComma > lastDot) {
-    // KOMMA is decimaal → alle punten zijn duizendtallen
-    s = s.replace(/\./g, "").replace(",", ".");
-  } else if (lastDot > lastComma) {
-    // PUNT is decimaal → alle komma's zijn duizendtallen
-    s = s.replace(/,/g, "");
-    // punt blijft staan als decimaal
-  } else {
-    // Geen separator → alleen cijfers (en optioneel -) overhouden
-    s = s.replace(/[^\d-]/g, "");
-  }
-
-  const n = Number(s);
-  return Number.isFinite(n) ? n : 0;
-}
-
+const fmtInt = (n: number) => String(Math.trunc(n || 0));
 
 function fill12(partial: Rij[]): Rij[] {
   const map = new Map(partial.map(r => [r.maand, r]));
