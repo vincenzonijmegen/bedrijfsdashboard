@@ -254,6 +254,7 @@ export default function ActieLijstPagina() {
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={async (event) => {
+             console.log("onDragEnd trigger!", event); // <--- ZET DIT BOVENAAN
             const { active, over } = event;
             if (!over || active.id === over.id) return;
             const oudeIndex = dndVolgorde.indexOf(active.id as number);
