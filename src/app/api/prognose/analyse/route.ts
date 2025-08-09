@@ -55,7 +55,17 @@ export async function GET() {
       maandverdeling[Number(r.maand)] = Number(r.percentage);
     });
 
-    // Stap 3: Haal realisatie per maand
+    // Stap 2b: Haal aantal prognosedagen per maand uit tabel
+    const dagenRes = await db.query(
+      `SELECT maand, dagen FROM rapportage.omzetdagen WHERE jaar = $1`,
+      [currentYear]
+    );
+    const dagenMap: Record<number, number> = {};
+    dagenRes.rows.forEach(r => {
+      dagenMap[Number(r.maand)] = Number(r.dagen);
+    });
+
+    // Stap 3: Haal realisatie per maand (aantal unieke data in omzet!)
     const realisatieRes = await db.query(
       `SELECT EXTRACT(MONTH FROM datum)::int AS maand,
               COUNT(DISTINCT datum) AS dagen,
@@ -77,13 +87,14 @@ export async function GET() {
     let baseJaarPrognose = 0;
 
     const resultaten = maanden.map(maand => {
-      // Bereken prognose-omzet
+      // Prognose-omzet
       const pct = maandverdeling[maand] || 0;
       const prognoseOmzet = Math.round(pct * jaaromzet);
-      const prognoseDagen = new Date(currentYear, maand, 0).getDate();
-      const prognosePerDag = prognoseOmzet / prognoseDagen;
+      // --- BELANGRIJK: haal prognoseDagen uit omzetdagen-tabel!
+      const prognoseDagen = dagenMap[maand] ?? 0;
+      const prognosePerDag = prognoseDagen > 0 ? prognoseOmzet / prognoseDagen : 0;
 
-      // Realtime data
+      // Realisatie
       const real = realisatieMap[maand] || { dagen: 0, omzet: 0 };
       const realisatiePerDag = real.dagen > 0 ? real.omzet / real.dagen : null;
       cumulatiefRealisatie += real.omzet;
@@ -99,7 +110,7 @@ export async function GET() {
         }
       });
 
-      // Bereken jaarprognose obv tot nu
+      // Jaarprognose obv tot nu
       const jrPrg = cumulatiefRealisatie + forecastRest;
       if (maand === currentMonth) baseJaarPrognose = jrPrg;
       const jrPrgDisplay = maand >= currentMonth ? baseJaarPrognose : jrPrg;
