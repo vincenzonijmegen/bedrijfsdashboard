@@ -36,25 +36,26 @@ interface ActieLijst {
 
 type SorteerbareActieProps = {
   actie: Actie;
-  listeners: any;
-  attributes: any;
-  setNodeRef: (element: HTMLElement | null) => void;
-  style: React.CSSProperties;
-  isDragging: boolean;
   toggleActie: (id: number, voltooid: boolean) => void;
   setActieEdit: (value: { id: number; tekst: string } | null) => void;
 };
 
-function SorteerbareActie({
-  actie,
-  listeners,
-  attributes,
-  setNodeRef,
-  style,
-  isDragging,
-  toggleActie,
-  setActieEdit,
-}: SorteerbareActieProps) {
+function SorteerbareActie({ actie, toggleActie, setActieEdit }: SorteerbareActieProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: actie.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    cursor: 'grab',
+    zIndex: isDragging ? 50 : 1,
+  };
 
   return (
     <div
@@ -85,24 +86,6 @@ function SorteerbareActie({
   );
 }
 
-function useSortableActie(actieId: number) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: actieId });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    cursor: 'grab',
-    zIndex: isDragging ? 50 : 1,
-  };
-  return { attributes, listeners, setNodeRef, style, isDragging };
-}
-
 export default function ActieLijstPagina() {
   const { data: lijsten, error: lijstError, isLoading: lijstLoading, mutate: mutateLijsten } = useSWR<ActieLijst[]>('/api/actielijsten', fetcher);
   const [geselecteerdeLijst, setGeselecteerdeLijst] = useState<ActieLijst | null>(null);
@@ -118,7 +101,6 @@ export default function ActieLijstPagina() {
 
   useEffect(() => {
     if (!actiesRaw) return;
-    // Sorteer op volgorde en filter op open acties
     const openActies = actiesRaw
       .filter((a) => !a.voltooid)
       .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
@@ -196,7 +178,7 @@ export default function ActieLijstPagina() {
     if (lijsten && lijsten.length > 0 && !geselecteerdeLijst) {
       setGeselecteerdeLijst(lijsten[0]);
     }
-  }, [lijsten]);
+  }, [lijsten, geselecteerdeLijst]);
 
   // DnD-kit sensors
   const sensors = useSensors(useSensor(PointerSensor));
@@ -285,18 +267,14 @@ export default function ActieLijstPagina() {
             items={acties.map((a) => a.id)}
             strategy={verticalListSortingStrategy}
           >
-            {acties.map((actie) => {
-              const sortable = useSortableActie(actie.id);
-              return (
-                <SorteerbareActie
-                  key={actie.id}
-                  actie={actie}
-                  {...sortable}
-                  toggleActie={toggleActie}
-                  setActieEdit={setActieEdit}
-                />
-              );
-            })}
+            {acties.map((actie) => (
+              <SorteerbareActie
+                key={actie.id}
+                actie={actie}
+                toggleActie={toggleActie}
+                setActieEdit={setActieEdit}
+              />
+            ))}
           </SortableContext>
         </DndContext>
 
