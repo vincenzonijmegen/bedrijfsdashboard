@@ -26,14 +26,15 @@ export default function SignInPage() {
         localStorage.setItem("gebruiker", JSON.stringify(data));
 
         if (data.moetWachtwoordWijzigen) {
-          router.push(`/wachtwoord-wijzigen?email=${encodeURIComponent(email)}`);
-        } else if (data.rol === "accountant") {
+  router.push(`/wachtwoord-wijzigen?email=${encodeURIComponent(email)}`);
+} else if (data.rol === "accountant") {
   router.push("/accountant");
-} else if (data.functie === "beheerder") {
-  router.push("/"); // eventueel /admin
+} else if (data.rol === "beheerder") {
+  router.push("/");
 } else {
   router.push("/medewerker");
 }
+
 
       } else {
         setFout(data.error || "Inloggen mislukt");

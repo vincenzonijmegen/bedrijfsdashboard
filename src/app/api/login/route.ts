@@ -30,23 +30,25 @@ export async function POST(req: Request) {
 
     // Stap 3: JWT aanmaken
     const token = jwt.sign(
-      {
-        email: medewerker.email,
-        naam: medewerker.naam,
-        functie: medewerker.functie,
-      },
-      JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+  {
+    email: medewerker.email,
+    naam: medewerker.naam,
+    functie: medewerker.functie,
+    rol: medewerker.rol, // <-- toevoegen!
+  },
+  JWT_SECRET,
+  { expiresIn: "7d" }
+);
 
-    // Stap 4: JWT als HttpOnly-cookie meesturen
-    const res = NextResponse.json({
-      success: true,
-      naam: medewerker.naam,
-      functie: medewerker.functie,
-      email: medewerker.email,
-      moetWachtwoordWijzigen: medewerker.moet_wachtwoord_wijzigen,
-    });
+const res = NextResponse.json({
+  success: true,
+  naam: medewerker.naam,
+  functie: medewerker.functie,
+  rol: medewerker.rol, // <-- toevoegen!
+  email: medewerker.email,
+  moetWachtwoordWijzigen: medewerker.moet_wachtwoord_wijzigen,
+});
+
 
     res.cookies.set("sessie_token", token, {
       httpOnly: true,
