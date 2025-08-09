@@ -27,11 +27,14 @@ export default function SignInPage() {
 
         if (data.moetWachtwoordWijzigen) {
           router.push(`/wachtwoord-wijzigen?email=${encodeURIComponent(email)}`);
-        } else if (data.functie === "beheerder") {
-          router.push("/"); // eventueel /admin
-          } else {
-          router.push("/medewerker");
-          }
+        } else if (data.rol === "accountant") {
+  router.push("/accountant");
+} else if (data.functie === "beheerder") {
+  router.push("/"); // eventueel /admin
+} else {
+  router.push("/medewerker");
+}
+
       } else {
         setFout(data.error || "Inloggen mislukt");
       }

@@ -52,31 +52,29 @@ function Journaalpost({ maand }: { maand: string }) {
           </thead>
           <tbody>
             {regels.map((r, i) => (
-    <tr
-      key={i}
-      className={
-        r.gb === ''
-          ? 'bg-yellow-100'
-          : r.gb === '0000'
-            ? 'italic text-blue-700'
-            : ''
-      }
-    >
-      <td className="px-2 py-1">{r.gb}</td>
-      <td className="px-2 py-1">{r.omschrijving}</td>
-      <td className="px-2 py-1 text-right">
-        {r.bedrag.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })}
-      </td>
-    </tr>
-  ))}
-</tbody>
+              <tr
+                key={i}
+                className={
+                  r.gb === ''
+                    ? 'bg-yellow-100'
+                    : r.gb === '0000'
+                    ? 'italic text-blue-700'
+                    : ''
+                }
+              >
+                <td className="px-2 py-1">{r.gb}</td>
+                <td className="px-2 py-1">{r.omschrijving}</td>
+                <td className="px-2 py-1 text-right">
+                  {r.bedrag.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })}
+                </td>
+              </tr>
+            ))}
+          </tbody>
         </table>
       )}
     </div>
   );
 }
-
-
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const formatBtw = (btw?: 0 | 9 | 21 | '-') =>
@@ -90,7 +88,7 @@ const toNumber = (v?: string) => {
 const formatEuro = (n: number) =>
   new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n);
 
-export default function KasboekPage() {
+export default function KasboekPage({ alleenLezen = false }: { alleenLezen?: boolean }) {
   const [datum, setDatum] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [dagId, setDagId] = useState<number | null>(null);
   const [startbedrag, setStartbedrag] = useState('');
@@ -303,14 +301,13 @@ export default function KasboekPage() {
             const active = datum === formatted;
 
             return (
-<div
-  key={formatted}
-  onClick={() => setDatum(formatted)}
-  className={`cursor-pointer px-2 py-0.5 rounded text-sm leading-tight ${active ? 'bg-blue-100 font-bold' : ''}`}
->
-  {status} {formatted}
-</div>
-
+              <div
+                key={formatted}
+                onClick={() => setDatum(formatted)}
+                className={`cursor-pointer px-2 py-0.5 rounded text-sm leading-tight ${active ? 'bg-blue-100 font-bold' : ''}`}
+              >
+                {status} {formatted}
+              </div>
             );
           })}
         </div>
@@ -320,7 +317,7 @@ export default function KasboekPage() {
         <h2 className="font-semibold text-lg mb-2">Geselecteerde dag: {datum}</h2>
         <p className="mb-2">Startbedrag: € {startbedrag || '–'}</p>
 
-        {!dagId && (
+        {!dagId && !alleenLezen && (
           <button
             onClick={maakDagAan}
             className="px-3 py-1 border rounded mb-3 disabled:opacity-50"
@@ -342,64 +339,66 @@ export default function KasboekPage() {
                 </tr>
               </thead>
               <tbody>
-{CATEGORIEEN.map((cat) => {
-  const key = cat.key;
-  let kleur = '';
-  if (key === 'verkopen_laag') kleur = 'bg-blue-50';
-  if (key === 'verkoop_kadobonnen' || key === 'ingenomen_kadobon') kleur = 'bg-yellow-50';
-  if (key === 'prive_opname_herman' || key === 'prive_opname_erik') kleur = 'bg-purple-50';
-  if (key === 'wisselgeld_van_bank' || key === 'naar_bank_afgestort') kleur = 'bg-orange-50';
-  if (key === 'kasverschil') kleur = 'bg-red-50';
-  // contant_inkoop wordt apart hieronder gemapt!
-  return (
-    <tr key={key} className={`border-t ${kleur}`}>
-      <td className="px-2 py-1">{cat.label ?? key}</td>
-      <td>{cat.type ?? '—'}</td>
-      <td>{formatBtw(cat.btw)}</td>
-      <td>
-        <input
-          type="number"
-          step="0.01"
-          value={bedragen[key] || ''}
-          onChange={(e) =>
-            setBedragen({ ...bedragen, [key]: e.target.value })
-          }
-          className="border px-2 w-32"
-        />
-      </td>
-    </tr>
-  );
-})}
-{inkoopRijen.map((val, i) => (
-  <tr key={`inkoop-${i}`} className="border-t bg-green-100">
-    <td className="px-2 py-1">Contant betaalde inkoop</td>
-    <td>uitgave</td>
-    <td>–</td>
-    <td>
-      <input
-        type="number"
-        step="0.01"
-        value={val}
-        onChange={(e) => {
-          const kopie = [...inkoopRijen];
-          kopie[i] = e.target.value;
-          setInkoopRijen(kopie);
-        }}
-        className="border px-2 w-32"
-      />
-    </td>
-  </tr>
-))}
-
+                {CATEGORIEEN.map((cat) => {
+                  const key = cat.key;
+                  let kleur = '';
+                  if (key === 'verkopen_laag') kleur = 'bg-blue-50';
+                  if (key === 'verkoop_kadobonnen' || key === 'ingenomen_kadobon') kleur = 'bg-yellow-50';
+                  if (key === 'prive_opname_herman' || key === 'prive_opname_erik') kleur = 'bg-purple-50';
+                  if (key === 'wisselgeld_van_bank' || key === 'naar_bank_afgestort') kleur = 'bg-orange-50';
+                  if (key === 'kasverschil') kleur = 'bg-red-50';
+                  return (
+                    <tr key={key} className={`border-t ${kleur}`}>
+                      <td className="px-2 py-1">{cat.label ?? key}</td>
+                      <td>{cat.type ?? '—'}</td>
+                      <td>{formatBtw(cat.btw)}</td>
+                      <td>
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={bedragen[key] || ''}
+                          onChange={(e) =>
+                            setBedragen({ ...bedragen, [key]: e.target.value })
+                          }
+                          className="border px-2 w-32"
+                          disabled={alleenLezen}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+                {inkoopRijen.map((val, i) => (
+                  <tr key={`inkoop-${i}`} className="border-t bg-green-100">
+                    <td className="px-2 py-1">Contant betaalde inkoop</td>
+                    <td>uitgave</td>
+                    <td>–</td>
+                    <td>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={val}
+                        onChange={(e) => {
+                          const kopie = [...inkoopRijen];
+                          kopie[i] = e.target.value;
+                          setInkoopRijen(kopie);
+                        }}
+                        className="border px-2 w-32"
+                        disabled={alleenLezen}
+                      />
+                    </td>
+                  </tr>
+                ))}
 
                 <tr>
                   <td colSpan={4}>
-                    <button
-                      className="text-blue-600 underline px-2 mt-2"
-                      onClick={() => setInkoopRijen([...inkoopRijen, ''])}
-                    >
-                      + Extra inkoopregel
-                    </button>
+                    {!alleenLezen && (
+                      <button
+                        className="text-blue-600 underline px-2 mt-2"
+                        onClick={() => setInkoopRijen([...inkoopRijen, ''])}
+                      >
+                        + Extra inkoopregel
+                      </button>
+                    )}
                   </td>
                 </tr>
               </tbody>
@@ -426,20 +425,24 @@ export default function KasboekPage() {
             </table>
 
             <div className="mt-4 space-x-2">
-              <button
-                onClick={opslaan}
-                className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
-                disabled={isOpslaan}
-              >
-                {isOpslaan ? 'Opslaan...' : 'Sla transacties op'}
-              </button>
-              <button
-                onClick={herbereken}
-                className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
-                disabled={isHerberekenen}
-              >
-                {isHerberekenen ? 'Herberekenen...' : 'Herbereken'}
-              </button>
+              {!alleenLezen && (
+                <>
+                  <button
+                    onClick={opslaan}
+                    className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
+                    disabled={isOpslaan}
+                  >
+                    {isOpslaan ? 'Opslaan...' : 'Sla transacties op'}
+                  </button>
+                  <button
+                    onClick={herbereken}
+                    className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+                    disabled={isHerberekenen}
+                  >
+                    {isHerberekenen ? 'Herberekenen...' : 'Herbereken'}
+                  </button>
+                </>
+              )}
             </div>
           </>
         )}
