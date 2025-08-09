@@ -21,6 +21,8 @@ export async function GET(req: NextRequest) {
 
 // POST: nieuwe actie krijgt automatisch de hoogste volgorde binnen de lijst
 export async function POST(req: NextRequest) {
+  const body = await req.json();
+  console.log("VOLGORDE-POST:", body);
   try {
     const { lijst_id, tekst, deadline, verantwoordelijke } = await req.json();
     if (!lijst_id || !tekst) {
