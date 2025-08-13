@@ -1,133 +1,261 @@
-// src/app/admin/aftekenlijsten/page.tsx
 "use client";
 
 import useSWR from "swr";
-import Link from "next/link";
 import { useState } from "react";
-import ScrollToTopButton from "@/components/ScrollToTopButton";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
-interface Lijst {
+type Categorie =
+  | "winkel-begin"
+  | "winkel-eind"
+  | "keuken-begin"
+  | "keuken-eind"
+  | "inspectierapporten"
+  | "incidenteel";
+
+type Row = {
   id: number;
-  categorie: string;
+  categorie: Categorie;
   week: number;
   jaar: number;
-  bestand_url: string;
-  opmerking?: string;
-  upload_datum: string;
-}
+  opmerking?: string | null;
+  bestand_url?: string | null; // download-link, indien aanwezig
+};
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+// ✅ Pas dit aan naar jouw backend-pad indien nodig
+const API_PATH = "/api/aftekenlijsten";
 
 const categorieNamen: Record<string, string> = {
   "winkel-begin": "Winkel – begin",
   "winkel-eind": "Winkel – eind",
   "keuken-begin": "Keuken – begin",
   "keuken-eind": "Keuken – eind",
+  "inspectierapporten": "Inspectierapporten",
+  "incidenteel": "Incidenteel",
 };
 
-export default function AftekenlijstenOverzicht() {
-  const { data, mutate, error } = useSWR<Lijst[]>("/api/aftekenlijsten", (url: string) => fetch(url).then((r) => r.json()));
-  const [snackbar, setSnackbar] = useState<string | null>(null);
+export default function Pagina() {
+  const { data, isLoading, mutate } = useSWR<Row[]>(API_PATH, fetcher);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Weet je zeker dat je deze aftekenlijst wilt verwijderen?")) return;
-    const res = await fetch(`/api/aftekenlijsten/${id}`, { method: "DELETE" });
-    const json = await res.json();
-    if (json?.snackbar?.message) setSnackbar(json.snackbar.message);
-    mutate();
-    setTimeout(() => setSnackbar(null), 4000);
-  };
+  // inklapbare secties
+  const [openHaccp, setOpenHaccp] = useState(true);
+  const [openInspectie, setOpenInspectie] = useState(true);
+  const [openIncidenteel, setOpenIncidenteel] = useState(true);
 
-  if (error) return <p className="p-4 text-red-600">Fout bij laden</p>;
-  if (!data) return <p className="p-4">Laden…</p>;
+  if (isLoading || !data) return <main className="p-6">Laden…</main>;
 
-  const haccp = data.filter(d => d.categorie !== "incidenteel");
-  const incidenteel = data.filter(d => d.categorie === "incidenteel");
+  // Split naar secties
+  const inspectierapporten = data.filter((d) => d.categorie === "inspectierapporten");
+  const incidenteel = data.filter((d) => d.categorie === "incidenteel");
+  const haccp = data.filter(
+    (d) => d.categorie !== "incidenteel" && d.categorie !== "inspectierapporten"
+  );
+
+  // Groepeer HACCP per categorie (winkel-begin/eind, keuken-begin/eind)
+  const groupedHaccp = groupBy(haccp, (r) => r.categorie);
+
+  async function handleDelete(id: number) {
+    if (!confirm("Weet je zeker dat je dit item wilt verwijderen?")) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(API_PATH, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        console.error("Delete failed:", t);
+      }
+      mutate();
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Aftekenlijsten per week</h1>
+    <main className="p-6 space-y-8">
 
-      {snackbar && (
-        <div className="mb-4 px-4 py-2 bg-green-100 text-green-800 rounded border border-green-300">
-          {snackbar}
-        </div>
+      {/* HACCP (inklappable kop) */}
+      <Section
+        title="HACCP-lijsten"
+        open={openHaccp}
+        onToggle={() => setOpenHaccp((v) => !v)}
+      >
+        {Object.entries(groupedHaccp).length === 0 ? (
+          <LegeState />
+        ) : (
+          Object.entries(groupedHaccp).map(([cat, rows]) => (
+            <div key={cat} className="mb-8">
+              <h3 className="text-base font-semibold mb-2">
+                {categorieNamen[cat] ?? cat}
+              </h3>
+              <Tabel
+                rows={rows}
+                onDelete={handleDelete}
+                deletingId={deletingId}
+                showBestandKolom
+              />
+            </div>
+          ))
+        )}
+      </Section>
+
+      {/* Inspectierapporten (apart kopje, inklapbaar) */}
+      <Section
+        title="Inspectierapporten"
+        open={openInspectie}
+        onToggle={() => setOpenInspectie((v) => !v)}
+      >
+        {inspectierapporten.length > 0 ? (
+          <Tabel
+            rows={inspectierapporten}
+            onDelete={handleDelete}
+            deletingId={deletingId}
+            showBestandKolom
+          />
+        ) : (
+          <LegeState />
+        )}
+      </Section>
+
+      {/* Incidenteel (apart kopje, inklapbaar) */}
+      <Section
+        title="Incidentele lijsten"
+        open={openIncidenteel}
+        onToggle={() => setOpenIncidenteel((v) => !v)}
+      >
+        {incidenteel.length > 0 ? (
+          <Tabel
+            rows={incidenteel}
+            onDelete={handleDelete}
+            deletingId={deletingId}
+            showBestandKolom
+          />
+        ) : (
+          <LegeState />
+        )}
+      </Section>
+
+      {/* Niets? */}
+      {haccp.length === 0 && inspectierapporten.length === 0 && incidenteel.length === 0 && (
+        <div className="text-gray-500">Geen registraties gevonden.</div>
       )}
+    </main>
+  );
+}
 
-      <p className="mb-4">
-        <Link href="/admin/aftekenlijsten/upload" className="text-blue-600 underline">➕ Nieuwe aftekenlijst uploaden</Link>
-      </p>
+/* -------------------- UI helpers -------------------- */
 
-      <h2 className="text-lg font-semibold mb-2 mt-6">HACCP-lijsten</h2>
-      <table className="w-full border text-sm mb-8">
+function Section({
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="border rounded-lg">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50"
+      >
+        <span className="text-lg font-semibold">{title}</span>
+        {open ? <ChevronDown /> : <ChevronRight />}
+      </button>
+      {open && <div className="px-4 pb-4">{children}</div>}
+    </section>
+  );
+}
+
+function Tabel({
+  rows,
+  onDelete,
+  deletingId,
+  showBestandKolom = true,
+}: {
+  rows: Row[];
+  onDelete: (id: number) => void;
+  deletingId: number | null;
+  showBestandKolom?: boolean;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border text-sm">
         <thead className="bg-gray-100">
           <tr>
-            <th className="border px-3 py-2 text-left">Categorie</th>
+            <th className="border px-3 py-2 text-left">Opmerking</th>
             <th className="border px-3 py-2 text-left">Week</th>
             <th className="border px-3 py-2 text-left">Jaar</th>
-            <th className="border px-3 py-2 text-left">Bestand</th>
-            <th className="border px-3 py-2 text-left">Opmerking</th>
+            {showBestandKolom && <th className="border px-3 py-2 text-left">Bestand</th>}
             <th className="border px-3 py-2 text-left">Actie</th>
           </tr>
         </thead>
         <tbody>
-          {haccp.map((r) => (
-            <tr key={r.id}>
-              <td className="border px-3 py-2">{categorieNamen[r.categorie] || r.categorie}</td>
-              <td className="border px-3 py-2">{r.week}</td>
-              <td className="border px-3 py-2">{r.jaar}</td>
-              <td className="border px-3 py-2 text-blue-600 underline">
-                <a href={r.bestand_url} target="_blank" rel="noopener noreferrer">Download</a>
-              </td>
-              <td className="border px-3 py-2">{r.opmerking || "-"}</td>
-              <td className="border px-3 py-2">
-                <button
-                  onClick={() => handleDelete(r.id)}
-                  className="text-red-600 hover:underline"
-                >
-                  Verwijderen
-                </button>
+          {rows.map((r) => {
+            const link = r.bestand_url && r.bestand_url.trim().length > 0 ? r.bestand_url : null;
+            return (
+              <tr key={r.id} className="bg-white">
+                <td className="border px-3 py-2">{r.opmerking || "-"}</td>
+                <td className="border px-3 py-2">{r.week}</td>
+                <td className="border px-3 py-2">{r.jaar}</td>
+                {showBestandKolom && (
+                  <td className="border px-3 py-2">
+                    {link ? (
+                      <a
+                        href={link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        Download
+                      </a>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
+                  </td>
+                )}
+                <td className="border px-3 py-2">
+                  <button
+                    onClick={() => onDelete(r.id)}
+                    disabled={deletingId === r.id}
+                    className="text-red-600 hover:underline disabled:opacity-50"
+                  >
+                    {deletingId === r.id ? "Verwijderen…" : "Verwijderen"}
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+
+          {rows.length === 0 && (
+            <tr>
+              <td className="border px-3 py-4 text-gray-500" colSpan={showBestandKolom ? 5 : 4}>
+                Geen items.
               </td>
             </tr>
-          ))}
+          )}
         </tbody>
       </table>
-
-      {incidenteel.length > 0 && (
-        <>
-          <h2 className="text-lg font-semibold mb-2 mt-6">Incidentele lijsten</h2>
-          <table className="w-full border text-sm">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="border px-3 py-2 text-left">Opmerking</th>
-                <th className="border px-3 py-2 text-left">Week</th>
-                <th className="border px-3 py-2 text-left">Jaar</th>
-                <th className="border px-3 py-2 text-left">Bestand</th>
-                <th className="border px-3 py-2 text-left">Actie</th>
-              </tr>
-            </thead>
-            <tbody>
-              {incidenteel.map((r) => (
-                <tr key={r.id}>
-                  <td className="border px-3 py-2">{r.opmerking || "-"}</td>
-                  <td className="border px-3 py-2">{r.week}</td>
-                  <td className="border px-3 py-2">{r.jaar}</td>
-                  <td className="border px-3 py-2 text-blue-600 underline">
-                    <a href={r.bestand_url} target="_blank" rel="noopener noreferrer">Download</a>
-                  </td>
-                  <td className="border px-3 py-2">
-                    <button
-                      onClick={() => handleDelete(r.id)}
-                      className="text-red-600 hover:underline"
-                    >
-                      Verwijderen
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
-       <ScrollToTopButton />
     </div>
   );
+}
+
+function LegeState() {
+  return <div className="text-gray-500 px-1 py-2">Geen items.</div>;
+}
+
+function groupBy<T>(arr: T[], keyFn: (x: T) => string) {
+  return arr.reduce<Record<string, T[]>>((acc, cur) => {
+    const k = keyFn(cur);
+    (acc[k] ||= []).push(cur);
+    return acc;
+  }, {});
 }
