@@ -23,7 +23,7 @@ type Row = {
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-// ✅ Pas dit aan naar jouw backend-pad indien nodig
+// ✅ Backend-pad
 const API_PATH = "/api/aftekenlijsten";
 
 const categorieNamen: Record<string, string> = {
@@ -77,7 +77,6 @@ export default function Pagina() {
 
   return (
     <main className="p-6 space-y-8">
-
       {/* HACCP (inklappable kop) */}
       <Section
         title="HACCP-lijsten"
@@ -191,11 +190,11 @@ function Tabel({
       <table className="w-full border text-sm">
         <thead className="bg-gray-100">
           <tr>
-            <th className="border px-3 py-2 text-left">Opmerking</th>
             <th className="border px-3 py-2 text-left">Week</th>
             <th className="border px-3 py-2 text-left">Jaar</th>
             {showBestandKolom && <th className="border px-3 py-2 text-left">Bestand</th>}
             <th className="border px-3 py-2 text-left">Actie</th>
+            <th className="border px-3 py-2 text-left">Opmerking</th>
           </tr>
         </thead>
         <tbody>
@@ -203,24 +202,6 @@ function Tabel({
             const link = r.bestand_url && r.bestand_url.trim().length > 0 ? r.bestand_url : null;
             return (
               <tr key={r.id} className="bg-white">
-                <td className="border px-3 py-2">
-                {(() => {
-                  const opm = (r.opmerking ?? "").trim();
-                  if (opm) return opm;
-
-                  const url = (r.bestand_url ?? "").trim();
-                  if (!url) return "-";
-                  try {
-                    const u = new URL(url);
-                    const name = u.pathname.split("/").filter(Boolean).pop() ?? "";
-                    return name || "-";
-                  } catch {
-                    // als het geen geldige URL is, laat de string zelf zien
-                    const name = url.split("/").filter(Boolean).pop() ?? "";
-                    return name || "-";
-                  }
-                })()}
-              </td>
                 <td className="border px-3 py-2">{r.week}</td>
                 <td className="border px-3 py-2">{r.jaar}</td>
                 {showBestandKolom && (
@@ -247,6 +228,24 @@ function Tabel({
                   >
                     {deletingId === r.id ? "Verwijderen…" : "Verwijderen"}
                   </button>
+                </td>
+                <td className="border px-3 py-2">
+                  {(() => {
+                    const opm = (r.opmerking ?? "").trim();
+                    if (opm) return opm;
+
+                    const url = (r.bestand_url ?? "").trim();
+                    if (!url) return "-";
+                    try {
+                      const u = new URL(url);
+                      const name = u.pathname.split("/").filter(Boolean).pop() ?? "";
+                      return name || "-";
+                    } catch {
+                      // geen geldige URL: toon laatste path-segment van de string
+                      const name = url.split("/").filter(Boolean).pop() ?? "";
+                      return name || "-";
+                    }
+                  })()}
                 </td>
               </tr>
             );
