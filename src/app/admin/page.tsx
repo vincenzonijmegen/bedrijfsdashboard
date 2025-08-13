@@ -210,7 +210,7 @@ export default function AdminDashboard() {
       <Section id="rapportages" title="📊 Rapportages" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="purple" Icon={BarChart2} />
         <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers Rapporten" color="purple" Icon={BarChart2} />
-        <LinkCard href="/admin/aftekenlijsten" label="HACCP-lijsten ingescand" color="purple" Icon={BarChart2} />
+        <LinkCard href="/admin/aftekenlijsten" label="Overzicht hygiëne-formulieren/-rapporten" color="purple" Icon={BarChart2} />
       </Section>
 
       <Section id="medewerkers" title="👥 Medewerkers" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
@@ -247,7 +247,7 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="teal" Icon={Wrench} />
         <LinkCard href="/admin/mypos" label="Inlezen myPOS (maand)" color="teal" Icon={Archive} />
         <LinkCard href="/admin/omzet/loonkosten" label="Invoeren loonkosten" color="teal" Icon={Archive} />
-        <LinkCard href="/admin/aftekenlijsten/upload" label="Upload HACCP-formulieren" color="teal" Icon={Archive} />
+        <LinkCard href="/admin/aftekenlijsten/upload" label="Upload hygiëne-formulieren" color="teal" Icon={Archive} />
         <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} />
         <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} />
         <LinkCard href="/admin/omzet/omzetdagen" label="Omzetdagen aanpassen" color="teal" Icon={Wrench} />

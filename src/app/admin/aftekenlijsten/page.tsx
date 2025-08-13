@@ -1,8 +1,8 @@
 "use client";
 
 import useSWR from "swr";
-import { useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 
 type Categorie =
   | "winkel-begin"
@@ -18,12 +18,12 @@ type Row = {
   week: number;
   jaar: number;
   opmerking?: string | null;
-  bestand_url?: string | null; // download-link, indien aanwezig
+  bestand_url?: string | null;
 };
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-// ✅ Backend-pad
+// Backend-pad
 const API_PATH = "/api/aftekenlijsten";
 
 const categorieNamen: Record<string, string> = {
@@ -35,7 +35,6 @@ const categorieNamen: Record<string, string> = {
   "incidenteel": "Incidenteel",
 };
 
-// gewenste categorievolgorde binnen dezelfde week/jaar
 const HACCP_CAT_ORDER: Categorie[] = [
   "keuken-begin",
   "keuken-eind",
@@ -47,12 +46,33 @@ export default function Pagina() {
   const { data, isLoading, mutate } = useSWR<Row[]>(API_PATH, fetcher);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  // inklapbare secties
-  const [openHaccp, setOpenHaccp] = useState(true);
-  const [openInspectie, setOpenInspectie] = useState(true);
-  const [openIncidenteel, setOpenIncidenteel] = useState(true);
+  // ✅ standaard ingeklapt
+  const [openHaccp, setOpenHaccp] = useState(false);
+  const [openInspectie, setOpenInspectie] = useState(false);
+  const [openIncidenteel, setOpenIncidenteel] = useState(false);
 
-  if (isLoading || !data) return <main className="p-6">Laden…</main>;
+  // Upload-modal
+  const [showUpload, setShowUpload] = useState(false);
+
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
+  const weeks = useMemo(() => Array.from({ length: 53 }, (_, i) => i + 1), []);
+
+  if (isLoading || !data) {
+    return (
+      <main className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl font-semibold">Aftekenlijsten</h1>
+          <button
+            onClick={() => setShowUpload(true)}
+            className="inline-flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded shadow hover:bg-blue-700"
+          >
+            <Plus size={18} /> Nieuwe lijst uploaden
+          </button>
+        </div>
+        Laden…
+      </main>
+    );
+  }
 
   // Split naar secties
   const inspectierapporten = data.filter((d) => d.categorie === "inspectierapporten");
@@ -61,7 +81,7 @@ export default function Pagina() {
     (d) => d.categorie !== "incidenteel" && d.categorie !== "inspectierapporten"
   );
 
-  // 🔽 HACCP sortering: datum nieuw→oud, daarna categorievolgorde, daarna id nieuw→oud
+  // HACCP sortering: datum nieuw→oud, daarna categorievolgorde, daarna id nieuw→oud
   const haccpSorted = haccp
     .slice()
     .sort((a, b) => {
@@ -94,7 +114,18 @@ export default function Pagina() {
 
   return (
     <main className="p-6 space-y-8">
-      {/* HACCP (inklappable kop) */}
+      {/* kop + uploadknop */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Aftekenlijsten</h1>
+        <button
+          onClick={() => setShowUpload(true)}
+          className="inline-flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded shadow hover:bg-blue-700"
+        >
+          <Plus size={18} /> Nieuwe lijst uploaden
+        </button>
+      </div>
+
+      {/* HACCP */}
       <Section
         title="HACCP-lijsten"
         open={openHaccp}
@@ -112,7 +143,7 @@ export default function Pagina() {
         )}
       </Section>
 
-      {/* Inspectierapporten (apart kopje, inklapbaar) */}
+      {/* Inspectierapporten */}
       <Section
         title="Inspectierapporten"
         open={openInspectie}
@@ -130,7 +161,7 @@ export default function Pagina() {
         )}
       </Section>
 
-      {/* Incidenteel (apart kopje, inklapbaar) */}
+      {/* Incidenteel */}
       <Section
         title="Incidentele lijsten"
         open={openIncidenteel}
@@ -148,11 +179,165 @@ export default function Pagina() {
         )}
       </Section>
 
-      {/* Niets? */}
-      {haccp.length === 0 && inspectierapporten.length === 0 && incidenteel.length === 0 && (
-        <div className="text-gray-500">Geen registraties gevonden.</div>
+      {/* Upload modal */}
+      {showUpload && (
+        <UploadModal
+          onClose={() => setShowUpload(false)}
+          onSaved={async () => {
+            setShowUpload(false);
+            await mutate();
+          }}
+          defaultJaar={currentYear}
+          weeks={weeks}
+        />
       )}
     </main>
+  );
+}
+
+/* -------------------- Upload Modal -------------------- */
+
+function UploadModal({
+  onClose,
+  onSaved,
+  defaultJaar,
+  weeks,
+}: {
+  onClose: () => void;
+  onSaved: () => void;
+  defaultJaar: number;
+  weeks: number[];
+}) {
+  const [categorie, setCategorie] = useState<Categorie>("keuken-begin");
+  const [jaar, setJaar] = useState<number>(defaultJaar);
+  const [week, setWeek] = useState<number>(weeks.find((w) => w === getISOWeek(new Date())) || 1);
+  const [bestandUrl, setBestandUrl] = useState<string>("");
+  const [opmerking, setOpmerking] = useState<string>("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave() {
+    setBusy(true);
+    setError(null);
+    try {
+      if (!bestandUrl.trim()) {
+        setError("Voer de bestand-URL in.");
+        setBusy(false);
+        return;
+      }
+      const res = await fetch(API_PATH, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          categorie,
+          jaar,
+          week,
+          bestand_url: bestandUrl.trim(),
+          opmerking: opmerking.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        setError(`Opslaan mislukt: ${t}`);
+      } else {
+        onSaved();
+      }
+    } catch (e: any) {
+      setError(`Opslaan mislukt: ${e?.message ?? "onbekende fout"}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="bg-white w-full max-w-xl rounded-lg shadow-lg p-5">
+        <h2 className="text-lg font-semibold mb-4">Nieuwe lijst uploaden</h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">Categorie</label>
+            <select
+              className="w-full border rounded px-2 py-1"
+              value={categorie}
+              onChange={(e) => setCategorie(e.target.value as Categorie)}
+            >
+              <option value="keuken-begin">Keuken – begin</option>
+              <option value="keuken-eind">Keuken – eind</option>
+              <option value="winkel-begin">Winkel – begin</option>
+              <option value="winkel-eind">Winkel – eind</option>
+              <option value="inspectierapporten">Inspectierapporten</option>
+              <option value="incidenteel">Incidenteel</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">Jaar</label>
+            <input
+              type="number"
+              className="w-full border rounded px-2 py-1"
+              value={jaar}
+              onChange={(e) => setJaar(parseInt(e.target.value || "0", 10))}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">Week</label>
+            <select
+              className="w-full border rounded px-2 py-1"
+              value={week}
+              onChange={(e) => setWeek(parseInt(e.target.value || "1", 10))}
+            >
+              {weeks.map((w) => (
+                <option key={w} value={w}>
+                  {w}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm text-gray-600 mb-1">Bestand-URL</label>
+            <input
+              type="url"
+              placeholder="https://…"
+              className="w-full border rounded px-2 py-1"
+              value={bestandUrl}
+              onChange={(e) => setBestandUrl(e.target.value)}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label className="block text-sm text-gray-600 mb-1">Opmerking (optioneel)</label>
+            <input
+              type="text"
+              className="w-full border rounded px-2 py-1"
+              value={opmerking}
+              onChange={(e) => setOpmerking(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+
+        <div className="mt-5 flex items-center justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="px-3 py-1 rounded border hover:bg-gray-50"
+            disabled={busy}
+          >
+            Annuleren
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+            disabled={busy}
+          >
+            {busy ? "Opslaan…" : "Opslaan"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -254,7 +439,6 @@ function Tabel({
                       const name = u.pathname.split("/").filter(Boolean).pop() ?? "";
                       return name || "-";
                     } catch {
-                      // geen geldige URL: toon laatste path-segment van de string
                       const name = url.split("/").filter(Boolean).pop() ?? "";
                       return name || "-";
                     }
@@ -281,10 +465,19 @@ function LegeState() {
   return <div className="text-gray-500 px-1 py-2">Geen items.</div>;
 }
 
-function groupBy<T>(arr: T[], keyFn: (x: T) => string) {
-  return arr.reduce<Record<string, T[]>>((acc, cur) => {
-    const k = keyFn(cur);
-    (acc[k] ||= []).push(cur);
-    return acc;
-  }, {});
+/* -------------------- helpers -------------------- */
+
+function getISOWeek(d: Date) {
+  // ISO weeknummering
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  // donderdag in huidige week
+  const dayNum = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - dayNum + 3);
+  // eerste donderdag van het jaar
+  const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  const firstThursdayDayNum = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstThursdayDayNum + 3);
+  // weeknummer
+  const weekNo = 1 + Math.round((date.getTime() - firstThursday.getTime()) / 604800000);
+  return weekNo;
 }
