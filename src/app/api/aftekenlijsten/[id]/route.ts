@@ -27,11 +27,14 @@ function extractKeyFromUrl(url: string, bucket: string): string | null {
   }
 }
 
-export async function DELETE(
-  _req: Request, // <-- BELANGRIJK: Web Request, niet NextRequest
-  { params }: { params: { id: string } } // <-- matcht mapnaam [id]
-) {
-  const idNum = Number(params.id);
+export async function DELETE(req: Request) {
+  // Geen tweede param meer gebruiken -> id veilig uit de URL halen
+  const url = new URL(req.url);
+  // path = /api/aftekenlijsten/123  -> pak laatste segment
+  const segs = url.pathname.split("/").filter(Boolean);
+  const idStr = segs[segs.length - 1];
+  const idNum = Number(idStr);
+
   if (!Number.isFinite(idNum)) {
     return NextResponse.json({ error: "Ongeldig ID" }, { status: 400 });
   }
