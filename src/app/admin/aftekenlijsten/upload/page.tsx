@@ -10,6 +10,7 @@ const categorieOpties = [
   { label: "Winkel – eind", value: "winkel-eind" },
   { label: "Keuken – begin", value: "keuken-begin" },
   { label: "Keuken – eind", value: "keuken-eind" },
+  { label: "Inspectierapporten", value: "inspectierapporten" },
   { label: "Incidenteel", value: "incidenteel" },
 ];
 

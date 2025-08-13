@@ -203,7 +203,24 @@ function Tabel({
             const link = r.bestand_url && r.bestand_url.trim().length > 0 ? r.bestand_url : null;
             return (
               <tr key={r.id} className="bg-white">
-                <td className="border px-3 py-2">{r.opmerking || "-"}</td>
+                <td className="border px-3 py-2">
+                {(() => {
+                  const opm = (r.opmerking ?? "").trim();
+                  if (opm) return opm;
+
+                  const url = (r.bestand_url ?? "").trim();
+                  if (!url) return "-";
+                  try {
+                    const u = new URL(url);
+                    const name = u.pathname.split("/").filter(Boolean).pop() ?? "";
+                    return name || "-";
+                  } catch {
+                    // als het geen geldige URL is, laat de string zelf zien
+                    const name = url.split("/").filter(Boolean).pop() ?? "";
+                    return name || "-";
+                  }
+                })()}
+              </td>
                 <td className="border px-3 py-2">{r.week}</td>
                 <td className="border px-3 py-2">{r.jaar}</td>
                 {showBestandKolom && (
