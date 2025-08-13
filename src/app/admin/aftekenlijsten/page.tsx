@@ -35,6 +35,14 @@ const categorieNamen: Record<string, string> = {
   "incidenteel": "Incidenteel",
 };
 
+// gewenste categorievolgorde binnen dezelfde week/jaar
+const HACCP_CAT_ORDER: Categorie[] = [
+  "keuken-begin",
+  "keuken-eind",
+  "winkel-begin",
+  "winkel-eind",
+];
+
 export default function Pagina() {
   const { data, isLoading, mutate } = useSWR<Row[]>(API_PATH, fetcher);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -53,8 +61,17 @@ export default function Pagina() {
     (d) => d.categorie !== "incidenteel" && d.categorie !== "inspectierapporten"
   );
 
-  // Groepeer HACCP per categorie (winkel-begin/eind, keuken-begin/eind)
-  const groupedHaccp = groupBy(haccp, (r) => r.categorie);
+  // 🔽 HACCP sortering: datum nieuw→oud, daarna categorievolgorde, daarna id nieuw→oud
+  const haccpSorted = haccp
+    .slice()
+    .sort((a, b) => {
+      if (b.jaar !== a.jaar) return b.jaar - a.jaar;
+      if (b.week !== a.week) return b.week - a.week;
+      const pa = HACCP_CAT_ORDER.indexOf(a.categorie);
+      const pb = HACCP_CAT_ORDER.indexOf(b.categorie);
+      if (pa !== pb) return pa - pb;
+      return b.id - a.id;
+    });
 
   async function handleDelete(id: number) {
     if (!confirm("Weet je zeker dat je dit item wilt verwijderen?")) return;
@@ -83,22 +100,15 @@ export default function Pagina() {
         open={openHaccp}
         onToggle={() => setOpenHaccp((v) => !v)}
       >
-        {Object.entries(groupedHaccp).length === 0 ? (
+        {haccpSorted.length === 0 ? (
           <LegeState />
         ) : (
-          Object.entries(groupedHaccp).map(([cat, rows]) => (
-            <div key={cat} className="mb-8">
-              <h3 className="text-base font-semibold mb-2">
-                {categorieNamen[cat] ?? cat}
-              </h3>
-              <Tabel
-                rows={rows}
-                onDelete={handleDelete}
-                deletingId={deletingId}
-                showBestandKolom
-              />
-            </div>
-          ))
+          <Tabel
+            rows={haccpSorted}
+            onDelete={handleDelete}
+            deletingId={deletingId}
+            showBestandKolom
+          />
         )}
       </Section>
 
@@ -202,7 +212,10 @@ function Tabel({
             const link = r.bestand_url && r.bestand_url.trim().length > 0 ? r.bestand_url : null;
             return (
               <tr key={r.id} className="bg-white">
-                <td className="border px-3 py-2">{r.week}</td>
+                <td className="border px-3 py-2">
+                  {r.week}
+                  <span className="ml-2 text-gray-400">• {categorieNamen[r.categorie] ?? r.categorie}</span>
+                </td>
                 <td className="border px-3 py-2">{r.jaar}</td>
                 {showBestandKolom && (
                   <td className="border px-3 py-2">
