@@ -73,7 +73,7 @@ export default function UploadAftekenlijst() {
 
   return (
     <div className="max-w-xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Aftekenlijst uploaden</h1>
+      <h1 className="text-2xl font-bold mb-4">Formulier uploaden</h1>
 
       <label className="block mb-2">Categorie</label>
       <select

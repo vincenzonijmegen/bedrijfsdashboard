@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import useSWR from "swr";
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
@@ -51,24 +52,12 @@ export default function Pagina() {
   const [openInspectie, setOpenInspectie] = useState(false);
   const [openIncidenteel, setOpenIncidenteel] = useState(false);
 
-  // Upload-modal
-  const [showUpload, setShowUpload] = useState(false);
-
   const currentYear = useMemo(() => new Date().getFullYear(), []);
-  const weeks = useMemo(() => Array.from({ length: 53 }, (_, i) => i + 1), []);
 
   if (isLoading || !data) {
     return (
       <main className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-semibold">Aftekenlijsten</h1>
-          <button
-            onClick={() => setShowUpload(true)}
-            className="inline-flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded shadow hover:bg-blue-700"
-          >
-            <Plus size={18} /> Nieuwe lijst uploaden
-          </button>
-        </div>
+        <Header currentYear={currentYear} />
         Laden…
       </main>
     );
@@ -114,16 +103,7 @@ export default function Pagina() {
 
   return (
     <main className="p-6 space-y-8">
-      {/* kop + uploadknop */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Aftekenlijsten</h1>
-        <button
-          onClick={() => setShowUpload(true)}
-          className="inline-flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded shadow hover:bg-blue-700"
-        >
-          <Plus size={18} /> Nieuwe lijst uploaden
-        </button>
-      </div>
+      <Header currentYear={currentYear} />
 
       {/* HACCP */}
       <Section
@@ -179,164 +159,26 @@ export default function Pagina() {
         )}
       </Section>
 
-      {/* Upload modal */}
-      {showUpload && (
-        <UploadModal
-          onClose={() => setShowUpload(false)}
-          onSaved={async () => {
-            setShowUpload(false);
-            await mutate();
-          }}
-          defaultJaar={currentYear}
-          weeks={weeks}
-        />
+      {/* Niets? */}
+      {haccp.length === 0 && inspectierapporten.length === 0 && incidenteel.length === 0 && (
+        <div className="text-gray-500">Geen registraties gevonden.</div>
       )}
     </main>
   );
 }
 
-/* -------------------- Upload Modal -------------------- */
+/* -------------------- Header met upload-link -------------------- */
 
-function UploadModal({
-  onClose,
-  onSaved,
-  defaultJaar,
-  weeks,
-}: {
-  onClose: () => void;
-  onSaved: () => void;
-  defaultJaar: number;
-  weeks: number[];
-}) {
-  const [categorie, setCategorie] = useState<Categorie>("keuken-begin");
-  const [jaar, setJaar] = useState<number>(defaultJaar);
-  const [week, setWeek] = useState<number>(weeks.find((w) => w === getISOWeek(new Date())) || 1);
-  const [bestandUrl, setBestandUrl] = useState<string>("");
-  const [opmerking, setOpmerking] = useState<string>("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleSave() {
-    setBusy(true);
-    setError(null);
-    try {
-      if (!bestandUrl.trim()) {
-        setError("Voer de bestand-URL in.");
-        setBusy(false);
-        return;
-      }
-      const res = await fetch(API_PATH, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          categorie,
-          jaar,
-          week,
-          bestand_url: bestandUrl.trim(),
-          opmerking: opmerking.trim() || null,
-        }),
-      });
-      if (!res.ok) {
-        const t = await res.text();
-        setError(`Opslaan mislukt: ${t}`);
-      } else {
-        onSaved();
-      }
-    } catch (e: any) {
-      setError(`Opslaan mislukt: ${e?.message ?? "onbekende fout"}`);
-    } finally {
-      setBusy(false);
-    }
-  }
-
+function Header({ currentYear }: { currentYear: number }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white w-full max-w-xl rounded-lg shadow-lg p-5">
-        <h2 className="text-lg font-semibold mb-4">Nieuwe lijst uploaden</h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Categorie</label>
-            <select
-              className="w-full border rounded px-2 py-1"
-              value={categorie}
-              onChange={(e) => setCategorie(e.target.value as Categorie)}
-            >
-              <option value="keuken-begin">Keuken – begin</option>
-              <option value="keuken-eind">Keuken – eind</option>
-              <option value="winkel-begin">Winkel – begin</option>
-              <option value="winkel-eind">Winkel – eind</option>
-              <option value="inspectierapporten">Inspectierapporten</option>
-              <option value="incidenteel">Incidenteel</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Jaar</label>
-            <input
-              type="number"
-              className="w-full border rounded px-2 py-1"
-              value={jaar}
-              onChange={(e) => setJaar(parseInt(e.target.value || "0", 10))}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Week</label>
-            <select
-              className="w-full border rounded px-2 py-1"
-              value={week}
-              onChange={(e) => setWeek(parseInt(e.target.value || "1", 10))}
-            >
-              {weeks.map((w) => (
-                <option key={w} value={w}>
-                  {w}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm text-gray-600 mb-1">Bestand-URL</label>
-            <input
-              type="url"
-              placeholder="https://…"
-              className="w-full border rounded px-2 py-1"
-              value={bestandUrl}
-              onChange={(e) => setBestandUrl(e.target.value)}
-            />
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm text-gray-600 mb-1">Opmerking (optioneel)</label>
-            <input
-              type="text"
-              className="w-full border rounded px-2 py-1"
-              value={opmerking}
-              onChange={(e) => setOpmerking(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
-
-        <div className="mt-5 flex items-center justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="px-3 py-1 rounded border hover:bg-gray-50"
-            disabled={busy}
-          >
-            Annuleren
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
-            disabled={busy}
-          >
-            {busy ? "Opslaan…" : "Opslaan"}
-          </button>
-        </div>
-      </div>
+    <div className="flex items-center justify-between mb-4">
+      <h1 className="text-xl font-semibold">Aftekenlijsten</h1>
+      <Link
+        href="/admin/aftekenlijsten/upload"
+        className="inline-flex items-center gap-2 bg-blue-600 text-white px-3 py-2 rounded shadow hover:bg-blue-700"
+      >
+        <Plus size={18} /> Nieuwe lijst uploaden
+      </Link>
     </div>
   );
 }
@@ -399,7 +241,9 @@ function Tabel({
               <tr key={r.id} className="bg-white">
                 <td className="border px-3 py-2">
                   {r.week}
-                  <span className="ml-2 text-gray-400">• {categorieNamen[r.categorie] ?? r.categorie}</span>
+                  <span className="ml-2 text-gray-400">
+                    • {categorieNamen[r.categorie] ?? r.categorie}
+                  </span>
                 </td>
                 <td className="border px-3 py-2">{r.jaar}</td>
                 {showBestandKolom && (
@@ -463,21 +307,4 @@ function Tabel({
 
 function LegeState() {
   return <div className="text-gray-500 px-1 py-2">Geen items.</div>;
-}
-
-/* -------------------- helpers -------------------- */
-
-function getISOWeek(d: Date) {
-  // ISO weeknummering
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  // donderdag in huidige week
-  const dayNum = (date.getUTCDay() + 6) % 7;
-  date.setUTCDate(date.getUTCDate() - dayNum + 3);
-  // eerste donderdag van het jaar
-  const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
-  const firstThursdayDayNum = (firstThursday.getUTCDay() + 6) % 7;
-  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstThursdayDayNum + 3);
-  // weeknummer
-  const weekNo = 1 + Math.round((date.getTime() - firstThursday.getTime()) / 604800000);
-  return weekNo;
 }
