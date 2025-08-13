@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+// src/app/api/aftekenlijsten/[id]/route.ts
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
@@ -27,8 +28,8 @@ function extractKeyFromUrl(url: string, bucket: string): string | null {
 }
 
 export async function DELETE(
-  _req: NextRequest,
-  { params }: { params: { id: string } }
+  _req: Request, // <-- BELANGRIJK: Web Request, niet NextRequest
+  { params }: { params: { id: string } } // <-- matcht mapnaam [id]
 ) {
   const idNum = Number(params.id);
   if (!Number.isFinite(idNum)) {
@@ -36,6 +37,7 @@ export async function DELETE(
   }
 
   try {
+    // record ophalen
     const rec = await db.query(
       `SELECT bestand_url FROM aftekenlijsten WHERE id = $1`,
       [idNum]
@@ -45,6 +47,8 @@ export async function DELETE(
     }
 
     const bestandUrl: string | null = rec.rows[0]?.bestand_url ?? null;
+
+    // R2 object verwijderen (best-effort)
     if (bestandUrl) {
       const bucket = process.env.CLOUDFLARE_R2_BUCKET as string;
       const key = bucket ? extractKeyFromUrl(bestandUrl, bucket) : null;
@@ -57,6 +61,7 @@ export async function DELETE(
       }
     }
 
+    // DB record verwijderen
     await db.query(`DELETE FROM aftekenlijsten WHERE id = $1`, [idNum]);
 
     return NextResponse.json({
