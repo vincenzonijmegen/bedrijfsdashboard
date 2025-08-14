@@ -29,7 +29,7 @@ const fetcher = (url: string) =>
     return res.json();
   });
 
-// simpele deep compare voor plain objects
+// simpele deep-compare voor plain objects
 const deepEqual = (a: any, b: any) => JSON.stringify(a) === JSON.stringify(b);
 
 export default function BestelPagina() {
@@ -38,6 +38,9 @@ export default function BestelPagina() {
   const [referentieSuffix, setReferentieSuffix] = useState("");
   const [opmerking, setOpmerking] = useState("");
   const [toonIncidenteel, setToonIncidenteel] = useState(false);
+
+  // belangrijk: pas autosave toe ALS de huidige leverancier is ingeladen
+  const [loadedLeverancierId, setLoadedLeverancierId] = useState<number | null>(null);
 
   const { showSnackbar } = useSnackbar();
 
@@ -59,7 +62,7 @@ export default function BestelPagina() {
     fetcher
   );
 
-  // SWR: onderhanden (gedeeld per leverancier) — vervangt focus-listener
+  // SWR: onderhanden (gedeeld per leverancier) — geen eigen focus-listener
   const { data: onderhanden } = useSWR(
     leverancierId ? `/api/bestelling/onderhanden?leverancier=${leverancierId}` : null,
     fetcher,
@@ -74,25 +77,41 @@ export default function BestelPagina() {
   const shownOnceRef = useRef<Record<number, boolean>>({});
   const lastLocalChangeAtRef = useRef<number>(0);
 
-  // Zet invoer vanuit server als die echt verandert; toon snackbar max. 1x per leverancier
+  // Bij wissel leverancier: reset lokale state en pauzeer autosave
+  const onSelectLeverancier: React.ChangeEventHandler<HTMLSelectElement> = (e) => {
+    const id = Number(e.target.value);
+    if (Number.isNaN(id)) return;
+    setLeverancierId(id);
+    setInvoer({}); // voorkom meenemen vorige leverancier
+    setLoadedLeverancierId(null); // pauzeer autosave tot load klaar is
+    shownOnceRef.current[id] = false; // snackbar opnieuw toestaan
+  };
+
+  // Zet invoer vanuit server zodra die er is; daarna autosave activeren voor deze leverancier
   useEffect(() => {
     if (!leverancierId) return;
-    const serverData = onderhanden?.data ?? {};
+    if (onderhanden === undefined) return; // nog bezig met ophalen
+    const serverData: Invoer = (onderhanden?.data as Invoer) ?? {};
 
-    if (!deepEqual(invoer, serverData)) {
-      setInvoer(serverData);
-      const justEditedLocally = Date.now() - lastLocalChangeAtRef.current < 1200;
-      if (!shownOnceRef.current[leverancierId] && !justEditedLocally) {
-        showSnackbar("Opgeslagen bestelling geladen");
-        shownOnceRef.current[leverancierId] = true;
-      }
+    setInvoer((prev) => (deepEqual(prev, serverData) ? prev : serverData));
+
+    const justEditedLocally = Date.now() - lastLocalChangeAtRef.current < 1200;
+    if (!shownOnceRef.current[leverancierId] && !justEditedLocally) {
+      showSnackbar("Opgeslagen bestelling geladen");
+      shownOnceRef.current[leverancierId] = true;
     }
+
+    // heel belangrijk: pas nu mag autosave voor deze leverancier weer aan
+    setLoadedLeverancierId(leverancierId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onderhanden, leverancierId]);
 
   // Autosave onderhanden (merge JSONB, gedeeld per leverancier)
   useEffect(() => {
     if (leverancierId == null) return;
+    // blokkeer autosave tot de serverstate voor deze leverancier is geladen
+    if (loadedLeverancierId !== leverancierId) return;
+
     fetch("/api/bestelling/onderhanden", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -102,7 +121,7 @@ export default function BestelPagina() {
         referentie,
       }),
     }).catch(() => {});
-  }, [invoer, leverancierId, referentie]);
+  }, [invoer, leverancierId, referentie, loadedLeverancierId]);
 
   const wijzigAantal = (id: number, delta: number) => {
     lastLocalChangeAtRef.current = Date.now();
@@ -163,12 +182,7 @@ Opmerkingen: ${opmerking.trim()}`;
       <select
         className="border rounded px-3 py-2"
         value={leverancierId ?? ""}
-        onChange={(e) => {
-          setLeverancierId(Number(e.target.value));
-          // nieuwe leverancier ⇒ snackbar opnieuw 1x toestaan
-          const id = Number(e.target.value);
-          if (!Number.isNaN(id)) shownOnceRef.current[id] = false;
-        }}
+        onChange={onSelectLeverancier}
       >
         <option value="">-- Kies leverancier --</option>
         {leveranciers
