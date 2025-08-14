@@ -7,22 +7,24 @@ import { dbRapportage } from "@/lib/dbRapportage";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const timer = startTimer("/api/rapportage/maandomzet");
+  const tAll = startTimer("/api/rapportage/maandomzet");
   try {
+    // ⬇️ Snel: uit de materialized view lezen
+    const t1 = startTimer("maandomzet:mv");
     const omzet = await dbRapportage.query(`
-      SELECT 
-        EXTRACT(YEAR FROM datum) AS jaar,
-        DATE_TRUNC('month', datum) AS maand_start,
-        ROUND(SUM(aantal * eenheidsprijs)) AS totaal
-      FROM rapportage.omzet
-      GROUP BY jaar, maand_start
+      SELECT jaar, maand_start, totaal
+      FROM rapportage.omzet_maand
       ORDER BY maand_start
     `);
+    t1.end();
 
+    // Alleen voor “laatste import” nog in de brontabel kijken
+    const t2 = startTimer("maandomzet:maxdatum");
     const maxDatum = await dbRapportage.query(`
-      SELECT MAX(datum) AS max_datum 
+      SELECT MAX(datum) AS max_datum
       FROM rapportage.omzet
     `);
+    t2.end();
 
     return NextResponse.json({
       rows: omzet.rows,
@@ -30,12 +32,8 @@ export async function GET() {
     });
   } catch (err) {
     console.error("API maandomzet fout:", err);
-    return NextResponse.json(
-      { error: "Fout bij ophalen maandomzet" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Fout bij ophalen maandomzet" }, { status: 500 });
   } finally {
-    // ⬇️ wordt altijd uitgevoerd, ook bij fouten
-    timer.end({ hint: "maandomzet" });
+    tAll.end({ hint: "maandomzet" });
   }
 }
