@@ -1,6 +1,6 @@
 "use client";
 
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -8,40 +8,45 @@ interface Instructie {
   id: string;
   titel: string;
   nummer?: string;
-  functies?: string[];
+  functies?: string[]; // in DB soms als JSON-string
   slug: string;
 }
 
-const fetcher = async (url: string): Promise<Instructie[]> => {
-  const res = await fetch(url);
-  const data = await res.json();
-  return data.map((i: unknown) => {
-    const item = i as Instructie & { functies: string };
-    return {
-      ...item,
-      functies: (() => {
-        try {
-          const parsed = JSON.parse(item.functies);
-          return Array.isArray(parsed) ? parsed : [];
-        } catch {
-          return item.functies;
-        }
-      })(),
-    };
-  });
-};
+function normalizeFuncties(f: unknown): string[] {
+  if (Array.isArray(f)) return f as string[];
+  if (typeof f === "string" && f.trim()) {
+    try {
+      const parsed = JSON.parse(f);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
 
 export default function InstructieOverzicht() {
-  const { data, error } = useSWR("/api/instructies", fetcher);
+  const { data, error, isLoading } = useSWR<Instructie[]>("/api/instructies");
 
   if (error) return <div>Fout bij laden</div>;
-  if (!data) return <div>Laden...</div>;
+  if (isLoading || !data) return <div>Laden...</div>;
 
-  const gesorteerd = [...data].sort((a, b) => {
-    const na = a.nummer || "";
-    const nb = b.nummer || "";
-    return na.localeCompare(nb);
-  });
+  const gesorteerd = [...data]
+    .map(i => ({ ...i, functies: normalizeFuncties(i.functies) }))
+    .sort((a, b) => (a.nummer || "").localeCompare(b.nummer || ""));
+
+  async function verwijder(slug: string, titel: string) {
+    if (!confirm(`Verwijder instructie: ${titel}?`)) return;
+    const res = await fetch(`/api/instructies/${slug}`, { method: "DELETE" });
+    if (res.ok) {
+      // SWR-cache updaten i.p.v. hele pagina reloaden
+      mutate("/api/instructies", (old?: Instructie[]) =>
+        (old || []).filter(i => i.slug !== slug), false
+      );
+    } else {
+      alert("Verwijderen mislukt");
+    }
+  }
 
   return (
     <main className="max-w-5xl mx-auto px-4 py-8">
@@ -63,7 +68,7 @@ export default function InstructieOverzicht() {
             </tr>
           </thead>
           <tbody>
-            {gesorteerd.map((i: Instructie, idx) => (
+            {gesorteerd.map((i, idx) => (
               <tr key={i.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
                 <td className="px-4 py-3 align-top">{i.nummer || "-"}</td>
                 <td className="px-4 py-3 align-top font-medium">
@@ -71,9 +76,8 @@ export default function InstructieOverzicht() {
                     {i.titel}
                   </Link>
                 </td>
-
                 <td className="px-4 py-3 align-top text-gray-600 text-sm">
-                  {Array.isArray(i.functies) ? (
+                  {i.functies && i.functies.length ? (
                     <ul className="list-disc list-inside">
                       {i.functies.map((f, idx) => <li key={idx}>{f}</li>)}
                     </ul>
@@ -87,12 +91,7 @@ export default function InstructieOverzicht() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={async () => {
-                        if (confirm(`Verwijder instructie: ${i.titel}?`)) {
-                          await fetch(`/api/instructies/${i.slug}`, { method: "DELETE" });
-                          location.reload();
-                        }
-                      }}
+                      onClick={() => verwijder(i.slug, i.titel)}
                     >
                       Verwijderen
                     </Button>

@@ -1,18 +1,15 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { SnackbarProvider } from '@/lib/useSnackbar'; // ✅ toevoegen
+import Providers from "@/app/providers"; // ⬅️ SWR provider
+import { SnackbarProvider } from "@/lib/useSnackbar";
 
 export const metadata: Metadata = {
   title: "Bedrijfsdashboard Vincenzo",
   description: "Bedrijfsdashboard IJssalon Vincenzo",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="nl">
       <head>
@@ -21,9 +18,11 @@ export default function RootLayout({
         <meta name="theme-color" content="#ffffff" />
       </head>
       <body>
-        <SnackbarProvider> {/* ✅ wrap je app in SnackbarProvider */}
-          {children}
-        </SnackbarProvider>
+        <Providers>
+          <SnackbarProvider>
+            {children}
+          </SnackbarProvider>
+        </Providers>
       </body>
     </html>
   );
