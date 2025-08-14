@@ -30,6 +30,7 @@ import {
   ClipboardList,
   Truck
 } from 'lucide-react';
+import { EyeOff } from 'lucide-react'; // ⬅️ toegevoegd
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
@@ -129,7 +130,7 @@ const SubSection = ({
   );
 };
 
-function DailyTotalDisplay() {
+function DailyTotalDisplay({ mask = false }: { mask?: boolean }) {
   const today = new Date().toISOString().slice(0, 10).split('-').reverse().join('-');
   const { data } = useSWR('/api/kassa/omzet?start=' + today + '&totalen=1', fetcher);
   const record = Array.isArray(data) ? data[0] : null;
@@ -137,7 +138,16 @@ function DailyTotalDisplay() {
   const pin = record ? parseFloat(record.Pin) || 0 : 0;
   const bon = record ? parseFloat(record.Bon) || 0 : 0;
   const total = cash + pin + bon;
-  return <span className="text-lg font-semibold">€ {total.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>;
+
+  if (mask) {
+    return <span className="text-lg font-semibold tracking-widest select-none">••••••</span>;
+  }
+
+  return (
+    <span className="text-lg font-semibold">
+      € {total.toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    </span>
+  );
 }
 
 export default function AdminDashboard() {
@@ -146,6 +156,22 @@ export default function AdminDashboard() {
     if (typeof window === 'undefined') return 'meest';
     return localStorage.getItem('activeSection') || 'meest';
   });
+
+  // Omzet verbergen/tonen (onthouden in localStorage)
+  const [hideOmzet, setHideOmzet] = React.useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return localStorage.getItem('omzetHidden') === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('omzetHidden', hideOmzet ? '1' : '0');
+    }
+  }, [hideOmzet]);
 
   let user = null;
   if (typeof window !== "undefined") {
@@ -173,9 +199,22 @@ export default function AdminDashboard() {
     <main className="max-w-6xl mx-auto p-6">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
-        <Link href="/admin/dashboard" className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200">
-          <DailyTotalDisplay />
-        </Link>
+
+        {/* Rechts: omzet + verbergknop */}
+        <div className="flex items-center gap-2">
+          <Link href="/admin/dashboard" className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200">
+            <DailyTotalDisplay mask={hideOmzet} />
+          </Link>
+          <button
+            type="button"
+            onClick={() => setHideOmzet(v => !v)}
+            className="p-2 rounded bg-gray-100 hover:bg-gray-200"
+            title={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
+            aria-label={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
+          >
+            {hideOmzet ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
 
       <Section id="meest" title="👥 Meest gebruikte onderdelen" color="slate" activeSection={activeSection} setActiveSection={setActiveSection}>
@@ -220,18 +259,18 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} />
         <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} />
 
-         <SubSection title="📘 Instructies" color="blue">
-            <LinkCard href="/admin/instructies" label="Instructies beheren" color="blue" Icon={FileText} />
-            <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" Icon={Eye} />
-         </SubSection>
+        <SubSection title="📘 Instructies" color="blue">
+          <LinkCard href="/admin/instructies" label="Instructies beheren" color="blue" Icon={FileText} />
+          <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" Icon={Eye} />
+        </SubSection>
 
-         <SubSection title="🧠 Skills" color="amber">
-            <LinkCard href="/admin/skills/categorieen" label="Beheer categorieën" color="amber" Icon={Tag} />
-            <LinkCard href="/admin/skills" label="Skills beheer" color="amber" Icon={Layers} />
-            <LinkCard href="/admin/skills/toewijzen" label="Skills toewijzen" color="amber" Icon={Activity} />
-            <LinkCard href="/skills" label="Skills medewerkers" color="amber" Icon={Layers} />
-          </SubSection>
-     </Section>
+        <SubSection title="🧠 Skills" color="amber">
+          <LinkCard href="/admin/skills/categorieen" label="Beheer categorieën" color="amber" Icon={Tag} />
+          <LinkCard href="/admin/skills" label="Skills beheer" color="amber" Icon={Layers} />
+          <LinkCard href="/admin/skills/toewijzen" label="Skills toewijzen" color="amber" Icon={Activity} />
+          <LinkCard href="/skills" label="Skills medewerkers" color="amber" Icon={Layers} />
+        </SubSection>
+      </Section>
 
       <Section id="voorraad" title="📦 Voorraadbeheer, Recepturen & Allergenen" color="pink" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/leveranciers" label="Leveranciers beheren" color="pink" Icon={CreditCard} />
