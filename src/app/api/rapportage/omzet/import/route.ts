@@ -1,8 +1,8 @@
 // src/app/api/rapportage/omzet/import/route.ts
 
 import { dbRapportage } from '@/lib/dbRapportage';
-import { NextResponse } from 'next/server';
-import { NextRequest } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
+import { refreshOmzetMaand } from '@/lib/refreshOmzetMaand'; // ⬅️ NIEUW
 
 // Voor zelf-ondertekende certificaten (NIET aanbevolen voor productie)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -43,9 +43,7 @@ export async function POST(req: NextRequest) {
     const authHeader = 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64');
     console.log('Fetching data from:', dataUrl);
 
-    const dataRes = await fetch(dataUrl, {
-      headers: { Authorization: authHeader },
-    });
+    const dataRes = await fetch(dataUrl, { headers: { Authorization: authHeader } });
     const rawBody = await dataRes.text();
     const contentType = dataRes.headers.get('content-type') || '';
 
@@ -92,6 +90,7 @@ export async function POST(req: NextRequest) {
 
     if (clean.length === 0) {
       console.log('Geen nieuwe records om in te voegen');
+      // MV hoeft niet ge-refreshed: er is niets veranderd
       return NextResponse.json({ success: true, imported: 0 });
     }
 
@@ -109,6 +108,14 @@ export async function POST(req: NextRequest) {
       VALUES ${placeholders.join(',')}
     `;
     await dbRapportage.query(insertSQL, values);
+
+    // ⬇️ NIEUW: MV verversen ná writes (niet in transactie)
+    try {
+      await refreshOmzetMaand();
+    } catch (e) {
+      console.error('MV refresh fout (omzet_maand):', e);
+      // Niet laten falen; rapportage is hooguit een import achter
+    }
 
     console.log('Import geslaagd');
     return NextResponse.json({ success: true, imported: clean.length });
