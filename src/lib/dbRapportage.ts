@@ -9,7 +9,7 @@ declare global {
 export const dbRapportage: Pool =
   global.__dbRapportage ??
   new Pool({
-    connectionString: process.env.RAPPORTAGE_DB_URL || process.env.DATABASE_URL, // kies jouw var
+    connectionString: process.env.POSTGRES_URL || process.env.DATABASE_URL, // kies jouw var
     ssl: { rejectUnauthorized: true },
     max: 5,                   // genoeg voor serverless
     idleTimeoutMillis: 30_000,
