@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { useSnackbar } from "@/lib/useSnackbar";
 
@@ -23,6 +23,15 @@ interface Product {
 
 type Invoer = Record<number, number>;
 
+const fetcher = (url: string) =>
+  fetch(url).then((res) => {
+    if (!res.ok) throw new Error("Fout bij ophalen");
+    return res.json();
+  });
+
+// simpele deep compare voor plain objects
+const deepEqual = (a: any, b: any) => JSON.stringify(a) === JSON.stringify(b);
+
 export default function BestelPagina() {
   const [leverancierId, setLeverancierId] = useState<number | null>(null);
   const [invoer, setInvoer] = useState<Invoer>({});
@@ -35,50 +44,53 @@ export default function BestelPagina() {
   const datumPrefix = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const referentie = `${datumPrefix}-${referentieSuffix}`;
 
-  const fetcher = (url: string) =>
-    fetch(url).then((res) => {
-      if (!res.ok) throw new Error("Fout bij ophalen");
-      return res.json();
-    });
-
-  // Leveranciers
+  // SWR: leveranciers
   const { data: leveranciers } = useSWR<Leverancier[]>("/api/leveranciers", fetcher);
 
-  // Producten
+  // SWR: producten
   const { data: producten } = useSWR<Product[]>(
     leverancierId ? `/api/producten?leverancier=${leverancierId}` : null,
     fetcher
   );
 
-  // Historie (laatste 6)
+  // SWR: historie (laatste 6)
   const { data: historie } = useSWR<any[]>(
     leverancierId ? `/api/bestelling/historie?leverancier=${leverancierId}` : null,
     fetcher
   );
 
-  // Onderhanden laden (gedeeld per leverancier)
+  // SWR: onderhanden (gedeeld per leverancier) — vervangt focus-listener
+  const { data: onderhanden } = useSWR(
+    leverancierId ? `/api/bestelling/onderhanden?leverancier=${leverancierId}` : null,
+    fetcher,
+    {
+      revalidateOnFocus: true,
+      dedupingInterval: 5000,
+      focusThrottleInterval: 10000,
+    }
+  );
+
+  // Snackbar guards
+  const shownOnceRef = useRef<Record<number, boolean>>({});
+  const lastLocalChangeAtRef = useRef<number>(0);
+
+  // Zet invoer vanuit server als die echt verandert; toon snackbar max. 1x per leverancier
   useEffect(() => {
     if (!leverancierId) return;
+    const serverData = onderhanden?.data ?? {};
 
-    fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setInvoer(data?.data ?? {});
+    if (!deepEqual(invoer, serverData)) {
+      setInvoer(serverData);
+      const justEditedLocally = Date.now() - lastLocalChangeAtRef.current < 1200;
+      if (!shownOnceRef.current[leverancierId] && !justEditedLocally) {
         showSnackbar("Opgeslagen bestelling geladen");
-      })
-      .catch(() => {});
+        shownOnceRef.current[leverancierId] = true;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [onderhanden, leverancierId]);
 
-    const onFocus = () => {
-      fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`)
-        .then((res) => res.json())
-        .then((data) => setInvoer(data?.data ?? {}))
-        .catch(() => {});
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [leverancierId, showSnackbar]);
-
-  // Onderhanden opslaan (merge JSONB, gedeeld per leverancier)
+  // Autosave onderhanden (merge JSONB, gedeeld per leverancier)
   useEffect(() => {
     if (leverancierId == null) return;
     fetch("/api/bestelling/onderhanden", {
@@ -93,7 +105,13 @@ export default function BestelPagina() {
   }, [invoer, leverancierId, referentie]);
 
   const wijzigAantal = (id: number, delta: number) => {
+    lastLocalChangeAtRef.current = Date.now();
     setInvoer((prev) => ({ ...prev, [id]: Math.max(0, (prev[id] ?? 0) + delta) }));
+  };
+
+  const setAantal = (id: number, value: number) => {
+    lastLocalChangeAtRef.current = Date.now();
+    setInvoer((prev) => ({ ...prev, [id]: Math.max(0, value) }));
   };
 
   const genereerTekst = () => {
@@ -145,7 +163,12 @@ Opmerkingen: ${opmerking.trim()}`;
       <select
         className="border rounded px-3 py-2"
         value={leverancierId ?? ""}
-        onChange={(e) => setLeverancierId(Number(e.target.value))}
+        onChange={(e) => {
+          setLeverancierId(Number(e.target.value));
+          // nieuwe leverancier ⇒ snackbar opnieuw 1x toestaan
+          const id = Number(e.target.value);
+          if (!Number.isNaN(id)) shownOnceRef.current[id] = false;
+        }}
       >
         <option value="">-- Kies leverancier --</option>
         {leveranciers
@@ -288,10 +311,7 @@ Opmerkingen: ${opmerking.trim()}`;
                         value={invoer[p.id] ?? 0}
                         onChange={(e) => {
                           const val = Number(e.target.value);
-                          setInvoer((prev) => ({
-                            ...prev,
-                            [p.id]: isNaN(val) ? 0 : Math.max(0, val),
-                          }));
+                          setAantal(p.id, isNaN(val) ? 0 : val);
                         }}
                       />
                     </td>
@@ -343,10 +363,7 @@ Opmerkingen: ${opmerking.trim()}`;
                   value={invoer[p.id] ?? 0}
                   onChange={(e) => {
                     const val = Number(e.target.value);
-                    setInvoer((prev) => ({
-                      ...prev,
-                      [p.id]: isNaN(val) ? 0 : Math.max(0, val),
-                    }));
+                    setAantal(p.id, isNaN(val) ? 0 : val);
                   }}
                 />
                 <button
