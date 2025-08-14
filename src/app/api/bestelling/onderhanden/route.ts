@@ -1,9 +1,16 @@
-// src/app/api/bestelling/onderhanden/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
 function bad(msg: string, code = 400) {
   return NextResponse.json({ error: msg }, { status: code });
+}
+
+function isEmptyData(obj: any) {
+  if (!obj || typeof obj !== "object") return true;
+  const keys = Object.keys(obj);
+  if (keys.length === 0) return true;
+  // alle waarden ≤ 0 telt ook als leeg
+  return keys.every((k) => Number(obj[k]) <= 0);
 }
 
 /** GET /api/bestelling/onderhanden?leverancier=ID */
@@ -25,7 +32,8 @@ export async function GET(req: NextRequest) {
 /**
  * POST /api/bestelling/onderhanden
  * Body: { leverancier_id: number, data: jsonb, referentie?: string }
- * Merge JSONB gedeeld per leverancier.
+ * - NO-OP bij lege data (maakt géén lege rij aan)
+ * - Merge JSONB per leverancier
  */
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
@@ -34,7 +42,11 @@ export async function POST(req: NextRequest) {
   const referentie = body?.referentie ?? null;
   if (!leverancier_id) return bad("leverancier_id is verplicht");
 
-  // Upsert + merge
+  // ⛔ Niets opslaan als data leeg is. Bestaat er al een rij? Dan laten we die ongemoeid.
+  if (isEmptyData(data)) {
+    return NextResponse.json({ ok: true, skipped: true });
+  }
+
   await db.query(
     `insert into public.onderhanden_bestellingen
        (leverancier_id, referentie, data, aangemaakt_op, laatst_bewerkt)

@@ -1,147 +1,100 @@
-// src/app/admin/voorraad/bestelpagina/page.tsx
-
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { useSnackbar } from "@/lib/useSnackbar";
 
-interface Leverancier {
-  id: number;
-  naam: string;
-  soort: string;
-}
-
-interface Product {
-  id: number;
-  naam: string;
-  bestelnummer?: string;
-  besteleenheid?: number;
-  huidige_prijs?: number;
-  volgorde?: number;
-}
-
+interface Leverancier { id: number; naam: string; soort: string; }
+interface Product { id: number; naam: string; bestelnummer?: string; besteleenheid?: number; huidige_prijs?: number; volgorde?: number; }
 type Invoer = Record<number, number>;
 
-const fetcher = (url: string) =>
-  fetch(url).then((res) => {
-    if (!res.ok) throw new Error("Fout bij ophalen");
-    return res.json();
-  });
-
-// simpele deep-compare voor plain objects
-const deepEqual = (a: any, b: any) => JSON.stringify(a) === JSON.stringify(b);
+const fetcher = (url: string) => fetch(url).then(r => { if(!r.ok) throw new Error("Fout bij ophalen"); return r.json(); });
+const deepEqual = (a:any,b:any)=>JSON.stringify(a)===JSON.stringify(b);
 
 export default function BestelPagina() {
-  const [leverancierId, setLeverancierId] = useState<number | null>(null);
+  const [leverancierId, setLeverancierId] = useState<number|null>(null);
   const [invoer, setInvoer] = useState<Invoer>({});
   const [referentieSuffix, setReferentieSuffix] = useState("");
   const [opmerking, setOpmerking] = useState("");
   const [toonIncidenteel, setToonIncidenteel] = useState(false);
 
-  // belangrijk: pas autosave toe ALS de huidige leverancier is ingeladen
-  const [loadedLeverancierId, setLoadedLeverancierId] = useState<number | null>(null);
-
+  // gate: autosave pas na eerste load van deze leverancier
+  const [loadedLeverancierId, setLoadedLeverancierId] = useState<number|null>(null);
+  const suppressUntilRef = useRef<number>(0);
+  const lastLocalChangeAtRef = useRef<number>(0);
+  const shownOnceRef = useRef<Record<number, boolean>>({});
   const { showSnackbar } = useSnackbar();
 
-  const datumPrefix = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const datumPrefix = new Date().toISOString().slice(0,10).replace(/-/g,"");
   const referentie = `${datumPrefix}-${referentieSuffix}`;
 
-  // SWR: leveranciers
   const { data: leveranciers } = useSWR<Leverancier[]>("/api/leveranciers", fetcher);
-
-  // SWR: producten
   const { data: producten } = useSWR<Product[]>(
-    leverancierId ? `/api/producten?leverancier=${leverancierId}` : null,
-    fetcher
+    leverancierId ? `/api/producten?leverancier=${leverancierId}` : null, fetcher
   );
-
-  // SWR: historie (laatste 6)
   const { data: historie } = useSWR<any[]>(
-    leverancierId ? `/api/bestelling/historie?leverancier=${leverancierId}` : null,
-    fetcher
+    leverancierId ? `/api/bestelling/historie?leverancier=${leverancierId}` : null, fetcher
   );
-
-  // SWR: onderhanden (gedeeld per leverancier) — geen eigen focus-listener
   const { data: onderhanden } = useSWR(
     leverancierId ? `/api/bestelling/onderhanden?leverancier=${leverancierId}` : null,
     fetcher,
-    {
-      revalidateOnFocus: true,
-      dedupingInterval: 5000,
-      focusThrottleInterval: 10000,
-    }
+    { revalidateOnFocus: true, dedupingInterval: 5000, focusThrottleInterval: 10000 }
   );
 
-  // Snackbar guards
-  const shownOnceRef = useRef<Record<number, boolean>>({});
-  const lastLocalChangeAtRef = useRef<number>(0);
-
-  // Bij wissel leverancier: reset lokale state en pauzeer autosave
   const onSelectLeverancier: React.ChangeEventHandler<HTMLSelectElement> = (e) => {
     const id = Number(e.target.value);
     if (Number.isNaN(id)) return;
     setLeverancierId(id);
-    setInvoer({}); // voorkom meenemen vorige leverancier
-    setLoadedLeverancierId(null); // pauzeer autosave tot load klaar is
-    shownOnceRef.current[id] = false; // snackbar opnieuw toestaan
+    setInvoer({});                // leeg lokale invoer
+    setLoadedLeverancierId(null); // pauzeer autosave tot server geladen
+    shownOnceRef.current[id] = false;
   };
 
-  // Zet invoer vanuit server zodra die er is; daarna autosave activeren voor deze leverancier
+  // Server->client sync (één bron): zet invoer bij echte diff, activeer autosave daarna
   useEffect(() => {
     if (!leverancierId) return;
-    if (onderhanden === undefined) return; // nog bezig met ophalen
+    if (onderhanden === undefined) return;
     const serverData: Invoer = (onderhanden?.data as Invoer) ?? {};
-
-    setInvoer((prev) => (deepEqual(prev, serverData) ? prev : serverData));
+    if (!deepEqual(invoer, serverData)) setInvoer(serverData);
 
     const justEditedLocally = Date.now() - lastLocalChangeAtRef.current < 1200;
     if (!shownOnceRef.current[leverancierId] && !justEditedLocally) {
       showSnackbar("Opgeslagen bestelling geladen");
       shownOnceRef.current[leverancierId] = true;
     }
-
-    // heel belangrijk: pas nu mag autosave voor deze leverancier weer aan
     setLoadedLeverancierId(leverancierId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onderhanden, leverancierId]);
 
-  // Autosave onderhanden (merge JSONB, gedeeld per leverancier)
+  // ✅ AUTOSAVE: alleen als er items > 0 zijn, niet tijdens suppress, en pas na load-gate
   useEffect(() => {
     if (leverancierId == null) return;
-    // blokkeer autosave tot de serverstate voor deze leverancier is geladen
     if (loadedLeverancierId !== leverancierId) return;
+    if (Date.now() < suppressUntilRef.current) return;
+
+    const hasItems = Object.values(invoer).some((n) => Number(n) > 0);
+    if (!hasItems) return;
 
     fetch("/api/bestelling/onderhanden", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        leverancier_id: leverancierId,
-        data: invoer,
-        referentie,
-      }),
+      body: JSON.stringify({ leverancier_id: leverancierId, data: invoer, referentie }),
     }).catch(() => {});
   }, [invoer, leverancierId, referentie, loadedLeverancierId]);
 
-  const wijzigAantal = (id: number, delta: number) => {
+  const wijzigAantal = (id:number, delta:number) => {
     lastLocalChangeAtRef.current = Date.now();
-    setInvoer((prev) => ({ ...prev, [id]: Math.max(0, (prev[id] ?? 0) + delta) }));
+    setInvoer(prev => ({ ...prev, [id]: Math.max(0, (prev[id] ?? 0) + delta) }));
   };
-
-  const setAantal = (id: number, value: number) => {
+  const setAantal = (id:number, value:number) => {
     lastLocalChangeAtRef.current = Date.now();
-    setInvoer((prev) => ({ ...prev, [id]: Math.max(0, value) }));
+    setInvoer(prev => ({ ...prev, [id]: Math.max(0, value) }));
   };
 
   const genereerTekst = () => {
-    const naam = leveranciers?.find((l) => l.id === leverancierId)?.naam ?? "Onbekend";
-    const rows: { bestelnummer: string; naam: string; aantal: number }[] = [];
-    producten?.forEach((p) => {
-      const aantal = invoer[p.id] ?? 0;
-      if (aantal > 0) {
-        rows.push({ bestelnummer: p.bestelnummer ?? p.id.toString(), naam: p.naam, aantal });
-      }
-    });
+    const naam = leveranciers?.find(l => l.id===leverancierId)?.naam ?? "Onbekend";
+    const rows: { bestelnummer:string; naam:string; aantal:number }[] = [];
+    producten?.forEach(p => { const n = invoer[p.id] ?? 0; if (n>0) rows.push({ bestelnummer: p.bestelnummer ?? String(p.id), naam: p.naam, aantal: n });});
     let tekst = `Bestelling IJssalon Vincenzo – ${naam}
 Referentie: ${referentie}
 
@@ -150,15 +103,11 @@ Referentie: ${referentie}
 `;
     tekst += `------\t------------\t-------
 `;
-    rows.forEach((r) => {
-      tekst += `${r.aantal}\t${r.bestelnummer}\t${r.naam}
-`;
-    });
-    if (opmerking.trim()) {
-      tekst += `
+    rows.forEach(r => { tekst += `${r.aantal}\t${r.bestelnummer}\t${r.naam}
+`;});
+    if (opmerking.trim()) tekst += `
 
 Opmerkingen: ${opmerking.trim()}`;
-    }
     return tekst;
   };
 
@@ -170,11 +119,7 @@ Opmerkingen: ${opmerking.trim()}`;
 
       <div className="flex items-center gap-4 mb-2">
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={toonIncidenteel}
-            onChange={(e) => setToonIncidenteel(e.target.checked)}
-          />
+          <input type="checkbox" checked={toonIncidenteel} onChange={e=>setToonIncidenteel(e.target.checked)} />
           Toon incidentele leveranciers
         </label>
       </div>
@@ -186,15 +131,10 @@ Opmerkingen: ${opmerking.trim()}`;
       >
         <option value="">-- Kies leverancier --</option>
         {leveranciers
-          .filter((l) => (toonIncidenteel ? l.soort === "incidenteel" : l.soort === "wekelijks"))
-          .map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.naam}
-            </option>
-          ))}
+          .filter(l => toonIncidenteel ? l.soort==="incidenteel" : l.soort==="wekelijks")
+          .map(l => <option key={l.id} value={l.id}>{l.naam}</option>)}
       </select>
 
-      {/* Desktop */}
       {leverancierId && (
         <div className="hidden md:block space-y-4">
           <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
@@ -202,23 +142,20 @@ Opmerkingen: ${opmerking.trim()}`;
             <input
               type="text"
               value={referentieSuffix}
-              onChange={(e) => setReferentieSuffix(e.target.value)}
+              onChange={e=>setReferentieSuffix(e.target.value)}
               className="border px-2 py-1 rounded w-full md:w-60"
               placeholder="bijv. vrijdag"
             />
           </div>
           <div className="text-sm font-semibold">
-            Totaal: €
-            {producten
-              ?.reduce((sum, p) => sum + (invoer[p.id] ?? 0) * (p.huidige_prijs ?? 0), 0)
-              .toFixed(2)}
+            Totaal: €{producten?.reduce((s,p)=> s + (invoer[p.id] ?? 0) * (p.huidige_prijs ?? 0), 0).toFixed(2)}
           </div>
           <textarea
             className="w-full border px-3 py-2 rounded"
             rows={3}
             placeholder="Opmerkingen (optioneel)"
             value={opmerking}
-            onChange={(e) => setOpmerking(e.target.value)}
+            onChange={e=>setOpmerking(e.target.value)}
           />
           <div className="flex gap-4">
             <button
@@ -228,37 +165,24 @@ Opmerkingen: ${opmerking.trim()}`;
                 if (!naar) return;
 
                 await fetch("/api/mail/bestelling", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
+                  method: "POST", headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({
                     naar,
-                    onderwerp: `Bestelling IJssalon Vincenzo – ${
-                      leveranciers?.find((l) => l.id === leverancierId)?.naam ?? "Onbekend"
-                    } – ${referentie}`,
+                    onderwerp: `Bestelling IJssalon Vincenzo – ${leveranciers?.find(l=>l.id===leverancierId)?.naam ?? "Onbekend"} – ${referentie}`,
                     tekst: genereerTekst(),
                   }),
                 });
 
                 const response = await fetch(`/api/bestelling/historie`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    leverancier_id: leverancierId,
-                    data: invoer,
-                    referentie,
-                    opmerking,
-                  }),
+                  method: "POST", headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ leverancier_id: leverancierId, data: invoer, referentie, opmerking }),
                 });
                 const result = await response.json();
-                console.log("Historie:", result);
-                if (!response.ok) {
-                  alert("❌ Historie NIET opgeslagen:\n" + JSON.stringify(result));
-                  return;
-                }
+                if (!response.ok) { alert("❌ Historie NIET opgeslagen:\n" + JSON.stringify(result)); return; }
 
-                await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, {
-                  method: "DELETE",
-                });
+                await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, { method: "DELETE" });
+                suppressUntilRef.current = Date.now() + 1500;
+                setLoadedLeverancierId(null);
                 setInvoer({});
                 showSnackbar("Bestelling is gereset");
                 alert("Bestelling is verzonden!");
@@ -270,9 +194,9 @@ Opmerkingen: ${opmerking.trim()}`;
             <button
               className="bg-red-500 text-white px-4 py-2 rounded"
               onClick={async () => {
-                await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, {
-                  method: "DELETE",
-                });
+                await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, { method: "DELETE" });
+                suppressUntilRef.current = Date.now() + 1500;
+                setLoadedLeverancierId(null);
                 setInvoer({});
                 showSnackbar("Bestelling is gereset");
               }}
@@ -283,7 +207,6 @@ Opmerkingen: ${opmerking.trim()}`;
         </div>
       )}
 
-      {/* Tabel (desktop) */}
       {leverancierId && (
         <div className="hidden md:block overflow-auto">
           <table className="w-full text-sm border mt-4">
@@ -294,108 +217,58 @@ Opmerkingen: ${opmerking.trim()}`;
                 <th className="p-2 text-left">Prijs</th>
                 <th className="p-2 text-left">Aantal</th>
                 <th className="p-2 text-left">Actie</th>
-                {(historie ?? [])
-                  .slice(0, 6)
-                  .map((b, i) => (
-                    <th
-                      key={i}
-                      className="p-2 text-center font-semibold"
-                      title={`Besteld op ${new Date(b.besteld_op).toLocaleDateString("nl-NL")}`}
-                    >
-                      {i + 1}
-                    </th>
-                  ))}
+                {(historie ?? []).slice(0,6).map((b,i)=>(
+                  <th key={i} className="p-2 text-center font-semibold" title={`Besteld op ${new Date(b.besteld_op).toLocaleDateString('nl-NL')}`}>{i+1}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {producten
-                ?.sort((a, b) => (a.volgorde ?? 999) - (b.volgorde ?? 999))
-                .map((p) => (
-                  <tr key={p.id} className="border-t">
-                    <td className="p-2">{p.naam}</td>
-                    <td className="p-2">{p.besteleenheid ?? 1}</td>
-                    <td className="p-2">
-                      {p.huidige_prijs != null ? `€ ${Number(p.huidige_prijs).toFixed(2)}` : "–"}
-                    </td>
-                    <td className="p-2">
-                      <input
-                        type="number"
-                        min="0"
-                        className="w-16 px-2 py-1 border rounded text-right"
-                        value={invoer[p.id] ?? 0}
-                        onChange={(e) => {
-                          const val = Number(e.target.value);
-                          setAantal(p.id, isNaN(val) ? 0 : val);
-                        }}
-                      />
-                    </td>
-                    <td className="p-2 space-x-2">
-                      <button
-                        onClick={() => wijzigAantal(p.id, -1)}
-                        className="px-2 py-1 bg-gray-200 rounded"
-                      >
-                        –
-                      </button>
-                      <button
-                        onClick={() => wijzigAantal(p.id, 1)}
-                        className="px-2 py-1 bg-blue-600 text-white rounded"
-                      >
-                        +
-                      </button>
-                    </td>
-                    {(historie ?? [])
-                      .slice(0, 6)
-                      .map((b, i) => (
-                        <td key={i} className="p-2 text-center font-bold">
-                          {b.data?.[p.id] ?? "-"}
-                        </td>
-                      ))}
-                  </tr>
-                ))}
+              {producten?.sort((a,b)=>(a.volgorde ?? 999) - (b.volgorde ?? 999)).map(p=>(
+                <tr key={p.id} className="border-t">
+                  <td className="p-2">{p.naam}</td>
+                  <td className="p-2">{p.besteleenheid ?? 1}</td>
+                  <td className="p-2">{p.huidige_prijs != null ? `€ ${Number(p.huidige_prijs).toFixed(2)}` : "–"}</td>
+                  <td className="p-2">
+                    <input type="number" min="0" className="w-16 px-2 py-1 border rounded text-right"
+                      value={invoer[p.id] ?? 0}
+                      onChange={e => setAantal(p.id, isNaN(Number(e.target.value)) ? 0 : Number(e.target.value))}
+                    />
+                  </td>
+                  <td className="p-2 space-x-2">
+                    <button onClick={()=>wijzigAantal(p.id, -1)} className="px-2 py-1 bg-gray-200 rounded">–</button>
+                    <button onClick={()=>wijzigAantal(p.id, 1)} className="px-2 py-1 bg-blue-600 text-white rounded">+</button>
+                  </td>
+                  {(historie ?? []).slice(0,6).map((b,i)=>(
+                    <td key={i} className="p-2 text-center font-bold">{b.data?.[p.id] ?? '-'}</td>
+                  ))}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Mobile */}
       {leverancierId && (
         <div className="md:hidden space-y-4">
-          {producten?.map((p) => (
+          {producten?.map(p=>(
             <div key={p.id} className="flex items-center justify-between border-b py-2">
               <span>{p.naam}</span>
               <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => wijzigAantal(p.id, -1)}
-                  className="px-2 py-1 bg-gray-200 rounded"
-                >
-                  –
-                </button>
-                <input
-                  type="number"
-                  min="0"
-                  className="w-16 px-2 py-1 border rounded text-right"
+                <button onClick={()=>wijzigAantal(p.id, -1)} className="px-2 py-1 bg-gray-200 rounded">–</button>
+                <input type="number" min="0" className="w-16 px-2 py-1 border rounded text-right"
                   value={invoer[p.id] ?? 0}
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    setAantal(p.id, isNaN(val) ? 0 : val);
-                  }}
+                  onChange={e => setAantal(p.id, isNaN(Number(e.target.value)) ? 0 : Number(e.target.value))}
                 />
-                <button
-                  onClick={() => wijzigAantal(p.id, 1)}
-                  className="px-2 py-1 bg-blue-600 text-white rounded"
-                >
-                  +
-                </button>
+                <button onClick={()=>wijzigAantal(p.id, 1)} className="px-2 py-1 bg-blue-600 text-white rounded">+</button>
               </div>
             </div>
           ))}
           <div className="flex space-x-2">
-            <button
-              className="flex-1 bg-red-500 text-white px-4 py-2 rounded"
+            <button className="flex-1 bg-red-500 text-white px-4 py-2 rounded"
               onClick={async () => {
-                await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, {
-                  method: "DELETE",
-                });
+                await fetch(`/api/bestelling/onderhanden?leverancier=${leverancierId}`, { method: "DELETE" });
+                suppressUntilRef.current = Date.now() + 1500;
+                setLoadedLeverancierId(null);
                 setInvoer({});
                 showSnackbar("Bestelling is gereset");
               }}
