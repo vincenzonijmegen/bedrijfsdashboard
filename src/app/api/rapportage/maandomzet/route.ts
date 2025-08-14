@@ -1,4 +1,3 @@
-// src/app/api/rapportage/maandomzet/route.ts
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -9,26 +8,33 @@ import { NextResponse } from "next/server";
 export async function GET() {
   const tAll = startTimer("/api/rapportage/maandomzet");
   try {
-    // ⬇️ Snel: uit de materialized view lezen
-    const t1 = startTimer("maandomzet:mv");
-    const omzet = await dbRapportage.query(`
-      SELECT jaar, maand_start, totaal
-      FROM rapportage.omzet_maand
-      ORDER BY maand_start
+    const t1 = startTimer("maandomzet:singlecall");
+    const { rows } = await dbRapportage.query(`
+      WITH mv AS (
+        SELECT jaar, maand_start, totaal
+        FROM rapportage.omzet_maand
+        ORDER BY maand_start
+      ),
+      last AS (
+        SELECT MAX(datum) AS max_datum
+        FROM rapportage.omzet
+      )
+      SELECT 
+        (SELECT json_agg(mv) FROM mv)            AS rows,
+        (SELECT max_datum FROM last)             AS max_datum
     `);
     t1.end();
 
-    // Alleen voor “laatste import” nog in de brontabel kijken
-    const t2 = startTimer("maandomzet:maxdatum");
-    const maxDatum = await dbRapportage.query(`
-      SELECT MAX(datum) AS max_datum
-      FROM rapportage.omzet
-    `);
-    t2.end();
+    const payload = {
+      rows: rows[0]?.rows ?? [],
+      max_datum: rows[0]?.max_datum ?? null,
+    };
 
-    return NextResponse.json({
-      rows: omzet.rows,
-      max_datum: maxDatum.rows[0].max_datum,
+    return new NextResponse(JSON.stringify(payload), {
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "private, max-age=60",
+      },
     });
   } catch (err) {
     console.error("API maandomzet fout:", err);
