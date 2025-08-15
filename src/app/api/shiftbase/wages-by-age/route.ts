@@ -1,13 +1,12 @@
-// src/app/api/shiftbase/wages-by-age/route.ts
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export const runtime = "nodejs";       // ✅ forceer Node.js (pg support)
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 /**
- * GET /api/shiftbase/wages-by-age?min_date=YYYY-MM-DD&max_date=YYYY-MM-DD
+ * GET /api/shiftbase/wages-by-age?min_date=YYYY-MM-DD&max_date=YYYY-MM-DD&user_ids=1,2,3
  * Berekent uurloon per user per dag o.b.v.:
  *  - Shiftbase users (NAW) voor geboortedatum
  *  - Tabel loon_leeftijd (min/max_leeftijd, uurloon, geldig_van/tot)
@@ -16,6 +15,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const minDate = url.searchParams.get("min_date");
   const maxDate = url.searchParams.get("max_date");
+  const userIdsParam = url.searchParams.get("user_ids"); // optioneel
 
   if (!minDate || !maxDate) {
     return NextResponse.json(
@@ -24,24 +24,12 @@ export async function GET(req: Request) {
     );
   }
 
-  const apiKey = process.env.SHIFTBASE_API_KEY?.trim();
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "SHIFTBASE_API_KEY ontbreekt" },
-      { status: 500 }
-    );
-  }
-
-  // 1) Haal gebruikers (incl. geboortedatum) uit jouw bestaande NAW endpoint
-  //    (je wilde alleen jouw NAW + loon_leeftijd gebruiken)
+  // 1) Haal gebruikers (incl. geboortedatum) via jouw NAW-endpoint
   const nawRes = await fetch(`${url.origin}/api/shiftbase/naw`, {
     method: "GET",
-    headers: {
-      Accept: "application/json",
-    },
+    headers: { Accept: "application/json" },
     cache: "no-store",
   });
-
   if (!nawRes.ok) {
     const body = await nawRes.text();
     return NextResponse.json(
@@ -49,31 +37,43 @@ export async function GET(req: Request) {
       { status: nawRes.status }
     );
   }
-
   const nawJson: any = await nawRes.json();
+
+  // optionele filterlijst van user_ids (allemaal als string)
+  const allowSet: Set<string> | null = userIdsParam
+    ? new Set(userIdsParam.split(",").map((s) => s.trim()).filter(Boolean))
+    : null;
+
   const users: Array<{ user_id: string; dob?: string }> = (nawJson?.data ?? [])
     .map((row: any) => {
       const u = row?.User ?? row?.user ?? row;
-      const dob = u?.date_of_birth || u?.birthdate || u?.birthday;
-      return { user_id: String(u?.id ?? ""), dob: dob ? String(dob).slice(0, 10) : undefined };
+      const idStr = String(u?.id ?? "");
+      // vang diverse naamvarianten voor geboortedatum af
+      const dobRaw =
+        u?.date_of_birth ??
+        u?.birth_date ??
+        u?.birthdate ??
+        u?.birthday ??
+        u?.dateOfBirth;
+      const dob = dobRaw ? String(dobRaw).slice(0, 10) : undefined;
+      return { user_id: idStr, dob };
     })
-    .filter((u: any) => u.user_id);
+    .filter((u) => u.user_id && (!allowSet || allowSet.has(u.user_id)));
 
-  // 2) Haal loonregels uit jouw tabel
-type LoonRegel = {
-  min_leeftijd: number;
-  max_leeftijd: number;
-  uurloon: string;           // NUMERIC komt als string binnen
-  geldig_van: string;        // "YYYY-MM-DD"
-  geldig_tot: string | null; // of null
-};
+  // 2) Loonregels uit tabel
+  type LoonRegel = {
+    min_leeftijd: number;
+    max_leeftijd: number;
+    uurloon: string;
+    geldig_van: string;
+    geldig_tot: string | null;
+  };
+  const regelsRes = await db.query(
+    `SELECT min_leeftijd, max_leeftijd, uurloon, geldig_van, geldig_tot FROM loon_leeftijd`
+  );
+  const regels: LoonRegel[] = (regelsRes as any).rows as LoonRegel[];
 
-const regelsRes = await db.query(
-  `SELECT min_leeftijd, max_leeftijd, uurloon, geldig_van, geldig_tot FROM loon_leeftijd`
-);
-const regels: LoonRegel[] = (regelsRes as any).rows as LoonRegel[];
-
-  // 3) Bouw datums tussen min..max
+  // 3) Datums (inclusief)
   const dates: string[] = [];
   {
     const start = new Date(minDate + "T12:00:00");
@@ -96,10 +96,9 @@ const regels: LoonRegel[] = (regelsRes as any).rows as LoonRegel[];
 
   for (const date of dates) {
     for (const u of users) {
-      if (!u.dob) continue;
+      if (!u.dob) continue; // geen geboortedatum → geen loon
       const age = ageOn(u.dob, date);
 
-      // Kies loonregel die op 'date' geldt en leeftijd dekt (meest recente geldig_van wint)
       const match = regels
         .filter((r) => {
           const inAge = age >= r.min_leeftijd && age <= r.max_leeftijd;
@@ -107,7 +106,7 @@ const regels: LoonRegel[] = (regelsRes as any).rows as LoonRegel[];
           const inTo = !r.geldig_tot || date <= r.geldig_tot;
           return inAge && inFrom && inTo;
         })
-        .sort((a, b) => (a.geldig_van < b.geldig_van ? 1 : -1));
+        .sort((a, b) => (a.geldig_van < b.geldig_van ? 1 : -1)); // meest recente eerst
 
       if (match.length) {
         const wageNum = parseFloat(match[0].uurloon);
