@@ -32,16 +32,18 @@ type TimesheetRow = {
     status?: string | null;
   };
 };
-
 type TimesheetResp = { data?: TimesheetRow[] } | null;
 
-function firstName(full?: string) {
-  if (!full) return "Onbekend";
-  // pak eerste “woord” tot spatie of koppelteken
-  const w = full.trim().split(/\s+/)[0];
-  return w.split("-")[0] || w;
-}
-
+type ContractRow = {
+  Contract: {
+    id: string;
+    user_id: string;
+    startdate: string;   // "YYYY-MM-DD"
+    enddate: string | null;
+    wage: string;        // "12.50" (uurloon)
+  };
+};
+type ContractsResp = { data?: ContractRow[] } | null;
 
 // --- Utils ----------------------------------------------------
 function ymdLocal(d: Date) {
@@ -50,13 +52,22 @@ function ymdLocal(d: Date) {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
-
+function addDays(iso: string, offset: number) {
+  const d = new Date(iso + "T12:00:00");
+  d.setDate(d.getDate() + offset);
+  return ymdLocal(d);
+}
+function startOfISOWeekMonday(d: Date) {
+  const tmp = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const day = (tmp.getDay() + 6) % 7; // Ma=0..Zo=6
+  tmp.setDate(tmp.getDate() - day);
+  return tmp;
+}
 function hhmm(s?: string | null) {
   if (!s) return "--";
   const t = s.includes("T") ? s.split("T")[1] : s;
   return t.slice(0, 5);
 }
-
 function classByTimesheet(entry?: TimesheetRow["Timesheet"]) {
   if (!entry) return "bg-red-100 text-red-800";
   const { clocked_in, clocked_out } = entry;
@@ -64,19 +75,20 @@ function classByTimesheet(entry?: TimesheetRow["Timesheet"]) {
   if (clocked_in || clocked_out) return "bg-orange-100 text-orange-800";
   return "bg-red-100 text-red-800";
 }
-
-function startOfISOWeekMonday(d: Date) {
-  const tmp = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const day = (tmp.getDay() + 6) % 7; // Ma=0..Zo=6
-  tmp.setDate(tmp.getDate() - day);
-  return tmp;
+function firstName(full?: string) {
+  if (!full) return "Onbekend";
+  const w = full.trim().split(/\s+/)[0];
+  return w.split("-")[0] || w;
 }
-
-function addDays(iso: string, offset: number) {
-  const d = new Date(iso + "T12:00:00");
-  d.setDate(d.getDate() + offset);
-  return ymdLocal(d);
+// duur in uren (decimaal) tussen "HH:MM:SS"
+function hoursBetween(startHHMMSS: string, endHHMMSS: string) {
+  const [sh, sm] = startHHMMSS.split(":").map(Number);
+  const [eh, em] = endHHMMSS.split(":").map(Number);
+  let minutes = eh * 60 + em - (sh * 60 + sm);
+  if (minutes < 0) minutes += 24 * 60; // als shift over middernacht
+  return minutes / 60;
 }
+const EUR = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" });
 
 const GEWENSTE_VOLGORDE = [
   "S1K", "S1KV", "S1", "S1Z", "S1L", "S1S",
@@ -99,14 +111,12 @@ export default function RoosterPage() {
     view === "day" ? `/api/shiftbase/rooster?datum=${selectedDate}` : null,
     fetcher
   );
-
   const { data: dayTimesheets } = useSWR<TimesheetResp>(
     view === "day"
       ? `/api/shiftbase/timesheets?min_date=${selectedDate}&max_date=${selectedDate}`
       : null,
     fetcher
   );
-
   const tsByUserDay = useMemo(() => {
     const map = new Map<string, TimesheetRow["Timesheet"]>();
     const rows = dayTimesheets?.data ?? [];
@@ -117,19 +127,15 @@ export default function RoosterPage() {
     }
     return map;
   }, [dayTimesheets, selectedDate]);
-
   const perShiftDay = useMemo(() => {
     if (!dayRooster) return {} as Record<string, ShiftItem[]>;
     const acc: Record<string, ShiftItem[]> = {};
-    for (const item of dayRooster) {
-      (acc[item.Roster.name] ||= []).push(item);
-    }
+    for (const item of dayRooster) (acc[item.Roster.name] ||= []).push(item);
     for (const key of Object.keys(acc)) {
       acc[key].sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime));
     }
     return acc;
   }, [dayRooster]);
-
   const orderDay = useMemo(() => {
     const present = Object.keys(perShiftDay);
     const pref = GEWENSTE_VOLGORDE.filter((n) => n in perShiftDay);
@@ -145,7 +151,7 @@ export default function RoosterPage() {
     );
   }, [selectedDate]);
 
-  // Belangrijk: gebruik 1 fetcher-argument (de tuple-key) en haal dates eruit
+  // Roosters voor alle weekdagen
   const { data: weekRooster, error: weekError } = useSWR<Record<string, ShiftItem[]>>(
     view === "week" ? (["week-rooster", weekDates] as const) : null,
     async (key) => {
@@ -165,13 +171,13 @@ export default function RoosterPage() {
     }
   );
 
+  // Timesheets voor hele week (optioneel gebruikt in dagview; weekview toont geen badges)
   const { data: weekTimesheets } = useSWR<TimesheetResp>(
     view === "week"
       ? `/api/shiftbase/timesheets?min_date=${weekDates[0]}&max_date=${weekDates[6]}`
       : null,
     fetcher
   );
-
   const tsByDateUser = useMemo(() => {
     const outer = new Map<string, Map<string, TimesheetRow["Timesheet"]>>();
     const rows = weekTimesheets?.data ?? [];
@@ -184,6 +190,27 @@ export default function RoosterPage() {
     }
     return outer;
   }, [weekTimesheets]);
+
+  // ----- CONTRACTS (uurloon per user) ------------------------
+  const { data: contractsResp } = useSWR<ContractsResp>(
+    "/api/shiftbase/contracts",
+    fetcher
+  );
+  // Map: user_id -> uurloon (pak meest recente met wage>0)
+  const wageByUser = useMemo(() => {
+    const rows = contractsResp?.data ?? [];
+    const best: Record<string, { start: string; wage: number }> = {};
+    for (const r of rows) {
+      const c = r.Contract;
+      const wage = parseFloat(c.wage || "0") || 0;
+      if (!wage) continue;
+      const cur = best[c.user_id];
+      if (!cur || c.startdate > cur.start) best[c.user_id] = { start: c.startdate, wage };
+    }
+    const map = new Map<string, number>();
+    Object.entries(best).forEach(([uid, v]) => map.set(uid, v.wage));
+    return map;
+  }, [contractsResp]);
 
   // ----- Navigatie -------------------------------------------
   const changeDay = (offset: number) => {
@@ -208,9 +235,7 @@ export default function RoosterPage() {
     <div className="p-4">
       {/* Navigatie + toggle */}
       <div className="flex flex-wrap items-center mb-4 gap-2">
-        <button onClick={() => changeDay(-1)} className="px-2 py-1 bg-gray-200 rounded">
-          ←
-        </button>
+        <button onClick={() => changeDay(-1)} className="px-2 py-1 bg-gray-200 rounded">←</button>
         <input
           type="date"
           min="2024-01-01"
@@ -219,9 +244,7 @@ export default function RoosterPage() {
           onChange={(e) => setSelectedDate(e.target.value)}
           className="border px-2 py-1 rounded"
         />
-        <button onClick={() => changeDay(1)} className="px-2 py-1 bg-gray-200 rounded">
-          →
-        </button>
+        <button onClick={() => changeDay(1)} className="px-2 py-1 bg-gray-200 rounded">→</button>
         <button onClick={goToday} className="ml-2 px-2 py-1 rounded border border-gray-300 hover:bg-gray-100">
           Vandaag
         </button>
@@ -309,76 +332,90 @@ export default function RoosterPage() {
       ) : (
         <>
           {weekError && <p className="p-4 text-red-600">Fout weekrooster: {String(weekError?.message ?? weekError)}</p>}
-{!weekRooster ? (
-  <p className="p-4">Laden…</p>
-) : (
-  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
-    {weekDates.map((d) => {
-      const roster = weekRooster[d] || [];
-      // groepeer per shift & sorteer (we tonen tijden niet, maar sorteren blijft handig)
-      const perShift: Record<string, ShiftItem[]> = {};
-      for (const item of roster) (perShift[item.Roster.name] ||= []).push(item);
-      for (const k of Object.keys(perShift)) {
-        perShift[k].sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime));
-      }
-      const order = [
-        ...GEWENSTE_VOLGORDE.filter((n) => n in perShift),
-        ...Object.keys(perShift).filter((n) => !GEWENSTE_VOLGORDE.includes(n)),
-      ];
-
-      return (
-        <div key={d} className="border rounded-lg p-2 text-xs leading-tight">
-          <div className="flex items-baseline justify-between mb-2">
-            <h3 className="font-semibold">
-              {new Date(d + "T12:00:00").toLocaleDateString("nl-NL", {
-                weekday: "short",
-                day: "2-digit",
-                month: "2-digit",
-              })}
-            </h3>
-            {d === today && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
-                vandaag
-              </span>
-            )}
-          </div>
-
-          {order.length === 0 ? (
-            <p className="text-[11px] text-gray-500">Geen shifts.</p>
+          {!weekRooster ? (
+            <p className="p-4">Laden…</p>
           ) : (
-            order.map((shiftName) => {
-              const groep = perShift[shiftName];
-              const headerColor = groep?.[0]?.Roster?.color || "#334";
-              const headerText = groep?.[0]?.Shift?.long_name || shiftName;
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
+              {weekDates.map((d) => {
+                const roster = weekRooster[d] || [];
+                // groepeer per shift & sorteer
+                const perShift: Record<string, ShiftItem[]> = {};
+                for (const item of roster) (perShift[item.Roster.name] ||= []).push(item);
+                for (const k of Object.keys(perShift)) {
+                  perShift[k].sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime));
+                }
+                const order = [
+                  ...GEWENSTE_VOLGORDE.filter((n) => n in perShift),
+                  ...Object.keys(perShift).filter((n) => !GEWENSTE_VOLGORDE.includes(n)),
+                ];
 
-              return (
-                <div key={shiftName} className="mb-2">
-                  {/* kleine “pill” header */}
-                  <div
-                    className="text-[11px] font-semibold mb-1 px-2 py-0.5 rounded"
-                    style={{ backgroundColor: headerColor, color: "white" }}
-                  >
-                    {headerText}
+                // --- Personeelskosten (gepland): som( uren * uurloon(user) ) ---
+                let dayCost = 0;
+                for (const items of Object.values(perShift)) {
+                  for (const it of items) {
+                    const hours = hoursBetween(it.Roster.starttime, it.Roster.endtime);
+                    const wage = wageByUser.get(it.Roster.user_id) ?? 0;
+                    if (wage > 0 && hours > 0) dayCost += hours * wage;
+                  }
+                }
+
+                return (
+                  <div key={d} className="border rounded-lg p-2 text-xs leading-tight">
+                    <div className="flex items-baseline justify-between mb-2">
+                      <h3 className="font-semibold">
+                        {new Date(d + "T12:00:00").toLocaleDateString("nl-NL", {
+                          weekday: "short",
+                          day: "2-digit",
+                          month: "2-digit",
+                        })}
+                      </h3>
+                      {d === today && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
+                          vandaag
+                        </span>
+                      )}
+                    </div>
+
+                    {order.length === 0 ? (
+                      <p className="text-[11px] text-gray-500">Geen shifts.</p>
+                    ) : (
+                      order.map((shiftName) => {
+                        const groep = perShift[shiftName];
+                        const headerColor = groep?.[0]?.Roster?.color || "#334";
+                        const headerText = groep?.[0]?.Shift?.long_name || shiftName;
+
+                        return (
+                          <div key={shiftName} className="mb-2">
+                            <div
+                              className="text-[11px] font-semibold mb-1 px-2 py-0.5 rounded"
+                              style={{ backgroundColor: headerColor, color: "white" }}
+                            >
+                              {headerText}
+                            </div>
+
+                            {/* alleen voornaam, géén tijden en géén In/Uit‑badge */}
+                            <ul className="pl-0 list-none space-y-0.5">
+                              {groep.map((item) => (
+                                <li key={item.id} className="px-1 py-0.5 rounded bg-gray-50">
+                                  <strong>{firstName(item.User?.name)}</strong>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        );
+                      })
+                    )}
+
+                    {/* Personeelskosten footer */}
+                    <div className="mt-2 pt-2 border-t flex items-center justify-between text-[11px]">
+                      <span>Personeelskosten</span>
+                      <strong>{dayCost > 0 ? EUR.format(dayCost) : "—"}</strong>
+                    </div>
                   </div>
-
-                  {/* alleen voornaam, géén tijden en géén In/Uit‑badge */}
-                  <ul className="pl-0 list-none space-y-0.5">
-                    {groep.map((item) => (
-                      <li key={item.id} className="px-1 py-0.5 rounded bg-gray-50">
-                        <strong>{firstName(item.User?.name)}</strong>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           )}
-        </div>
-      );
-    })}
-  </div>
-)}
-
         </>
       )}
     </div>
