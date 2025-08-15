@@ -145,33 +145,41 @@ export default function RoosterPage() {
   }, [perShiftDay]);
 
   // ----- WEEK VIEW DATA -----
-  const weekDates = useMemo(() => {
-    const start = startOfISOWeekMonday(new Date(selectedDate + "T12:00:00"));
-    return Array.from({ length: 7 }, (_, i) => ymdLocal(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i)));
-  }, [selectedDate]);
-
-  // Haal per dag rooster parallel op; resultaat { [date]: ShiftItem[] }
-  const { data: weekRooster, error: weekError } = useSWR<Record<string, ShiftItem[]>>(
-    view === "week" ? ["week-rooster", ...weekDates] : null,
-    async (_key, ...dates: string[]) => {
-      const res = await Promise.all(
-        dates.map((d) =>
-          fetch(`/api/shiftbase/rooster?datum=${d}`).then((r) => r.json())
-        )
-      );
-      const dict: Record<string, ShiftItem[]> = {};
-      dates.forEach((d, i) => (dict[d] = res[i] || []));
-      return dict;
-    }
+// ----- WEEK VIEW DATA -----
+const weekDates = useMemo(() => {
+  const start = startOfISOWeekMonday(new Date(selectedDate + "T12:00:00"));
+  return Array.from({ length: 7 }, (_, i) =>
+    ymdLocal(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i))
   );
+}, [selectedDate]);
 
-  // Timesheets in één keer voor hele week-range
-  const { data: weekTimesheets } = useSWR<TimesheetResp>(
-    view === "week"
-      ? `/api/shiftbase/timesheets?min_date=${weekDates[0]}&max_date=${weekDates[6]}`
-      : null,
-    fetcher
-  );
+// ✅ Geef weekDates als één param aan de fetcher
+const { data: weekRooster, error: weekError } = useSWR<Record<string, ShiftItem[]>>(
+  view === "week" ? ["week-rooster", weekDates] : null,
+  async (_key: string, dates: string[]) => {
+    const res = await Promise.all(
+      dates.map((d) =>
+        fetch(`/api/shiftbase/rooster?datum=${d}`).then((r) => {
+          if (!r.ok) throw new Error(`Rooster ${d} status ${r.status}`);
+          return r.json();
+        })
+      )
+    );
+    const dict: Record<string, ShiftItem[]> = {};
+    dates.forEach((d, i) => (dict[d] = Array.isArray(res[i]) ? res[i] : []));
+    return dict;
+  }
+);
+
+
+// Timesheets in één call voor de hele range
+const { data: weekTimesheets } = useSWR<TimesheetResp>(
+  view === "week"
+    ? `/api/shiftbase/timesheets?min_date=${weekDates[0]}&max_date=${weekDates[6]}`
+    : null,
+  fetcher
+);
+
 
   // Map: date -> user_id -> timesheet
   const tsByDateUser = useMemo(() => {
