@@ -178,13 +178,41 @@ export default function RoosterPage() {
   // Map: date -> (user_id -> wage)
   const wageByDateUser = useMemo(() => {
     const out = new Map<string, Map<string, number>>();
-    for (const row of wagesByAge?.data ?? []) {
+    for (const row of (wagesByAge?.data ?? []) as WageByAgeRow[]) {
       const uid = String(row.user_id);
       if (!out.has(row.date)) out.set(row.date, new Map());
       out.get(row.date)!.set(uid, row.wage);
     }
     return out;
   }, [wagesByAge]);
+
+  // Week-totaal berekenen (meeloopt met exclusions)
+  const weekTotals = useMemo(() => {
+    if (!weekRooster) return { hours: 0, cost: 0 };
+    let hours = 0;
+    let cost = 0;
+    for (const d of weekDates) {
+      const roster = weekRooster[d] || [];
+      // per shift groeperen
+      const perShift: Record<string, ShiftItem[]> = {};
+      for (const item of roster) (perShift[item.Roster.name] ||= []).push(item);
+      Object.values(perShift).forEach((arr) =>
+        arr.sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime))
+      );
+      const wageMap = wageByDateUser.get(d);
+      for (const items of Object.values(perShift)) {
+        for (const it of items) {
+          const uid = String(it.Roster.user_id);
+          if (excluded.has(keyDU(d, uid))) continue; // uitgesloten → overslaan
+          const h = hoursBetween(it.Roster.starttime, it.Roster.endtime);
+          hours += h;
+          const wage = wageMap?.get(uid) ?? 0;
+          if (wage > 0 && h > 0) cost += h * wage * 1.36; // incl. werkgeverslasten
+        }
+      }
+    }
+    return { hours, cost };
+  }, [weekRooster, weekDates, wageByDateUser, excluded]);
 
   const changeDay = (off: number) => setSelectedDate((prev) => addDays(prev, view === "day" ? off : off * 7));
   const goToday = () => setSelectedDate(today);
@@ -357,179 +385,215 @@ export default function RoosterPage() {
           {!weekRooster ? (
             <p className="p-4">Laden…</p>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
-              {weekDates.map((d) => {
-                const roster = weekRooster[d] || [];
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
+                {weekDates.map((d) => {
+                  const roster = weekRooster[d] || [];
 
-                // per shift groeperen
-                const perShift: Record<string, ShiftItem[]> = {};
-                for (const item of roster) (perShift[item.Roster.name] ||= []).push(item);
-                Object.values(perShift).forEach((arr) =>
-                  arr.sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime))
-                );
-                const order = [
-                  ...GEWENSTE.filter((n) => n in perShift),
-                  ...Object.keys(perShift).filter((n) => !GEWENSTE.includes(n)),
-                ];
+                  // per shift groeperen
+                  const perShift: Record<string, ShiftItem[]> = {};
+                  for (const item of roster) (perShift[item.Roster.name] ||= []).push(item);
+                  Object.values(perShift).forEach((arr) =>
+                    arr.sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime))
+                  );
+                  const order = [
+                    ...GEWENSTE.filter((n) => n in perShift),
+                    ...Object.keys(perShift).filter((n) => !GEWENSTE.includes(n)),
+                  ];
 
-                const wageMap = wageByDateUser.get(d);
+                  const wageMap = wageByDateUser.get(d);
 
-                let dayCost = 0;
-                let planned = 0;
-                let withWage = 0;
-                let totalHours = 0;
-                let excludedCount = 0;
+                  let dayCost = 0;
+                  let planned = 0;
+                  let withWage = 0;
+                  let totalHours = 0;
+                  let excludedCount = 0;
 
-                // berekenen met include/exclude
-                for (const items of Object.values(perShift)) {
-                  for (const it of items) {
-                    planned += 1;
-                    const uid = String(it.Roster.user_id);
-                    const ex = excluded.has(keyDU(d, uid));
-                    const hours = hoursBetween(it.Roster.starttime, it.Roster.endtime);
+                  // berekenen met include/exclude
+                  for (const items of Object.values(perShift)) {
+                    for (const it of items) {
+                      planned += 1;
+                      const uid = String(it.Roster.user_id);
+                      const ex = excluded.has(keyDU(d, uid));
+                      const hours = hoursBetween(it.Roster.starttime, it.Roster.endtime);
 
-                    if (ex) {
-                      excludedCount += 1;
-                      // uitgesloten: niet meetellen in uren/kosten
-                      continue;
-                    }
+                      if (ex) {
+                        excludedCount += 1;
+                        // uitgesloten: niet meetellen in uren/kosten
+                        continue;
+                      }
 
-                    totalHours += hours;
+                      totalHours += hours;
 
-                    const wage = wageMap?.get(uid) ?? 0;
-                    if (wage > 0 && hours > 0) {
-                      withWage += 1;
-                      dayCost += hours * wage * 1.36; // werkgeverslasten
+                      const wage = wageMap?.get(uid) ?? 0;
+                      if (wage > 0 && hours > 0) {
+                        withWage += 1;
+                        dayCost += hours * wage * 1.36; // werkgeverslasten
+                      }
                     }
                   }
-                }
 
-                const requiredRevenue = dayCost > 0 ? Math.round(dayCost / 0.25) : 0;
+                  const requiredRevenue = dayCost > 0 ? Math.round(dayCost / 0.25) : 0;
 
-                // meta (optioneel)
-                const meta = wagesByAge?.meta;
-                const usersNoRule = meta?.no_rule_match_per_date?.[d] ?? [];
-                const usersWithWage = meta?.users_with_wage_per_date?.[d] ?? [];
+                  // meta (optioneel)
+                  const meta = wagesByAge?.meta;
+                  const usersNoRule = meta?.no_rule_match_per_date?.[d] ?? [];
+                  const usersWithWage = meta?.users_with_wage_per_date?.[d] ?? [];
 
-                return (
-                  <div key={d} className="border rounded-lg p-2 text-xs leading-tight flex flex-col">
-                    <div className="flex items-baseline justify-between mb-2">
-                      <h3 className="font-semibold">
-                        {new Date(d + "T12:00:00").toLocaleDateString("nl-NL", {
-                          weekday: "short",
-                          day: "2-digit",
-                          month: "2-digit",
-                        })}
-                      </h3>
-                      <div className="flex items-center gap-1">
-                        {excludedCount > 0 && (
-                          <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-900">
-                            −{excludedCount}
-                          </span>
+                  return (
+                    <div key={d} className="border rounded-lg p-2 text-xs leading-tight flex flex-col">
+                      <div className="flex items-baseline justify-between mb-2">
+                        <h3 className="font-semibold">
+                          {new Date(d + "T12:00:00").toLocaleDateString("nl-NL", {
+                            weekday: "short",
+                            day: "2-digit",
+                            month: "2-digit",
+                          })}
+                        </h3>
+                        <div className="flex items-center gap-1">
+                          {excludedCount > 0 && (
+                            <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-900">
+                              −{excludedCount}
+                            </span>
+                          )}
+                          {d === today && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
+                              vandaag
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {order.length === 0 ? (
+                        <p className="text-[11px] text-gray-500">Geen shifts.</p>
+                      ) : (
+                        order.map((shiftName) => {
+                          const groep = perShift[shiftName];
+                          const headerColor = groep?.[0]?.Roster?.color || "#334";
+                          const headerText = groep?.[0]?.Shift?.long_name || shiftName;
+                          return (
+                            <div key={shiftName} className="mb-2">
+                              <div
+                                className="text-[11px] font-semibold mb-1 px-2 py-0.5 rounded text-white"
+                                style={{ backgroundColor: headerColor }}
+                              >
+                                {headerText}
+                              </div>
+                              {/* ✅ Buttons per medewerker (toggle include/exclude) */}
+                              <ul className="pl-0 list-none space-y-1">
+                                {groep.map((it) => {
+                                  const uid = String(it.Roster.user_id);
+                                  const isExcluded = excluded.has(keyDU(d, uid));
+                                  return (
+                                    <li key={it.id}>
+                                      <button
+                                        type="button"
+                                        aria-pressed={!isExcluded}
+                                        onClick={() => toggleExcluded(d, uid)}
+                                        className={`w-full text-left px-2 py-1 rounded border transition ${
+                                          isExcluded
+                                            ? "line-through opacity-60 border-red-300 bg-red-50 hover:bg-red-100"
+                                            : "border-gray-200 bg-gray-50 hover:bg-gray-100"
+                                        }`}
+                                        title={isExcluded ? "Uitgesloten uit kosten" : "Meenemen in kosten"}
+                                      >
+                                        <strong>{firstName(it.User?.name)}</strong>
+                                      </button>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          );
+                        })
+                      )}
+
+                      {/* Onderkant: kosten/uren/omzet + reset */}
+                      <div className="mt-auto pt-2 border-t">
+                        <div className="flex items-center justify-between">
+                          <div className="text-[11px] text-gray-700">
+                            Personeelskosten incl. lasten{" "}
+                            <span className="opacity-60">
+                              ({withWage}/{planned - excludedCount} met tarief)
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => clearExcludedForDay(d)}
+                            className="text-[10px] px-1.5 py-0.5 rounded border border-gray-300 hover:bg-gray-100"
+                            title="Reset selectie voor deze dag"
+                          >
+                            Reset
+                          </button>
+                        </div>
+
+                        <div className="text-right text-sm font-semibold">
+                          {dayCost > 0 ? EUR0.format(Math.round(dayCost)) : "—"}
+                        </div>
+
+                        <div className="mt-1 text-[10px] text-gray-600 text-right">
+                          Totaal uren: <strong>{Math.round(totalHours * 100) / 100}</strong>
+                        </div>
+                        {dayCost > 0 && (
+                          <div className="mt-0.5 text-[10px] text-gray-600 text-right">
+                            Omzet voor &lt; 25%: <strong>{EUR0.format(requiredRevenue)}</strong>
+                          </div>
                         )}
-                        {d === today && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
-                            vandaag
-                          </span>
+
+                        {(showChecks && (usersNoRule.length > 0 || (meta?.users_without_dob?.length ?? 0) > 0)) && (
+                          <div className="mt-2 space-y-1">
+                            {usersNoRule.length > 0 && (
+                              <div className="text-[11px] px-2 py-1 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                                Geen match met tariefladder op {d}: {usersNoRule.join(", ")}
+                              </div>
+                            )}
+                            {meta?.users_without_dob?.length ? (
+                              <div className="text-[11px] px-2 py-1 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                                Zonder geboortedatum (algemeen): {meta.users_without_dob.join(", ")}
+                              </div>
+                            ) : null}
+                          </div>
                         )}
                       </div>
                     </div>
+                  );
+                })}
+              </div>
 
-                    {order.length === 0 ? (
-                      <p className="text-[11px] text-gray-500">Geen shifts.</p>
-                    ) : (
-                      order.map((shiftName) => {
-                        const groep = perShift[shiftName];
-                        const headerColor = groep?.[0]?.Roster?.color || "#334";
-                        const headerText = groep?.[0]?.Shift?.long_name || shiftName;
-                        return (
-                          <div key={shiftName} className="mb-2">
-                            <div
-                              className="text-[11px] font-semibold mb-1 px-2 py-0.5 rounded text-white"
-                              style={{ backgroundColor: headerColor }}
-                            >
-                              {headerText}
-                            </div>
-                            {/* ✅ Buttons per medewerker (toggle include/exclude) */}
-                            <ul className="pl-0 list-none space-y-1">
-                              {groep.map((it) => {
-                                const uid = String(it.Roster.user_id);
-                                const isExcluded = excluded.has(keyDU(d, uid));
-                                return (
-                                  <li key={it.id}>
-                                    <button
-                                      type="button"
-                                      aria-pressed={!isExcluded}
-                                      onClick={() => toggleExcluded(d, uid)}
-                                      className={`w-full text-left px-2 py-1 rounded border transition ${
-                                        isExcluded
-                                          ? "line-through opacity-60 border-red-300 bg-red-50 hover:bg-red-100"
-                                          : "border-gray-200 bg-gray-50 hover:bg-gray-100"
-                                      }`}
-                                      title={isExcluded ? "Uitgesloten uit kosten" : "Meenemen in kosten"}
-                                    >
-                                      <strong>{firstName(it.User?.name)}</strong>
-                                    </button>
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </div>
-                        );
-                      })
-                    )}
-
-                    {/* Onderkant: kosten/uren/omzet + reset */}
-                    <div className="mt-auto pt-2 border-t">
-                      <div className="flex items-center justify-between">
-                        <div className="text-[11px] text-gray-700">
-                          Personeelskosten incl. lasten{" "}
-                          <span className="opacity-60">
-                            ({withWage}/{planned - excludedCount} met tarief)
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => clearExcludedForDay(d)}
-                          className="text-[10px] px-1.5 py-0.5 rounded border border-gray-300 hover:bg-gray-100"
-                          title="Reset selectie voor deze dag"
-                        >
-                          Reset
-                        </button>
-                      </div>
-
-                      <div className="text-right text-sm font-semibold">
-                        {dayCost > 0 ? EUR0.format(Math.round(dayCost)) : "—"}
-                      </div>
-
-                      <div className="mt-1 text-[10px] text-gray-600 text-right">
-                        Totaal uren: <strong>{Math.round(totalHours * 100) / 100}</strong>
-                      </div>
-                      {dayCost > 0 && (
-                        <div className="mt-0.5 text-[10px] text-gray-600 text-right">
-                          Omzet voor &lt; 25%: <strong>{EUR0.format(requiredRevenue)}</strong>
-                        </div>
-                      )}
-
-                      {(showChecks && (usersNoRule.length > 0 || (meta?.users_without_dob?.length ?? 0) > 0)) && (
-                        <div className="mt-2 space-y-1">
-                          {usersNoRule.length > 0 && (
-                            <div className="text-[11px] px-2 py-1 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                              Geen match met tariefladder op {d}: {usersNoRule.join(", ")}
-                            </div>
-                          )}
-                          {meta?.users_without_dob?.length ? (
-                            <div className="text-[11px] px-2 py-1 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                              Zonder geboortedatum (algemeen): {meta.users_without_dob.join(", ")}
-                            </div>
-                          ) : null}
-                        </div>
-                      )}
+              {/* ✅ Weektotaal */}
+              <div className="mt-4 border rounded-lg p-3 bg-gray-50">
+                <div className="flex flex-wrap items-end justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-semibold">Weektotaal (inclusief ×1.36)</div>
+                    <div className="text-xs text-gray-600">
+                      Periode:{" "}
+                      {new Date(weekDates[0] + "T12:00:00").toLocaleDateString("nl-NL", {
+                        day: "2-digit",
+                        month: "2-digit",
+                      })}{" "}
+                      –{" "}
+                      {new Date(weekDates[6] + "T12:00:00").toLocaleDateString("nl-NL", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })}
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold">
+                      {EUR0.format(Math.round(weekTotals.cost))}
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      Omzet voor &lt; 25%:{" "}
+                      <strong>{EUR0.format(Math.round(weekTotals.cost / 0.25 || 0))}</strong>
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      Totaal uren: <strong>{Math.round(weekTotals.hours * 100) / 100}</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </>
       )}
