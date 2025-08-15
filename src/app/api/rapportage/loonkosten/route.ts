@@ -27,57 +27,55 @@ function num(n: any, fb = 0) {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const now = new Date();
-  const jaar = num(url.searchParams.get("jaar"), now.getFullYear());
+  const jaar = Number(url.searchParams.get("jaar") ?? now.getFullYear());
 
   try {
-    // Lezen ondersteunt zowel schema met (jaar, maand, ...) als met (datum, ...)
+    // Lees direct uit dezelfde tabel/kolommen als waar POST inschrijft.
+    // - Altijd 12 maanden
+    // - Join op (jaar, maand) met ::int casts zodat text/int varianten ook matchen
     const q = `
-      WITH m AS (SELECT generate_series(1,12) AS maand),
-      bron AS (
-        SELECT
-          COALESCE(jaar, EXTRACT(YEAR  FROM datum)::int)  AS jaar,
-          COALESCE(maand, EXTRACT(MONTH FROM datum)::int) AS maand,
-          COALESCE(lonen::numeric,0)                      AS lonen,
-          COALESCE(loonheffing::numeric,0)                AS loonheffing,
-          COALESCE(pensioenpremie::numeric,0)             AS pensioenpremie
-        FROM rapportage.loonkosten
-      ),
-      agg AS (
-        SELECT jaar, maand,
-               SUM(lonen)          AS lonen,
-               SUM(loonheffing)    AS loonheffing,
-               SUM(pensioenpremie) AS pensioenpremie
-        FROM bron
-        WHERE jaar = $1
-        GROUP BY 1,2
+      WITH months AS (
+        SELECT generate_series(1,12) AS maand
       )
-      SELECT $1::int AS jaar, m.maand,
-             COALESCE(a.lonen,0)           AS lonen,
-             COALESCE(a.loonheffing,0)     AS loonheffing,
-             COALESCE(a.pensioenpremie,0)  AS pensioenpremie
-      FROM m
-      LEFT JOIN agg a ON a.maand = m.maand
+      SELECT
+        $1::int                       AS jaar,
+        m.maand                       AS maand,
+        COALESCE(SUM(l.lonen)::numeric, 0)           AS lonen,
+        COALESCE(SUM(l.loonheffing)::numeric, 0)     AS loonheffing,
+        COALESCE(SUM(l.pensioenpremie)::numeric, 0)  AS pensioenpremie
+      FROM months m
+      LEFT JOIN rapportage.loonkosten l
+        ON l.maand::int = m.maand
+       AND l.jaar::int  = $1
+      GROUP BY m.maand
       ORDER BY m.maand;
     `;
+
     const r = await db.query(q, [jaar]);
-    const maanden: Row[] = (r.rows ?? []).map((x: any) => ({
-      maand: num(x.maand),
-      lonen: num(x.lonen),
-      loonheffing: num(x.loonheffing),
-      pensioenpremie: num(x.pensioenpremie),
+
+    const maanden = (r.rows ?? []).map((row: any) => ({
+      maand: Number(row.maand),
+      lonen: Number(row.lonen) || 0,
+      loonheffing: Number(row.loonheffing) || 0,
+      pensioenpremie: Number(row.pensioenpremie) || 0,
     }));
-    return NextResponse.json({ jaar, maanden } satisfies ApiResponse, {
-      headers: { "Cache-Control": "no-store" },
-    });
-  } catch {
-    const maanden: Row[] = Array.from({ length: 12 }, (_, i) => ({
+
+    return NextResponse.json(
+      { jaar, maanden },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  } catch (e) {
+    // veilige fallback: 12 maanden met 0
+    const maanden = Array.from({ length: 12 }, (_, i) => ({
       maand: i + 1, lonen: 0, loonheffing: 0, pensioenpremie: 0,
     }));
-    return NextResponse.json({ jaar, maanden } satisfies ApiResponse, {
-      headers: { "Cache-Control": "no-store" },
-    });
+    return NextResponse.json(
+      { jaar, maanden },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   }
 }
+
 
 /* ------------------------------- POST --------------------------------- */
 /** Upsert van één maand; body: { jaar, maand, lonen?, loonheffing?, pensioenpremie? } */
