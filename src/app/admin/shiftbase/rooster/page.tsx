@@ -21,6 +21,17 @@ type ShiftItem = {
   User?: { id: string | number; name: string };
 };
 
+type TimesheetRow = {
+  Timesheet: {
+    user_id: string | number;
+    date?: string;
+    clocked_in?: string | null;
+    clocked_out?: string | null;
+    total?: string | number | null;
+    status?: string | null;
+  };
+};
+
 type WageByAgeRow = { date: string; user_id: string | number; wage: number };
 type WageByAgeMeta = {
   users_total: number;
@@ -131,6 +142,23 @@ export default function RoosterPage() {
       orderDay: [...GEWENSTE.filter((n) => n in acc), ...present.filter((n) => !GEWENSTE.includes(n))],
     };
   }, [dayRooster]);
+
+  // ✅ Timesheets alleen ophalen als het om vandaag in dagview gaat
+  const loadTimesheets = view === "day" && selectedDate === today;
+  const { data: timesheetsResp } = useSWR<{ data?: TimesheetRow[] }>(
+    loadTimesheets
+      ? `/api/shiftbase/timesheets?min_date=${selectedDate}&max_date=${selectedDate}`
+      : null,
+    fetcher
+  );
+  const timesheetByUser = useMemo(() => {
+    const map = new Map<string, TimesheetRow["Timesheet"]>();
+    for (const row of timesheetsResp?.data ?? []) {
+      const uid = String(row.Timesheet.user_id);
+      map.set(uid, row.Timesheet);
+    }
+    return map;
+  }, [timesheetsResp]);
 
   // ---- WEEK ----
   const weekDates = useMemo(() => {
@@ -322,14 +350,40 @@ export default function RoosterPage() {
                     {headerText}
                   </h2>
                   <ul className="pl-4 list-disc">
-                    {groep.map((it) => (
-                      <li key={it.id} className="mb-1">
-                        <span className="font-semibold">
-                          {it.Roster.starttime.slice(0, 5)}–{it.Roster.endtime.slice(0, 5)}
-                        </span>{" "}
-                        <strong>{it.User?.name || "Onbekend"}</strong>
-                      </li>
-                    ))}
+                    {groep.map((it) => {
+                      const uid = String(it.Roster.user_id);
+                      const ts = timesheetByUser.get(uid);
+
+                      // badge met kloktijden (alleen op vandaag)
+                      const inTime =
+                        ts?.clocked_in ? String(ts.clocked_in).substring(11, 16) : "--";
+                      const outTime =
+                        ts?.clocked_out ? String(ts.clocked_out).substring(11, 16) : "--";
+
+                      // kleur voor status
+                      let badgeClass = "bg-red-100 text-red-800";
+                      if (ts?.clocked_in && ts?.clocked_out) badgeClass = "bg-green-100 text-green-800";
+                      else if (ts?.clocked_in || ts?.clocked_out) badgeClass = "bg-orange-100 text-orange-800";
+
+                      return (
+                        <li key={it.id} className="mb-1">
+                          {selectedDate === today && (
+                            <span className="font-semibold">
+                              {it.Roster.starttime.slice(0, 5)}–{it.Roster.endtime.slice(0, 5)}
+                            </span>
+                          )}{" "}
+                          <strong>{it.User?.name || "Onbekend"}</strong>
+                          {selectedDate === today && (
+                            <span
+                              className={`ml-2 mt-1 inline-flex items-center gap-1 text-[11px] ${badgeClass} px-2 py-0.5 rounded`}
+                              title="Kloktijden (vandaag)"
+                            >
+                              ⏱ In: {inTime} · Uit: {outTime}
+                            </span>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </section>
               );
