@@ -59,9 +59,11 @@ export default function PrognosePage() {
         }
       });
 
-    fetch("/api/rapportage/loonkosten")
-      .then((res) => res.json())
-      .then((res) => setLoonkosten(res));
+const jaar = new Date().getFullYear();
+fetch(`/api/rapportage/loonkosten?jaar=${jaar}`)
+  .then((res) => res.json())
+  .then((res) => setLoonkosten(Array.isArray(res) ? res : []));
+
   }, []);
 
   const getLoonkosten = (maand: number) => {
