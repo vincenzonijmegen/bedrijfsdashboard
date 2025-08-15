@@ -2,7 +2,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-// Vorm van één item zoals de frontend verwacht
 type LoonkostenItem = {
   jaar: number;
   maand: number; // 1..12
@@ -11,44 +10,64 @@ type LoonkostenItem = {
   pensioenpremie: number;
 };
 
-export async function GET() {
+const MAANDEN_SEIZOEN = [3, 4, 5, 6, 7, 8, 9]; // maart..september
+
+export async function GET(req: Request) {
   try {
-    // Pas de query aan je echte tabel/kolomnamen aan indien nodig.
-    // Doel: ALTIJD (jaar, maand, lonen, loonheffing, pensioenpremie) per maand retourneren.
+    const url = new URL(req.url);
+    const now = new Date();
+    const jaar = Number(url.searchParams.get("jaar") ?? now.getFullYear());
+
+    // Pas namen/kolommen aan jouw tabel aan indien nodig.
+    // Variant A: tabel met losse kolommen jaar/maand
+    // Variant B: tabel met 'datum' — haal dan jaar/maand via EXTRACT.
     const q = `
       SELECT
-        COALESCE(jaar, EXTRACT(YEAR FROM datum)::int)    AS jaar,
-        COALESCE(maand, EXTRACT(MONTH FROM datum)::int)  AS maand,
-        COALESCE(SUM(lonen), 0)                          AS lonen,
-        COALESCE(SUM(loonheffing), 0)                    AS loonheffing,
-        COALESCE(SUM(pensioenpremie), 0)                 AS pensioenpremie
+        COALESCE(jaar, EXTRACT(YEAR FROM datum)::int)   AS jaar,
+        COALESCE(maand, EXTRACT(MONTH FROM datum)::int) AS maand,
+        COALESCE(SUM(lonen), 0)                         AS lonen,
+        COALESCE(SUM(loonheffing), 0)                   AS loonheffing,
+        COALESCE(SUM(pensioenpremie), 0)                AS pensioenpremie
       FROM rapportage.loonkosten
+      WHERE COALESCE(jaar, EXTRACT(YEAR FROM datum)::int) = $1
       GROUP BY 1,2
       ORDER BY 1,2;
     `;
 
-    const r = await db.query(q);
-
-    // BRON-FIX: normaliseer en typ-cast naar numbers, en GARANDEER een array.
+    const r = await db.query(q, [jaar]);
     const rows = Array.isArray(r?.rows) ? r.rows : [];
-    const data: LoonkostenItem[] = rows.map((x: any) => ({
-      jaar: Number(x.jaar ?? 0),
+
+    const fromDb: LoonkostenItem[] = rows.map((x: any) => ({
+      jaar: Number(x.jaar ?? jaar),
       maand: Number(x.maand ?? 0),
       lonen: Number(x.lonen ?? 0),
       loonheffing: Number(x.loonheffing ?? 0),
       pensioenpremie: Number(x.pensioenpremie ?? 0),
     }));
 
-    // Extra zekerheid: filter alleen geldige maanden 1..12
-    const clean = data.filter(d =>
-      Number.isFinite(d.jaar) &&
-      d.maand >= 1 && d.maand <= 12 &&
-      [d.lonen, d.loonheffing, d.pensioenpremie].every(Number.isFinite)
-    );
+    // Maak een map per maand voor snelle merge
+    const byMaand = new Map<number, LoonkostenItem>();
+    for (const it of fromDb) {
+      if (it.maand >= 1 && it.maand <= 12) byMaand.set(it.maand, it);
+    }
 
-    return NextResponse.json(clean, { headers: { "Cache-Control": "no-store" } });
-  } catch (err: any) {
-    // In geval van DB-fout: geef een lege array i.p.v. object zodat de UI nooit crasht
-    return NextResponse.json([], { status: 200, headers: { "Cache-Control": "no-store" } });
+    // Vul gaten voor maart..september met nulregels
+    const gevuld: LoonkostenItem[] = MAANDEN_SEIZOEN.map((m) => {
+      const hit = byMaand.get(m);
+      return hit ?? { jaar, maand: m, lonen: 0, loonheffing: 0, pensioenpremie: 0 };
+    });
+
+    // Optioneel: sorteren op maand
+    gevuld.sort((a, b) => a.maand - b.maand);
+
+    return NextResponse.json(gevuld, { headers: { "Cache-Control": "no-store" } });
+  } catch (e) {
+    // In geval van fout: geef lege set voor maart..september van het huidige jaar
+    const now = new Date();
+    const jaar = now.getFullYear();
+    const fallback = [3,4,5,6,7,8,9].map((m) => ({
+      jaar, maand: m, lonen: 0, loonheffing: 0, pensioenpremie: 0,
+    }));
+    return NextResponse.json(fallback, { status: 200, headers: { "Cache-Control": "no-store" } });
   }
 }
