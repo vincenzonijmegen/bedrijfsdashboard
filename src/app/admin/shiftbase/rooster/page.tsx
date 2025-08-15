@@ -25,11 +25,16 @@ type ShiftItem = {
 type ClockRow = {
   Timesheet: {
     user_id: string | number;
-    roster_id?: string | number;   // <-- toegevoegd (komt uit /timesheets/clock)
+    roster_id?: string | number;   // kan ontbreken
     date?: string;
     clocked_in?: string | null;
     clocked_out?: string | null;
     status?: string | null;
+  };
+  Roster?: {                        // <-- toegevoegd
+    id?: string | number;
+    starttime?: string;
+    endtime?: string;
   };
 };
 
@@ -148,7 +153,13 @@ const timesheetByRoster = useMemo(() => {
 
   for (const row of (clocksResp?.data ?? [])) {
     const ts = row.Timesheet;
-    const rid = ts?.roster_id ? String(ts.roster_id) : "";
+    const rid =
+  ts?.roster_id != null && ts.roster_id !== ""
+    ? String(ts.roster_id)
+    : (row as any)?.Roster?.id != null
+      ? String((row as any).Roster.id)
+      : "";
+
     const uid = String(ts.user_id);
 
     // per roster_id (voorkeur)
@@ -341,13 +352,12 @@ const timesheetByRoster = useMemo(() => {
                   </h2>
                   <ul className="pl-4 list-disc">
                     {groep.map((it) => {
-                      const uid = String(it.Roster.user_id);
-const rid = String(it.Roster?.id ?? "");
-const ts =
-  (rid && timesheetByRoster.byRoster.get(rid)) ||
-  timesheetByRoster.byUser.get(uid) ||
-  null;
-
+                    const uid = String(it.Roster.user_id);
+                    const rid = String(it.id ?? it.Roster?.id ?? "");
+                    const ts =
+                      (rid && timesheetByRoster.byRoster.get(rid)) ||
+                      timesheetByRoster.byUser.get(uid) ||
+                      null;
 
                       const schedIn = it.Roster.starttime.slice(0, 5);
                       const schedOut = it.Roster.endtime.slice(0, 5);
