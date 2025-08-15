@@ -151,14 +151,36 @@ export default function RoosterPage() {
       : null,
     fetcher
   );
-  const timesheetByUser = useMemo(() => {
-    const map = new Map<string, TimesheetRow["Timesheet"]>();
-    for (const row of timesheetsResp?.data ?? []) {
-      const uid = String(row.Timesheet.user_id);
-      map.set(uid, row.Timesheet);
+  // Map met de béste timesheet per user_id (voorkeur: regels met tijden)
+const timesheetByUser = useMemo(() => {
+  const map = new Map<string, TimesheetRow["Timesheet"]>();
+
+  const score = (t?: TimesheetRow["Timesheet"]) =>
+    (t?.clocked_in ? 1 : 0) + (t?.clocked_out ? 1 : 0);
+
+  for (const row of timesheetsResp?.data ?? []) {
+    const ts = row.Timesheet;
+    const uid = String(ts.user_id);
+
+    const prev = map.get(uid);
+    const sPrev = score(prev);
+    const sCur = score(ts);
+
+    // Kies de regel met meeste ingevulde tijden; bij gelijkspel: latere in-tijd
+    if (
+      !prev ||
+      sCur > sPrev ||
+      (sCur === sPrev &&
+        ts.clocked_in &&
+        (!prev.clocked_in || String(ts.clocked_in) > String(prev.clocked_in)))
+    ) {
+      map.set(uid, ts);
     }
-    return map;
-  }, [timesheetsResp]);
+  }
+
+  return map;
+}, [timesheetsResp]);
+
 
   // ---- WEEK ----
   const weekDates = useMemo(() => {
