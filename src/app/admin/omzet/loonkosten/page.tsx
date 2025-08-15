@@ -63,28 +63,51 @@ export default function Loonkosten() {
   }
 
   async function saveAll() {
-    if (!draft) return;
-    setSaving(true);
-    try {
-      // 12 upserts via bestaande POST /api/rapportage/loonkosten
-      for (const r of draft) {
-        await fetch("/api/rapportage/loonkosten", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            jaar,
-            maand: r.maand,
-            lonen: r.lonen ?? 0,
-            loonheffing: r.loonheffing ?? 0,
-            pensioenpremie: r.pensioenpremie ?? 0,
-          }),
-        });
-      }
-      await mutate();
-    } finally {
-      setSaving(false);
+  if (!draft || !data) return;
+  setSaving(true);
+  try {
+    // server-baseline reconstrueren uit 'data'
+    let server: Rij[] = [];
+    if ((data as any).maanden) server = (data as any).maanden as Rij[];
+    else {
+      const alle = data as any[];
+      server = alle
+        .filter((r: any) => Number(r.jaar) === jaar)
+        .map((r: any) => ({ maand: +r.maand, lonen: +r.lonen||0, loonheffing: +r.loonheffing||0, pensioenpremie: +r.pensioenpremie||0 }));
     }
+    server = fill12(server);
+
+    // bepaal welke maanden echt gewijzigd zijn
+    const changed = draft.filter((r, i) =>
+      r.lonen !== server[i].lonen ||
+      r.loonheffing !== server[i].loonheffing ||
+      r.pensioenpremie !== server[i].pensioenpremie
+    );
+
+    await Promise.all(changed.map(r =>
+      fetch("/api/rapportage/loonkosten", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jaar,
+          maand: r.maand,
+          lonen: r.lonen ?? 0,
+          loonheffing: r.loonheffing ?? 0,
+          pensioenpremie: r.pensioenpremie ?? 0,
+        }),
+      }).then(res => {
+        if (!res.ok) {
+          console.error("Opslaan mislukt voor", r.maand, res.status);
+        }
+      })
+    ));
+
+    await mutate(); // opnieuw laden
+  } finally {
+    setSaving(false);
   }
+}
+
 
   function resetDraft() {
     mutate();
