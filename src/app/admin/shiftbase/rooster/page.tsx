@@ -135,29 +135,29 @@ export default function RoosterPage() {
   );
 
   // beste timesheet per user
-  const timesheetByUser = useMemo(() => {
-    const score = (t?: ClockRow["Timesheet"]) =>
-      (t?.clocked_in ? 1 : 0) + (t?.clocked_out ? 1 : 0);
+const timesheetByUser = useMemo(() => {
+  const score = (t?: ClockRow["Timesheet"]) =>
+    (t?.clocked_in ? 1 : 0) + (t?.clocked_out ? 1 : 0);
 
-    const map = new Map<string, ClockRow["Timesheet"]>();
-    for (const row of clocksResp?.data ?? []) {
-      const ts = row.Timesheet;
-      const uid = String(ts.user_id);
-      const prev = map.get(uid);
-      const sPrev = score(prev);
-      const sCur = score(ts);
-      if (
-        !prev ||
-        sCur > sPrev ||
-        (sCur === sPrev &&
-          ts.clocked_in &&
-          (!prev?.clocked_in || String(ts.clocked_in) > String(prev.clocked_in)))
-      ) {
-        map.set(uid, ts);
-      }
+  const map = new Map<string, ClockRow["Timesheet"]>();
+  for (const row of clocksResp?.data ?? []) {
+    const ts = row.Timesheet;
+    const uid = String(ts.user_id);
+    const prev = map.get(uid);
+    const sPrev = score(prev);
+    const sCur = score(ts);
+    if (
+      !prev ||
+      sCur > sPrev ||
+      (sCur === sPrev &&
+        ts.clocked_in &&
+        (!prev?.clocked_in || String(ts.clocked_in) > String(prev.clocked_in)))
+    ) {
+      map.set(uid, ts);
     }
-    return map;
-  }, [clocksResp]);
+  }
+  return map;
+}, [clocksResp]);
 
   // ---- WEEK ----
   const weekDates = useMemo(() => {
