@@ -14,8 +14,8 @@ type ShiftItem = {
   Roster: {
     starttime: string; // "HH:MM:SS"
     endtime: string;   // "HH:MM:SS"
-    name: string;      // short code (e.g. "S1K")
-    color?: string;    // hex/rgb
+    name: string;      // short code (bv. "S1K")
+    color?: string;
     user_id: string;
   };
   Shift?: { long_name: string };
@@ -26,7 +26,7 @@ type TimesheetRow = {
   Timesheet: {
     user_id: string;
     date: string;                // "YYYY-MM-DD"
-    clocked_in: string | null;   // ISO or "YYYY-MM-DDTHH:MM:SS"
+    clocked_in: string | null;   // ISO of "YYYY-MM-DDTHH:MM:SS"
     clocked_out: string | null;  // idem
     total?: string | null;
     status?: string | null;
@@ -36,7 +36,6 @@ type TimesheetRow = {
 type TimesheetResp = { data?: TimesheetRow[] } | null;
 
 // --- Utils ----------------------------------------------------
-// NL (local) YYYY-MM-DD (geen UTC drift)
 function ymdLocal(d: Date) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -72,32 +71,22 @@ function addDays(iso: string, offset: number) {
 }
 
 const GEWENSTE_VOLGORDE = [
-  "S1K",
-  "S1KV",
-  "S1",
-  "S1Z",
-  "S1L",
-  "S1S",
-  "S2K",
-  "S2",
-  "S2L",
-  "S2S",
-  "SPS",
-  "SLW1",
-  "SLW2",
+  "S1K", "S1KV", "S1", "S1Z", "S1L", "S1S",
+  "S2K", "S2", "S2L", "S2S",
+  "SPS", "SLW1", "SLW2",
 ];
 
-// --- Component ------------------------------------------------
+// -------------------------------------------------------------
 export default function RoosterPage() {
   const today = useMemo(() => ymdLocal(new Date()), []);
   const [selectedDate, setSelectedDate] = useState<string>(today);
   const [view, setView] = useState<"day" | "week">("day");
 
   useEffect(() => {
-    console.log("[DEBUG] Geselecteerde datum gewijzigd:", selectedDate, "view:", view);
+    console.log("[DEBUG] selectedDate:", selectedDate, "view:", view);
   }, [selectedDate, view]);
 
-  // ----- DAY VIEW DATA -----
+  // ----- DAG DATA --------------------------------------------
   const { data: dayRooster, error: dayError } = useSWR<ShiftItem[]>(
     view === "day" ? `/api/shiftbase/rooster?datum=${selectedDate}` : null,
     fetcher
@@ -110,7 +99,6 @@ export default function RoosterPage() {
     fetcher
   );
 
-  // map per user voor dag
   const tsByUserDay = useMemo(() => {
     const map = new Map<string, TimesheetRow["Timesheet"]>();
     const rows = dayTimesheets?.data ?? [];
@@ -122,7 +110,6 @@ export default function RoosterPage() {
     return map;
   }, [dayTimesheets, selectedDate]);
 
-  // groepeer en sorteer per shift (dag)
   const perShiftDay = useMemo(() => {
     if (!dayRooster) return {} as Record<string, ShiftItem[]>;
     const acc: Record<string, ShiftItem[]> = {};
@@ -130,9 +117,7 @@ export default function RoosterPage() {
       (acc[item.Roster.name] ||= []).push(item);
     }
     for (const key of Object.keys(acc)) {
-      acc[key].sort((a, b) =>
-        a.Roster.starttime.localeCompare(b.Roster.starttime)
-      );
+      acc[key].sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime));
     }
     return acc;
   }, [dayRooster]);
@@ -144,44 +129,41 @@ export default function RoosterPage() {
     return pref.concat(rest);
   }, [perShiftDay]);
 
-  // ----- WEEK VIEW DATA -----
-// ----- WEEK VIEW DATA -----
-const weekDates = useMemo(() => {
-  const start = startOfISOWeekMonday(new Date(selectedDate + "T12:00:00"));
-  return Array.from({ length: 7 }, (_, i) =>
-    ymdLocal(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i))
-  );
-}, [selectedDate]);
-
-// ✅ Geef weekDates als één param aan de fetcher
-const { data: weekRooster, error: weekError } = useSWR<Record<string, ShiftItem[]>>(
-  view === "week" ? ["week-rooster", weekDates] : null,
-  async (_key: string, dates: string[]) => {
-    const res = await Promise.all(
-      dates.map((d) =>
-        fetch(`/api/shiftbase/rooster?datum=${d}`).then((r) => {
-          if (!r.ok) throw new Error(`Rooster ${d} status ${r.status}`);
-          return r.json();
-        })
-      )
+  // ----- WEEK DATA -------------------------------------------
+  const weekDates = useMemo(() => {
+    const start = startOfISOWeekMonday(new Date(selectedDate + "T12:00:00"));
+    return Array.from({ length: 7 }, (_, i) =>
+      ymdLocal(new Date(start.getFullYear(), start.getMonth(), start.getDate() + i))
     );
-    const dict: Record<string, ShiftItem[]> = {};
-    dates.forEach((d, i) => (dict[d] = Array.isArray(res[i]) ? res[i] : []));
-    return dict;
-  }
-);
+  }, [selectedDate]);
 
+  // Belangrijk: gebruik 1 fetcher-argument (de tuple-key) en haal dates eruit
+  const { data: weekRooster, error: weekError } = useSWR<Record<string, ShiftItem[]>>(
+    view === "week" ? (["week-rooster", weekDates] as const) : null,
+    async (key) => {
+      const [, dates] = key as readonly [string, string[]];
+      if (!Array.isArray(dates) || dates.length === 0) return {};
+      const res = await Promise.all(
+        dates.map((d) =>
+          fetch(`/api/shiftbase/rooster?datum=${d}`).then((r) => {
+            if (!r.ok) throw new Error(`Rooster ${d} status ${r.status}`);
+            return r.json();
+          })
+        )
+      );
+      const dict: Record<string, ShiftItem[]> = {};
+      dates.forEach((d, i) => (dict[d] = Array.isArray(res[i]) ? res[i] : []));
+      return dict;
+    }
+  );
 
-// Timesheets in één call voor de hele range
-const { data: weekTimesheets } = useSWR<TimesheetResp>(
-  view === "week"
-    ? `/api/shiftbase/timesheets?min_date=${weekDates[0]}&max_date=${weekDates[6]}`
-    : null,
-  fetcher
-);
+  const { data: weekTimesheets } = useSWR<TimesheetResp>(
+    view === "week"
+      ? `/api/shiftbase/timesheets?min_date=${weekDates[0]}&max_date=${weekDates[6]}`
+      : null,
+    fetcher
+  );
 
-
-  // Map: date -> user_id -> timesheet
   const tsByDateUser = useMemo(() => {
     const outer = new Map<string, Map<string, TimesheetRow["Timesheet"]>>();
     const rows = weekTimesheets?.data ?? [];
@@ -195,18 +177,13 @@ const { data: weekTimesheets } = useSWR<TimesheetResp>(
     return outer;
   }, [weekTimesheets]);
 
-  // navigatie
+  // ----- Navigatie -------------------------------------------
   const changeDay = (offset: number) => {
-    if (view === "day") {
-      setSelectedDate(addDays(selectedDate, offset));
-    } else {
-      setSelectedDate(addDays(selectedDate, offset * 7));
-    }
+    setSelectedDate((prev) => addDays(prev, view === "day" ? offset : offset * 7));
   };
-
   const goToday = () => setSelectedDate(today);
 
-  // --- RENDER -------------------------------------------------
+  // ----- Render helpers --------------------------------------
   const renderTimesheetBadge = (ts?: TimesheetRow["Timesheet"]) => {
     const cls = classByTimesheet(ts);
     return (
@@ -218,18 +195,14 @@ const { data: weekTimesheets } = useSWR<TimesheetResp>(
     );
   };
 
+  // ----- Render ----------------------------------------------
   return (
     <div className="p-4">
-      {/* Navigatie + view switch */}
+      {/* Navigatie + toggle */}
       <div className="flex flex-wrap items-center mb-4 gap-2">
-        <button
-          onClick={() => changeDay(-1)}
-          className="px-2 py-1 bg-gray-200 rounded"
-          aria-label={view === "day" ? "Vorige dag" : "Vorige week"}
-        >
+        <button onClick={() => changeDay(-1)} className="px-2 py-1 bg-gray-200 rounded">
           ←
         </button>
-
         <input
           type="date"
           min="2024-01-01"
@@ -238,22 +211,12 @@ const { data: weekTimesheets } = useSWR<TimesheetResp>(
           onChange={(e) => setSelectedDate(e.target.value)}
           className="border px-2 py-1 rounded"
         />
-
-        <button
-          onClick={() => changeDay(1)}
-          className="px-2 py-1 bg-gray-200 rounded"
-          aria-label={view === "day" ? "Volgende dag" : "Volgende week"}
-        >
+        <button onClick={() => changeDay(1)} className="px-2 py-1 bg-gray-200 rounded">
           →
         </button>
-
-        <button
-          onClick={goToday}
-          className="ml-2 px-2 py-1 rounded border border-gray-300 hover:bg-gray-100"
-        >
+        <button onClick={goToday} className="ml-2 px-2 py-1 rounded border border-gray-300 hover:bg-gray-100">
           Vandaag
         </button>
-
         <div className="ml-auto flex gap-1">
           <button
             onClick={() => setView("day")}
@@ -286,10 +249,7 @@ const { data: weekTimesheets } = useSWR<TimesheetResp>(
       ) : (
         <h1 className="text-xl font-bold mb-2">
           Rooster week{" "}
-          {new Date(weekDates[0] + "T12:00:00").toLocaleDateString("nl-NL", {
-            day: "2-digit",
-            month: "2-digit",
-          })}{" "}
+          {new Date(weekDates[0] + "T12:00:00").toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit" })}{" "}
           –{" "}
           {new Date(weekDates[6] + "T12:00:00").toLocaleDateString("nl-NL", {
             day: "2-digit",
@@ -302,11 +262,7 @@ const { data: weekTimesheets } = useSWR<TimesheetResp>(
       {/* INHOUD */}
       {view === "day" ? (
         <>
-          {dayError && (
-            <p className="p-4 text-red-600">
-              Fout bij laden rooster: {dayError.message ?? "onbekend"}
-            </p>
-          )}
+          {dayError && <p className="p-4 text-red-600">Fout bij laden rooster: {String(dayError?.message ?? dayError)}</p>}
           {!dayRooster ? (
             <p className="p-4">Laden…</p>
           ) : orderDay.length === 0 ? (
@@ -316,16 +272,11 @@ const { data: weekTimesheets } = useSWR<TimesheetResp>(
               const groep = perShiftDay[shiftName];
               const headerColor = groep?.[0]?.Roster?.color || "#334";
               const headerText = groep?.[0]?.Shift?.long_name || shiftName;
-
               return (
                 <div key={shiftName} className="mb-6">
-                  <h2
-                    className="text-lg font-semibold mb-1 px-2 rounded"
-                    style={{ backgroundColor: headerColor, color: "white" }}
-                  >
+                  <h2 className="text-lg font-semibold mb-1 px-2 rounded" style={{ backgroundColor: headerColor, color: "white" }}>
                     {headerText}
                   </h2>
-
                   <ul className="pl-4 list-disc">
                     {groep.map((item) => {
                       const ts = tsByUserDay.get(item.Roster.user_id);
@@ -333,8 +284,7 @@ const { data: weekTimesheets } = useSWR<TimesheetResp>(
                         <li key={item.id} className="mb-1 flex flex-wrap gap-2">
                           <span className="mr-2">
                             <span className="font-semibold">
-                              {item.Roster.starttime.slice(0, 5)}–
-                              {item.Roster.endtime.slice(0, 5)}
+                              {item.Roster.starttime.slice(0, 5)}–{item.Roster.endtime.slice(0, 5)}
                             </span>{" "}
                             <strong>{item.User?.name || "Onbekend"}</strong>
                           </span>
@@ -350,42 +300,23 @@ const { data: weekTimesheets } = useSWR<TimesheetResp>(
         </>
       ) : (
         <>
-          {weekError && (
-            <p className="p-4 text-red-600">
-              Fout bij laden weekrooster: {weekError.message ?? "onbekend"}
-            </p>
-          )}
+          {weekError && <p className="p-4 text-red-600">Fout weekrooster: {String(weekError?.message ?? weekError)}</p>}
           {!weekRooster ? (
             <p className="p-4">Laden…</p>
           ) : (
-            <div
-              className="
-                grid gap-4
-                sm:grid-cols-2
-                lg:grid-cols-3
-                xl:grid-cols-4
-                2xl:grid-cols-7
-              "
-            >
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
               {weekDates.map((d) => {
                 const roster = weekRooster[d] || [];
                 // groepeer per shift & sorteer
                 const perShift: Record<string, ShiftItem[]> = {};
-                for (const item of roster) {
-                  (perShift[item.Roster.name] ||= []).push(item);
-                }
+                for (const item of roster) (perShift[item.Roster.name] ||= []).push(item);
                 for (const k of Object.keys(perShift)) {
-                  perShift[k].sort((a, b) =>
-                    a.Roster.starttime.localeCompare(b.Roster.starttime)
-                  );
+                  perShift[k].sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime));
                 }
                 const order = [
                   ...GEWENSTE_VOLGORDE.filter((n) => n in perShift),
-                  ...Object.keys(perShift).filter(
-                    (n) => !GEWENSTE_VOLGORDE.includes(n)
-                  ),
+                  ...Object.keys(perShift).filter((n) => !GEWENSTE_VOLGORDE.includes(n)),
                 ];
-
                 const tsMapForDay = tsByDateUser.get(d);
 
                 return (
@@ -398,17 +329,11 @@ const { data: weekTimesheets } = useSWR<TimesheetResp>(
                           month: "2-digit",
                         })}
                       </h3>
-                      {d === today && (
-                        <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-800">
-                          vandaag
-                        </span>
-                      )}
+                      {d === today && <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-800">vandaag</span>}
                     </div>
 
                     {order.length === 0 ? (
-                      <p className="text-sm text-gray-500">
-                        Geen shifts voor deze dag.
-                      </p>
+                      <p className="text-sm text-gray-500">Geen shifts voor deze dag.</p>
                     ) : (
                       order.map((shiftName) => {
                         const groep = perShift[shiftName];
@@ -417,28 +342,19 @@ const { data: weekTimesheets } = useSWR<TimesheetResp>(
 
                         return (
                           <div key={shiftName} className="mb-4">
-                            <div
-                              className="text-sm font-semibold mb-1 px-2 rounded"
-                              style={{ backgroundColor: headerColor, color: "white" }}
-                            >
+                            <div className="text-sm font-semibold mb-1 px-2 rounded" style={{ backgroundColor: headerColor, color: "white" }}>
                               {headerText}
                             </div>
                             <ul className="pl-4 list-disc">
                               {groep.map((item) => {
                                 const ts = tsMapForDay?.get(item.Roster.user_id);
                                 return (
-                                  <li
-                                    key={item.id}
-                                    className="mb-1 flex flex-wrap gap-2"
-                                  >
+                                  <li key={item.id} className="mb-1 flex flex-wrap gap-2">
                                     <span className="mr-2">
                                       <span className="font-semibold">
-                                        {item.Roster.starttime.slice(0, 5)}–
-                                        {item.Roster.endtime.slice(0, 5)}
+                                        {item.Roster.starttime.slice(0, 5)}–{item.Roster.endtime.slice(0, 5)}
                                       </span>{" "}
-                                      <strong>
-                                        {item.User?.name || "Onbekend"}
-                                      </strong>
+                                      <strong>{item.User?.name || "Onbekend"}</strong>
                                     </span>
                                     {renderTimesheetBadge(ts)}
                                   </li>
