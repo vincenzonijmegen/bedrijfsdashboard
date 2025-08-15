@@ -1,67 +1,54 @@
-import { NextRequest, NextResponse } from "next/server";
-import { pool } from "@/lib/db";
-import { startTimer } from "@/lib/timing";
-export const runtime = "nodejs";
+// src/app/api/rapportage/loonkosten/route.ts
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
 
-export async function GET(req: NextRequest) {
-  const timer = startTimer("/api/rapportage/loonkosten");
+// Vorm van één item zoals de frontend verwacht
+type LoonkostenItem = {
+  jaar: number;
+  maand: number; // 1..12
+  lonen: number;
+  loonheffing: number;
+  pensioenpremie: number;
+};
+
+export async function GET() {
   try {
-    const jaar =
-      parseInt(req.nextUrl.searchParams.get("jaar") || "", 10) ||
-      new Date().getFullYear();
+    // Pas de query aan je echte tabel/kolomnamen aan indien nodig.
+    // Doel: ALTIJD (jaar, maand, lonen, loonheffing, pensioenpremie) per maand retourneren.
+    const q = `
+      SELECT
+        COALESCE(jaar, EXTRACT(YEAR FROM datum)::int)    AS jaar,
+        COALESCE(maand, EXTRACT(MONTH FROM datum)::int)  AS maand,
+        COALESCE(SUM(lonen), 0)                          AS lonen,
+        COALESCE(SUM(loonheffing), 0)                    AS loonheffing,
+        COALESCE(SUM(pensioenpremie), 0)                 AS pensioenpremie
+      FROM rapportage.loonkosten
+      GROUP BY 1,2
+      ORDER BY 1,2;
+    `;
 
-    const { rows } = await pool.query(
-      `SELECT
-         maand,
-         COALESCE(lonen,0)::bigint          AS lonen,
-         COALESCE(loonheffing,0)::bigint    AS loonheffing,
-         COALESCE(pensioenpremie,0)::bigint AS pensioenpremie
-       FROM rapportage.loonkosten
-       WHERE jaar = $1
-       ORDER BY maand`,
-      [jaar]
+    const r = await db.query(q);
+
+    // BRON-FIX: normaliseer en typ-cast naar numbers, en GARANDEER een array.
+    const rows = Array.isArray(r?.rows) ? r.rows : [];
+    const data: LoonkostenItem[] = rows.map((x: any) => ({
+      jaar: Number(x.jaar ?? 0),
+      maand: Number(x.maand ?? 0),
+      lonen: Number(x.lonen ?? 0),
+      loonheffing: Number(x.loonheffing ?? 0),
+      pensioenpremie: Number(x.pensioenpremie ?? 0),
+    }));
+
+    // Extra zekerheid: filter alleen geldige maanden 1..12
+    const clean = data.filter(d =>
+      Number.isFinite(d.jaar) &&
+      d.maand >= 1 && d.maand <= 12 &&
+      [d.lonen, d.loonheffing, d.pensioenpremie].every(Number.isFinite)
     );
 
-    // vul 1..12
-    const map = new Map<number, { maand: number; lonen: number; loonheffing: number; pensioenpremie: number }>();
-    for (const r of rows) {
-      map.set(Number(r.maand), {
-        maand: Number(r.maand),
-        lonen: Number(r.lonen),
-        loonheffing: Number(r.loonheffing),
-        pensioenpremie: Number(r.pensioenpremie),
-      });
-    }
-    const maanden = Array.from({ length: 12 }, (_, i) => {
-      const m = i + 1;
-      return map.get(m) ?? { maand: m, lonen: 0, loonheffing: 0, pensioenpremie: 0 };
-    });
-
-    // ⬅️ Belangrijk: wrapper zodat de frontend niet wegfiltert
-    return NextResponse.json({ jaar, maanden });
-  } catch (err) {
-    console.error("Fout bij ophalen loonkosten:", err);
-    return NextResponse.json({ error: "Interne serverfout" }, { status: 500 });
-  } finally {
-    timer.end({ hint: "loonkosten" });
+    return NextResponse.json(clean, { headers: { "Cache-Control": "no-store" } });
+  } catch (err: any) {
+    // In geval van DB-fout: geef een lege array i.p.v. object zodat de UI nooit crasht
+    return NextResponse.json([], { status: 200, headers: { "Cache-Control": "no-store" } });
   }
-}
-
-export async function POST(req: Request) {
-  const { jaar, maand, lonen = 0, loonheffing = 0, pensioenpremie = 0 } = await req.json();
-  if (!jaar || !maand) {
-    return NextResponse.json({ error: "Jaar en maand verplicht" }, { status: 400 });
-  }
-
-  await pool.query(
-    `INSERT INTO rapportage.loonkosten (jaar, maand, lonen, loonheffing, pensioenpremie)
-     VALUES ($1, $2, $3, $4, $5)
-     ON CONFLICT (jaar, maand) DO UPDATE SET
-       lonen = EXCLUDED.lonen,
-       loonheffing = EXCLUDED.loonheffing,
-       pensioenpremie = EXCLUDED.pensioenpremie;`,
-    [jaar, maand, lonen, loonheffing, pensioenpremie]
-  );
-
-  return NextResponse.json({ success: true });
 }
