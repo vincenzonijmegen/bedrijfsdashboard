@@ -112,14 +112,18 @@ export default function RoosterPage() {
     return Array.from({ length: 7 }, (_, i) => ymdLocal(new Date(s.getFullYear(), s.getMonth(), s.getDate() + i)));
   }, [selectedDate]);
 
+  // Gebruik string key i.p.v. tuple + as const (fixt lint 'no-unused-expressions')
+  const weekKey = view === "week" ? `week:${weekDates.join("|")}` : null;
+
   const { data: weekRooster, error: weekError } = useSWR<Record<string, ShiftItem[]>>(
-    view === "week" ? (["week-rooster", weekDates] as const) : null,
-    async (key) => {
-      const [, dates] = key as readonly [string, string[]];
-      if (!dates?.length) return {};
-      const res = await Promise.all(dates.map((d) => fetch(`/api/shiftbase/rooster?datum=${d}`).then((r) => r.json())));
+    weekKey,
+    async () => {
+      if (!weekDates?.length) return {};
+      const res = await Promise.all(
+        weekDates.map((d) => fetch(`/api/shiftbase/rooster?datum=${d}`).then((r) => r.json()))
+      );
       const out: Record<string, ShiftItem[]> = {};
-      dates.forEach((d, i) => (out[d] = Array.isArray(res[i]) ? res[i] : []));
+      weekDates.forEach((d, i) => (out[d] = Array.isArray(res[i]) ? res[i] : []));
       return out;
     }
   );
