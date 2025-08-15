@@ -5,17 +5,44 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// Shiftbase NAW (subset) – we gebruiken alleen wat we nodig hebben.
+type NawUser = {
+  User?: {
+    id?: string | number;
+    date_of_birth?: string | null;
+    birth_date?: string | null;
+    birthdate?: string | null;
+    birthday?: string | null;
+    dateOfBirth?: string | null;
+  };
+  // sommige tenants leveren direct vlakke keys:
+  id?: string | number;
+  date_of_birth?: string | null;
+  birth_date?: string | null;
+  birthdate?: string | null;
+  birthday?: string | null;
+  dateOfBirth?: string | null;
+};
+
+type MappedUser = { user_id: string; dob?: string };
+
+type LoonRegel = {
+  min_leeftijd: number;
+  max_leeftijd: number;
+  uurloon: string;
+  geldig_van: string;        // "YYYY-MM-DD"
+  geldig_tot: string | null; // of null
+};
+
 /**
  * GET /api/shiftbase/wages-by-age?min_date=YYYY-MM-DD&max_date=YYYY-MM-DD&user_ids=1,2,3
- * Berekent uurloon per user per dag o.b.v.:
- *  - Shiftbase users (NAW) voor geboortedatum
- *  - Tabel loon_leeftijd (min/max_leeftijd, uurloon, geldig_van/tot)
+ * Retourneert: { data: { date, user_id, wage }[] }
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const minDate = url.searchParams.get("min_date");
   const maxDate = url.searchParams.get("max_date");
-  const userIdsParam = url.searchParams.get("user_ids"); // optioneel
+  const userIdsParam = url.searchParams.get("user_ids"); // optioneel, CSV
 
   if (!minDate || !maxDate) {
     return NextResponse.json(
@@ -24,7 +51,7 @@ export async function GET(req: Request) {
     );
   }
 
-  // 1) Haal gebruikers (incl. geboortedatum) via jouw NAW-endpoint
+  // 1) NAW ophalen via jouw endpoint (en niet direct bij Shiftbase)
   const nawRes = await fetch(`${url.origin}/api/shiftbase/naw`, {
     method: "GET",
     headers: { Accept: "application/json" },
@@ -37,18 +64,22 @@ export async function GET(req: Request) {
       { status: nawRes.status }
     );
   }
-  const nawJson: any = await nawRes.json();
+  const nawJson = (await nawRes.json()) as { data?: NawUser[] };
 
-  // optionele filterlijst van user_ids (allemaal als string)
   const allowSet: Set<string> | null = userIdsParam
-    ? new Set(userIdsParam.split(",").map((s) => s.trim()).filter(Boolean))
+    ? new Set(
+        userIdsParam
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      )
     : null;
 
-  const users: Array<{ user_id: string; dob?: string }> = (nawJson?.data ?? [])
-    .map((row: any) => {
-      const u = row?.User ?? row?.user ?? row;
+  // Map NAW → { user_id, dob } en filter (met expliciete type‑annotatie)
+  const users: MappedUser[] = (nawJson?.data ?? [])
+    .map((row: NawUser): MappedUser => {
+      const u = row.User ?? row;
       const idStr = String(u?.id ?? "");
-      // vang diverse naamvarianten voor geboortedatum af
       const dobRaw =
         u?.date_of_birth ??
         u?.birth_date ??
@@ -58,22 +89,15 @@ export async function GET(req: Request) {
       const dob = dobRaw ? String(dobRaw).slice(0, 10) : undefined;
       return { user_id: idStr, dob };
     })
-    .filter((u) => u.user_id && (!allowSet || allowSet.has(u.user_id)));
+    .filter((u: MappedUser) => u.user_id && (!allowSet || allowSet.has(u.user_id)));
 
-  // 2) Loonregels uit tabel
-  type LoonRegel = {
-    min_leeftijd: number;
-    max_leeftijd: number;
-    uurloon: string;
-    geldig_van: string;
-    geldig_tot: string | null;
-  };
+  // 2) Loonregels uit jouw tabel
   const regelsRes = await db.query(
     `SELECT min_leeftijd, max_leeftijd, uurloon, geldig_van, geldig_tot FROM loon_leeftijd`
   );
-  const regels: LoonRegel[] = (regelsRes as any).rows as LoonRegel[];
+  const regels = (regelsRes as any).rows as LoonRegel[];
 
-  // 3) Datums (inclusief)
+  // 3) Datumbereik
   const dates: string[] = [];
   {
     const start = new Date(minDate + "T12:00:00");
