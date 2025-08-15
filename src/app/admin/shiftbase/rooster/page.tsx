@@ -35,6 +35,14 @@ type TimesheetRow = {
 
 type TimesheetResp = { data?: TimesheetRow[] } | null;
 
+function firstName(full?: string) {
+  if (!full) return "Onbekend";
+  // pak eerste “woord” tot spatie of koppelteken
+  const w = full.trim().split(/\s+/)[0];
+  return w.split("-")[0] || w;
+}
+
+
 // --- Utils ----------------------------------------------------
 function ymdLocal(d: Date) {
   const y = d.getFullYear();
@@ -301,75 +309,76 @@ export default function RoosterPage() {
       ) : (
         <>
           {weekError && <p className="p-4 text-red-600">Fout weekrooster: {String(weekError?.message ?? weekError)}</p>}
-          {!weekRooster ? (
-            <p className="p-4">Laden…</p>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
-              {weekDates.map((d) => {
-                const roster = weekRooster[d] || [];
-                // groepeer per shift & sorteer
-                const perShift: Record<string, ShiftItem[]> = {};
-                for (const item of roster) (perShift[item.Roster.name] ||= []).push(item);
-                for (const k of Object.keys(perShift)) {
-                  perShift[k].sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime));
-                }
-                const order = [
-                  ...GEWENSTE_VOLGORDE.filter((n) => n in perShift),
-                  ...Object.keys(perShift).filter((n) => !GEWENSTE_VOLGORDE.includes(n)),
-                ];
-                const tsMapForDay = tsByDateUser.get(d);
+{!weekRooster ? (
+  <p className="p-4">Laden…</p>
+) : (
+  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7">
+    {weekDates.map((d) => {
+      const roster = weekRooster[d] || [];
+      // groepeer per shift & sorteer (we tonen tijden niet, maar sorteren blijft handig)
+      const perShift: Record<string, ShiftItem[]> = {};
+      for (const item of roster) (perShift[item.Roster.name] ||= []).push(item);
+      for (const k of Object.keys(perShift)) {
+        perShift[k].sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime));
+      }
+      const order = [
+        ...GEWENSTE_VOLGORDE.filter((n) => n in perShift),
+        ...Object.keys(perShift).filter((n) => !GEWENSTE_VOLGORDE.includes(n)),
+      ];
 
-                return (
-                  <div key={d} className="border rounded-lg p-3">
-                    <div className="flex items-baseline justify-between mb-2">
-                      <h3 className="font-semibold">
-                        {new Date(d + "T12:00:00").toLocaleDateString("nl-NL", {
-                          weekday: "short",
-                          day: "2-digit",
-                          month: "2-digit",
-                        })}
-                      </h3>
-                      {d === today && <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-800">vandaag</span>}
-                    </div>
-
-                    {order.length === 0 ? (
-                      <p className="text-sm text-gray-500">Geen shifts voor deze dag.</p>
-                    ) : (
-                      order.map((shiftName) => {
-                        const groep = perShift[shiftName];
-                        const headerColor = groep?.[0]?.Roster?.color || "#334";
-                        const headerText = groep?.[0]?.Shift?.long_name || shiftName;
-
-                        return (
-                          <div key={shiftName} className="mb-4">
-                            <div className="text-sm font-semibold mb-1 px-2 rounded" style={{ backgroundColor: headerColor, color: "white" }}>
-                              {headerText}
-                            </div>
-                            <ul className="pl-4 list-disc">
-                              {groep.map((item) => {
-                                const ts = tsMapForDay?.get(item.Roster.user_id);
-                                return (
-                                  <li key={item.id} className="mb-1 flex flex-wrap gap-2">
-                                    <span className="mr-2">
-                                      <span className="font-semibold">
-                                        {item.Roster.starttime.slice(0, 5)}–{item.Roster.endtime.slice(0, 5)}
-                                      </span>{" "}
-                                      <strong>{item.User?.name || "Onbekend"}</strong>
-                                    </span>
-                                    {renderTimesheetBadge(ts)}
-                                  </li>
-                                );
-                              })}
-                            </ul>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                );
+      return (
+        <div key={d} className="border rounded-lg p-2 text-xs leading-tight">
+          <div className="flex items-baseline justify-between mb-2">
+            <h3 className="font-semibold">
+              {new Date(d + "T12:00:00").toLocaleDateString("nl-NL", {
+                weekday: "short",
+                day: "2-digit",
+                month: "2-digit",
               })}
-            </div>
+            </h3>
+            {d === today && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
+                vandaag
+              </span>
+            )}
+          </div>
+
+          {order.length === 0 ? (
+            <p className="text-[11px] text-gray-500">Geen shifts.</p>
+          ) : (
+            order.map((shiftName) => {
+              const groep = perShift[shiftName];
+              const headerColor = groep?.[0]?.Roster?.color || "#334";
+              const headerText = groep?.[0]?.Shift?.long_name || shiftName;
+
+              return (
+                <div key={shiftName} className="mb-2">
+                  {/* kleine “pill” header */}
+                  <div
+                    className="text-[11px] font-semibold mb-1 px-2 py-0.5 rounded"
+                    style={{ backgroundColor: headerColor, color: "white" }}
+                  >
+                    {headerText}
+                  </div>
+
+                  {/* alleen voornaam, géén tijden en géén In/Uit‑badge */}
+                  <ul className="pl-0 list-none space-y-0.5">
+                    {groep.map((item) => (
+                      <li key={item.id} className="px-1 py-0.5 rounded bg-gray-50">
+                        <strong>{firstName(item.User?.name)}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })
           )}
+        </div>
+      );
+    })}
+  </div>
+)}
+
         </>
       )}
     </div>
