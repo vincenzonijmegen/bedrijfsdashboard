@@ -139,9 +139,7 @@ export default function RoosterPage() {
     <div className="p-4">
       {/* Nav */}
       <div className="flex flex-wrap items-center mb-4 gap-2">
-        <button onClick={() => changeDay(-1)} className="px-2 py-1 bg-gray-200 rounded">
-          ←
-        </button>
+        <button onClick={() => changeDay(-1)} className="px-2 py-1 bg-gray-200 rounded">←</button>
         <input
           type="date"
           min="2024-01-01"
@@ -150,26 +148,18 @@ export default function RoosterPage() {
           onChange={(e) => setSelectedDate(e.target.value)}
           className="border px-2 py-1 rounded"
         />
-        <button onClick={() => changeDay(1)} className="px-2 py-1 bg-gray-200 rounded">
-          →
-        </button>
-        <button onClick={goToday} className="ml-2 px-2 py-1 rounded border border-gray-300 hover:bg-gray-100">
-          Vandaag
-        </button>
+        <button onClick={() => changeDay(1)} className="px-2 py-1 bg-gray-200 rounded">→</button>
+        <button onClick={goToday} className="ml-2 px-2 py-1 rounded border border-gray-300 hover:bg-gray-100">Vandaag</button>
         <div className="ml-auto flex gap-1">
           <button
             onClick={() => setView("day")}
-            className={`px-3 py-1 rounded border ${
-              view === "day" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-100"
-            }`}
+            className={`px-3 py-1 rounded border ${view === "day" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-100"}`}
           >
             Dag
           </button>
           <button
             onClick={() => setView("week")}
-            className={`px-3 py-1 rounded border ${
-              view === "week" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-100"
-            }`}
+            className={`px-3 py-1 rounded border ${view === "week" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-100"}`}
           >
             Week
           </button>
@@ -181,27 +171,20 @@ export default function RoosterPage() {
         <h1 className="text-xl font-bold mb-2">
           Rooster voor{" "}
           {new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", {
-            weekday: "long",
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
+            weekday: "long", day: "2-digit", month: "2-digit", year: "numeric",
           })}
         </h1>
       ) : (
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-xl font-bold">
             Rooster week{" "}
-            {new Date(weekDates[0] + "T12:00:00").toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit" })} –{" "}
+            {new Date(weekDates[0] + "T12:00:00").toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit" })}{" "}
+            –{" "}
             {new Date(weekDates[6] + "T12:00:00").toLocaleDateString("nl-NL", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
+              day: "2-digit", month: "2-digit", year: "numeric",
             })}
           </h1>
-          <button
-            onClick={() => setShowChecks((s) => !s)}
-            className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-100"
-          >
+          <button onClick={() => setShowChecks((s) => !s)} className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-100">
             {showChecks ? "Verberg controles" : "Toon controles"}
           </button>
         </div>
@@ -210,9 +193,7 @@ export default function RoosterPage() {
       {/* DAGVIEW */}
       {view === "day" ? (
         <>
-          {dayError && (
-            <p className="p-4 text-red-600">Fout bij laden rooster: {String(dayError?.message ?? dayError)}</p>
-          )}
+          {dayError && <p className="p-4 text-red-600">Fout bij laden rooster: {String(dayError?.message ?? dayError)}</p>}
           {dayRooster == null ? (
             <p className="p-4">Laden…</p>
           ) : orderDay.length === 0 ? (
@@ -246,9 +227,7 @@ export default function RoosterPage() {
         // WEEKVIEW + CONTROLES
         <>
           {weekError && <p className="p-4 text-red-600">Fout weekrooster: {String(weekError?.message ?? weekError)}</p>}
-          {wagesError && (
-            <p className="p-4 text-red-600">Fout lonen (leeftijd): {String(wagesError?.message ?? wagesError)}</p>
-          )}
+          {wagesError && <p className="p-4 text-red-600">Fout lonen (leeftijd): {String(wagesError?.message ?? wagesError)}</p>}
 
           {showChecks && wagesByAge?.meta && (
             <div className="mb-3 rounded border p-3 text-sm bg-gray-50">
@@ -311,10 +290,12 @@ export default function RoosterPage() {
                 const hasRulesToday = meta?.rules_date_coverage?.[d] ?? true;
 
                 return (
-                  <div key={d} className="border rounded-lg p-2 text-xs leading-tight">
+                  <div key={d} className="border rounded-lg p-2 text-xs leading-tight flex flex-col">
                     <div className="flex items-baseline justify-between mb-2">
                       <h3 className="font-semibold">
-                        {new Date(d + "T12:00:00").toLocaleDateString("nl-NL", { weekday: "short", day: "2-digit", month: "2-digit" })}
+                        {new Date(d + "T12:00:00").toLocaleDateString("nl-NL", {
+                          weekday: "short", day: "2-digit", month: "2-digit",
+                        })}
                       </h3>
                       {d === today && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">vandaag</span>
@@ -348,41 +329,41 @@ export default function RoosterPage() {
                       })
                     )}
 
-                    {/* Kostenrij: altijd strak uitgelijnd, zonder decimalen */}
-                    <div className="mt-2 pt-2 border-t flex items-center justify-between">
-                      <span className="text-[11px]">
+                    {/* Kostenblok ONDER elkaar (label boven, bedrag eronder) */}
+                    <div className="mt-auto pt-2 border-t">
+                      <div className="text-[11px] text-gray-700">
                         Personeelskosten{" "}
                         <span className="opacity-60">({withWage}/{planned} met tarief)</span>
-                      </span>
-                      <strong className="text-right text-sm">
-                        {dayCost > 0 ? EUR0.format(Math.round(dayCost)) : "—"}
-                      </strong>
-                    </div>
-
-                    {(showChecks || (withWage === 0 && planned > 0)) && (
-                      <div className="mt-2 space-y-1">
-                        {!hasRulesToday && (
-                          <div className="text-[11px] px-2 py-1 rounded bg-red-50 text-red-800 border border-red-200">
-                            Geen geldige regels in <code>loon_leeftijd</code> voor {d}.
-                          </div>
-                        )}
-                        {usersNoRule.length > 0 && (
-                          <div className="text-[11px] px-2 py-1 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                            Geen match met tariefladder op {d}: {usersNoRule.join(", ")}
-                          </div>
-                        )}
-                        {meta?.users_without_dob?.length ? (
-                          <div className="text-[11px] px-2 py-1 rounded bg-amber-50 text-amber-800 border border-amber-200">
-                            Zonder geboortedatum (algemeen): {meta.users_without_dob.join(", ")}
-                          </div>
-                        ) : null}
-                        {usersWithWage.length > 0 && (
-                          <div className="text-[11px] px-2 py-1 rounded bg-green-50 text-green-800 border border-green-200">
-                            Met tarief op {d}: {usersWithWage.join(", ")}
-                          </div>
-                        )}
                       </div>
-                    )}
+                      <div className="text-right text-sm font-semibold">
+                        {dayCost > 0 ? EUR0.format(Math.round(dayCost)) : "—"}
+                      </div>
+
+                      {(showChecks || (withWage === 0 && planned > 0)) && (
+                        <div className="mt-2 space-y-1">
+                          {!hasRulesToday && (
+                            <div className="text-[11px] px-2 py-1 rounded bg-red-50 text-red-800 border border-red-200">
+                              Geen geldige regels in <code>loon_leeftijd</code> voor {d}.
+                            </div>
+                          )}
+                          {usersNoRule.length > 0 && (
+                            <div className="text-[11px] px-2 py-1 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                              Geen match met tariefladder op {d}: {usersNoRule.join(", ")}
+                            </div>
+                          )}
+                          {meta?.users_without_dob?.length ? (
+                            <div className="text-[11px] px-2 py-1 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                              Zonder geboortedatum (algemeen): {meta.users_without_dob.join(", ")}
+                            </div>
+                          ) : null}
+                          {usersWithWage.length > 0 && (
+                            <div className="text-[11px] px-2 py-1 rounded bg-green-50 text-green-800 border border-green-200">
+                              Met tarief op {d}: {usersWithWage.join(", ")}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 );
               })}
