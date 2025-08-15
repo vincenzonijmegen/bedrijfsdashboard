@@ -64,11 +64,30 @@ const EUR0 = new Intl.NumberFormat("nl-NL", {
 
 const GEWENSTE = ["S1K", "S1KV", "S1", "S1Z", "S1L", "S1S", "S2K", "S2", "S2L", "S2S", "SPS", "SLW1", "SLW2"];
 
+// key helper voor include/exclude per dag+user
+const keyDU = (date: string, userId: string | number) => `${date}:${String(userId)}`;
+
 export default function RoosterPage() {
   const today = ymdLocal(new Date());
   const [selectedDate, setSelectedDate] = useState(today);
   const [view, setView] = useState<"day" | "week">("day");
   const [showChecks, setShowChecks] = useState<boolean>(false);
+
+  // ✅ set met uitgesloten (dag:user) combinaties
+  const [excluded, setExcluded] = useState<Set<string>>(new Set());
+  const toggleExcluded = (date: string, userId: string | number) =>
+    setExcluded((prev) => {
+      const n = new Set(prev);
+      const k = keyDU(date, userId);
+      n.has(k) ? n.delete(k) : n.add(k);
+      return n;
+    });
+  const clearExcludedForDay = (date: string) =>
+    setExcluded((prev) => {
+      const n = new Set<string>();
+      for (const k of prev) if (!k.startsWith(date + ":")) n.add(k);
+      return n;
+    });
 
   // ---- DAG ----
   const { data: dayRooster, error: dayError } = useSWR<ShiftItem[]>(
@@ -122,6 +141,7 @@ export default function RoosterPage() {
 
   const { data: wagesByAge, error: wagesError } = useSWR<WageByAgeResp>(wagesUrl, fetcher);
 
+  // Map: date -> (user_id -> wage)
   const wageByDateUser = useMemo(() => {
     const out = new Map<string, Map<string, number>>();
     for (const row of wagesByAge?.data ?? []) {
@@ -141,11 +161,8 @@ export default function RoosterPage() {
       <div className="flex flex-wrap items-center mb-4 gap-2">
         <button onClick={() => changeDay(-1)} className="px-2 py-1 bg-gray-200 rounded">←</button>
         <input
-          type="date"
-          min="2024-01-01"
-          max="2026-12-31"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
+          type="date" min="2024-01-01" max="2026-12-31"
+          value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
           className="border px-2 py-1 rounded"
         />
         <button onClick={() => changeDay(1)} className="px-2 py-1 bg-gray-200 rounded">→</button>
@@ -154,15 +171,11 @@ export default function RoosterPage() {
           <button
             onClick={() => setView("day")}
             className={`px-3 py-1 rounded border ${view === "day" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-100"}`}
-          >
-            Dag
-          </button>
+          >Dag</button>
           <button
             onClick={() => setView("week")}
             className={`px-3 py-1 rounded border ${view === "week" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-100"}`}
-          >
-            Week
-          </button>
+          >Week</button>
         </div>
       </div>
 
@@ -190,7 +203,7 @@ export default function RoosterPage() {
         </div>
       )}
 
-      {/* DAGVIEW */}
+      {/* DAGVIEW (ongewijzigd) */}
       {view === "day" ? (
         <>
           {dayError && <p className="p-4 text-red-600">Fout bij laden rooster: {String(dayError?.message ?? dayError)}</p>}
@@ -224,7 +237,7 @@ export default function RoosterPage() {
           )}
         </>
       ) : (
-        // WEEKVIEW + CONTROLES
+        // WEEKVIEW + Exclude/Include knoppen
         <>
           {weekError && <p className="p-4 text-red-600">Fout weekrooster: {String(weekError?.message ?? weekError)}</p>}
           {wagesError && <p className="p-4 text-red-600">Fout lonen (leeftijd): {String(wagesError?.message ?? wagesError)}</p>}
@@ -259,6 +272,7 @@ export default function RoosterPage() {
               {weekDates.map((d) => {
                 const roster = weekRooster[d] || [];
 
+                // per shift groeperen
                 const perShift: Record<string, ShiftItem[]> = {};
                 for (const item of roster) (perShift[item.Roster.name] ||= []).push(item);
                 Object.values(perShift).forEach((arr) =>
@@ -267,31 +281,43 @@ export default function RoosterPage() {
                 const order = [...GEWENSTE.filter((n) => n in perShift), ...Object.keys(perShift).filter((n) => !GEWENSTE.includes(n))];
 
                 const wageMap = wageByDateUser.get(d);
+
                 let dayCost = 0;
                 let planned = 0;
                 let withWage = 0;
-                let totalHours = 0; // ✅ nieuw
+                let totalHours = 0;
+                let excludedCount = 0;
 
+                // berekenen met include/exclude
                 for (const items of Object.values(perShift)) {
                   for (const it of items) {
-                    const hours = hoursBetween(it.Roster.starttime, it.Roster.endtime);
-                    totalHours += hours; // ✅ uren altijd optellen
-
                     planned += 1;
                     const uid = String(it.Roster.user_id);
+                    const ex = excluded.has(keyDU(d, uid));
+                    const hours = hoursBetween(it.Roster.starttime, it.Roster.endtime);
+
+                    if (ex) {
+                      excludedCount += 1;
+                      // uitgesloten: niet meetellen in uren/kosten
+                      continue;
+                    }
+
+                    totalHours += hours;
+
                     const wage = wageMap?.get(uid) ?? 0;
                     if (wage > 0 && hours > 0) {
                       withWage += 1;
-                      dayCost += hours * wage * 1.36; // ✅ incl. 36% werkgeverslasten
+                      dayCost += hours * wage * 1.36; // werkgeverslasten
                     }
                   }
                 }
 
+                const requiredRevenue = dayCost > 0 ? Math.round(dayCost / 0.25) : 0;
 
+                // meta (optioneel)
                 const meta = wagesByAge?.meta;
                 const usersNoRule = meta?.no_rule_match_per_date?.[d] ?? [];
                 const usersWithWage = meta?.users_with_wage_per_date?.[d] ?? [];
-                const hasRulesToday = meta?.rules_date_coverage?.[d] ?? true;
 
                 return (
                   <div key={d} className="border rounded-lg p-2 text-xs leading-tight flex flex-col">
@@ -301,9 +327,16 @@ export default function RoosterPage() {
                           weekday: "short", day: "2-digit", month: "2-digit",
                         })}
                       </h3>
-                      {d === today && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">vandaag</span>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {excludedCount > 0 && (
+                          <span className="text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-900">
+                            −{excludedCount}
+                          </span>
+                        )}
+                        {d === today && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">vandaag</span>
+                        )}
+                      </div>
                     </div>
 
                     {order.length === 0 ? (
@@ -321,47 +354,69 @@ export default function RoosterPage() {
                             >
                               {headerText}
                             </div>
-                            <ul className="pl-0 list-none space-y-0.5">
-                              {groep.map((it) => (
-                                <li key={it.id} className="px-1 py-0.5 rounded bg-gray-50">
-                                  <strong>{firstName(it.User?.name)}</strong>
-                                </li>
-                              ))}
+                            {/* ✅ Buttons per medewerker (toggle include/exclude) */}
+                            <ul className="pl-0 list-none space-y-1">
+                              {groep.map((it) => {
+                                const uid = String(it.Roster.user_id);
+                                const isExcluded = excluded.has(keyDU(d, uid));
+                                return (
+                                  <li key={it.id}>
+                                    <button
+                                      type="button"
+                                      aria-pressed={!isExcluded}
+                                      onClick={() => toggleExcluded(d, uid)}
+                                      className={`w-full text-left px-2 py-1 rounded border transition
+                                        ${isExcluded
+                                          ? "line-through opacity-60 border-red-300 bg-red-50 hover:bg-red-100"
+                                          : "border-gray-200 bg-gray-50 hover:bg-gray-100"
+                                        }`}
+                                      title={isExcluded ? "Uitgesloten uit kosten" : "Meenemen in kosten"}
+                                    >
+                                      <strong>{firstName(it.User?.name)}</strong>
+                                    </button>
+                                  </li>
+                                );
+                              })}
                             </ul>
                           </div>
                         );
                       })
                     )}
 
+                    {/* Onderkant: kosten/uren/omzet + reset */}
                     <div className="mt-auto pt-2 border-t">
-                      <div className="text-[11px] text-gray-700">
-                        Personeelskosten{" "}
-                        <span className="opacity-60">({withWage}/{planned} met tarief)</span>
+                      <div className="flex items-center justify-between">
+                        <div className="text-[11px] text-gray-700">
+                          Personeelskosten incl. lasten{" "}
+                          <span className="opacity-60">
+                            ({withWage}/{planned - excludedCount} met tarief)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => clearExcludedForDay(d)}
+                          className="text-[10px] px-1.5 py-0.5 rounded border border-gray-300 hover:bg-gray-100"
+                          title="Reset selectie voor deze dag"
+                        >
+                          Reset
+                        </button>
                       </div>
+
                       <div className="text-right text-sm font-semibold">
                         {dayCost > 0 ? EUR0.format(Math.round(dayCost)) : "—"}
                       </div>
 
+                      <div className="mt-1 text-[10px] text-gray-600 text-right">
+                        Totaal uren: <strong>{Math.round(totalHours * 100) / 100}</strong>
+                      </div>
                       {dayCost > 0 && (
-                        <>
-                          <div className="mt-1 text-[10px] text-gray-600 text-right">
-                            Totaal uren: <strong>{Math.round(totalHours * 100) / 100}</strong>
-                          </div>
-                          <div className="mt-0.5 text-[10px] text-gray-600 text-right">
-                            Omzet voor &lt; 25%: <strong>{EUR0.format(Math.round(dayCost / 0.25))}</strong>
-                          </div>
-                        </>
+                        <div className="mt-0.5 text-[10px] text-gray-600 text-right">
+                          Omzet voor &lt; 25%: <strong>{EUR0.format(requiredRevenue)}</strong>
+                        </div>
                       )}
 
-
-
-                      {(showChecks || (withWage === 0 && planned > 0)) && (
+                      {(showChecks && (usersNoRule.length > 0 || (meta?.users_without_dob?.length ?? 0) > 0)) && (
                         <div className="mt-2 space-y-1">
-                          {!hasRulesToday && (
-                            <div className="text-[11px] px-2 py-1 rounded bg-red-50 text-red-800 border border-red-200">
-                              Geen geldige regels in <code>loon_leeftijd</code> voor {d}.
-                            </div>
-                          )}
                           {usersNoRule.length > 0 && (
                             <div className="text-[11px] px-2 py-1 rounded bg-amber-50 text-amber-800 border border-amber-200">
                               Geen match met tariefladder op {d}: {usersNoRule.join(", ")}
@@ -372,11 +427,6 @@ export default function RoosterPage() {
                               Zonder geboortedatum (algemeen): {meta.users_without_dob.join(", ")}
                             </div>
                           ) : null}
-                          {usersWithWage.length > 0 && (
-                            <div className="text-[11px] px-2 py-1 rounded bg-green-50 text-green-800 border border-green-200">
-                              Met tarief op {d}: {usersWithWage.join(", ")}
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
