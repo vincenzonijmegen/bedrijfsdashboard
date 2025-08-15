@@ -14,7 +14,7 @@ type ShiftItem = {
   Roster: {
     starttime: string; // "HH:MM:SS"
     endtime: string;   // "HH:MM:SS"
-    name: string;      // short code (bv. "S1K")
+    name: string;      // bv. "S1K"
     color?: string;
     user_id: string;
   };
@@ -40,7 +40,8 @@ type ContractRow = {
     user_id: string;
     startdate: string;   // "YYYY-MM-DD"
     enddate: string | null;
-    wage: string;        // "12.50" (uurloon)
+    wage?: string;       // vaak "12.50"
+    // soms andere varianten, die parsen we onderaan (hourly_wage, hour_rate, rate, etc.)
   };
 };
 type ContractsResp = { data?: ContractRow[] } | null;
@@ -95,6 +96,9 @@ const GEWENSTE_VOLGORDE = [
   "S2K", "S2", "S2L", "S2S",
   "SPS", "SLW1", "SLW2",
 ];
+
+// (optioneel) tijdelijke fallback uurlonen:
+// const MANUAL_WAGE: Record<string, number> = { "625996": 13.5 };
 
 // -------------------------------------------------------------
 export default function RoosterPage() {
@@ -171,7 +175,7 @@ export default function RoosterPage() {
     }
   );
 
-  // Timesheets voor hele week (optioneel gebruikt in dagview; weekview toont geen badges)
+  // Timesheets voor hele week (we tonen geen badges in weekview, maar kan nuttig worden)
   const { data: weekTimesheets } = useSWR<TimesheetResp>(
     view === "week"
       ? `/api/shiftbase/timesheets?min_date=${weekDates[0]}&max_date=${weekDates[6]}`
@@ -192,21 +196,47 @@ export default function RoosterPage() {
   }, [weekTimesheets]);
 
   // ----- CONTRACTS (uurloon per user) ------------------------
-  const { data: contractsResp } = useSWR<ContractsResp>(
-    "/api/shiftbase/contracts",
-    fetcher
-  );
-  // Map: user_id -> uurloon (pak meest recente met wage>0)
+  // Verwacht dat je serverroute met paginering draait: /api/shiftbase/contracts
+  const { data: contractsResp } = useSWR<ContractsResp>("/api/shiftbase/contracts", fetcher);
+
+  // Map: user_id -> uurloon (pak meest recente met wage>0, probeer meerdere velden)
   const wageByUser = useMemo(() => {
     const rows = contractsResp?.data ?? [];
+
+    const getWage = (c: any): number => {
+      // Probeer meerdere veldnamen voor uurloon
+      const candidates = [
+        c?.wage,
+        c?.hourly_wage,
+        c?.hour_rate,
+        c?.hour,
+        c?.rate,
+      ];
+      for (const v of candidates) {
+        if (v == null) continue;
+        const num =
+          typeof v === "string"
+            ? parseFloat(v.replace(",", "."))
+            : typeof v === "number"
+            ? v
+            : 0;
+        if (isFinite(num) && num > 0) return num;
+      }
+      return 0;
+    };
+
     const best: Record<string, { start: string; wage: number }> = {};
     for (const r of rows) {
-      const c = r.Contract;
-      const wage = parseFloat(c.wage || "0") || 0;
+      const c = (r as any)?.Contract ?? (r as any)?.contract ?? r;
+      if (!c?.user_id) continue;
+      const wage = getWage(c);
       if (!wage) continue;
       const cur = best[c.user_id];
-      if (!cur || c.startdate > cur.start) best[c.user_id] = { start: c.startdate, wage };
+      if (!cur || (c.startdate && c.startdate > cur.start)) {
+        best[c.user_id] = { start: c.startdate || "0000-00-00", wage };
+      }
     }
+
     const map = new Map<string, number>();
     Object.entries(best).forEach(([uid, v]) => map.set(uid, v.wage));
     return map;
@@ -332,6 +362,11 @@ export default function RoosterPage() {
       ) : (
         <>
           {weekError && <p className="p-4 text-red-600">Fout weekrooster: {String(weekError?.message ?? weekError)}</p>}
+          {wageByUser.size === 0 && (
+            <div className="mb-2 text-xs px-2 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded">
+              Geen uurlonen gevonden in Contracts. Controleer de Contracts‑API of pas de wage‑parser aan.
+            </div>
+          )}
           {!weekRooster ? (
             <p className="p-4">Laden…</p>
           ) : (
@@ -354,7 +389,10 @@ export default function RoosterPage() {
                 for (const items of Object.values(perShift)) {
                   for (const it of items) {
                     const hours = hoursBetween(it.Roster.starttime, it.Roster.endtime);
-                    const wage = wageByUser.get(it.Roster.user_id) ?? 0;
+                    const wage =
+                      wageByUser.get(it.Roster.user_id)
+                      // ?? MANUAL_WAGE[it.Roster.user_id]
+                      ?? 0;
                     if (wage > 0 && hours > 0) dayCost += hours * wage;
                   }
                 }
