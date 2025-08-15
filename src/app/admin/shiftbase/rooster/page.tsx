@@ -268,21 +268,25 @@ export default function RoosterPage() {
 
                 const wageMap = wageByDateUser.get(d);
                 let dayCost = 0;
-let planned = 0;
-let withWage = 0;
+                let planned = 0;
+                let withWage = 0;
+                let totalHours = 0; // ✅ nieuw
 
-for (const items of Object.values(perShift)) {
-  for (const it of items) {
-    planned += 1;
-    const uid = String(it.Roster.user_id);
-    const hours = hoursBetween(it.Roster.starttime, it.Roster.endtime);
-    const wage = wageMap?.get(uid) ?? 0;
-    if (wage > 0 && hours > 0) {
-      withWage += 1;
-      dayCost += hours * wage * 1.36; // ✅ werkgeverslasten meerekenen
-    }
-  }
-}
+                for (const items of Object.values(perShift)) {
+                  for (const it of items) {
+                    const hours = hoursBetween(it.Roster.starttime, it.Roster.endtime);
+                    totalHours += hours; // ✅ uren altijd optellen
+
+                    planned += 1;
+                    const uid = String(it.Roster.user_id);
+                    const wage = wageMap?.get(uid) ?? 0;
+                    if (wage > 0 && hours > 0) {
+                      withWage += 1;
+                      dayCost += hours * wage * 1.36; // ✅ incl. 36% werkgeverslasten
+                    }
+                  }
+                }
+
 
                 const meta = wagesByAge?.meta;
                 const usersNoRule = meta?.no_rule_match_per_date?.[d] ?? [];
@@ -329,21 +333,25 @@ for (const items of Object.values(perShift)) {
                       })
                     )}
 
-{/* Kostenblok ONDER elkaar */}
-<div className="mt-auto pt-2 border-t">
-  <div className="text-[11px] text-gray-700">
-    Personeelskosten incl. lasten{" "}
-    <span className="opacity-60">({withWage}/{planned} met tarief)</span>
-  </div>
-  <div className="text-right text-sm font-semibold">
-    {dayCost > 0 ? EUR0.format(Math.round(dayCost)) : "—"}
-  </div>
+                    <div className="mt-auto pt-2 border-t">
+                      <div className="text-[11px] text-gray-700">
+                        Personeelskosten{" "}
+                        <span className="opacity-60">({withWage}/{planned} met tarief)</span>
+                      </div>
+                      <div className="text-right text-sm font-semibold">
+                        {dayCost > 0 ? EUR0.format(Math.round(dayCost)) : "—"}
+                      </div>
 
-  {dayCost > 0 && (
-    <div className="mt-1 text-[10px] text-gray-600 text-right">
-      Omzet voor &lt; 25%: <strong>{EUR0.format(Math.round(dayCost / 0.25))}</strong>
-    </div>
-  )}
+                      {dayCost > 0 && (
+                        <>
+                          <div className="mt-1 text-[10px] text-gray-600 text-right">
+                            Totaal uren: <strong>{Math.round(totalHours * 100) / 100}</strong>
+                          </div>
+                          <div className="mt-0.5 text-[10px] text-gray-600 text-right">
+                            Omzet voor &lt; 25%: <strong>{EUR0.format(Math.round(dayCost / 0.25))}</strong>
+                          </div>
+                        </>
+                      )}
 
 
 
