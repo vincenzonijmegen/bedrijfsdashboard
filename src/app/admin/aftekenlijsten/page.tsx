@@ -4,6 +4,8 @@ import Link from "next/link";
 import useSWR from "swr";
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
+
 
 type Categorie =
   | "winkel-begin"
@@ -301,10 +303,12 @@ function Tabel({
           )}
         </tbody>
       </table>
+      <ScrollToTopButton />
     </div>
   );
 }
 
 function LegeState() {
   return <div className="text-gray-500 px-1 py-2">Geen items.</div>;
+  
 }
