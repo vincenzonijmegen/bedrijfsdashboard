@@ -11,7 +11,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 type ShiftItem = {
   id: string;
   Roster: {
-    id?: string | number;          // <-- toegevoegd
+    id?: string | number;
     starttime: string;
     endtime: string;
     name: string;
@@ -25,19 +25,26 @@ type ShiftItem = {
 type ClockRow = {
   Timesheet: {
     user_id: string | number;
-    roster_id?: string | number;   // kan ontbreken
+    roster_id?: string | number;
     date?: string;
     clocked_in?: string | null;
     clocked_out?: string | null;
     status?: string | null;
   };
-  Roster?: {                        // <-- toegevoegd
-    id?: string | number;
-    starttime?: string;
-    endtime?: string;
-  };
+  Roster?: { id?: string | number; starttime?: string; endtime?: string };
 };
 
+type TimesheetRow = {
+  Timesheet: {
+    user_id: string | number;
+    roster_id?: string | number;
+    date?: string;
+    clocked_in?: string | null;
+    clocked_out?: string | null;
+    status?: string | null;
+    total?: string | number;
+  };
+};
 
 type WageByAgeRow = { date: string; user_id: string | number; wage: number };
 type WageByAgeMeta = {
@@ -135,57 +142,94 @@ export default function RoosterPage() {
     };
   }, [dayRooster]);
 
-  // kloktijden (alleen op vandaag) via nieuwe /api/shiftbase/clock
-  const loadClocks = view === "day" && selectedDate === today;
+  // kloktijden & timesheets (alleen op vandaag, net als je oude gedrag)
+  const loadToday = view === "day" && selectedDate === today;
+
   const { data: clocksResp } = useSWR<{ data?: ClockRow[] }>(
-    loadClocks ? `/api/shiftbase/clock?date=${selectedDate}` : null,
+    loadToday ? `/api/shiftbase/clock?date=${selectedDate}` : null,
     fetcher
   );
 
-  // beste timesheet per user
-// beste timesheet per ROSTER (fallback: per user_id voor legacy)
-const timesheetByRoster = useMemo(() => {
-  const score = (t?: ClockRow["Timesheet"]) =>
-    (t?.clocked_in ? 1 : 0) + (t?.clocked_out ? 1 : 0);
+  const { data: timesheetsResp } = useSWR<{ data?: TimesheetRow[] }>(
+    loadToday ? `/api/shiftbase/timesheets?date=${selectedDate}` : null,
+    fetcher
+  );
 
-  const byRoster = new Map<string, ClockRow["Timesheet"]>();
-  const byUser   = new Map<string, ClockRow["Timesheet"]>();
+  // CLOCK: beste timesheet per ROSTER (fallback: per user_id)
+  const clockBy = useMemo(() => {
+    const score = (t?: ClockRow["Timesheet"]) =>
+      (t?.clocked_in ? 1 : 0) + (t?.clocked_out ? 1 : 0);
 
-  for (const row of (clocksResp?.data ?? [])) {
-    const ts = row.Timesheet;
-    const rid =
-  ts?.roster_id != null && ts.roster_id !== ""
-    ? String(ts.roster_id)
-    : (row as any)?.Roster?.id != null
-      ? String((row as any).Roster.id)
-      : "";
+    const byRoster = new Map<string, ClockRow["Timesheet"]>();
+    const byUser   = new Map<string, ClockRow["Timesheet"]>();
 
-    const uid = String(ts.user_id);
+    for (const row of (clocksResp?.data ?? [])) {
+      const ts = row.Timesheet;
+      const rosterId =
+        ts?.roster_id != null && ts.roster_id !== ""
+          ? String(ts.roster_id)
+          : row?.Roster?.id != null
+            ? String(row.Roster.id)
+            : "";
 
-    // per roster_id (voorkeur)
-    if (rid) {
-      const prev = byRoster.get(rid);
-      const sPrev = score(prev);
-      const sCur  = score(ts);
-      if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
-        byRoster.set(rid, ts);
+      const uid = String(ts.user_id);
+
+      if (rosterId) {
+        const prev = byRoster.get(rosterId);
+        const sPrev = score(prev);
+        const sCur  = score(ts);
+        if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
+          byRoster.set(rosterId, ts);
+        }
+      }
+
+      {
+        const prev = byUser.get(uid);
+        const sPrev = score(prev);
+        const sCur  = score(ts);
+        if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
+          byUser.set(uid, ts);
+        }
       }
     }
 
-    // per user_id (fallback wanneer roster_id ontbreekt)
-    {
-      const prev = byUser.get(uid);
-      const sPrev = score(prev);
-      const sCur  = score(ts);
-      if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
-        byUser.set(uid, ts);
+    return { byRoster, byUser };
+  }, [clocksResp]);
+
+  // TIMESHEETS (oude stijl): idem per ROSTER en per USER
+  const plainBy = useMemo(() => {
+    const score = (t?: TimesheetRow["Timesheet"]) =>
+      (t?.clocked_in ? 1 : 0) + (t?.clocked_out ? 1 : 0);
+
+    const byRoster = new Map<string, TimesheetRow["Timesheet"]>();
+    const byUser   = new Map<string, TimesheetRow["Timesheet"]>();
+
+    for (const row of (timesheetsResp?.data ?? [])) {
+      const ts = row.Timesheet;
+      const rosterId = ts?.roster_id ? String(ts.roster_id) : "";
+      const uid = String(ts.user_id);
+
+      if (rosterId) {
+        const prev = byRoster.get(rosterId);
+        const sPrev = score(prev);
+        const sCur  = score(ts);
+        if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
+          byRoster.set(rosterId, ts);
+        }
+      }
+
+      {
+        const prev = byUser.get(uid);
+        const sPrev = score(prev);
+        const sCur  = score(ts);
+        if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
+          byUser.set(uid, ts);
+        }
       }
     }
-  }
 
-  return { byRoster, byUser };
-}, [clocksResp]);
-
+    return { byRoster, byUser };
+  }, [timesheetsResp]);
 
   // ---- WEEK ----
   const weekDates = useMemo(() => {
@@ -195,7 +239,6 @@ const timesheetByRoster = useMemo(() => {
     );
   }, [selectedDate]);
 
-  // string key (geen tuple) om linter te vriend te houden
   const weekKey = view === "week" ? `week:${weekDates.join("|")}` : null;
 
   const { data: weekRooster, error: weekError } = useSWR<Record<string, ShiftItem[]>>(
@@ -230,7 +273,6 @@ const timesheetByRoster = useMemo(() => {
 
   const { data: wagesByAge, error: wagesError } = useSWR<WageByAgeResp>(wagesUrl, fetcher);
 
-  // Map: date -> (user_id -> wage)
   const wageByDateUser = useMemo(() => {
     const out = new Map<string, Map<string, number>>();
     for (const row of wagesByAge?.data ?? []) {
@@ -241,7 +283,6 @@ const timesheetByRoster = useMemo(() => {
     return out;
   }, [wagesByAge]);
 
-  // Week-totaal (respecteert exclusions)
   const weekTotals = useMemo(() => {
     if (!weekRooster) return { hours: 0, cost: 0 };
     let hours = 0;
@@ -352,12 +393,16 @@ const timesheetByRoster = useMemo(() => {
                   </h2>
                   <ul className="pl-4 list-disc">
                     {groep.map((it) => {
-                    const uid = String(it.Roster.user_id);
-                    const rid = String(it.id ?? it.Roster?.id ?? "");
-                    const ts =
-                      (rid && timesheetByRoster.byRoster.get(rid)) ||
-                      timesheetByRoster.byUser.get(uid) ||
-                      null;
+                      const uid = String(it.Roster.user_id);
+                      const rid = String(it.id ?? it.Roster?.id ?? "");
+
+                      // 1) exact op rooster matchen: eerst CLOCK, dan TIMESHEETS
+                      // 2) anders op user_id: eerst CLOCK, dan TIMESHEETS
+                      const ts: any =
+                        (rid && (clockBy.byRoster.get(rid) || plainBy.byRoster.get(rid))) ||
+                        clockBy.byUser.get(uid) ||
+                        plainBy.byUser.get(uid) ||
+                        null;
 
                       const schedIn = it.Roster.starttime.slice(0, 5);
                       const schedOut = it.Roster.endtime.slice(0, 5);
