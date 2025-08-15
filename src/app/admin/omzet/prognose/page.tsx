@@ -68,24 +68,34 @@ export default function PrognosePage() {
       });
 
     // Loonkosten voor gekozen jaar (normaliseer response naar array)
-    fetch(`/api/rapportage/loonkosten?jaar=${selectedYear}`)
-      .then((res) => res.json())
-      .then((res) => {
-        let arr: any[] = [];
-        if (Array.isArray(res)) arr = res;
-        else if (res && Array.isArray(res.data)) arr = res.data;
-        else if (res && typeof res === "object") arr = Object.values(res);
+    // ⬇️ vervangt je bestaande fetch voor loonkosten
+fetch(`/api/rapportage/loonkosten?jaar=${selectedYear}`)
+  .then((res) => res.json())
+  .then((res) => {
+    // NIEUWE SHAPE eerst: { jaar, maanden: [...] }
+    const src = Array.isArray(res?.maanden)
+      ? res.maanden
+      : Array.isArray(res)
+      ? res
+      : Array.isArray(res?.data)
+      ? res.data
+      : [];
 
-        const clean: LoonkostenItem[] = (arr ?? []).map((x: any) => ({
-          jaar: Number(x.jaar ?? selectedYear),
-          maand: Number(x.maand ?? 0),
-          lonen: Number(x.lonen ?? 0),
-          loonheffing: Number(x.loonheffing ?? 0),
-          pensioenpremie: Number(x.pensioenpremie ?? 0),
-        }));
-        setLoonkosten(clean);
-      })
-      .catch(() => setLoonkosten([]));
+    const clean = (src as any[])
+      // eventueel beperken tot maart–september; mag je weglaten als je 12 maanden ok vindt
+      //.filter((x) => Number(x.maand) >= 3 && Number(x.maand) <= 9)
+      .map((x) => ({
+        jaar: Number(x.jaar ?? selectedYear),
+        maand: Number(x.maand ?? 0),
+        lonen: Number(x.lonen ?? 0),
+        loonheffing: Number(x.loonheffing ?? 0),
+        pensioenpremie: Number(x.pensioenpremie ?? 0),
+      }));
+
+    setLoonkosten(clean);
+  })
+  .catch(() => setLoonkosten([]));
+
   }, [selectedYear]);
 
   const getLoonkosten = (maand: number) => {
