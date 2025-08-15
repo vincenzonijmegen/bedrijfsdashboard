@@ -11,6 +11,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 type ShiftItem = {
   id: string;
   Roster: {
+    id?: string | number;          // <-- toegevoegd
     starttime: string;
     endtime: string;
     name: string;
@@ -24,12 +25,14 @@ type ShiftItem = {
 type ClockRow = {
   Timesheet: {
     user_id: string | number;
+    roster_id?: string | number;   // <-- toegevoegd (komt uit /timesheets/clock)
     date?: string;
     clocked_in?: string | null;
     clocked_out?: string | null;
     status?: string | null;
   };
 };
+
 
 type WageByAgeRow = { date: string; user_id: string | number; wage: number };
 type WageByAgeMeta = {
@@ -135,29 +138,43 @@ export default function RoosterPage() {
   );
 
   // beste timesheet per user
-const timesheetByUser = useMemo(() => {
+// beste timesheet per ROSTER (fallback: per user_id voor legacy)
+const timesheetByRoster = useMemo(() => {
   const score = (t?: ClockRow["Timesheet"]) =>
     (t?.clocked_in ? 1 : 0) + (t?.clocked_out ? 1 : 0);
 
-  const map = new Map<string, ClockRow["Timesheet"]>();
-  for (const row of clocksResp?.data ?? []) {
+  const byRoster = new Map<string, ClockRow["Timesheet"]>();
+  const byUser   = new Map<string, ClockRow["Timesheet"]>();
+
+  for (const row of (clocksResp?.data ?? [])) {
     const ts = row.Timesheet;
+    const rid = ts?.roster_id ? String(ts.roster_id) : "";
     const uid = String(ts.user_id);
-    const prev = map.get(uid);
-    const sPrev = score(prev);
-    const sCur = score(ts);
-    if (
-      !prev ||
-      sCur > sPrev ||
-      (sCur === sPrev &&
-        ts.clocked_in &&
-        (!prev?.clocked_in || String(ts.clocked_in) > String(prev.clocked_in)))
-    ) {
-      map.set(uid, ts);
+
+    // per roster_id (voorkeur)
+    if (rid) {
+      const prev = byRoster.get(rid);
+      const sPrev = score(prev);
+      const sCur  = score(ts);
+      if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
+        byRoster.set(rid, ts);
+      }
+    }
+
+    // per user_id (fallback wanneer roster_id ontbreekt)
+    {
+      const prev = byUser.get(uid);
+      const sPrev = score(prev);
+      const sCur  = score(ts);
+      if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
+        byUser.set(uid, ts);
+      }
     }
   }
-  return map;
+
+  return { byRoster, byUser };
 }, [clocksResp]);
+
 
   // ---- WEEK ----
   const weekDates = useMemo(() => {
@@ -325,7 +342,12 @@ const timesheetByUser = useMemo(() => {
                   <ul className="pl-4 list-disc">
                     {groep.map((it) => {
                       const uid = String(it.Roster.user_id);
-                      const ts = timesheetByUser.get(uid); // kloktijden (vandaag)
+const rid = String(it.Roster?.id ?? "");
+const ts =
+  (rid && timesheetByRoster.byRoster.get(rid)) ||
+  timesheetByRoster.byUser.get(uid) ||
+  null;
+
 
                       const schedIn = it.Roster.starttime.slice(0, 5);
                       const schedOut = it.Roster.endtime.slice(0, 5);
