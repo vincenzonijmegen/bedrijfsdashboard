@@ -14,15 +14,15 @@ type ShiftItem = {
   Roster: {
     starttime: string; // "HH:MM:SS"
     endtime: string;   // "HH:MM:SS"
-    name: string;      // bijv. "S1K"
+    name: string;      // bv. "S1K"
     color?: string;
-    user_id: string;
+    user_id: string | number;
   };
   Shift?: { long_name: string };
-  User?: { id: string; name: string };
+  User?: { id: string | number; name: string };
 };
 
-type WageByAgeRow = { date: string; user_id: string; wage: number };
+type WageByAgeRow = { date: string; user_id: string | number; wage: number };
 type WageByAgeResp = { data?: WageByAgeRow[] } | null;
 
 // --- Utils ----------------------------------------------------
@@ -52,7 +52,7 @@ function hoursBetween(startHHMMSS: string, endHHMMSS: string) {
   const [sh, sm] = startHHMMSS.split(":").map(Number);
   const [eh, em] = endHHMMSS.split(":").map(Number);
   let minutes = eh * 60 + em - (sh * 60 + sm);
-  if (minutes < 0) minutes += 24 * 60; // shift over middernacht
+  if (minutes < 0) minutes += 24 * 60; // over middernacht
   return minutes / 60;
 }
 const EUR = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" });
@@ -74,6 +74,21 @@ export default function RoosterPage() {
     view === "day" ? `/api/shiftbase/rooster?datum=${selectedDate}` : null,
     fetcher
   );
+
+  // Groepeer per shift + sorteer (dag)
+  const { perShiftDay, orderDay } = useMemo(() => {
+    const acc: Record<string, ShiftItem[]> = {};
+    (dayRooster ?? []).forEach((it) => {
+      (acc[it.Roster.name] ||= []).push(it);
+    });
+    Object.values(acc).forEach((arr) =>
+      arr.sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime))
+    );
+    const present = Object.keys(acc);
+    const pref = GEWENSTE_VOLGORDE.filter((n) => n in acc);
+    const rest = present.filter((n) => !GEWENSTE_VOLGORDE.includes(n));
+    return { perShiftDay: acc, orderDay: pref.concat(rest) };
+  }, [dayRooster]);
 
   // ----- WEEK -------------------------------------------------
   const weekDates = useMemo(() => {
@@ -103,7 +118,7 @@ export default function RoosterPage() {
     }
   );
 
-  // 🔑 Uurlonen op basis van leeftijd per dag (alleen weekbereik)
+  // Uurlonen op basis van leeftijd per dag (alleen weekbereik)
   const { data: wagesByAge, error: wagesError } = useSWR<WageByAgeResp>(
     view === "week"
       ? `/api/shiftbase/wages-by-age?min_date=${weekDates[0]}&max_date=${weekDates[6]}`
@@ -111,14 +126,16 @@ export default function RoosterPage() {
     fetcher
   );
 
-  // Map: date -> (user_id -> wage)
+  // Map: date -> (user_id -> wage)  (‼️ normaliseer user_id naar string)
   const wageByDateUser = useMemo(() => {
-    const outer = new Map<string, Map<string, number>>();
+    const out = new Map<string, Map<string, number>>();
     for (const row of wagesByAge?.data ?? []) {
-      if (!outer.has(row.date)) outer.set(row.date, new Map());
-      outer.get(row.date)!.set(row.user_id, row.wage);
+      const date = row.date;
+      const uid = String(row.user_id);
+      if (!out.has(date)) out.set(date, new Map());
+      out.get(date)!.set(uid, row.wage);
     }
-    return outer;
+    return out;
   }, [wagesByAge]);
 
   // ----- Navigatie -------------------------------------------
@@ -161,7 +178,7 @@ export default function RoosterPage() {
         </div>
       </div>
 
-      {/* Titel */}
+      {/* TITEL */}
       {view === "day" ? (
         <h1 className="text-xl font-bold mb-2">
           Rooster voor{" "}
@@ -180,37 +197,45 @@ export default function RoosterPage() {
         </h1>
       )}
 
-      {/* Dag-inhoud (alleen rooster, clean) */}
+      {/* DAGVIEW — nette layout per shift */}
       {view === "day" ? (
         <>
           {dayError && <p className="p-4 text-red-600">Fout bij laden rooster: {String(dayError?.message ?? dayError)}</p>}
-          {!dayRooster ? (
+          {dayRooster == null ? (
             <p className="p-4">Laden…</p>
-          ) : dayRooster.length === 0 ? (
+          ) : orderDay.length === 0 ? (
             <p>Geen shifts gevonden voor deze dag.</p>
           ) : (
-            // Eenvoudige lijst (met tijden + volledige naam is oké in dagview)
-            <ul className="pl-4 list-disc">
-              {dayRooster
-                .slice()
-                .sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime))
-                .map((item) => (
-                  <li key={item.id} className="mb-1">
-                    <span className="font-semibold">
-                      {item.Roster.starttime.slice(0,5)}–{item.Roster.endtime.slice(0,5)}
-                    </span>{" "}
-                    <strong>{item.User?.name || "Onbekend"}</strong>{" "}
-                    <span className="opacity-70">({item.Shift?.long_name || item.Roster.name})</span>
-                  </li>
-                ))}
-            </ul>
+            orderDay.map((shiftName) => {
+              const groep = perShiftDay[shiftName];
+              const headerColor = groep?.[0]?.Roster?.color || "#334";
+              const headerText = groep?.[0]?.Shift?.long_name || shiftName;
+              return (
+                <section key={shiftName} className="mb-6">
+                  <h2 className="text-lg font-semibold mb-1 px-2 py-1 rounded text-white" style={{ backgroundColor: headerColor }}>
+                    {headerText}
+                  </h2>
+                  <ul className="pl-4 list-disc">
+                    {groep.map((item) => (
+                      <li key={item.id} className="mb-1">
+                        <span className="font-semibold">
+                          {item.Roster.starttime.slice(0,5)}–{item.Roster.endtime.slice(0,5)}
+                        </span>{" "}
+                        <strong>{item.User?.name || "Onbekend"}</strong>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              );
+            })
           )}
         </>
       ) : (
-        // Weekview
+        // WEEKVIEW — compact + personeelskosten
         <>
           {weekError && <p className="p-4 text-red-600">Fout weekrooster: {String(weekError?.message ?? weekError)}</p>}
           {wagesError && <p className="p-4 text-red-600">Fout bij lonen op leeftijd: {String(wagesError?.message ?? wagesError)}</p>}
+
           {!weekRooster ? (
             <p className="p-4">Laden…</p>
           ) : (
@@ -229,14 +254,22 @@ export default function RoosterPage() {
                   ...Object.keys(perShift).filter((n) => !GEWENSTE_VOLGORDE.includes(n)),
                 ];
 
-                // Kosten: som( uren × uurloonOpDieDag(user) )
+                // Kosten: som( uren × wageOpDieDag(user) ), met UID-normalisatie
                 const wageMap = wageByDateUser.get(d);
                 let dayCost = 0;
+                let planned = 0;
+                let withWage = 0;
+
                 for (const items of Object.values(perShift)) {
                   for (const it of items) {
+                    planned += 1;
+                    const uid = String(it.Roster.user_id);
                     const hours = hoursBetween(it.Roster.starttime, it.Roster.endtime);
-                    const wage = wageMap?.get(it.Roster.user_id) ?? 0;
-                    if (wage > 0 && hours > 0) dayCost += hours * wage;
+                    const wage = wageMap?.get(uid) ?? 0;
+                    if (wage > 0 && hours > 0) {
+                      withWage += 1;
+                      dayCost += hours * wage;
+                    }
                   }
                 }
 
@@ -266,8 +299,8 @@ export default function RoosterPage() {
                         return (
                           <div key={shiftName} className="mb-2">
                             <div
-                              className="text-[11px] font-semibold mb-1 px-2 py-0.5 rounded"
-                              style={{ backgroundColor: headerColor, color: "white" }}
+                              className="text-[11px] font-semibold mb-1 px-2 py-0.5 rounded text-white"
+                              style={{ backgroundColor: headerColor }}
                             >
                               {headerText}
                             </div>
@@ -285,7 +318,14 @@ export default function RoosterPage() {
                     )}
 
                     <div className="mt-2 pt-2 border-t flex items-center justify-between text-[11px]">
-                      <span>Personeelskosten</span>
+                      <span>
+                        Personeelskosten
+                        {planned > 0 && (
+                          <span className="ml-2 opacity-60">
+                            ({withWage}/{planned} met tarief)
+                          </span>
+                        )}
+                      </span>
                       <strong>{dayCost > 0 ? EUR.format(dayCost) : "—"}</strong>
                     </div>
                   </div>
