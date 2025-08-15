@@ -59,22 +59,36 @@ export default function PrognosePage() {
         }
       });
 
-const jaar = new Date().getFullYear();
-fetch(`/api/rapportage/loonkosten?jaar=${jaar}`)
-  .then((res) => res.json())
-  .then((res) => setLoonkosten(Array.isArray(res) ? res : []));
+    // ⬇️ Patch: haal het juiste jaar op en normaliseer hard naar array
+    const jaar = new Date().getFullYear();
+    fetch(`/api/rapportage/loonkosten?jaar=${jaar}`)
+      .then((res) => res.json())
+      .then((res) => {
+        let arr: any[] = [];
+        if (Array.isArray(res)) arr = res;
+        else if (res && Array.isArray(res.data)) arr = res.data;
+        else if (res && typeof res === "object") arr = Object.values(res);
 
+        setLoonkosten(
+          arr.map((x: any) => ({
+            jaar: Number(x.jaar ?? jaar),
+            maand: Number(x.maand ?? 0),
+            lonen: Number(x.lonen ?? 0),
+            loonheffing: Number(x.loonheffing ?? 0),
+            pensioenpremie: Number(x.pensioenpremie ?? 0),
+          }))
+        );
+      })
+      .catch(() => setLoonkosten([]));
   }, []);
 
   const getLoonkosten = (maand: number) => {
-    const item = loonkosten.find((l) => l.maand === maand);
-    if (!item) return 0;
-    return (
-      Number(item.lonen) +
-      Number(item.loonheffing) +
-      Number(item.pensioenpremie)
-    );
-  };;
+  const item = Array.isArray(loonkosten)
+    ? loonkosten.find((l) => Number(l.maand) === Number(maand))
+    : undefined;
+  if (!item) return 0;
+  return Number(item.lonen) + Number(item.loonheffing) + Number(item.pensioenpremie);
+};;
 
   const getLoonkostenPercentage = (maand: number, omzet: number) => {
     const totaal = getLoonkosten(maand);
