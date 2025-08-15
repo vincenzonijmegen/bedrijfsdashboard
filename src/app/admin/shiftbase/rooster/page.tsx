@@ -10,7 +10,13 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type ShiftItem = {
   id: string;
-  Roster: { starttime: string; endtime: string; name: string; color?: string; user_id: string | number };
+  Roster: {
+    starttime: string;
+    endtime: string;
+    name: string;
+    color?: string;
+    user_id: string | number;
+  };
   Shift?: { long_name: string };
   User?: { id: string | number; name: string };
 };
@@ -30,7 +36,9 @@ type WageByAgeMeta = {
 type WageByAgeResp = { data?: WageByAgeRow[]; meta?: WageByAgeMeta } | null;
 
 function ymdLocal(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
 }
 function addDays(iso: string, offset: number) {
   const d = new Date(iso + "T12:00:00");
@@ -55,6 +63,7 @@ function hoursBetween(a: string, b: string) {
   if (m < 0) m += 1440;
   return m / 60;
 }
+
 const EUR0 = new Intl.NumberFormat("nl-NL", {
   style: "currency",
   currency: "EUR",
@@ -62,7 +71,21 @@ const EUR0 = new Intl.NumberFormat("nl-NL", {
   maximumFractionDigits: 0,
 });
 
-const GEWENSTE = ["S1K", "S1KV", "S1", "S1Z", "S1L", "S1S", "S2K", "S2", "S2L", "S2S", "SPS", "SLW1", "SLW2"];
+const GEWENSTE = [
+  "S1K",
+  "S1KV",
+  "S1",
+  "S1Z",
+  "S1L",
+  "S1S",
+  "S2K",
+  "S2",
+  "S2L",
+  "S2S",
+  "SPS",
+  "SLW1",
+  "SLW2",
+];
 
 // key helper voor include/exclude per dag+user
 const keyDU = (date: string, userId: string | number) => `${date}:${String(userId)}`;
@@ -79,7 +102,8 @@ export default function RoosterPage() {
     setExcluded((prev) => {
       const n = new Set(prev);
       const k = keyDU(date, userId);
-      n.has(k) ? n.delete(k) : n.add(k);
+      if (n.has(k)) n.delete(k);
+      else n.add(k);
       return n;
     });
   const clearExcludedForDay = (date: string) =>
@@ -98,7 +122,9 @@ export default function RoosterPage() {
   const { perShiftDay, orderDay } = useMemo(() => {
     const acc: Record<string, ShiftItem[]> = {};
     (dayRooster ?? []).forEach((it) => (acc[it.Roster.name] ||= []).push(it));
-    Object.values(acc).forEach((arr) => arr.sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime)));
+    Object.values(acc).forEach((arr) =>
+      arr.sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime))
+    );
     const present = Object.keys(acc);
     return {
       perShiftDay: acc,
@@ -109,10 +135,12 @@ export default function RoosterPage() {
   // ---- WEEK ----
   const weekDates = useMemo(() => {
     const s = startOfISOWeekMonday(new Date(selectedDate + "T12:00:00"));
-    return Array.from({ length: 7 }, (_, i) => ymdLocal(new Date(s.getFullYear(), s.getMonth(), s.getDate() + i)));
+    return Array.from({ length: 7 }, (_, i) =>
+      ymdLocal(new Date(s.getFullYear(), s.getMonth(), s.getDate() + i))
+    );
   }, [selectedDate]);
 
-  // Gebruik string key i.p.v. tuple + as const (fixt lint 'no-unused-expressions')
+  // ✅ string key i.p.v. tuple (lost ESLint error op)
   const weekKey = view === "week" ? `week:${weekDates.join("|")}` : null;
 
   const { data: weekRooster, error: weekError } = useSWR<Record<string, ShiftItem[]>>(
@@ -131,7 +159,9 @@ export default function RoosterPage() {
   const weekUserIds = useMemo(() => {
     const s = new Set<string>();
     if (weekRooster) {
-      Object.values(weekRooster).forEach((items) => (items ?? []).forEach((it) => s.add(String(it.Roster.user_id))));
+      Object.values(weekRooster).forEach((items) =>
+        (items ?? []).forEach((it) => s.add(String(it.Roster.user_id)))
+      );
     }
     return Array.from(s);
   }, [weekRooster]);
@@ -163,23 +193,43 @@ export default function RoosterPage() {
     <div className="p-4">
       {/* Nav */}
       <div className="flex flex-wrap items-center mb-4 gap-2">
-        <button onClick={() => changeDay(-1)} className="px-2 py-1 bg-gray-200 rounded">←</button>
+        <button onClick={() => changeDay(-1)} className="px-2 py-1 bg-gray-200 rounded">
+          ←
+        </button>
         <input
-          type="date" min="2024-01-01" max="2026-12-31"
-          value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)}
+          type="date"
+          min="2024-01-01"
+          max="2026-12-31"
+          value={selectedDate}
+          onChange={(e) => setSelectedDate(e.target.value)}
           className="border px-2 py-1 rounded"
         />
-        <button onClick={() => changeDay(1)} className="px-2 py-1 bg-gray-200 rounded">→</button>
-        <button onClick={goToday} className="ml-2 px-2 py-1 rounded border border-gray-300 hover:bg-gray-100">Vandaag</button>
+        <button onClick={() => changeDay(1)} className="px-2 py-1 bg-gray-200 rounded">
+          →
+        </button>
+        <button
+          onClick={goToday}
+          className="ml-2 px-2 py-1 rounded border border-gray-300 hover:bg-gray-100"
+        >
+          Vandaag
+        </button>
         <div className="ml-auto flex gap-1">
           <button
             onClick={() => setView("day")}
-            className={`px-3 py-1 rounded border ${view === "day" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-100"}`}
-          >Dag</button>
+            className={`px-3 py-1 rounded border ${
+              view === "day" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-100"
+            }`}
+          >
+            Dag
+          </button>
           <button
             onClick={() => setView("week")}
-            className={`px-3 py-1 rounded border ${view === "week" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-100"}`}
-          >Week</button>
+            className={`px-3 py-1 rounded border ${
+              view === "week" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-100"
+            }`}
+          >
+            Week
+          </button>
         </div>
       </div>
 
@@ -188,29 +238,44 @@ export default function RoosterPage() {
         <h1 className="text-xl font-bold mb-2">
           Rooster voor{" "}
           {new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", {
-            weekday: "long", day: "2-digit", month: "2-digit", year: "numeric",
+            weekday: "long",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
           })}
         </h1>
       ) : (
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-xl font-bold">
             Rooster week{" "}
-            {new Date(weekDates[0] + "T12:00:00").toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit" })}{" "}
+            {new Date(weekDates[0] + "T12:00:00").toLocaleDateString("nl-NL", {
+              day: "2-digit",
+              month: "2-digit",
+            })}{" "}
             –{" "}
             {new Date(weekDates[6] + "T12:00:00").toLocaleDateString("nl-NL", {
-              day: "2-digit", month: "2-digit", year: "numeric",
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
             })}
           </h1>
-          <button onClick={() => setShowChecks((s) => !s)} className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-100">
+          <button
+            onClick={() => setShowChecks((s) => !s)}
+            className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-100"
+          >
             {showChecks ? "Verberg controles" : "Toon controles"}
           </button>
         </div>
       )}
 
-      {/* DAGVIEW (ongewijzigd) */}
+      {/* DAGVIEW */}
       {view === "day" ? (
         <>
-          {dayError && <p className="p-4 text-red-600">Fout bij laden rooster: {String(dayError?.message ?? dayError)}</p>}
+          {dayError && (
+            <p className="p-4 text-red-600">
+              Fout bij laden rooster: {String(dayError?.message ?? dayError)}
+            </p>
+          )}
           {dayRooster == null ? (
             <p className="p-4">Laden…</p>
           ) : orderDay.length === 0 ? (
@@ -222,7 +287,10 @@ export default function RoosterPage() {
               const headerText = groep?.[0]?.Shift?.long_name || shiftName;
               return (
                 <section key={shiftName} className="mb-6">
-                  <h2 className="text-lg font-semibold mb-1 px-2 py-1 rounded text-white" style={{ backgroundColor: headerColor }}>
+                  <h2
+                    className="text-lg font-semibold mb-1 px-2 py-1 rounded text-white"
+                    style={{ backgroundColor: headerColor }}
+                  >
                     {headerText}
                   </h2>
                   <ul className="pl-4 list-disc">
@@ -243,27 +311,44 @@ export default function RoosterPage() {
       ) : (
         // WEEKVIEW + Exclude/Include knoppen
         <>
-          {weekError && <p className="p-4 text-red-600">Fout weekrooster: {String(weekError?.message ?? weekError)}</p>}
-          {wagesError && <p className="p-4 text-red-600">Fout lonen (leeftijd): {String(wagesError?.message ?? wagesError)}</p>}
+          {weekError && (
+            <p className="p-4 text-red-600">
+              Fout weekrooster: {String(weekError?.message ?? weekError)}
+            </p>
+          )}
+          {wagesError && (
+            <p className="p-4 text-red-600">
+              Fout lonen (leeftijd): {String(wagesError?.message ?? wagesError)}
+            </p>
+          )}
 
           {showChecks && wagesByAge?.meta && (
             <div className="mb-3 rounded border p-3 text-sm bg-gray-50">
               <div className="font-semibold mb-1">Controles (globaal)</div>
               <div className="grid sm:grid-cols-2 gap-2">
                 <div>
-                  <div>Users in weekrooster: <strong>{weekUserIds.length}</strong></div>
-                  <div>Users NAW geladen: <strong>{wagesByAge.meta.users_total}</strong></div>
+                  <div>
+                    Users in weekrooster: <strong>{weekUserIds.length}</strong>
+                  </div>
+                  <div>
+                    Users NAW geladen: <strong>{wagesByAge.meta.users_total}</strong>
+                  </div>
                   <div>
                     Zonder geboortedatum (uniek):{" "}
                     {wagesByAge.meta.users_without_dob.length ? (
-                      <span className="text-amber-700">{wagesByAge.meta.users_without_dob.join(", ")}</span>
+                      <span className="text-amber-700">
+                        {wagesByAge.meta.users_without_dob.join(", ")}
+                      </span>
                     ) : (
                       <span className="text-green-700">0</span>
                     )}
                   </div>
                 </div>
                 <div>
-                  <div>Gefilterd op user_ids: <strong>{wagesByAge.meta.filtered_to_user_ids ? "ja" : "nee"}</strong></div>
+                  <div>
+                    Gefilterd op user_ids:{" "}
+                    <strong>{wagesByAge.meta.filtered_to_user_ids ? "ja" : "nee"}</strong>
+                  </div>
                 </div>
               </div>
             </div>
@@ -282,7 +367,10 @@ export default function RoosterPage() {
                 Object.values(perShift).forEach((arr) =>
                   arr.sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime))
                 );
-                const order = [...GEWENSTE.filter((n) => n in perShift), ...Object.keys(perShift).filter((n) => !GEWENSTE.includes(n))];
+                const order = [
+                  ...GEWENSTE.filter((n) => n in perShift),
+                  ...Object.keys(perShift).filter((n) => !GEWENSTE.includes(n)),
+                ];
 
                 const wageMap = wageByDateUser.get(d);
 
@@ -328,7 +416,9 @@ export default function RoosterPage() {
                     <div className="flex items-baseline justify-between mb-2">
                       <h3 className="font-semibold">
                         {new Date(d + "T12:00:00").toLocaleDateString("nl-NL", {
-                          weekday: "short", day: "2-digit", month: "2-digit",
+                          weekday: "short",
+                          day: "2-digit",
+                          month: "2-digit",
                         })}
                       </h3>
                       <div className="flex items-center gap-1">
@@ -338,7 +428,9 @@ export default function RoosterPage() {
                           </span>
                         )}
                         {d === today && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">vandaag</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
+                            vandaag
+                          </span>
                         )}
                       </div>
                     </div>
@@ -369,11 +461,11 @@ export default function RoosterPage() {
                                       type="button"
                                       aria-pressed={!isExcluded}
                                       onClick={() => toggleExcluded(d, uid)}
-                                      className={`w-full text-left px-2 py-1 rounded border transition
-                                        ${isExcluded
+                                      className={`w-full text-left px-2 py-1 rounded border transition ${
+                                        isExcluded
                                           ? "line-through opacity-60 border-red-300 bg-red-50 hover:bg-red-100"
                                           : "border-gray-200 bg-gray-50 hover:bg-gray-100"
-                                        }`}
+                                      }`}
                                       title={isExcluded ? "Uitgesloten uit kosten" : "Meenemen in kosten"}
                                     >
                                       <strong>{firstName(it.User?.name)}</strong>
