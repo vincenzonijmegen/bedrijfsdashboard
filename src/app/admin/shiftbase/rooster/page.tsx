@@ -615,9 +615,12 @@ export default function RoosterPage() {
                         </div>
                         {dayCost > 0 && (
                           <div className="mt-0.5 text-[10px] text-gray-600 text-right">
-                            Omzet voor &lt; 25%: <strong>{EUR0.format(requiredRevenue25)}</strong>
-                          
-                            Omzet voor &lt; 23%: <strong>{EUR0.format(requiredRevenue23)}</strong>
+                            Omzet voor LK &lt; 25%: <strong>{EUR0.format(requiredRevenue25)}</strong>
+                          </div>
+                        )}
+                        {dayCost > 0 && (
+                          <div className="mt-0.5 text-[10px] text-gray-600 text-right">
+                            Omzet voor LK &lt; 23%: <strong>{EUR0.format(requiredRevenue23)}</strong>
                           </div>
                         )}
                       </div>
@@ -643,8 +646,12 @@ export default function RoosterPage() {
                   <div className="text-right">
                     <div className="text-2xl font-bold">{EUR0.format(Math.round(weekTotals.cost))}</div>
                     <div className="text-xs text-gray-600">
-                      Omzet voor &lt; 25%:{" "}
+                      Omzet voor loonkosten &lt; 25%:{" "}
                       <strong>{EUR0.format(Math.round(weekTotals.cost / 0.25 || 0))}</strong>
+                    </div>
+                    <div className="text-xs text-gray-600">
+                      Omzet voor loonkosten&lt; 23%:{" "}
+                      <strong>{EUR0.format(Math.round(weekTotals.cost / 0.23 || 0))}</strong>
                     </div>
                     <div className="text-xs text-gray-600">
                       Totaal uren: <strong>{Math.round(weekTotals.hours * 100) / 100}</strong>

@@ -221,7 +221,7 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/acties" label="Actielijsten" color="slate" Icon={CheckSquare} />
         <LinkCard href="/admin/notities" label="Notities" color="slate" Icon={FileText} />
         <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="slate" Icon={ShoppingCart} />
-        <LinkCard href="/admin/shiftbase/rooster" label="Rooster per dag" color="slate" Icon={CalendarDays} />
+        <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="slate" Icon={CalendarDays} />
         <LinkCard href="/open-diensten" label="Open Shifts" color="slate" Icon={CalendarDays} />
         <LinkCard href="/admin/dossier" label="Dossiers" color="slate" Icon={Folder} />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="slate" Icon={Wrench} />
@@ -237,7 +237,7 @@ export default function AdminDashboard() {
       </Section>
 
       <Section id="planning" title="📅 Planning" color="orange" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/shiftbase/rooster" label="Rooster per dag" color="orange" Icon={CalendarDays} />
+        <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} />
         <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} />
         <LinkCard href="/admin/rapportages/timesheets" label="Klokuren" color="orange" Icon={Clock} />
         <LinkCard href="/shift-acties" label="Shiftacties & Statistieken" color="orange" Icon={Activity} />
