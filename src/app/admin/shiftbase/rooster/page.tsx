@@ -46,7 +46,16 @@ type TimesheetRow = {
   };
 };
 
-type WageByAgeRow = { date: string; user_id: string | number; wage: number };
+// Let op: uitgebreid met optionele factor/opslag (server mag dit leveren)
+// - factor: bv. 1.08 of 1.17
+// - opslag: bv. 0.08 of 0.17 (dan doen we 1 + opslag)
+type WageByAgeRow = {
+  date: string;
+  user_id: string | number;
+  wage: number;
+  factor?: number;
+  opslag?: number;
+};
 type WageByAgeMeta = {
   users_total: number;
   users_without_dob: string[];
@@ -100,6 +109,17 @@ const GEWENSTE = ["S1K","S1KV","S1","S1Z","S1L","S1S","S2K","S2","S2L","S2S","SP
 
 // helper key voor include/exclude per dag+user
 const keyDU = (date: string, userId: string | number) => `${date}:${String(userId)}`;
+
+// Fallback factor als de server (nog) geen factor/opslag terugstuurt:
+const DEFAULT_FACTOR = 1.36;
+
+// Haal de effectieve factor uit een WageByAgeRow (factor > opslag > default)
+function getEffectiveFactor(row?: { factor?: number; opslag?: number }) {
+  if (!row) return DEFAULT_FACTOR;
+  if (typeof row.factor === "number" && isFinite(row.factor) && row.factor > 0) return row.factor;
+  if (typeof row.opslag === "number" && isFinite(row.opslag)) return 1 + row.opslag;
+  return DEFAULT_FACTOR;
+}
 
 export default function RoosterPage() {
   const today = ymdLocal(new Date());
@@ -273,12 +293,16 @@ export default function RoosterPage() {
 
   const { data: wagesByAge, error: wagesError } = useSWR<WageByAgeResp>(wagesUrl, fetcher);
 
+  // Map: date -> (userId -> { wage, factor })
   const wageByDateUser = useMemo(() => {
-    const out = new Map<string, Map<string, number>>();
+    const out = new Map<string, Map<string, { wage: number; factor: number }>>();
     for (const row of wagesByAge?.data ?? []) {
       const uid = String(row.user_id);
       if (!out.has(row.date)) out.set(row.date, new Map());
-      out.get(row.date)!.set(uid, row.wage);
+      out.get(row.date)!.set(uid, {
+        wage: row.wage,
+        factor: getEffectiveFactor(row),
+      });
     }
     return out;
   }, [wagesByAge]);
@@ -301,8 +325,10 @@ export default function RoosterPage() {
           if (excluded.has(keyDU(d, uid))) continue;
           const h = hoursBetween(it.Roster.starttime, it.Roster.endtime);
           hours += h;
-          const wage = wageMap?.get(uid) ?? 0;
-          if (wage > 0 && h > 0) cost += h * wage * 1.36;
+          const entry = wageMap?.get(uid);
+          const wage = entry?.wage ?? 0;
+          const factor = entry?.factor ?? DEFAULT_FACTOR;
+          if (wage > 0 && h > 0) cost += h * wage * factor;
         }
       }
     }
@@ -494,10 +520,13 @@ export default function RoosterPage() {
 
                       totalHours += hours;
 
-                      const wage = wageMap?.get(uid) ?? 0;
+                      const entry = wageMap?.get(uid);
+                      const wage = entry?.wage ?? 0;
+                      const factor = entry?.factor ?? DEFAULT_FACTOR;
+
                       if (wage > 0 && hours > 0) {
                         withWage += 1;
-                        dayCost += hours * wage * 1.36;
+                        dayCost += hours * wage * factor;
                       }
                     }
                   }
@@ -604,7 +633,7 @@ export default function RoosterPage() {
               <div className="mt-4 border rounded-lg p-3 bg-gray-50">
                 <div className="flex flex-wrap items-end justify-between gap-2">
                   <div>
-                    <div className="text-sm font-semibold">Weektotaal (inclusief ×1.36)</div>
+                    <div className="text-sm font-semibold">Weektotaal (incl. leeftijdsopslag)</div>
                     <div className="text-xs text-gray-600">
                       Periode:{" "}
                       {new Date(weekDates[0] + "T12:00:00").toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit" })}{" "}
