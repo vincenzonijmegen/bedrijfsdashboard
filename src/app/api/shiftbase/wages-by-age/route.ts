@@ -48,8 +48,8 @@ function rangeDays(minDate: string, maxDate: string) {
   return out;
 }
 function ageOn(birthISO: string, onISO: string) {
-  const b = new Date(birthISO),
-    o = new Date(onISO + "T12:00:00");
+  const b = new Date(birthISO);
+  const o = new Date(onISO + "T12:00:00");
   let a = o.getFullYear() - b.getFullYear();
   const m = o.getMonth() - b.getMonth();
   if (m < 0 || (m === 0 && o.getDate() < b.getDate())) a--;
@@ -63,8 +63,7 @@ function normalizeOpslag(v: number | null | undefined): number | null {
   if (num === 0) return 0;
   // als het lijkt op "8" of "17", beschouw het als %
   if (num > 1.5) return num / 100;
-  // anders is het al fractie
-  return num;
+  return num; // al fractie
 }
 
 type LadderRow = {
@@ -73,7 +72,7 @@ type LadderRow = {
   uurloon: number;
   geldig_van: string | null;
   geldig_tot: string | null;
-  opslag: number | null; // fractie (0.08) of percentage (8/17) → we normaliseren later
+  opslag: number | null; // kan fractie of percentage zijn; normaliseren we later
 };
 
 async function getLadderFromDB(): Promise<LadderRow[]> {
@@ -106,11 +105,23 @@ async function getLadderFromDB(): Promise<LadderRow[]> {
   }));
 }
 
+// veilige datumvergelijking (YYYY-MM-DD of volledige ISO)
+function isDateWithin(dateISO: string, van: string | null, tot: string | null) {
+  const d = Date.parse(dateISO);
+  if (Number.isNaN(d)) return true; // beter toelaten dan alles blokkeren
+  const dv = van ? Date.parse(van.length > 10 ? van : van + "T00:00:00") : NaN;
+  const dt = tot ? Date.parse(tot.length > 10 ? tot : tot + "T23:59:59") : NaN;
+
+  const okVan = Number.isNaN(dv) ? true : d >= dv;
+  const okTot = Number.isNaN(dt) ? true : d <= dt;
+  return okVan && okTot;
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const minDate = url.searchParams.get("min_date") ?? "";
   const maxDate = url.searchParams.get("max_date") ?? "";
-  const userIdsParam = url.searchParams.get("user_ids"); // CSV van ingeplande users
+  const userIdsParam = url.searchParams.get("user_ids");
   const source = url.searchParams.get("source"); // optioneel: "db" | "fallback"
 
   if (!isIsoDate(minDate) || !isIsoDate(maxDate) || minDate > maxDate) {
@@ -132,7 +143,7 @@ export async function GET(req: Request) {
       }
     }
   } catch {
-    // bij DB-fout val stilzwijgend terug op fallback
+    // val stilzwijgend terug op fallback
   }
   if (ladder.length === 0) {
     ladder = FALLBACK.map((r) => ({
@@ -152,7 +163,7 @@ export async function GET(req: Request) {
       )
     : null;
 
-  // NAW ophalen (DOB)
+  // NAW (DOB) ophalen
   const nawRes = await fetch(`${url.origin}/api/shiftbase/naw`, {
     headers: { Accept: "application/json" },
     cache: "no-store",
@@ -187,7 +198,7 @@ export async function GET(req: Request) {
     user_id: string;
     wage: number;
     factor?: number;
-    opslag?: number; // altijd als fractie geretourneerd
+    opslag?: number; // fractie
   }> = [];
 
   const meta = {
@@ -201,21 +212,21 @@ export async function GET(req: Request) {
     users_with_wage_per_date: {} as Record<string, string[]>,
   };
 
-  // Zoek bij opgegeven datum een passende ladderregel
-  function ladderFor(dateISO: string, age: number) {
-    // filter op geldigheid
-    const validRows = ladder.filter((r) => {
-      const gvOk = !r.geldig_van || r.geldig_van <= dateISO;
-      const gtOk = !r.geldig_tot || dateISO <= r.geldig_tot;
-      return gvOk && gtOk && age >= r.min_leeftijd && age <= r.max_leeftijd;
-    });
-    // pak de meest recente (geldig_van DESC in SQL, maar we filterden hierboven)
-    return validRows[0] ?? null;
-  }
+  // helpers
+  const findRowStrict = (dateISO: string, age: number) =>
+    ladder.find(
+      (r) =>
+        age >= r.min_leeftijd &&
+        age <= r.max_leeftijd &&
+        isDateWithin(dateISO, r.geldig_van, r.geldig_tot)
+    );
+  const findRowLoose = (age: number) =>
+    ladder.find((r) => age >= r.min_leeftijd && age <= r.max_leeftijd);
 
   for (const date of dates) {
     const noMatch: string[] = [];
     const withWage: string[] = [];
+
     for (const u of users) {
       if (!u.dob) {
         if (!meta.users_without_dob.includes(u.user_id))
@@ -223,7 +234,9 @@ export async function GET(req: Request) {
         continue;
       }
       const age = ageOn(u.dob, date);
-      const row = ladderFor(date, age);
+
+      // Eerst strikt op datum, anders los (zonder datumrestrictie)
+      let row = findRowStrict(date, age) ?? findRowLoose(age);
       if (row && row.uurloon > 0) {
         const opslagNorm = normalizeOpslag(row.opslag);
         const factor = typeof opslagNorm === "number" ? 1 + opslagNorm : undefined;
@@ -240,6 +253,7 @@ export async function GET(req: Request) {
         noMatch.push(u.user_id);
       }
     }
+
     if (withWage.length) meta.users_with_wage_per_date[date] = withWage;
     if (noMatch.length) meta.no_ladder_match_per_date[date] = noMatch;
   }
