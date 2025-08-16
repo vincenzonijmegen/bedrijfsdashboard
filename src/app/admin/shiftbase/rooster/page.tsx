@@ -526,7 +526,7 @@ export default function RoosterPage() {
                   }
 
                   const requiredRevenue25 = dayCost > 0 ? Math.round(dayCost / 0.25) : 0;
-                  const requiredRevenue23 = dayCost > 0 ? Math.round(dayCost / 0.25) : 0;
+                  const requiredRevenue23 = dayCost > 0 ? Math.round(dayCost / 0.23) : 0;
 
                   return (
                     <div key={d} className="border rounded-lg p-2 text-xs leading-tight flex flex-col">
