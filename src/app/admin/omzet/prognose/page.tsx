@@ -31,7 +31,7 @@ interface MaandData {
   cumulatiefRealisatie: number;
   voorAchterInDagen: number | null;
   procentueel: number | null;
-  jrPrognoseObvTotNu: number;    // wordt niet meer gebruikt voor de rendering hieronder
+  jrPrognoseObvTotNu: number;    // niet gebruikt in rendering hieronder
 }
 
 interface LoonkostenItem {
@@ -133,15 +133,10 @@ export default function PrognosePage() {
     data.filter(x => x.maand > maand).reduce((s, x) => s + (x.prognoseOmzet ?? 0), 0);
 
   const projTodayForCurrentMonth = (() => {
-    // Projectie o.b.v. vandaag (altijd beschikbaar, ook voor toekomstkolommen)
     if (selectedYear !== currentYear) {
-      // Niet het huidige jaar → toon “as is today” concept niet, maar wel iets zinnigs:
-      // gebruik: som(realiseerd gehele jaar) + som(geplande rest) - voor niet-huidige jaren is er geen "to date",
-      // dus hier nemen we de som realisatie van alle maanden + geplande rest (0 in de praktijk).
-      const lastMonth = Math.max(...data.map(d => d.maand));
-      return sumRealisatieTmt(lastMonth) + sumPrognoseNa(lastMonth);
+      // Voor niet-huidige jaren geen "to date"-projectie
+      return null;
     }
-
     const cur = data.find(x => x.maand === currentMonth);
     const realizedUntilPrev = sumRealisatieTmt(currentMonth - 1);
     const realizedToDateThisMonth = cur?.realisatieOmzet ?? 0;
@@ -152,27 +147,28 @@ export default function PrognosePage() {
     return realizedUntilPrev + realizedToDateThisMonth + restOfThisMonth + restOfYearAfterThisMonth;
   })();
 
-  const prognoseObvToDateByMonth = new Map<number, number>();
+  // Let op: map met number | null, zodat we lege cellen kunnen tonen
+  const prognoseObvToDateByMonth = new Map<number, number | null>();
   for (const m of data) {
-    let val = 0;
+    let val: number | null = 0;
 
     if (selectedYear < currentYear) {
-      // Volledig verleden jaar → per kolom as-of einde van die maand:
+      // Verleden jaar → per kolom as-of einde van die maand
       val = sumRealisatieTmt(m.maand) + sumPrognoseNa(m.maand);
     } else if (selectedYear > currentYear) {
-      // Volledig toekomstig jaar → toon "vanaf vandaag"-projectie (zelfde overal logisch)
-      val = projTodayForCurrentMonth;
+      // Toekomstig jaar → leeg laten
+      val = null;
     } else {
-      // Geselecteerde jaar == huidig jaar
+      // Huidig jaar
       if (m.maand < currentMonth) {
-        // Voltooide maand
+        // Voltooide maand: realisatie t/m die maand + geplande rest
         val = sumRealisatieTmt(m.maand) + sumPrognoseNa(m.maand);
       } else if (m.maand === currentMonth) {
-        // Lopende maand
-        val = projTodayForCurrentMonth;
+        // Lopende maand: realisatie to_date + (prognosePerDag × resterende dagen) + geplande rest van het jaar
+        val = projTodayForCurrentMonth ?? null;
       } else {
-        // Toekomstige maand in huidig jaar → zelfde als projectie op basis van vandaag
-        val = projTodayForCurrentMonth;
+        // Toekomstige maanden in huidig jaar → leeg
+        val = null;
       }
     }
 
@@ -195,8 +191,8 @@ export default function PrognosePage() {
     ["omzet/dag", (m) => m.todoPerDag],
     ["PROGNOSES", () => null],
     ["prognose obv huidig", (m) => m.prognoseHuidig],
-    // >>> Hier de berekening volgens jouw regels:
-    ["prognose obv omzet to date", (m) => prognoseObvToDateByMonth.get(m.maand) ?? 0],
+    // Jouw gevraagde berekening; toekomstige maanden nu leeg:
+    ["prognose obv omzet to date", (m) => prognoseObvToDateByMonth.get(m.maand) ?? null],
     ["LONEN", () => null],
     ["Loonkosten", (m) => Number(getLoonkosten(m.maand))],
     ["% van omzet", (m) => getLoonkostenPercentage(m.maand, m.realisatieOmzet)],
