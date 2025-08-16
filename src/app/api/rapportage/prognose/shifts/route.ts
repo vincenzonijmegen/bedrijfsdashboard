@@ -249,15 +249,12 @@ export async function GET(req: NextRequest) {
         const need = curve.slice(offsetQ, offsetQ + lenQ);
         // zolang er nog behoefte >0 is, starten we een shift
         while (true) {
-          let idx = need.findIndex(v => v > 0);
-          if (idx === -1) break; // klaar
-          // start shift zo vroeg mogelijk
-          let startIdx = idx;
-          // default eind = zo ver mogelijk of min 3u vanaf start, maar niet over blok heen
-          let endIdx = Math.min(startIdx + Math.max(minQ, 1), lenQ); // minimaal 3u
-          // als daarna nog behoefte bestaat, verleng tot we of geen behoefte meer hebben of maxQ bereikt
-          while (endIdx < lenQ && (endIdx - startIdx) < maxQ && need.slice(startIdx, endIdx).some(v => v > 0)) {
-            endIdx++;
+  const idx = need.findIndex(v => v > 0);
+  if (idx === -1) break;
+  const startIdx = idx;
+  let endIdx = Math.min(startIdx + Math.max(minQ, 1), lenQ);
+  while (endIdx < lenQ && (endIdx - startIdx) < maxQ && need.slice(startIdx, endIdx).some(v => v > 0)) {
+    endIdx++;
           }
           // hoeveel mensen tegelijk nodig binnen dit interval? = max behoefte in interval
           const maxNeed = Math.max(...need.slice(startIdx, endIdx));
