@@ -68,34 +68,28 @@ export default function PrognosePage() {
       });
 
     // Loonkosten voor gekozen jaar (normaliseer response naar array)
-    // ⬇️ vervangt je bestaande fetch voor loonkosten
-fetch(`/api/rapportage/loonkosten?jaar=${selectedYear}`)
-  .then((res) => res.json())
-  .then((res) => {
-    // NIEUWE SHAPE eerst: { jaar, maanden: [...] }
-    const src = Array.isArray(res?.maanden)
-      ? res.maanden
-      : Array.isArray(res)
-      ? res
-      : Array.isArray(res?.data)
-      ? res.data
-      : [];
+    fetch(`/api/rapportage/loonkosten?jaar=${selectedYear}`)
+      .then((res) => res.json())
+      .then((res) => {
+        const src = Array.isArray(res?.maanden)
+          ? res.maanden
+          : Array.isArray(res)
+          ? res
+          : Array.isArray(res?.data)
+          ? res.data
+          : [];
 
-    const clean = (src as any[])
-      // eventueel beperken tot maart–september; mag je weglaten als je 12 maanden ok vindt
-      //.filter((x) => Number(x.maand) >= 3 && Number(x.maand) <= 9)
-      .map((x) => ({
-        jaar: Number(x.jaar ?? selectedYear),
-        maand: Number(x.maand ?? 0),
-        lonen: Number(x.lonen ?? 0),
-        loonheffing: Number(x.loonheffing ?? 0),
-        pensioenpremie: Number(x.pensioenpremie ?? 0),
-      }));
+        const clean = (src as any[]).map((x) => ({
+          jaar: Number(x.jaar ?? selectedYear),
+          maand: Number(x.maand ?? 0),
+          lonen: Number(x.lonen ?? 0),
+          loonheffing: Number(x.loonheffing ?? 0),
+          pensioenpremie: Number(x.pensioenpremie ?? 0),
+        }));
 
-    setLoonkosten(clean);
-  })
-  .catch(() => setLoonkosten([]));
-
+        setLoonkosten(clean);
+      })
+      .catch(() => setLoonkosten([]));
   }, [selectedYear]);
 
   const getLoonkosten = (maand: number) => {
@@ -124,6 +118,31 @@ fetch(`/api/rapportage/loonkosten?jaar=${selectedYear}`)
   const isHeaderLabel = (label: string) =>
     ["PROGNOSE", "REALISATIE", "TO-DO", "PROGNOSES", "LONEN"].includes(label.toUpperCase());
 
+  // --- Herstel "prognose obv omzet to date" per maand ---
+  const currentMonth = new Date().getMonth() + 1; // 1..12
+  const ytdMonths = data.map(m => m.maand).filter(m => m <= currentMonth);
+
+  const plannedYTD = ytdMonths.reduce((s, mnd) => {
+    const r = data.find(x => x.maand === mnd);
+    return s + (r?.prognoseOmzet ?? 0);
+  }, 0);
+
+  const actualYTD = ytdMonths.reduce((s, mnd) => {
+    const r = data.find(x => x.maand === mnd);
+    return s + (r?.realisatieOmzet ?? 0);
+  }, 0);
+
+  const ytdFactor = plannedYTD > 0 ? actualYTD / plannedYTD : 1;
+
+  const prognoseObvToDateByMonth = new Map<number, number>();
+  for (const m of data) {
+    const val =
+      m.maand < currentMonth
+        ? m.realisatieOmzet
+        : (m.prognoseOmzet ?? 0) * ytdFactor;
+    prognoseObvToDateByMonth.set(m.maand, val);
+  }
+
   const rows: [string, (m: MaandData) => number | null][] = [
     ["PROGNOSE", () => null],
     ["omzet", (m) => m.prognoseOmzet],
@@ -141,7 +160,7 @@ fetch(`/api/rapportage/loonkosten?jaar=${selectedYear}`)
     ["PROGNOSES", () => null],
     ["prognose obv huidig", (m) => m.prognoseHuidig],
     ["prognose plusmin", (m) => m.plusmin],
-    ["prognose obv omzet to date", (m) => m.jrPrognoseObvTotNu],
+    ["prognose obv omzet to date", (m) => prognoseObvToDateByMonth.get(m.maand) ?? 0],
     ["LONEN", () => null],
     ["Loonkosten", (m) => Number(getLoonkosten(m.maand))],
     ["% van omzet", (m) => getLoonkostenPercentage(m.maand, m.realisatieOmzet)],
