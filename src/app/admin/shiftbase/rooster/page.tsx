@@ -386,12 +386,6 @@ export default function RoosterPage() {
             –{" "}
             {new Date(weekDates[6] + "T12:00:00").toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit", year: "numeric" })}
           </h1>
-          <button
-            onClick={() => setShowChecks(s => !s)}
-            className="text-xs px-2 py-1 rounded border border-gray-300 hover:bg-gray-100"
-          >
-            {showChecks ? "Verberg controles" : "Toon controles"}
-          </button>
         </div>
       )}
 
@@ -531,7 +525,8 @@ export default function RoosterPage() {
                     }
                   }
 
-                  const requiredRevenue = dayCost > 0 ? Math.round(dayCost / 0.25) : 0;
+                  const requiredRevenue25 = dayCost > 0 ? Math.round(dayCost / 0.25) : 0;
+                  const requiredRevenue23 = dayCost > 0 ? Math.round(dayCost / 0.25) : 0;
 
                   return (
                     <div key={d} className="border rounded-lg p-2 text-xs leading-tight flex flex-col">
@@ -620,7 +615,9 @@ export default function RoosterPage() {
                         </div>
                         {dayCost > 0 && (
                           <div className="mt-0.5 text-[10px] text-gray-600 text-right">
-                            Omzet voor &lt; 25%: <strong>{EUR0.format(requiredRevenue)}</strong>
+                            Omzet voor &lt; 25%: <strong>{EUR0.format(requiredRevenue25)}</strong>
+                          
+                            Omzet voor &lt; 23%: <strong>{EUR0.format(requiredRevenue23)}</strong>
                           </div>
                         )}
                       </div>
