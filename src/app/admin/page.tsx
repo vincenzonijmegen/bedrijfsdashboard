@@ -291,6 +291,10 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} />
         <LinkCard href="/admin/omzet/omzetdagen" label="Omzetdagen aanpassen" color="teal" Icon={Wrench} />
       </Section>
+            
+      <Section id="prognosetools" title="📊 Prognosetools" color="teal" activeSection={activeSection} setActiveSection={setActiveSection}>
+        <LinkCard href="/admin/planning" label="Optimize" color="teal" Icon={Wrench} />
+      </Section>
     </main>
   );
 }
