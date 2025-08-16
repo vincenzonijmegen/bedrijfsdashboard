@@ -4,7 +4,6 @@ import { dbRapportage } from "@/lib/dbRapportage";
 
 export const runtime = "nodejs";
 
-/** Helpers */
 function isWeekend(d: Date) {
   const iso = (d.getUTCDay() + 6) % 7 + 1; // 1=Mon..7=Sun
   return iso >= 6;
@@ -29,11 +28,11 @@ export async function GET(req: NextRequest) {
     const startParam = searchParams.get("start");
     const eindeParam = searchParams.get("einde");
 
-    const norm = Number(searchParams.get("norm") || "100");           // € per medewerker per kwartier
-    const costPerQ = Number(searchParams.get("cost_per_q") || "3.75"); // loonkosten per kwartier per front medewerker
-    const keukenBasis = Number(searchParams.get("keuken_basis") || "0"); // 0/1 kostenmatig meenemen
-    const standbyLate = Number(searchParams.get("standby_late") || "1"); // 0/1/2
-    const maxShiftHours = Number(searchParams.get("max_shift_hours") || "6"); // 0 = geen limiet
+    const norm = Number(searchParams.get("norm") || "100");
+    const costPerQ = Number(searchParams.get("cost_per_q") || "3.75");
+    const keukenBasis = Number(searchParams.get("keuken_basis") || "0");
+    const standbyLate = Number(searchParams.get("standby_late") || "1");
+    const maxShiftHours = Number(searchParams.get("max_shift_hours") || "6");
 
     // Bereik bepalen
     let startDate: Date;
@@ -43,14 +42,13 @@ export async function GET(req: NextRequest) {
       endDate = toDate(eindeParam);
     } else if (maand) {
       startDate = toDate(`${jaar}-${String(maand).padStart(2,"0")}-01`);
-      endDate = new Date(Date.UTC(jaar, maand, 0)); // laatste dag maand
+      endDate = new Date(Date.UTC(jaar, maand, 0));
     } else {
       startDate = toDate(`${jaar}-01-01`);
       endDate = toDate(`${jaar}-12-31`);
     }
 
-    // === 1) Forecast per kwartier ophalen (hergebruikt jouw eerdere logica, versimpeld) ===
-    // We gebruiken dezelfde staffing-CTE als eerder, maar alleen de kolommen die we nodig hebben.
+    // Forecast-query
     const sql = `
       WITH
       hist_day AS (
@@ -185,33 +183,39 @@ export async function GET(req: NextRequest) {
       staffing AS (
         SELECT
           datum, uur, kwartier, omzet_forecast,
-          -- front benodigde inzet: min( omzet/norm , kostenplafond )
           CEIL(omzet_forecast / $2::numeric) AS behoefte_medewerkers,
           FLOOR((omzet_forecast * 0.23) / $3::numeric) AS max_medewerkers
         FROM forecast_quarter
       )
       SELECT
         datum, uur, kwartier,
-        GREATEST(0, LEAST(max_medewerkers, behoefte_medewerkers) - $4::int) AS front_needed  -- keuken_basis kan kostenmatig 'opeten'
+        GREATEST(0, LEAST(max_medewerkers, behoefte_medewerkers) - $4::int) AS front_needed
       FROM staffing
       WHERE datum BETWEEN $5::date AND $6::date
       ORDER BY datum, uur, kwartier;
     `;
 
-    const res = await dbRapportage.query(sql, [
-      jaar,            // $1
-      norm,            // $2
-      costPerQ,        // $3
-      keukenBasis,     // $4
-      formatISO(startDate), // $5
-      formatISO(endDate),   // $6
+    const raw = await dbRapportage.query(sql, [
+      jaar, norm, costPerQ, keukenBasis,
+      formatISO(startDate), formatISO(endDate)
     ]);
 
-    // === 2) Van kwartierbehoefte naar shifts per dag (greedy packer) ===
-    type Q = { t: number; need: number }; // t = kwartierindex vanaf dagstart
-    type Shift = { start: string; end: string; count: number; role: 'front' | 'standby' };
+    // Normaliseer datum naar string
+    type Row = { datum: string; uur: number; kwartier: number; front_needed: number };
+    const rows: Row[] = raw.rows.map((r: any) => ({
+      datum: typeof r.datum === "string" ? r.datum : new Date(r.datum).toISOString().slice(0,10),
+      uur: Number(r.uur),
+      kwartier: Number(r.kwartier),
+      front_needed: Math.max(0, Number(r.front_needed) || 0)
+    }));
 
-    // helper: kwartier->tijdstring
+    // Indexeer per dag
+    const byDate: Record<string, Row[]> = {};
+    rows.forEach(r => {
+      (byDate[r.datum] ||= []).push(r);
+    });
+
+    // Helpers
     function qToTime(dayStartHour: number, qIdx: number) {
       const mins = dayStartHour * 60 + qIdx * 15;
       const hh = Math.floor(mins / 60);
@@ -219,64 +223,52 @@ export async function GET(req: NextRequest) {
       return `${String(hh).padStart(2,"0")}:${String(mm).padStart(2,"0")}`;
     }
 
-    // plan 1 dag in 2 blokken: [open .. 17:30) en [17:30 .. sluit+schoon)
+    type Shift = { start: string; end: string; count: number; role: "front" | "standby" };
+
     function planDay(datumISO: string, month: number, isWknd: boolean) {
       const openHour = (month === 3) ? (isWknd ? 13 : 12) : (isWknd ? 13 : 12);
       const closeHour = (month === 3) ? 20 : 22;
       const cleanHour = (month === 3) ? 21 : 23;
-      const startQ = 0; // we genereren data vanaf open; opstart 11:30 kun je apart aanzetten indien gewenst
-      const qPerBlockA = ((17 * 60 + 30) - (openHour * 60)) / 15;  // open .. 17:30
-      const qPerBlockB = ((cleanHour * 60) - (17 * 60 + 30)) / 15; // 17:30 .. schoon klaar
+      const qPerBlockA = Math.round(((17 * 60 + 30) - (openHour * 60)) / 15);
+      const qPerBlockB = Math.round(((cleanHour * 60) - (17 * 60 + 30)) / 15);
       const totalQ = qPerBlockA + qPerBlockB;
 
-      const rows = res.rows.filter(r => r.datum.toISOString().slice(0,10) === datumISO);
-      // front_needed per kwartier vanaf openHour
+      const rowsForDay = byDate[datumISO] || [];
       const curve: number[] = [];
       for (let qi = 0; qi < totalQ; qi++) {
-        const absHour = Math.floor((openHour * 60 + qi * 15) / 60);
-        const absQ = ((openHour * 60 + qi * 15) % 60) / 15 + 1;
-        const row = rows.find(rr => rr.uur === absHour && rr.kwartier === absQ);
+        const absMinutes = openHour * 60 + qi * 15;
+        const absHour = Math.floor(absMinutes / 60);
+        const absQ = (absMinutes % 60) / 15 + 1;
+        const row = rowsForDay.find(rr => rr.uur === absHour && rr.kwartier === absQ);
         curve.push(Math.max(0, row?.front_needed ?? 0));
       }
 
-      // greedy packer op blok A en B
       const shifts: Shift[] = [];
       const minQ = 12; // 3 uur
       const maxQ = (maxShiftHours > 0 ? maxShiftHours * 4 : Number.POSITIVE_INFINITY);
 
       function fillBlock(offsetQ: number, lenQ: number, dayStartHour: number) {
-        // deficit array voor dit blok
         const need = curve.slice(offsetQ, offsetQ + lenQ);
-        // zolang er nog behoefte >0 is, starten we een shift
         while (true) {
-  const idx = need.findIndex(v => v > 0);
-  if (idx === -1) break;
-  const startIdx = idx;
-  let endIdx = Math.min(startIdx + Math.max(minQ, 1), lenQ);
-  while (endIdx < lenQ && (endIdx - startIdx) < maxQ && need.slice(startIdx, endIdx).some(v => v > 0)) {
-    endIdx++;
+          const idx = need.findIndex(v => v > 0);
+          if (idx === -1) break;
+          const startIdx = idx;
+          let endIdx = Math.min(startIdx + Math.max(minQ, 1), lenQ);
+          while (endIdx < lenQ && (endIdx - startIdx) < maxQ && need.slice(startIdx, endIdx).some(v => v > 0)) {
+            endIdx++;
           }
-          // hoeveel mensen tegelijk nodig binnen dit interval? = max behoefte in interval
           const maxNeed = Math.max(...need.slice(startIdx, endIdx));
-          // plan exact zoveel personen
           for (let i = startIdx; i < endIdx; i++) need[i] = Math.max(0, need[i] - maxNeed);
 
-          // transleer naar kloktijden
-          const absStartQ = offsetQ + startIdx;
-          const absEndQ = offsetQ + endIdx;
           const startStr = qToTime(dayStartHour, startIdx);
           const endStr = qToTime(dayStartHour, endIdx);
-
           shifts.push({ role: "front", start: startStr, end: endStr, count: maxNeed });
         }
       }
 
-      // blok A: open..17:30
       fillBlock(0, qPerBlockA, openHour);
-      // blok B: 17:30..cleanHour
-      fillBlock(qPerBlockA, qPerBlockB, 17 + 0.5); // 17.5 => 17:30
+      fillBlock(qPerBlockA, qPerBlockB, 17.5);
 
-      // standby late
       if (standbyLate > 0) {
         shifts.push({
           role: "standby",
@@ -289,14 +281,13 @@ export async function GET(req: NextRequest) {
       return { date: datumISO, open: `${openHour}:00`, close: `${closeHour}:00`, clean_done: `${cleanHour}:00`, shifts };
     }
 
-    // loop dagen
+    // Loop over dagen
     const out: any[] = [];
     for (let d = new Date(startDate); d <= endDate; d = new Date(d.getTime() + 86400000)) {
       const iso = formatISO(d);
       const wknd = isWeekend(d);
       const m = d.getUTCMonth() + 1;
-      // plan alleen als er forecast entries zijn
-      if (res.rows.find(r => r.datum.toISOString().slice(0,10) === iso)) {
+      if (byDate[iso]) {
         out.push(planDay(iso, m, wknd));
       }
     }
