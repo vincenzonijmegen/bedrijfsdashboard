@@ -293,7 +293,7 @@ export default function AdminDashboard() {
       </Section>
             
       <Section id="prognosetools" title="📊 Prognosetools" color="teal" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/planning" label="Optimize" color="teal" Icon={Wrench} />
+        <LinkCard href="/admin/planning/forecast" label="Forecast planning" color="teal" Icon={Wrench} />
       </Section>
     </main>
   );
