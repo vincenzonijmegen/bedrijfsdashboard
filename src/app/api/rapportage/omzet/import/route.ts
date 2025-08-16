@@ -2,7 +2,7 @@
 
 import { dbRapportage } from '@/lib/dbRapportage';
 import { NextResponse, NextRequest } from 'next/server';
-import { refreshOmzetMaand } from '@/lib/refreshOmzetMaand'; // ⬅️ NIEUW
+import { refreshOmzetMaand } from '@/lib/refreshOmzetMaand';
 
 // Voor zelf-ondertekende certificaten (NIET aanbevolen voor productie)
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   const password = process.env.KASSA_PASS!;
 
   try {
-    // Ophalen van de data met Basic Auth
+    // 1) Externe data ophalen (Basic Auth)
     const dataUrl = `${baseUrl}?start=${encodeURIComponent(startParam)}&einde=${encodeURIComponent(eindeParam)}`;
     const authHeader = 'Basic ' + Buffer.from(`${username}:${password}`).toString('base64');
     console.log('Fetching data from:', dataUrl);
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     }
     console.log('Gedecodeerde items:', data.length);
 
-    // Filter en parse records, bereken eenheidsprijs als totaalbedrag / aantal
+    // 2) Filteren/parsen, bereken eenheidsprijs
     const clean = data
       .filter((row: any) => row.Datum && row.Tijd && row.Omschrijving && row.Aantal && row.Totaalbedrag)
       .map((row: any) => {
@@ -74,42 +74,63 @@ export async function POST(req: NextRequest) {
         const eenheidsprijs = aantal > 0 ? totaalBedrag / aantal : 0;
         return {
           datum,
-          tijdstip: row.Tijd as string,
+          tijdstip: row.Tijd as string,      // Postgres mag dit casten naar TIME
           product: row.Omschrijving as string,
           aantal,
           eenheidsprijs,
         };
       });
 
-    // Verwijder bestaande data in de range
+    // 3) Oude omzetregels in range verwijderen + nieuwe inserten
     console.log('Verwijder oude records van', isoStart, 'tot', isoEinde);
     await dbRapportage.query(
       'DELETE FROM rapportage.omzet WHERE datum BETWEEN $1 AND $2',
       [isoStart, isoEinde]
     );
 
-    if (clean.length === 0) {
+    if (clean.length > 0) {
+      console.log('Invoegen van', clean.length, 'records');
+      const placeholders: string[] = [];
+      const values: any[] = [];
+      clean.forEach((item, idx) => {
+        const off = idx * 5;
+        placeholders.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5})`);
+        values.push(item.datum, item.tijdstip, item.product, item.aantal, item.eenheidsprijs);
+      });
+      const insertSQL = `
+        INSERT INTO rapportage.omzet (datum, tijdstip, product, aantal, eenheidsprijs)
+        VALUES ${placeholders.join(',')}
+      `;
+      await dbRapportage.query(insertSQL, values);
+    } else {
       console.log('Geen nieuwe records om in te voegen');
-      // MV hoeft niet ge-refreshed: er is niets veranderd
-      return NextResponse.json({ success: true, imported: 0 });
     }
 
-    // Bulk insert
-    console.log('Invoegen van', clean.length, 'records');
-    const placeholders: string[] = [];
-    const values: any[] = [];
-    clean.forEach((item, idx) => {
-      const off = idx * 5;
-      placeholders.push(`($${off + 1}, $${off + 2}, $${off + 3}, $${off + 4}, $${off + 5})`);
-      values.push(item.datum, item.tijdstip, item.product, item.aantal, item.eenheidsprijs);
-    });
-    const insertSQL = `
-      INSERT INTO rapportage.omzet (datum, tijdstip, product, aantal, eenheidsprijs)
-      VALUES ${placeholders.join(',')}
-    `;
-    await dbRapportage.query(insertSQL, values);
+    // 5) Kwartier-aggregatie in dezelfde range (idempotent: delete + insert)
+    console.log('Herbouw kwartieren', isoStart, 't/m', isoEinde);
+    await dbRapportage.query(
+      `DELETE FROM rapportage.omzet_kwartier
+       WHERE datum BETWEEN $1::date AND $2::date`,
+      [isoStart, isoEinde]
+    );
 
-    // ⬇️ NIEUW: MV verversen ná writes (niet in transactie)
+    const kwartierInsert = await dbRapportage.query(
+      `INSERT INTO rapportage.omzet_kwartier
+         (datum, uur, kwartier, omzet, aantal_transacties)
+       SELECT
+         DATE(o.datum)                                            AS datum,
+         EXTRACT(HOUR   FROM (o.tijdstip)::time)::int             AS uur,
+         FLOOR(EXTRACT(MINUTE FROM (o.tijdstip)::time)::int / 15) + 1 AS kwartier, -- 1..4
+         SUM(o.aantal * o.eenheidsprijs)                          AS omzet,
+         COUNT(*)                                                 AS aantal_transacties
+       FROM rapportage.omzet o
+       WHERE o.datum BETWEEN $1::date AND $2::date
+       GROUP BY 1,2,3
+       ORDER BY 1,2,3`,
+      [isoStart, isoEinde]
+    );
+
+    // 6) MV verversen (zoals je al had)
     try {
       await refreshOmzetMaand();
     } catch (e) {
@@ -117,8 +138,13 @@ export async function POST(req: NextRequest) {
       // Niet laten falen; rapportage is hooguit een import achter
     }
 
-    console.log('Import geslaagd');
-    return NextResponse.json({ success: true, imported: clean.length });
+    console.log('Import + kwartieren geslaagd');
+    return NextResponse.json({
+      success: true,
+      imported: clean.length,
+      kwartieren_inserted: kwartierInsert.rowCount ?? 0,
+      range: { start: isoStart, einde: isoEinde },
+    });
   } catch (err: any) {
     console.error('Import fout:', err);
     return NextResponse.json(
