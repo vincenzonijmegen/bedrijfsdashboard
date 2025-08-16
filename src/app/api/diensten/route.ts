@@ -1,14 +1,14 @@
-// app/api/diensten/route.ts
 import { NextResponse } from "next/server";
+
+// Helper: vandaag in Europe/Amsterdam als YYYY-MM-DD
+function todayAmsterdam(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
+}
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const date = url.searchParams.get("date");
+  const date = url.searchParams.get("date") || todayAmsterdam(); // fallback naar vandaag
   const rol = url.searchParams.get("rol") ?? "balie";
-
-  if (!date) {
-    return NextResponse.json({ ok: false, error: "Missing ?date=YYYY-MM-DD" }, { status: 400 });
-  }
 
   const BASE = process.env.REKENSERVICE_URL;
   const TOKEN = process.env.API_REKEN_TOKEN;
@@ -20,11 +20,18 @@ export async function GET(req: Request) {
     );
   }
 
-  const upstream = await fetch(`${BASE}/diensten/day?date=${encodeURIComponent(date)}&rol=${encodeURIComponent(rol)}`, {
-    headers: { Authorization: `Bearer ${TOKEN}` },
-    cache: "no-store",
-  });
+  const upstream = await fetch(
+    `${BASE}/diensten/day?date=${encodeURIComponent(date)}&rol=${encodeURIComponent(rol)}`,
+    { headers: { Authorization: `Bearer ${TOKEN}` }, cache: "no-store" }
+  );
 
-  const data = await upstream.json();
+  // Als upstream geen JSON geeft, opvangen:
+  let data: any;
+  try {
+    data = await upstream.json();
+  } catch {
+    data = { ok: false, error: `Upstream ${upstream.status} (geen JSON)` };
+  }
+
   return NextResponse.json(data, { status: upstream.status });
 }

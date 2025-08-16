@@ -1,7 +1,6 @@
-// app/diensten/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 type Dienst = {
   id: number;
@@ -31,23 +30,18 @@ function toLocal(ts?: string | null) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
+// Vandaag in Europe/Amsterdam als YYYY-MM-DD
+function todayAmsterdam(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
+}
+
 export default function DienstenPage() {
-  const [date, setDate] = useState<string>("");
+  const defaultDate = useMemo(() => todayAmsterdam(), []);
+  const [date, setDate] = useState<string>(defaultDate); // direct ingevuld
   const [rol, setRol] = useState<string>("balie");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [data, setData] = useState<ApiResp | null>(null);
-
-  // vandaag als default
-  useEffect(() => {
-    if (!date) {
-      const now = new Date();
-      const yyyy = now.getFullYear();
-      const mm = String(now.getMonth() + 1).padStart(2, "0");
-      const dd = String(now.getDate()).padStart(2, "0");
-      setDate(`${yyyy}-${mm}-${dd}`);
-    }
-  }, [date]);
 
   const load = async () => {
     if (!date) return;
@@ -69,8 +63,6 @@ export default function DienstenPage() {
       setLoading(false);
     }
   };
-
-  const totalUren = useMemo(() => data?.totaal_uren ?? 0, [data]);
 
   return (
     <div className="p-6 space-y-6">
@@ -95,7 +87,7 @@ export default function DienstenPage() {
             className="border rounded-lg px-3 py-2"
           >
             <option value="balie">balie</option>
-            {/* voeg hier extra rollen toe indien nodig */}
+            {/* andere rollen hier */}
           </select>
         </label>
 
@@ -129,7 +121,7 @@ export default function DienstenPage() {
               <span className="font-medium">Aantal diensten:</span> {data.dienst_count}
             </div>
             <div className="text-sm text-gray-700">
-              <span className="font-medium">Totaal uren:</span> {totalUren.toFixed(2)}
+              <span className="font-medium">Totaal uren:</span> {data.totaal_uren.toFixed(2)}
             </div>
             <div className="text-sm text-gray-700">
               <span className="font-medium">Eerste start:</span> {toLocal(data.eerste_start)}
