@@ -71,6 +71,7 @@ export default function PrognosePage() {
     fetch(`/api/rapportage/loonkosten?jaar=${selectedYear}`)
       .then((res) => res.json())
       .then((res) => {
+        // NIEUWE SHAPE eerst: { jaar, maanden: [...] }
         const src = Array.isArray(res?.maanden)
           ? res.maanden
           : Array.isArray(res)
@@ -118,31 +119,6 @@ export default function PrognosePage() {
   const isHeaderLabel = (label: string) =>
     ["PROGNOSE", "REALISATIE", "TO-DO", "PROGNOSES", "LONEN"].includes(label.toUpperCase());
 
-  // --- Herstel "prognose obv omzet to date" per maand ---
-  const currentMonth = new Date().getMonth() + 1; // 1..12
-  const ytdMonths = data.map(m => m.maand).filter(m => m <= currentMonth);
-
-  const plannedYTD = ytdMonths.reduce((s, mnd) => {
-    const r = data.find(x => x.maand === mnd);
-    return s + (r?.prognoseOmzet ?? 0);
-  }, 0);
-
-  const actualYTD = ytdMonths.reduce((s, mnd) => {
-    const r = data.find(x => x.maand === mnd);
-    return s + (r?.realisatieOmzet ?? 0);
-  }, 0);
-
-  const ytdFactor = plannedYTD > 0 ? actualYTD / plannedYTD : 1;
-
-  const prognoseObvToDateByMonth = new Map<number, number>();
-  for (const m of data) {
-    const val =
-      m.maand < currentMonth
-        ? m.realisatieOmzet
-        : (m.prognoseOmzet ?? 0) * ytdFactor;
-    prognoseObvToDateByMonth.set(m.maand, val);
-  }
-
   const rows: [string, (m: MaandData) => number | null][] = [
     ["PROGNOSE", () => null],
     ["omzet", (m) => m.prognoseOmzet],
@@ -160,7 +136,7 @@ export default function PrognosePage() {
     ["PROGNOSES", () => null],
     ["prognose obv huidig", (m) => m.prognoseHuidig],
     ["prognose plusmin", (m) => m.plusmin],
-    ["prognose obv omzet to date", (m) => prognoseObvToDateByMonth.get(m.maand) ?? 0],
+    ["prognose obv omzet to date", (m) => m.jrPrognoseObvTotNu],
     ["LONEN", () => null],
     ["Loonkosten", (m) => Number(getLoonkosten(m.maand))],
     ["% van omzet", (m) => getLoonkostenPercentage(m.maand, m.realisatieOmzet)],
