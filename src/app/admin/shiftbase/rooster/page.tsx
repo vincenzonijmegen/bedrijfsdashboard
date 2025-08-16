@@ -111,7 +111,7 @@ const GEWENSTE = ["S1K","S1KV","S1","S1Z","S1L","S1S","S2K","S2","S2L","S2S","SP
 const keyDU = (date: string, userId: string | number) => `${date}:${String(userId)}`;
 
 // Fallback factor als de server (nog) geen factor/opslag terugstuurt:
-const DEFAULT_FACTOR = 1.36;
+const DEFAULT_FACTOR = 1;
 
 // Haal de effectieve factor uit een WageByAgeRow (factor > opslag > default)
 function getEffectiveFactor(row?: { factor?: number; opslag?: number }) {
