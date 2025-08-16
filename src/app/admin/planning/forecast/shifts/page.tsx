@@ -51,10 +51,11 @@ export default function ForecastPlanningPage() {
         </div>
         <div>
           <label className="block text-sm">Keukenbasis</label>
-          <select value={keukenBasis} onChange={e => setKeukenBasis(Number(e.target.value))} className="border rounded px-2 py-1 w-full">
-            <option value={0}>Nee</option>
-            <option value={1}>Ja</option>
-          </select>
+<select value={keukenBasis} onChange={e => setKeukenBasis(Number(e.target.value))}>
+  <option value="0">Nee</option>
+  <option value="1">Ja</option>
+</select>
+
         </div>
       </div>
 
