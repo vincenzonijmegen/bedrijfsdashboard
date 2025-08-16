@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 
-// Helper: vandaag in Europe/Amsterdam als YYYY-MM-DD
 function todayAmsterdam(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
 }
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const date = url.searchParams.get("date") || todayAmsterdam(); // fallback naar vandaag
+  const date = url.searchParams.get("date") || todayAmsterdam();
   const rol = url.searchParams.get("rol") ?? "balie";
 
   const BASE = process.env.REKENSERVICE_URL;
@@ -25,7 +24,6 @@ export async function GET(req: Request) {
     { headers: { Authorization: `Bearer ${TOKEN}` }, cache: "no-store" }
   );
 
-  // Als upstream geen JSON geeft, opvangen:
   let data: any;
   try {
     data = await upstream.json();

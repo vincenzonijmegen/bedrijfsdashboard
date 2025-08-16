@@ -26,18 +26,17 @@ type ApiResp = {
 
 function toLocal(ts?: string | null) {
   if (!ts) return "";
-  const d = new Date(ts);
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const d = new Date(ts); // string zonder TZ wordt als lokale tijd geïnterpreteerd
+  return d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
 }
 
-// Vandaag in Europe/Amsterdam als YYYY-MM-DD
 function todayAmsterdam(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
 }
 
 export default function DienstenPage() {
   const defaultDate = useMemo(() => todayAmsterdam(), []);
-  const [date, setDate] = useState<string>(defaultDate); // direct ingevuld
+  const [date, setDate] = useState<string>(defaultDate);
   const [rol, setRol] = useState<string>("balie");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -87,7 +86,6 @@ export default function DienstenPage() {
             className="border rounded-lg px-3 py-2"
           >
             <option value="balie">balie</option>
-            {/* andere rollen hier */}
           </select>
         </label>
 
