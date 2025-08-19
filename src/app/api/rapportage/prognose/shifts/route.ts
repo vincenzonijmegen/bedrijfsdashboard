@@ -221,7 +221,7 @@ export async function GET(req: NextRequest) {
         omzet_forecast,
         LEAST(max_medewerkers, behoefte_medewerkers) AS front_needed
       FROM staffing
-      WHERE datum BETWEEN $5::date AND $6::date
+      WHERE datum BETWEEN $4::date AND $5::date
       ORDER BY datum, uur, kwartier;
     `;
 
