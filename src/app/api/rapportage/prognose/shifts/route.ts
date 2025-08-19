@@ -138,30 +138,34 @@ export async function GET(req: NextRequest) {
         FROM day_share
       ),
       quarters AS (
-        SELECT
-          df.datum, df.maand, df.dagtype, df.dag_omzet_forecast, gs AS ts,
-          EXTRACT(HOUR FROM gs)::int AS uur,
-          (FLOOR(EXTRACT(MINUTE FROM gs)::int / 15) + 1)::int AS kwartier
-        FROM day_forecast df
-        CROSS JOIN LATERAL (
-          SELECT generate_series(
-            CASE
-              WHEN df.maand = 3 THEN
-                make_timestamp(EXTRACT(YEAR FROM df.datum)::int, df.maand, EXTRACT(DAY FROM df.datum)::int,
-                               CASE WHEN df.dagtype='weekend' THEN 13 ELSE 12 END, 0, 0)
-              ELSE
-                make_timestamp(EXTRACT(YEAR FROM df.datum)::int, df.maand, EXTRACT(DAY FROM df.datum)::int,
-                               CASE WHEN df.dagtype='weekend' THEN 13 ELSE 12 END, 0, 0)
-            END,
-            CASE
-              WHEN df.maand = 3
-                THEN make_timestamp(EXTRACT(YEAR FROM df.datum)::int, df.maand, EXTRACT(DAY FROM df.datum)::int, 20, 0, 0)
-              ELSE make_timestamp(EXTRACT(YEAR FROM df.datum)::int, df.maand, EXTRACT(DAY FROM df.datum)::int, 22, 0, 0)
-            END,
-            interval '15 min'
-          )
-        ) gs
-      ),
+  SELECT
+    df.datum, df.maand, df.dagtype, df.dag_omzet_forecast,
+    gs.ts,                                                -- tijdstempel-kolom
+    EXTRACT(HOUR FROM gs.ts)::int AS uur,
+    (FLOOR(EXTRACT(MINUTE FROM gs.ts)::int / 15) + 1)::int AS kwartier
+  FROM day_forecast df
+  CROSS JOIN LATERAL (
+    SELECT generate_series(
+      -- starttijd
+      CASE
+        WHEN df.maand = 3 THEN
+          make_timestamp(EXTRACT(YEAR FROM df.datum)::int, df.maand, EXTRACT(DAY FROM df.datum)::int,
+                         CASE WHEN df.dagtype='weekend' THEN 13 ELSE 12 END, 0, 0)
+        ELSE
+          make_timestamp(EXTRACT(YEAR FROM df.datum)::int, df.maand, EXTRACT(DAY FROM df.datum)::int,
+                         CASE WHEN df.dagtype='weekend' THEN 13 ELSE 12 END, 0, 0)
+      END,
+      -- eindtijd
+      CASE
+        WHEN df.maand = 3
+          THEN make_timestamp(EXTRACT(YEAR FROM df.datum)::int, df.maand, EXTRACT(DAY FROM df.datum)::int, 20, 0, 0)
+        ELSE make_timestamp(EXTRACT(YEAR FROM df.datum)::int, df.maand, EXTRACT(DAY FROM df.datum)::int, 22, 0, 0)
+      END,
+      interval '15 min'
+    ) AS ts   -- <-- geef de kolom een naam!
+  ) gs
+),
+
       q_with_pct AS (
         SELECT q.*, COALESCE(qs.q_pct,0) AS q_pct_raw
         FROM quarters q
