@@ -109,42 +109,43 @@ export async function GET(req: NextRequest) {
     const robustHourMap: Record<number, Record<number, number>> = {};
     if (robustOn) {
       const sqlWinsorHours = `
-        WITH base AS (
-          SELECT
-            DATE(o.datum)                           AS d,
-            EXTRACT(MONTH  FROM o.datum)::int       AS m,
-            EXTRACT(ISODOW FROM o.datum)::int       AS isodow,
-            EXTRACT(HOUR   FROM o.datum)::int       AS uur,
-            SUM(o.omzet)::numeric                   AS omzet_uur
-          FROM rapportage.omzet_kwartier o
-          WHERE EXTRACT(MONTH FROM o.datum)::int = $1
-          GROUP BY 1,2,3,4
-        ),
-        b AS (
-          SELECT isodow, uur, omzet_uur
-          FROM   base
-          WHERE  m = $1
-        ),
-        bounds AS (
-          SELECT
-            isodow, uur,
-            PERCENTILE_CONT($2)   WITHIN GROUP (ORDER BY omzet_uur) AS p_low,
-            PERCENTILE_CONT(1-$2) WITHIN GROUP (ORDER BY omzet_uur) AS p_high
-          FROM b
-          GROUP BY isodow, uur
-        ),
-        winsored AS (
-          SELECT
-            b.isodow, b.uur,
-            GREATEST(LEAST(b.omzet_uur, bo.p_high), bo.p_low) AS w
-          FROM b
-          JOIN bounds bo USING (isodow, uur)
-        )
-        SELECT isodow::int, uur::int, AVG(w)::numeric AS winsor_mean
-        FROM winsored
-        GROUP BY isodow, uur
-        ORDER BY isodow, uur;
-      `;
+  WITH base AS (
+    SELECT
+      o.datum::date                           AS d,
+      EXTRACT(MONTH  FROM o.datum)::int       AS m,
+      EXTRACT(ISODOW FROM o.datum)::int       AS isodow,
+      o.uur::int                              AS uur,        -- <-- HIER: kolom 'uur' gebruiken
+      SUM(o.omzet)::numeric                   AS omzet_uur
+    FROM rapportage.omzet_kwartier o
+    WHERE EXTRACT(MONTH FROM o.datum)::int = $1
+    GROUP BY 1,2,3,4
+  ),
+  b AS (
+    SELECT isodow, uur, omzet_uur
+    FROM   base
+    WHERE  m = $1
+  ),
+  bounds AS (
+    SELECT
+      isodow, uur,
+      PERCENTILE_CONT($2)   WITHIN GROUP (ORDER BY omzet_uur)   AS p_low,
+      PERCENTILE_CONT(1-$2) WITHIN GROUP (ORDER BY omzet_uur)   AS p_high
+    FROM b
+    GROUP BY isodow, uur
+  ),
+  winsored AS (
+    SELECT
+      b.isodow, b.uur,
+      GREATEST(LEAST(b.omzet_uur, bo.p_high), bo.p_low) AS w
+    FROM b
+    JOIN bounds bo USING (isodow, uur)
+  )
+  SELECT isodow::int, uur::int, AVG(w)::numeric AS winsor_mean
+  FROM winsored
+  GROUP BY isodow, uur
+  ORDER BY isodow, uur;
+`;
+
       const wr = await db.query(sqlWinsorHours, [maand, winsorAlpha]);
       for (const r of wr.rows) {
         const d = Number(r.isodow);
