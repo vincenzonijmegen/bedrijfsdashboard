@@ -181,7 +181,7 @@ export async function GET(req: NextRequest) {
     const avgItemRevMonth = totItems > 0 ? (totOmzet / totItems) : 0;
 
     // 4) MONTHLY BUDGET: jaar→maand→dag (alleen useMonthly)
-    let monthBudgetMap: Record<number, number> = {};
+    const monthBudgetMap: Record<number, number> = {};
     let monthExpThis = 0;
     if (includeStaff && useMonthly) {
       // Vorig jaar en jaarbudget 23%
