@@ -215,15 +215,22 @@ export default function ForecastPlanningPage() {
                                   </div>
                                   {showStaff && (
                                     <div className="flex items-center justify-between text-xs opacity-90">
-                                      <span>
+                                        <span>
                                         N {s.staff_norm ?? 0}
                                         { (s.staff_capacity ?? 0) > 0 && ` | Cap ${s.staff_capacity}` }
-                                      </span>
-                                      <span>
+                                        </span>
+                                        <span className="flex items-center gap-1">
                                         Bud {s.staff_budget_cap ?? 0} ➜ Plan <strong>{s.staff_plan ?? 0}</strong>
-                                      </span>
+                                        {s.over_budget ? (
+                                            <span className="inline-flex items-center gap-1 text-rose-700">
+                                            <span className="inline-block h-2 w-2 rounded-full bg-rose-600" />
+                                            {`+${fmtEUR2(s.budget_gap_eur || 0)}`}
+                                            </span>
+                                        ) : null}
+                                        </span>
                                     </div>
-                                  )}
+                                    )}
+
                                 </div>
                               </td>
                             );

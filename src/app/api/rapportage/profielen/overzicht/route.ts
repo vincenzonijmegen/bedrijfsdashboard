@@ -249,14 +249,29 @@ export async function GET(req: NextRequest) {
           // Budget-cap: restant budget voor front / front kost/kw
           const staff_budget_cap = costPerQ > 0 ? Math.floor(quarterBudgetFront / costPerQ) : 0;
 
-          const need = Math.max(staff_norm, staff_capacity);
-          const plan = Math.min(staff_budget_cap, need);
+          // ... boven heb je quarterBudgetFront, staff_norm, staff_capacity, staff_budget_cap
+            const need = Math.max(staff_norm, staff_capacity);
 
-          slots.push({
+            // Minimale bezetting tijdens opening: altijd ≥ 1
+            const minCoverage = 1;
+
+            // Eerst "planRaw" (wat binnen budget past), daarna forceren we min 1
+            const planRaw = Math.min(staff_budget_cap, need);
+            const staff_plan = Math.max(minCoverage, planRaw);
+
+            // Als we boven budget moeten gaan om min. coverage te halen, toon dat
+            const over_budget = staff_plan > staff_budget_cap;
+            const budget_gap_eur = over_budget ? Number((staff_plan * costPerQ - quarterBudgetFront).toFixed(2)) : 0;
+
+            slots.push({
             from_to, uur: h, kwartier: q, omzet_avg,
             budget_eur: Number(quarterBudgetFront.toFixed(2)),
-            staff_norm, staff_capacity, staff_budget_cap, staff_plan: plan
-          });
+            staff_norm, staff_capacity, staff_budget_cap,
+            staff_plan,
+            over_budget,
+            budget_gap_eur
+            });
+
         }
       }
 
