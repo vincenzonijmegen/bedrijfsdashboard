@@ -57,14 +57,17 @@ export default function ForecastPlanningPage() {
   const [kEveCount, setKEveCount] = useState(1);
   const [kCostPerQ, setKCostPerQ] = useState(7.5); // €/15m
 
-  // Pre-open / Clean (front geforceerd)
-  const [openLead, setOpenLead] = useState(30); // minuten
+  // NS-blokken
+  const [openLead, setOpenLead] = useState(30);
   const [closeTrail, setCloseTrail] = useState(60);
   const [startupFront, setStartupFront] = useState(1);
   const [cleanFront, setCleanFront] = useState(2);
 
   // Blokgrootte
   const [blockMinutes, setBlockMinutes] = useState<15|30>(15);
+
+  // Budgetmethode
+  const [budgetMode, setBudgetMode] = useState<"monthly"|"slot">("monthly");
 
   const query = useMemo(() => {
     const p = new URLSearchParams({
@@ -74,6 +77,7 @@ export default function ForecastPlanningPage() {
       close_trail_minutes: String(closeTrail),
       startup_front_count: String(startupFront),
       clean_front_count: String(cleanFront),
+      budget_mode: budgetMode,
     });
     if (robust) { p.set("robust","1"); p.set("winsor_alpha", String(winsorAlpha)); }
     if (showStaff) {
@@ -89,13 +93,17 @@ export default function ForecastPlanningPage() {
       p.set("kitchen_cost_per_q", String(kCostPerQ));
     }
     return `/api/rapportage/profielen/overzicht?${p.toString()}`;
-  }, [maand, blockMinutes, openLead, closeTrail, startupFront, cleanFront, robust, winsorAlpha, showStaff, jaar, groei, norm, costPerQ, itemsPerQ, kDayStart, kDayCount, kEveCount, kCostPerQ]);
+  }, [
+    maand, blockMinutes, openLead, closeTrail, startupFront, cleanFront,
+    budgetMode, robust, winsorAlpha, showStaff, jaar, groei, norm, costPerQ, itemsPerQ,
+    kDayStart, kDayCount, kEveCount, kCostPerQ
+  ]);
 
   const { data, error, isLoading } = useSWR(query, fetcher);
 
   return (
     <div className="p-6 space-y-6">
-      {/* Titel + maand + blokgrootte */}
+      {/* Titel + maand + blokgrootte + budgetmode */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-2xl font-bold">Gemiddelde omzet – {maandNamen[maand]}</h1>
         <div className="flex items-end gap-4 flex-wrap">
@@ -110,6 +118,13 @@ export default function ForecastPlanningPage() {
             <select value={blockMinutes} onChange={e=>setBlockMinutes(Number(e.target.value) as 15|30)} className="border rounded px-2 py-1 w-full">
               <option value={15}>15 minuten</option>
               <option value={30}>30 minuten</option>
+            </select>
+          </div>
+          <div className="w-64">
+            <label className="block text-sm mb-1">Budgetmethode</label>
+            <select value={budgetMode} onChange={e=>setBudgetMode(e.target.value as any)} className="border rounded px-2 py-1 w-full">
+              <option value="monthly">Maandbudget (compenseert)</option>
+              <option value="slot">23% per blok (direct)</option>
             </select>
           </div>
         </div>
@@ -157,7 +172,7 @@ export default function ForecastPlanningPage() {
                 <input type="number" value={itemsPerQ} onChange={e=>setItemsPerQ(Number(e.target.value))}
                        className="border rounded px-2 py-1 w-full" /></div>
 
-              {/* Keuken & non-sales blokken */}
+              {/* Keuken & NS-blokken */}
               <div><label className="block text-sm mb-1">Keuken dag start</label>
                 <input type="time" step={900} value={kDayStart} onChange={e=>setKDayStart(e.target.value)}
                        className="border rounded px-2 py-1 w-full" /></div>
@@ -184,6 +199,16 @@ export default function ForecastPlanningPage() {
                 <input type="number" min={0} value={cleanFront} onChange={e=>setCleanFront(Number(e.target.value))}
                        className="border rounded px-2 py-1 w-full" /></div>
             </div>
+
+            {/* (optioneel) meta uit API: items_per_unit, unit_cost_front/kitchen, etc. */}
+            {data?.staff_meta && (
+              <div className="text-sm text-gray-700 flex flex-wrap gap-4">
+                <span><b>avg €/item:</b> {fmtEUR2(data.staff_meta.avg_item_rev_month || 0)}</span>
+                <span><b>€ front / blok:</b> {fmtEUR2(data.staff_meta.unit_cost_front || 0)}</span>
+                <span><b>€ keuken / blok:</b> {fmtEUR2(data.staff_meta.unit_cost_kitchen || 0)}</span>
+                <span><b>budget:</b> {data?.staff_meta?.budget_mode}</span>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -204,8 +229,7 @@ export default function ForecastPlanningPage() {
 
             // Dagomzet (alleen sales-blokken)
             const dayRevenue = wd.slots.reduce((sum: number, s: any) => {
-              const isSales = s.slot_type === "sales";
-              if (!isSales) return sum;
+              if (s.slot_type !== "sales") return sum;
               const v = Number(robust && s.omzet_avg_robust != null ? s.omzet_avg_robust : s.omzet_avg);
               return sum + v;
             }, 0);
