@@ -162,7 +162,7 @@ export async function GET(req: NextRequest) {
     const rows = rs.rows as ProfielRow[];
 
     // Optionele berekende kolommen
-    let data: any[] = rows.map(r => {
+    const data: any[] = rows.map(r => {
       const omzetAvg = Number(r.omzet_avg);
       const out: any = {
         maand: r.maand, isodow: r.isodow, uur: r.uur, kwartier: r.kwartier,
