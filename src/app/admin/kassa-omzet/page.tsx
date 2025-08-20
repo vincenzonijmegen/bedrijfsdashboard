@@ -34,22 +34,45 @@ export default function KassaOmzetImportPage() {
   }, []);
 
   const handleImport = async () => {
-    setStatus('Importeren...');
-    try {
-      const res = await fetch(
-        `/api/rapportage/omzet/import?start=${startDate}&einde=${endDate}`,
-        { method: 'POST' }
-      );
-      const json = await res.json();
-      setStatus(`Import resultaat: ${JSON.stringify(json)}`);
-      // Refresh last import
-      const r2 = await fetch('/api/rapportage/omzet/last-import');
+  setStatus("Importeren...");
+  try {
+    const res = await fetch(
+      `/api/rapportage/omzet/import?start=${startDate}&einde=${endDate}`,
+      { method: "POST" }
+    );
+
+    // Lees altijd als tekst, zodat we ook bij HTML/500 een nette melding tonen
+    const ct = res.headers.get("content-type") || "";
+    const body = await res.text();
+
+    if (!res.ok) {
+      setStatus(`❌ Fout bij import (HTTP ${res.status}): ${body.slice(0, 400)}`);
+      return;
+    }
+
+    // Probeer JSON te parsen (onze route hoort JSON te geven)
+    const json = ct.includes("application/json") ? JSON.parse(body) : { raw: body };
+
+    const imported = json?.imported ?? 0;
+    const upserts = json?.profiel_refresh?.upserts ?? 0;
+    const range =
+      json?.profiel_refresh?.range
+        ? `${json.profiel_refresh.range.from}—${json.profiel_refresh.range.to}`
+        : `${startDate}—${endDate}`;
+
+    setStatus(`✅ Import OK • records: ${imported} • profiel upserts: ${upserts} • range: ${range}`);
+
+    // Last import opnieuw ophalen
+    const r2 = await fetch("/api/rapportage/omzet/last-import");
+    if (r2.ok) {
       const d2 = await r2.json();
       if (d2.lastImported) setLastImport(d2.lastImported);
-    } catch (err: any) {
-      setStatus('Fout bij import: ' + err.message);
     }
-  };
+  } catch (err: any) {
+    setStatus(`Fout bij import: ${err?.message || err}`);
+  }
+};
+
 
   return (
     <div className="p-6 max-w-md mx-auto">

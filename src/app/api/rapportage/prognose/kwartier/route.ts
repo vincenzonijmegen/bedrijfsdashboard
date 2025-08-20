@@ -1,233 +1,195 @@
-// src/app/api/rapportage/prognose/kwartier/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { dbRapportage } from '@/lib/dbRapportage';
-export const runtime = 'nodejs';
+// src/app/api/rapportage/profielen/kwartier/route.ts
+import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = "nodejs";
+
+type ProfielRow = {
+  maand: number; isodow: number; uur: number; kwartier: number;
+  omzet_avg: string; omzet_p50: string | null; omzet_p90: string | null;
+  dagomzet_avg: string | null; q_share_avg: string | null; n_samples: number;
+};
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+function parseWeekday(val: string | null): number | null {
+  if (!val) return null;
+  const s = val.toLowerCase();
+  const map: Record<string, number> = {
+    ma:1, maandag:1, mon:1, monday:1,
+    di:2, dinsdag:2, tue:2, tuesday:2,
+    wo:3, woensdag:3, wed:3, wednesday:3,
+    do:4, donderdag:4, thu:4, thursday:4,
+    vr:5, vrijdag:5, fri:5, friday:5,
+    za:6, zaterdag:6, sat:6, saturday:6,
+    zo:7, zondag:7, sun:7, sunday:7
+  };
+  if (map[s] !== undefined) return map[s];
+  const n = Number(s);
+  return Number.isInteger(n) && n >= 1 && n <= 7 ? n : null;
+}
+
+function toISO(d: string) {
+  const t = new Date(d + "T00:00:00Z");
+  if (Number.isNaN(t.getTime())) throw new Error("Ongeldige datum: " + d);
+  return t.toISOString().slice(0,10);
+}
+
+/** ---- POST: (her)bouw profiel ----
+ *  Optioneel: ?from=YYYY-MM-DD&to=YYYY-MM-DD
+ *  Zonder range → alles vanaf 2022.
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const from = searchParams.get("from");
+    const to   = searchParams.get("to");
+
+    const mod = await import("@/lib/dbRapportage");
+    const db  = mod.dbRapportage;
+
+    // 1) Tabel garanderen (no-op als al bestaat)
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS rapportage.omzet_profiel_mw_kwartier (
+        maand        INT  NOT NULL CHECK (maand BETWEEN 1 AND 12),
+        isodow       INT  NOT NULL CHECK (isodow BETWEEN 1 AND 7),
+        uur          INT  NOT NULL CHECK (uur BETWEEN 0 AND 23),
+        kwartier     INT  NOT NULL CHECK (kwartier BETWEEN 1 AND 4),
+        omzet_avg    NUMERIC NOT NULL,
+        omzet_p50    NUMERIC,
+        omzet_p90    NUMERIC,
+        dagomzet_avg NUMERIC,
+        q_share_avg  NUMERIC,
+        n_samples    INT     NOT NULL,
+        last_refreshed timestamptz DEFAULT now(),
+        PRIMARY KEY (maand, isodow, uur, kwartier)
+      );
+      CREATE INDEX IF NOT EXISTS idx_profiel_lookup
+        ON rapportage.omzet_profiel_mw_kwartier (maand, isodow);
+    `);
+
+    // 2) UPSERT-profiel (alleen gekozen range of alles)
+    const sql = `
+      WITH day_totals AS (
+        SELECT o.datum::date AS datum, SUM(o.omzet) AS dag_omzet
+        FROM rapportage.omzet_kwartier o
+        WHERE ($1::date IS NULL OR o.datum::date >= $1::date)
+          AND ($2::date IS NULL OR o.datum::date <= $2::date)
+        GROUP BY 1
+      ),
+      quarter_rows AS (
+        SELECT
+          o.datum::date AS datum,
+          EXTRACT(MONTH FROM o.datum)::int   AS maand,
+          EXTRACT(ISODOW FROM o.datum)::int  AS isodow,
+          o.uur, o.kwartier,
+          o.omzet::numeric                   AS omzet,
+          dt.dag_omzet::numeric              AS dag_omzet,
+          CASE WHEN dt.dag_omzet > 0 THEN (o.omzet::numeric / dt.dag_omzet::numeric) END AS q_share
+        FROM rapportage.omzet_kwartier o
+        JOIN day_totals dt ON dt.datum = o.datum::date
+        WHERE ($1::date IS NULL OR o.datum::date >= $1::date)
+          AND ($2::date IS NULL OR o.datum::date <= $2::date)
+      )
+      INSERT INTO rapportage.omzet_profiel_mw_kwartier
+        (maand, isodow, uur, kwartier,
+         omzet_avg, omzet_p50, omzet_p90, dagomzet_avg, q_share_avg, n_samples, last_refreshed)
+      SELECT
+        maand, isodow, uur, kwartier,
+        AVG(omzet)                                  AS omzet_avg,
+        PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY omzet) AS omzet_p50,
+        PERCENTILE_DISC(0.9) WITHIN GROUP (ORDER BY omzet) AS omzet_p90,
+        AVG(dag_omzet)                              AS dagomzet_avg,
+        AVG(q_share)                                AS q_share_avg,
+        COUNT(*)::int                               AS n_samples,
+        now()                                       AS last_refreshed
+      FROM quarter_rows
+      GROUP BY maand, isodow, uur, kwartier
+      ON CONFLICT (maand, isodow, uur, kwartier) DO UPDATE
+      SET omzet_avg    = EXCLUDED.omzet_avg,
+          omzet_p50    = EXCLUDED.omzet_p50,
+          omzet_p90    = EXCLUDED.omzet_p90,
+          dagomzet_avg = EXCLUDED.dagomzet_avg,
+          q_share_avg  = EXCLUDED.q_share_avg,
+          n_samples    = EXCLUDED.n_samples,
+          last_refreshed = EXCLUDED.last_refreshed
+    `;
+
+    const res = await db.query(sql, [
+      from ? toISO(from) : null,
+      to   ? toISO(to)   : null
+    ]);
+
+    return NextResponse.json({ ok: true, upserted_groups: res.rowCount ?? 0, range: { from, to } });
+  } catch (err: any) {
+    console.error("build-profiel error:", err);
+    return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+  }
+}
+
+/** ---- GET: profiel uitlezen ----
+ *  ?maand=8&weekdag=za
+ *  Optioneel: &norm=100&cost_per_q=3.75 → voegt 'need_front' en 'max_front_23pct' toe.
+ */
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const jaarParam = searchParams.get('jaar');
-    const groeiParam = searchParams.get('groei');
-    const startParam = searchParams.get('start');
-    const eindeParam = searchParams.get('einde');
+    const maand = Number(searchParams.get("maand") || "0");
+    const wdStr = searchParams.get("weekdag");
+    const isodow = parseWeekday(wdStr);
 
-    const now = new Date();
-    const targetYear = jaarParam ? parseInt(jaarParam, 10) : now.getFullYear();
-    const groei = groeiParam ? Number(groeiParam) : 1.03;
+    if (!maand || maand < 1 || maand > 12) {
+      return NextResponse.json({ ok: false, error: "Geef ?maand=1..12 mee." }, { status: 400 });
+    }
+    if (!isodow) {
+      return NextResponse.json({ ok: false, error: "Geef ?weekdag=ma..zo of 1..7 mee." }, { status: 400 });
+    }
+
+    const norm = Number(searchParams.get("norm") || "0");        // € per medewerker per kwartier
+    const costPerQ = Number(searchParams.get("cost_per_q") || "0"); // loonkosten per kwartier per medewerker
+
+    const mod = await import("@/lib/dbRapportage");
+    const db  = mod.dbRapportage;
 
     const sql = `
-      WITH
-      -- Dagomzet uit historie (kwartiertabel)
-      hist_day AS (
-        SELECT
-          k.datum::date AS datum,
-          EXTRACT(MONTH FROM k.datum)::int AS maand,
-          CASE WHEN EXTRACT(ISODOW FROM k.datum) IN (6,7) THEN 'weekend' ELSE 'week' END AS dagtype,
-          SUM(k.omzet) AS dag_omzet
-        FROM rapportage.omzet_kwartier k
-        GROUP BY 1,2,3
-      ),
-      -- Maandomzet per jaar (uit kwartieren) en jaaromzet
-      month_year_totals AS (
-        SELECT
-          EXTRACT(YEAR FROM k.datum)::int AS jaar,
-          EXTRACT(MONTH FROM k.datum)::int AS maand,
-          SUM(k.omzet) AS maand_omzet
-        FROM rapportage.omzet_kwartier k
-        GROUP BY 1,2
-      ),
-      year_totals AS (
-        SELECT jaar, SUM(maand_omzet) AS jaar_omzet
-        FROM month_year_totals
-        GROUP BY 1
-      ),
-      -- Maand-percentage per jaar en gemiddelde maandverdeling over de jaren
-      month_pct_per_year AS (
-        SELECT m.jaar, m.maand,
-               CASE WHEN y.jaar_omzet > 0 THEN m.maand_omzet / y.jaar_omzet ELSE 0 END AS pct
-        FROM month_year_totals m
-        JOIN year_totals y USING (jaar)
-      ),
-      month_share AS (
-        SELECT maand, AVG(pct) AS maand_pct
-        FROM month_pct_per_year
-        GROUP BY maand
-      ),
-      -- Week vs weekend weging per maand o.b.v. gemiddelde dagomzet in historie
-      daytype_weight AS (
-        SELECT
-          EXTRACT(MONTH FROM datum)::int AS maand,
-          dagtype,
-          AVG(dag_omzet) AS avg_dag_omzet
-        FROM hist_day
-        GROUP BY 1,2
-      ),
-      daytype_norm AS (
-        SELECT
-          maand, dagtype, avg_dag_omzet,
-          SUM(avg_dag_omzet) OVER (PARTITION BY maand) AS sum_month
-        FROM daytype_weight
-      ),
-      daytype_share AS (
-        SELECT
-          maand, dagtype,
-          CASE WHEN sum_month > 0 THEN avg_dag_omzet / sum_month ELSE 0.5 END AS dagtype_pct
-        FROM daytype_norm
-      ),
-      -- Kwartierprofiel: gemiddelde (kwartier / dag) per maand × dagtype × (uur, kwartier)
-      quarter_share AS (
-        SELECT
-          EXTRACT(MONTH FROM k.datum)::int AS maand,
-          CASE WHEN EXTRACT(ISODOW FROM k.datum) IN (6,7) THEN 'weekend' ELSE 'week' END AS dagtype,
-          k.uur, k.kwartier,
-          AVG( k.omzet / NULLIF(d.dag_omzet, 0) ) AS q_pct
-        FROM rapportage.omzet_kwartier k
-        JOIN hist_day d ON d.datum = k.datum
-        GROUP BY 1,2,3,4
-      ),
-      -- Baseline jaaromzet = vorig jaar * groei
-      params AS (
-        SELECT $1::int AS target_year, $2::numeric AS groei
-      ),
-      baseline AS (
-        SELECT COALESCE((
-          SELECT SUM(aantal * eenheidsprijs)
-          FROM rapportage.omzet
-          WHERE EXTRACT(YEAR FROM datum)::int = (SELECT target_year - 1 FROM params)
-        ), 0) AS vorigjaar
-      ),
-      year_target AS (
-        SELECT CASE WHEN vorigjaar > 0
-                    THEN ROUND(vorigjaar * (SELECT groei FROM params))
-                    ELSE 0 END AS jaar_omzet
-        FROM baseline
-      ),
-      -- Kalender voor target year
-      calendar_days AS (
-        SELECT
-          d::date AS datum,
-          EXTRACT(MONTH FROM d)::int AS maand,
-          CASE WHEN EXTRACT(ISODOW FROM d) IN (6,7) THEN 'weekend' ELSE 'week' END AS dagtype
-        FROM generate_series(
-          make_date((SELECT target_year FROM params), 1, 1),
-          make_date((SELECT target_year FROM params), 12, 31),
-          interval '1 day'
-        ) d
-      ),
-      month_day_counts AS (
-        SELECT maand, dagtype, COUNT(*) AS n_days
-        FROM calendar_days
-        GROUP BY 1,2
-      ),
-      -- Verdeel maandforecast naar dagen: maand_pct × dagtype_pct / n_days
-      day_share AS (
-        SELECT
-          c.datum, c.maand, c.dagtype,
-          (SELECT maand_pct FROM month_share ms WHERE ms.maand = c.maand) AS maand_pct,
-          (SELECT dagtype_pct FROM daytype_share ds WHERE ds.maand = c.maand AND ds.dagtype = c.dagtype) AS dagtype_pct,
-          (SELECT n_days FROM month_day_counts mdc WHERE mdc.maand = c.maand AND mdc.dagtype = c.dagtype) AS n_days
-        FROM calendar_days c
-      ),
-      day_forecast AS (
-        SELECT
-          datum, maand, dagtype,
-          (SELECT jaar_omzet FROM year_target)
-          * COALESCE(maand_pct, 0)
-          * COALESCE(dagtype_pct, 0)
-          / GREATEST(n_days, 1) AS dag_omzet_forecast
-        FROM day_share
-      ),
-      -- Genereer kwartieren per dag volgens openingstijden-regels
-      quarters AS (
-        SELECT
-          df.datum,
-          df.maand,
-          df.dagtype,
-          df.dag_omzet_forecast,
-          gs AS ts,
-          EXTRACT(HOUR FROM gs)::int AS uur,
-          (FLOOR(EXTRACT(MINUTE FROM gs)::int / 15) + 1)::int AS kwartier
-        FROM day_forecast df
-        CROSS JOIN LATERAL (
-          SELECT generate_series(
-            -- starttijd
-            CASE
-              WHEN df.maand = 3 THEN -- maart
-                make_timestamp(EXTRACT(YEAR FROM df.datum)::int, df.maand, EXTRACT(DAY FROM df.datum)::int,
-                               CASE WHEN df.dagtype = 'weekend' THEN 13 ELSE 12 END, 0, 0)
-              ELSE
-                make_timestamp(EXTRACT(YEAR FROM df.datum)::int, df.maand, EXTRACT(DAY FROM df.datum)::int,
-                               CASE WHEN df.dagtype = 'weekend' THEN 13 ELSE 12 END, 0, 0)
-            END,
-            -- eindtijd
-            CASE
-              WHEN df.maand = 3
-                THEN make_timestamp(EXTRACT(YEAR FROM df.datum)::int, df.maand, EXTRACT(DAY FROM df.datum)::int, 20, 0, 0)
-              ELSE make_timestamp(EXTRACT(YEAR FROM df.datum)::int, df.maand, EXTRACT(DAY FROM df.datum)::int, 22, 0, 0)
-            END,
-            interval '15 min'
-          )
-        ) gs
-      ),
-      q_with_pct AS (
-        SELECT q.*, COALESCE(qs.q_pct, 0) AS q_pct_raw
-        FROM quarters q
-        LEFT JOIN quarter_share qs
-          ON qs.maand = q.maand
-         AND qs.dagtype = q.dagtype
-         AND qs.uur = q.uur
-         AND qs.kwartier = q.kwartier
-      ),
-      -- Her-normaliseer kwartierverdeling per dag tot 100%
-      q_norm AS (
-        SELECT
-          datum, maand, dagtype, uur, kwartier, dag_omzet_forecast,
-          CASE
-            WHEN SUM(q_pct_raw) OVER (PARTITION BY datum) > 0
-            THEN q_pct_raw / SUM(q_pct_raw) OVER (PARTITION BY datum)
-            ELSE 1.0 / COUNT(*) OVER (PARTITION BY datum)
-          END AS q_share
-        FROM q_with_pct
-      ),
-      forecast_quarter AS (
-        SELECT
-          datum, uur, kwartier,
-          (dag_omzet_forecast * q_share) AS omzet_forecast
-        FROM q_norm
-      ),
-      staffing AS (
-        SELECT
-          datum, uur, kwartier, omzet_forecast,
-          (omzet_forecast * 0.23) AS max_loonkosten,
-          FLOOR((omzet_forecast * 0.23) / 3.75) AS max_medewerkers,
-          CEIL(omzet_forecast / 100.0) AS behoefte_medewerkers,
-          LEAST(FLOOR((omzet_forecast * 0.23) / 3.75), CEIL(omzet_forecast / 100.0)) AS inzet_medewerkers,
-          LEAST(FLOOR((omzet_forecast * 0.23) / 3.75), CEIL(omzet_forecast / 100.0)) + 1 AS inzet_totaal_incl_keuken
-        FROM forecast_quarter
-      )
-      SELECT *
-      FROM staffing
-      WHERE ($3::date IS NULL OR datum >= $3::date)
-        AND ($4::date IS NULL OR datum <= $4::date)
-      ORDER BY datum, uur, kwartier;
+      SELECT maand, isodow, uur, kwartier,
+             omzet_avg, omzet_p50, omzet_p90,
+             dagomzet_avg, q_share_avg, n_samples, last_refreshed
+      FROM rapportage.omzet_profiel_mw_kwartier
+      WHERE maand = $1 AND isodow = $2
+      ORDER BY uur, kwartier
     `;
+    const rs = await db.query(sql, [maand, isodow]);
+    const rows = rs.rows as ProfielRow[];
 
-    const res = await dbRapportage.query(sql, [
-      targetYear,
-      groei,
-      startParam || null,
-      eindeParam || null,
-    ]);
+    // Optionele berekende kolommen
+    let data: any[] = rows.map(r => {
+      const omzetAvg = Number(r.omzet_avg);
+      const out: any = {
+        maand: r.maand, isodow: r.isodow, uur: r.uur, kwartier: r.kwartier,
+        omzet_avg: Number(r.omzet_avg),
+        omzet_p50: r.omzet_p50 ? Number(r.omzet_p50) : null,
+        omzet_p90: r.omzet_p90 ? Number(r.omzet_p90) : null,
+        dagomzet_avg: r.dagomzet_avg ? Number(r.dagomzet_avg) : null,
+        q_share_avg: r.q_share_avg ? Number(r.q_share_avg) : null,
+        n_samples: r.n_samples
+      };
+      if (norm > 0) {
+        out.need_front = Math.ceil(omzetAvg / norm);
+      }
+      if (costPerQ > 0) {
+        out.max_front_23pct = Math.floor((omzetAvg * 0.23) / costPerQ);
+      }
+      return out;
+    });
 
     return NextResponse.json({
       ok: true,
-      jaar: targetYear,
-      groei,
-      count: res.rowCount ?? 0,
-      data: res.rows,
+      params: { maand, weekdag: isodow, norm, cost_per_q: costPerQ },
+      count: data.length,
+      data
     });
   } catch (err: any) {
-    console.error('Prognose kwartier error:', err);
+    console.error("get-profiel error:", err);
     return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
   }
 }
