@@ -13,9 +13,7 @@ const fetcher = async (url: string) => {
   return JSON.parse(text);
 };
 
-const maandNamen = [
-  "", "januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"
-];
+const maandNamen = ["", "januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
 
 const fmtEUR0 = (n: number) =>
   new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
@@ -48,9 +46,15 @@ export default function ForecastPlanningPage() {
   const [showStaff, setShowStaff] = useState<boolean>(false);
   const [jaar, setJaar] = useState<number>(nu.getFullYear());
   const [groei, setGroei] = useState<number>(1.03);
-  const [norm, setNorm] = useState<number>(100);          // € omzet / medewerker / kwartier
-  const [costPerQ, setCostPerQ] = useState<number>(3.75); // € 15/u
-  const [itemsPerQ, setItemsPerQ] = useState<number>(10); // 10 items / kwartier / medewerker
+  const [norm, setNorm] = useState<number>(100);     // € omzet / med / kw
+  const [costPerQ, setCostPerQ] = useState<number>(6.25); // €25/u
+  const [itemsPerQ, setItemsPerQ] = useState<number>(10);
+
+  // Keuken baseline inputs
+  const [kDayStart, setKDayStart] = useState<string>("10:00");
+  const [kDayCount, setKDayCount] = useState<number>(1);
+  const [kEveCount, setKEveCount] = useState<number>(1);
+  const [kCostPerQ, setKCostPerQ] = useState<number>(7.5);
 
   const query = useMemo(() => {
     const p = new URLSearchParams({ maand: String(maand) });
@@ -61,10 +65,13 @@ export default function ForecastPlanningPage() {
       p.set("norm", String(norm));
       p.set("cost_per_q", String(costPerQ));
       p.set("items_per_q", String(itemsPerQ));
-      // geavanceerde tuning? -> p.set("min_occ","0.40"), p.set("max_occ","0.80"), p.set("pct_at_min_occ","0.30"), p.set("pct_at_max_occ","0.18")
+      p.set("kitchen_day_start", kDayStart);
+      p.set("kitchen_day_count", String(kDayCount));
+      p.set("kitchen_eve_count", String(kEveCount));
+      p.set("kitchen_cost_per_q", String(kCostPerQ));
     }
     return `/api/rapportage/profielen/overzicht?${p.toString()}`;
-  }, [maand, showStaff, jaar, groei, norm, costPerQ, itemsPerQ]);
+  }, [maand, showStaff, jaar, groei, norm, costPerQ, itemsPerQ, kDayStart, kDayCount, kEveCount, kCostPerQ]);
 
   const { data, error, isLoading } = useSWR(query, fetcher);
 
@@ -83,25 +90,26 @@ export default function ForecastPlanningPage() {
         </div>
       </div>
 
-      {/* Toggle personeel */}
+      {/* Toggle personeel + kitchen baseline */}
       <div className="border rounded-lg p-4 shadow space-y-3">
         <label className="inline-flex items-center gap-2 cursor-pointer">
           <input type="checkbox" className="h-4 w-4" checked={showStaff} onChange={e=>setShowStaff(e.target.checked)}/>
-          <span className="font-semibold">Toon personeelsbehoefte (23% per maand geherweeg + schepcapaciteit)</span>
+          <span className="font-semibold">Toon personeelsbehoefte (23% met keuken-baseline)</span>
         </label>
         {showStaff && (
           <>
-            {/* korte meta */}
+            {/* Korte meta als aanwezig */}
             {data?.staff_meta && (
               <div className="text-sm text-gray-700 flex flex-wrap gap-4">
                 <span><b>avg €/item:</b> {fmtEUR2(data.staff_meta.avg_item_rev_month || 0)}</span>
                 <span><b>cap €/med/kw:</b> {fmtEUR2(data.staff_meta.cap_rev_per_staff_q || 0)}</span>
                 <span><b>maandbudget:</b> {fmtEUR0(data.staff_meta.monthBudget || 0)}</span>
                 <span><b>occ:</b> {Math.round((data.staff_meta.occ_this || 0)*100)}%</span>
+                <span><b>keuken:</b> dag {kDayStart} × {kDayCount} • avond × {kEveCount} • {fmtEUR2(kCostPerQ)}/kw</span>
               </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-8 gap-3">
               <div>
                 <label className="block text-sm mb-1">Jaar</label>
                 <input type="number" value={jaar} onChange={e=>setJaar(Number(e.target.value))}
@@ -125,7 +133,29 @@ export default function ForecastPlanningPage() {
               <div>
                 <label className="block text-sm mb-1">Items / med / kw</label>
                 <input type="number" value={itemsPerQ} onChange={e=>setItemsPerQ(Number(e.target.value))}
-                      className="border rounded px-2 py-1 w-full" />
+                      className="border rounded px-2 py-1 w-full"/>
+              </div>
+
+              {/* Keuken baseline */}
+              <div>
+                <label className="block text-sm mb-1">Keuken dag start</label>
+                <input type="time" step={900} value={kDayStart} onChange={e=>setKDayStart(e.target.value)}
+                       className="border rounded px-2 py-1 w-full"/>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Keuken dag #</label>
+                <input type="number" min={0} value={kDayCount} onChange={e=>setKDayCount(Number(e.target.value))}
+                       className="border rounded px-2 py-1 w-full"/>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Keuken avond #</label>
+                <input type="number" min={0} value={kEveCount} onChange={e=>setKEveCount(Number(e.target.value))}
+                       className="border rounded px-2 py-1 w-full"/>
+              </div>
+              <div className="md:col-span-1 xl:col-span-2">
+                <label className="block text-sm mb-1">Keuken € / kw</label>
+                <input type="number" step="0.01" value={kCostPerQ} onChange={e=>setKCostPerQ(Number(e.target.value))}
+                       className="border rounded px-2 py-1 w-full"/>
               </div>
             </div>
           </>
@@ -176,7 +206,7 @@ export default function ForecastPlanningPage() {
                                   title={
                                     !showStaff
                                       ? `${s.from_to} • ${fmtEUR0(Number(s.omzet_avg || 0))}`
-                                      : `${s.from_to} • ${fmtEUR0(Number(s.omzet_avg || 0))} • Budget ${fmtEUR2(Number(s.budget_eur||0))}`
+                                      : `${s.from_to} • ${fmtEUR0(Number(s.omzet_avg || 0))} • Front-budget ${fmtEUR2(Number(s.budget_eur||0))}`
                                   }
                                 >
                                   <div className="flex items-center justify-between">
