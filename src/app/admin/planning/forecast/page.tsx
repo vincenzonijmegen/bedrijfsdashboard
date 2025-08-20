@@ -48,10 +48,9 @@ export default function ForecastPlanningPage() {
   const [showStaff, setShowStaff] = useState<boolean>(false);
   const [jaar, setJaar] = useState<number>(nu.getFullYear());
   const [groei, setGroei] = useState<number>(1.03);
-  const [norm, setNorm] = useState<number>(100);        // € omzet / medewerker / kwartier
-  const [costPerQ, setCostPerQ] = useState<number>(3.75); // €15/u
-  const [avgItemRev, setAvgItemRev] = useState<number>(0); // optioneel
-  const [capItemsQ, setCapItemsQ] = useState<number>(0);   // optioneel
+  const [norm, setNorm] = useState<number>(100);          // € omzet / medewerker / kwartier
+  const [costPerQ, setCostPerQ] = useState<number>(3.75); // € 15/u
+  const [itemsPerQ, setItemsPerQ] = useState<number>(10); // 10 items / kwartier / medewerker
 
   const query = useMemo(() => {
     const p = new URLSearchParams({ maand: String(maand) });
@@ -61,11 +60,11 @@ export default function ForecastPlanningPage() {
       p.set("groei", String(groei));
       p.set("norm", String(norm));
       p.set("cost_per_q", String(costPerQ));
-      if (avgItemRev > 0) p.set("avg_item_rev", String(avgItemRev));
-      if (capItemsQ > 0) p.set("cap_items_q", String(capItemsQ));
+      p.set("items_per_q", String(itemsPerQ));
+      // geavanceerde tuning? -> p.set("min_occ","0.40"), p.set("max_occ","0.80"), p.set("pct_at_min_occ","0.30"), p.set("pct_at_max_occ","0.18")
     }
     return `/api/rapportage/profielen/overzicht?${p.toString()}`;
-  }, [maand, showStaff, jaar, groei, norm, costPerQ, avgItemRev, capItemsQ]);
+  }, [maand, showStaff, jaar, groei, norm, costPerQ, itemsPerQ]);
 
   const { data, error, isLoading } = useSWR(query, fetcher);
 
@@ -88,41 +87,48 @@ export default function ForecastPlanningPage() {
       <div className="border rounded-lg p-4 shadow space-y-3">
         <label className="inline-flex items-center gap-2 cursor-pointer">
           <input type="checkbox" className="h-4 w-4" checked={showStaff} onChange={e=>setShowStaff(e.target.checked)}/>
-          <span className="font-semibold">Toon personeelsbehoefte (23% + capaciteit)</span>
+          <span className="font-semibold">Toon personeelsbehoefte (23% per maand geherweeg + schepcapaciteit)</span>
         </label>
         {showStaff && (
-          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3">
-            <div>
-              <label className="block text-sm mb-1">Jaar</label>
-              <input type="number" value={jaar} onChange={e=>setJaar(Number(e.target.value))}
-                     className="border rounded px-2 py-1 w-full"/>
+          <>
+            {/* korte meta */}
+            {data?.staff_meta && (
+              <div className="text-sm text-gray-700 flex flex-wrap gap-4">
+                <span><b>avg €/item:</b> {fmtEUR2(data.staff_meta.avg_item_rev_month || 0)}</span>
+                <span><b>cap €/med/kw:</b> {fmtEUR2(data.staff_meta.cap_rev_per_staff_q || 0)}</span>
+                <span><b>maandbudget:</b> {fmtEUR0(data.staff_meta.monthBudget || 0)}</span>
+                <span><b>occ:</b> {Math.round((data.staff_meta.occ_this || 0)*100)}%</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3">
+              <div>
+                <label className="block text-sm mb-1">Jaar</label>
+                <input type="number" value={jaar} onChange={e=>setJaar(Number(e.target.value))}
+                      className="border rounded px-2 py-1 w-full"/>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Groei (×)</label>
+                <input type="number" step="0.01" value={groei} onChange={e=>setGroei(Number(e.target.value))}
+                      className="border rounded px-2 py-1 w-full"/>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Norm € / med / kw</label>
+                <input type="number" value={norm} onChange={e=>setNorm(Number(e.target.value))}
+                      className="border rounded px-2 py-1 w-full"/>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Kosten € / med / kw</label>
+                <input type="number" step="0.01" value={costPerQ} onChange={e=>setCostPerQ(Number(e.target.value))}
+                      className="border rounded px-2 py-1 w-full"/>
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Items / med / kw</label>
+                <input type="number" value={itemsPerQ} onChange={e=>setItemsPerQ(Number(e.target.value))}
+                      className="border rounded px-2 py-1 w-full" />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm mb-1">Groei (×)</label>
-              <input type="number" step="0.01" value={groei} onChange={e=>setGroei(Number(e.target.value))}
-                     className="border rounded px-2 py-1 w-full"/>
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Norm € / medewerker / kwartier</label>
-              <input type="number" value={norm} onChange={e=>setNorm(Number(e.target.value))}
-                     className="border rounded px-2 py-1 w-full"/>
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Kosten € / medewerker / kwartier</label>
-              <input type="number" step="0.01" value={costPerQ} onChange={e=>setCostPerQ(Number(e.target.value))}
-                     className="border rounded px-2 py-1 w-full"/>
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Gem. omzet per item (optioneel)</label>
-              <input type="number" step="0.01" value={avgItemRev} onChange={e=>setAvgItemRev(Number(e.target.value))}
-                     className="border rounded px-2 py-1 w-full" placeholder="bv. 2.50"/>
-            </div>
-            <div>
-              <label className="block text-sm mb-1">Max items / medewerker / kwartier (opt.)</label>
-              <input type="number" value={capItemsQ} onChange={e=>setCapItemsQ(Number(e.target.value))}
-                     className="border rounded px-2 py-1 w-full" placeholder="bv. 35"/>
-            </div>
-          </div>
+          </>
         )}
       </div>
 
