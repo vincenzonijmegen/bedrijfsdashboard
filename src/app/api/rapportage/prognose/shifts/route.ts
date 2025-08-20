@@ -1,25 +1,22 @@
-// src/app/api/rapportage/prognose/shifts/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { dbRapportage } from "@/lib/dbRapportage";
 
 export const runtime = "nodejs";
 
-/* ========== helpers ========== */
+/* ==== helpers ==== */
 const pad2 = (n: number) => String(n).padStart(2, "0");
 const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
 function toDateISO(s: string) {
   const d = new Date(s + "T00:00:00Z");
   if (Number.isNaN(d.getTime())) throw new Error("Ongeldige datum: " + s);
   return d;
 }
-function isoDate(d: Date) { return d.toISOString().slice(0, 10); }
-
 function isWeekend(d: Date) {
   const iso = ((d.getUTCDay() + 6) % 7) + 1; // 1=Mon..7=Sun
   return iso >= 6;
 }
-
 function takeFirstNumeric(v: string | null, def: number): number {
   if (v == null) return def;
   const first = String(v).split(":")[0].trim();
@@ -30,7 +27,6 @@ function parseBinaryParam(v: string | null, def = 0) {
   const n = takeFirstNumeric(v, def);
   return n === 1 ? 1 : 0;
 }
-
 function parseWeekday(val: string | null): number | null {
   if (!val) return null;
   const s = val.toLowerCase();
@@ -48,7 +44,6 @@ function parseWeekday(val: string | null): number | null {
   const n = Number(s);
   return Number.isInteger(n) && n >= 1 && n <= 7 ? n : null;
 }
-
 function qToTime(blockStartHour: number, qIdx: number) {
   const mins = Math.round(blockStartHour * 60 + qIdx * 15);
   const hh = Math.floor(mins / 60);
@@ -56,51 +51,45 @@ function qToTime(blockStartHour: number, qIdx: number) {
   return `${pad2(hh)}:${pad2(mm)}`;
 }
 
-/* ========== route ========== */
+/* ==== route ==== */
 export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const now = new Date();
+  const { searchParams } = new URL(req.url);
+  const now = new Date();
 
-    // algemene params
-    const jaar = takeFirstNumeric(searchParams.get("jaar"), now.getFullYear());
-    const groei = Number(searchParams.get("groei") ?? "1.03");
+  // algemene params
+  const jaar = takeFirstNumeric(searchParams.get("jaar"), now.getFullYear());
+  const groei = Number(searchParams.get("groei") ?? "1.03");
 
-    const norm = takeFirstNumeric(searchParams.get("norm"), 100);               // € per medewerker per kwartier (output-norm)
-    const costPerQ = takeFirstNumeric(searchParams.get("cost_per_q"), 3.75);    // € 15/u front
-    const keukenBasis = parseBinaryParam(searchParams.get("keuken_basis"), 0);  // 0/1 (kosten)
-    const standbyDayStartStr = (searchParams.get("standby_day_start") ?? "14:00").trim();
-    const standbyEveStartStr = (searchParams.get("standby_eve_start") ?? "19:00").trim();
+  const norm = takeFirstNumeric(searchParams.get("norm"), 100);             // € per medewerker per kwartier
+  const costPerQ = takeFirstNumeric(searchParams.get("cost_per_q"), 3.75);  // €15/u front
+  const keukenBasis = parseBinaryParam(searchParams.get("keuken_basis"), 0); // 0/1 – telt mee in kosten
 
-    // detecteer mode
-    const maandParam = searchParams.get("maand");
-    const weekdagParam = searchParams.get("weekdag") ?? searchParams.get("weekday") ?? searchParams.get("wd");
-    const maand = maandParam ? takeFirstNumeric(maandParam, 0) : 0;
-    const isoWd = parseWeekday(weekdagParam);
+  const standbyDayStartStr = (searchParams.get("standby_day_start") ?? "14:00").trim();
+  const standbyEveStartStr = (searchParams.get("standby_eve_start") ?? "19:00").trim();
+  const maxShiftHours = takeFirstNumeric(searchParams.get("max_shift_hours"), 6);
 
-    const startParam = searchParams.get("start");
-    const eindeParam = searchParams.get("einde");
+  // detecteer modus
+  const maandParam = searchParams.get("maand");
+  const weekdagParam = searchParams.get("weekdag") ?? searchParams.get("weekday") ?? searchParams.get("wd");
+  const maand = maandParam ? takeFirstNumeric(maandParam, 0) : 0;
+  const isoWd = parseWeekday(weekdagParam);
+  const useMonthWeekday = !!(maand && isoWd);
 
-    const useMonthWeekday = !!(maand && isoWd); // beide aanwezig => maand×weekdag modus
+  // gemeenschappelijke packer-helpers
+  const costFront = costPerQ;
+  const costKeuken = 5.0; // €20/u => €5/kw
+  type Shift = { role: "front" | "standby"; start: string; end: string; count: number };
 
-    /* ======== gedeelde staffing helpers (packer) ======== */
-    const costFront = costPerQ;
-    const costKeuken = 5.0; // €20/u => €5/kw
-
-    type Shift = { role: "front" | "standby"; start: string; end: string; count: number };
-
-    /* ======== MODE A: Maand × Weekdag (géén specifieke datums) ======== */
-    if (useMonthWeekday) {
+  /* ===== MODE A: month × weekday ===== */
+  if (useMonthWeekday) {
+    try {
       const isSunday = isoWd === 7;
-      // openingstijden
       const openHour = maand === 3 ? (isSunday ? 13 : 12) : (isSunday ? 13 : 12);
       const closeHour = maand === 3 ? 20 : 22;
       const cleanHour = maand === 3 ? 21 : 23;
-      // continue bezetting
       const coverageStartHour = isSunday ? 12.5 : 11.5; // 12:30 of 11:30
       const splitHour = 17.5;
 
-      // SQL voor typische dag (maand×weekdag), geschaald met vorig jaar × groei en maand/weekdag-verdeling
       const sqlMW = `
         WITH
         hist_day AS (
@@ -228,31 +217,29 @@ export async function GET(req: NextRequest) {
         FROM forecast_quarter
         ORDER BY uur, kwartier;
       `;
+
       // $1 jaar, $2 groei, $3 maand, $4 isoWeekday, $5 isMarchFlag, $6 norm
       const raw = await dbRapportage.query(sqlMW, [jaar, groei, maand, isoWd, maand === 3 ? 1 : 0, norm]);
-
       type RowMW = { uur: number; kwartier: number; omzet_forecast: number; need_front: number };
       const rows: RowMW[] = raw.rows.map((r:any)=>({
         uur: Number(r.uur),
         kwartier: Number(r.kwartier),
         omzet_forecast: Math.max(0, Number(r.omzet_forecast) || 0),
-        need_front: Math.max(1, Number(r.need_front) || 1), // min 1 bij open kwartieren
+        need_front: Math.max(1, Number(r.need_front) || 1),
       }));
 
-      // bouw coverage van coverageStart -> cleanHour
-      const qStart = Math.round(coverageStartHour * 4);
+      // coverage 11:30/12:30 .. clean
+      const qStart = Math.round((isSunday ? 12.5 : 11.5) * 4);
       const qOpen  = Math.round(openHour * 4);
       const qClose = Math.round(closeHour * 4);
       const qClean = Math.round(cleanHour * 4);
       const totalQ = qClean - qStart;
 
-      const need: number[] = new Array(totalQ).fill(1); // min 1 altijd (ook pre-open/schoonmaak)
+      const need: number[] = new Array(totalQ).fill(1);
       const omzet: number[] = new Array(totalQ).fill(0);
 
-      // open-kwartieren vullen
       for (let absQ = qOpen; absQ < qClose; absQ++) {
-        const h = Math.floor(absQ/4);
-        const k = (absQ % 4) + 1;
+        const h = Math.floor(absQ/4), k=(absQ%4)+1;
         const m = rows.find(x=> x.uur===h && x.kwartier===k);
         const idx = absQ - qStart;
         if (idx>=0 && idx<totalQ) {
@@ -261,18 +248,17 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // packer: baseline + greedy, met budget
+      // packen per blok
       const splitQ = Math.round(17.5 * 4);
       const planned = new Array(totalQ).fill(0);
       const shifts: Shift[] = [];
-      const minQ = 12; // 3 uur
-      const maxShiftHours = takeFirstNumeric(searchParams.get("max_shift_hours"), 6);
+      const minQ = 12; // 3u
       const maxQ = maxShiftHours > 0 ? maxShiftHours * 4 : Number.POSITIVE_INFINITY;
 
-      function canAfford(start:number,end:number,add:number){
+      function budgetOK(start:number,end:number,add:number){
         for(let i=start;i<end;i++){
           const budget = 0.23 * omzet[i];
-          const cost = (planned[i] + add) * costFront + keukenBasis * costKeuken;
+          const cost = (planned[i]+add)*costFront + keukenBasis*costKeuken;
           if (cost > budget + 1e-6) return false;
         }
         return true;
@@ -280,50 +266,47 @@ export async function GET(req: NextRequest) {
       function addFront(blockStartHour:number, startLocal:number, endLocal:number, count:number){
         if (count<=0 || endLocal<=startLocal) return;
         shifts.push({ role:"front", start:qToTime(blockStartHour, startLocal), end:qToTime(blockStartHour, endLocal), count });
-        for (let i=startLocal;i<endLocal;i++) planned[i]+=count;
+        for(let i=startLocal;i<endLocal;i++) planned[i]+=count;
       }
       function fillBlock(absStartQ:number, absEndQ:number, blockStartHour:number){
         const s = absStartQ - qStart, e = absEndQ - qStart;
-        // baseline 1 door hele blok
+        // baseline 1
         addFront(blockStartHour, 0, e - s, 1);
         while(true){
-          // eerste gat
-          let g=-1;
-          for(let i=s;i<e;i++){ if (planned[i]<need[i]){g=i;break;} }
-          if (g===-1) break;
-          let start=g, end=Math.min(start+minQ, e);
+          let first=-1; for(let i=s;i<e;i++){ if(planned[i]<need[i]){first=i;break;} }
+          if (first===-1) break;
+          let start=first, end=Math.min(start+minQ,e);
           if(end-start<minQ){ start=Math.max(s, e-minQ); end=Math.min(start+minQ, e); }
-          // benodigde extra
           let gap=0; for(let i=start;i<end;i++) gap=Math.max(gap, need[i]-planned[i]);
           let add=Math.max(1,gap);
-          while(add>0 && !canAfford(start,end,add)) add--;
+          while(add>0 && !budgetOK(start,end,add)) add--;
           if(add<=0){ planned[start]=Math.max(planned[start],need[start]); continue; }
           addFront(blockStartHour, start - s, end - s, add);
         }
       }
 
-      // blokken: [coverageStart..17:30) en [17:30..clean]
-      fillBlock(qStart, Math.min(splitQ,qClean), coverageStartHour);
+      // blokken: [coverage..17:30) en [17:30..clean]
+      fillBlock(qStart, Math.min(splitQ,qClean), isSunday ? 12.5 : 11.5);
       fillBlock(Math.min(splitQ,qClean), qClean, 17.5);
 
-      // standby (dag & avond)
+      // standby beide blokken
       const [sdH, sdM] = standbyDayStartStr.split(":").map(Number);
       const dayStandbyStartHour = (Number.isFinite(sdH)?sdH:14) + ((Number.isFinite(sdM)?sdM:0)/60);
       const dayStandbyAbsQ = Math.max(qStart, Math.round(dayStandbyStartHour*4));
+      if (Math.min(splitQ,qClean) > dayStandbyAbsQ) {
+        shifts.push({ role:"standby", start:qToTime(isSunday?12.5:11.5, dayStandbyAbsQ - qStart), end:qToTime(isSunday?12.5:11.5, Math.min(splitQ,qClean) - qStart), count:1 });
+      }
+
       const [seH, seM] = standbyEveStartStr.split(":").map(Number);
       const eveStandbyStartHour = (Number.isFinite(seH)?seH:19) + ((Number.isFinite(seM)?seM:0)/60);
       const eveStandbyAbsQ = Math.max(Math.round(17.5*4), Math.round(eveStandbyStartHour*4));
-
-      if (Math.min(splitQ,qClean) > dayStandbyAbsQ) {
-        shifts.push({ role:"standby", start:qToTime(coverageStartHour, dayStandbyAbsQ - qStart), end:qToTime(coverageStartHour, Math.min(splitQ,qClean)-qStart), count:1 });
-      }
       if (qClean > eveStandbyAbsQ) {
-        shifts.push({ role:"standby", start:qToTime(coverageStartHour, eveStandbyAbsQ - qStart), end:qToTime(coverageStartHour, qClean - qStart), count:1 });
+        shifts.push({ role:"standby", start:qToTime(isSunday?12.5:11.5, eveStandbyAbsQ - qStart), end:qToTime(isSunday?12.5:11.5, qClean - qStart), count:1 });
       }
 
-      // per-kwartier output (ter controle/visualisatie)
+      // quarters output
       const quarters = Array.from({length: totalQ}, (_,i)=>{
-        const mins = coverageStartHour*60 + i*15;
+        const mins = (isSunday?12.5:11.5)*60 + i*15;
         const h = Math.floor(mins/60), m = mins%60;
         return {
           time: `${pad2(h)}:${pad2(m)}`,
@@ -339,10 +322,9 @@ export async function GET(req: NextRequest) {
         ok: true,
         mode: "month-weekday",
         params: {
-          jaar, groei, maand, weekdag: isoWd,
-          norm, costPerQ, keukenBasis,
+          jaar, groei, maand, weekdag: isoWd, norm, costPerQ, keukenBasis,
           coverage: {
-            start: `${pad2(Math.floor(coverageStartHour))}:${pad2((coverageStartHour%1)*60||0)}`,
+            start: `${pad2(Math.floor(isSunday?12.5:11.5))}:${pad2(((isSunday?12.5:11.5)%1)*60||0)}`,
             open: `${pad2(openHour)}:00`,
             split: "17:30",
             close: `${pad2(closeHour)}:00`,
@@ -352,13 +334,19 @@ export async function GET(req: NextRequest) {
         shifts,
         quarters
       });
+    } catch (err:any) {
+      console.error("shifts month-weekday error:", err);
+      return NextResponse.json({ ok:false, stage:"month-weekday-sql-or-pack", error: err.message }, { status: 500 });
     }
+  }
 
-    /* ======== MODE B: Per datumrange (bestaand gedrag) ======== */
+  /* ===== MODE B: date range ===== */
+  try {
+    const startParam = searchParams.get("start");
+    const eindeParam = searchParams.get("einde");
     const startDate = startParam && eindeParam ? toDateISO(startParam) : toDateISO(`${jaar}-01-01`);
     const endDate   = startParam && eindeParam ? toDateISO(eindeParam)   : toDateISO(`${jaar}-12-31`);
 
-    // SQL (zoals eerder) voor forecast per datum-kwartier
     const sqlRange = `
       WITH
       hist_day AS (
@@ -520,11 +508,9 @@ export async function GET(req: NextRequest) {
       front_needed: Math.max(0, Number(r.front_needed)||0),
     }));
 
-    // indexeer per datum
     const byDate: Record<string, Row[]> = {};
     for (const r of rows) (byDate[r.datum] ||= []).push(r);
 
-    // planner per dag (zelfde constraints)
     function planDay(dateISO:string, month:number, wknd:boolean) {
       const openHour  = month === 3 ? (wknd ? 13 : 12) : (wknd ? 13 : 12);
       const closeHour = month === 3 ? 20 : 22;
@@ -540,7 +526,7 @@ export async function GET(req: NextRequest) {
       const totalQ = qEnd - qStart;
 
       const dayRows = byDate[dateISO] || [];
-      const need:number[] = new Array(totalQ).fill(1); // min 1 overal
+      const need:number[] = new Array(totalQ).fill(1);
       const omzet:number[] = new Array(totalQ).fill(0);
 
       for (let absQ=qOpen; absQ<qEnd; absQ++){
@@ -556,7 +542,6 @@ export async function GET(req: NextRequest) {
       const planned = new Array(totalQ).fill(0);
       const shifts: Shift[] = [];
       const minQ = 12;
-      const maxShiftHours = takeFirstNumeric(searchParams.get("max_shift_hours"), 6);
       const maxQ = maxShiftHours>0 ? maxShiftHours*4 : Number.POSITIVE_INFINITY;
 
       function budgetOK(start:number,end:number,add:number){
@@ -613,7 +598,7 @@ export async function GET(req: NextRequest) {
       days: out
     });
   } catch (err:any) {
-    console.error("shifts route error:", err);
-    return NextResponse.json({ ok:false, error: err.message }, { status: 500 });
+    console.error("shifts date-range error:", err);
+    return NextResponse.json({ ok:false, stage:"date-range-sql-or-pack", error: err.message }, { status: 500 });
   }
 }
