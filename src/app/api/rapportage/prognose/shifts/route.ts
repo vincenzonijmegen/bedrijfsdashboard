@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // --- DB dynamisch importeren (zodat import-fouten als JSON terugkomen) ---
+  // --- DB dynamisch importeren (import-fouten -> JSON) ---
   let dbRapportage: any;
   try {
     const mod = await import("@/lib/dbRapportage");
@@ -97,14 +97,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, stage: "import-db", error: e?.message || String(e) }, { status: 500 });
   }
 
-  // ===== MODE A: maand × weekdag =====
+  /* ===== MODE A: maand × weekdag ===== */
   if (useMonthWeekday) {
     try {
+      type RowMW = { uur: number; kwartier: number; omzet_forecast: number; need_front: number };
+
       const isSunday = isoWd === 7;
       const openHour  = maand === 3 ? (isSunday ? 13 : 12) : (isSunday ? 13 : 12);
       const closeHour = maand === 3 ? 20 : 22;
       const cleanHour = maand === 3 ? 21 : 23;
-      const coverageStartHour = isSunday ? 12.5 : 11.5;
 
       const sql = `
         WITH
@@ -164,6 +165,7 @@ export async function GET(req: NextRequest) {
             $3::int AS maand,
             (SELECT jaar_omzet FROM year_target)
             * COALESCE((SELECT maand_pct FROM month_share WHERE maand = $3::int), 0) AS maand_omzet
+          FROM year_target
         ),
         n_days_wd AS (
           SELECT COUNT(*)::int AS n
@@ -237,7 +239,7 @@ export async function GET(req: NextRequest) {
       const raw = await dbRapportage.query(sql, [
         jaar, groei, maand, isoWd, maand === 3 ? 1 : 0, norm
       ]);
-      type RowMW = { uur: number; kwartier: number; omzet_forecast: number; need_front: number };
+
       const rows: RowMW[] = raw.rows.map((r:any)=>({
         uur: Number(r.uur),
         kwartier: Number(r.kwartier),
@@ -257,8 +259,8 @@ export async function GET(req: NextRequest) {
       const omzet: number[] = new Array(totalQ).fill(0);
 
       for (let absQ = qOpen; absQ < qClose; absQ++) {
-        const h = Math.floor(absQ/4), k=(absQ%4)+1;
-        const m = rows.find(x=> x.uur===h && x.kwartier===k);
+        const h = Math.floor(absQ/4), k = (absQ%4)+1;
+        const m = rows.find((x: RowMW) => x.uur === h && x.kwartier === k);
         const idx = absQ - qStart;
         if (idx>=0 && idx<totalQ) {
           need[idx] = Math.max(1, m?.need_front ?? 1);
@@ -269,8 +271,7 @@ export async function GET(req: NextRequest) {
       // packen
       const planned = new Array(totalQ).fill(0);
       const shifts: Shift[] = [];
-      const minQ = 12;
-      const maxQ = maxShiftHours > 0 ? maxShiftHours * 4 : Number.POSITIVE_INFINITY;
+      const minQ = 12; // 3 uur
 
       function budgetOK(start:number,end:number,add:number){
         for(let i=start;i<end;i++){
@@ -349,8 +350,10 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // ===== MODE B: date-range =====
+  /* ===== MODE B: date-range ===== */
   try {
+    type RowRange = { datum: string; uur: number; kwartier: number; omzet_forecast: number; front_needed: number };
+
     const startDate = startParam && eindeParam ? toDateISO(startParam) : toDateISO(`${jaar}-01-01`);
     const endDate   = startParam && eindeParam ? toDateISO(eindeParam)   : toDateISO(`${jaar}-12-31`);
 
@@ -504,7 +507,7 @@ export async function GET(req: NextRequest) {
       isoDate(eindeParam ? toDateISO(eindeParam) : toDateISO(`${jaar}-12-31`)),
     ]);
 
-    const rows = raw.rows.map((r:any)=>({
+    const rows: RowRange[] = raw.rows.map((r:any)=>({
       datum: typeof r.datum === "string" ? r.datum : new Date(r.datum).toISOString().slice(0,10),
       uur: Number(r.uur),
       kwartier: Number(r.kwartier),
@@ -512,16 +515,14 @@ export async function GET(req: NextRequest) {
       front_needed: Math.max(0, Number(r.front_needed)||0),
     }));
 
-    // Per dag plannen (zelfde constraints)
-    const costFrontHere = costPerQ;
-    const plannedDays:any[] = [];
-    const byDate: Record<string, typeof rows> = {};
+    const byDate: Record<string, RowRange[]> = {};
     for (const r of rows) (byDate[r.datum] ||= []).push(r);
 
+    const plannedDays:any[] = [];
     for (const dateISO of Object.keys(byDate).sort()) {
       const d = new Date(dateISO + "T00:00:00Z");
-      const month = d.getUTCMonth()+1;
       const wknd = (((d.getUTCDay()+6)%7)+1) >= 6;
+      const month = d.getUTCMonth()+1;
 
       const openHour  = month === 3 ? (wknd ? 13 : 12) : (wknd ? 13 : 12);
       const cleanHour = month === 3 ? 21 : 23;
@@ -537,8 +538,8 @@ export async function GET(req: NextRequest) {
       const omzet:number[] = new Array(totalQ).fill(0);
 
       for (let absQ=qOpen; absQ<qEnd; absQ++){
-        const h=Math.floor(absQ/4), k=(absQ%4)+1;
-        const rr = byDate[dateISO].find(x=> x.uur===h && x.kwartier===k);
+        const h = Math.floor(absQ/4), k = (absQ%4)+1;
+        const rr = byDate[dateISO].find((x: RowRange) => x.uur === h && x.kwartier === k);
         const idx = absQ - qStart;
         if (idx>=0 && idx<totalQ){
           need[idx] = Math.max(1, rr?.front_needed ?? 1);
@@ -549,19 +550,18 @@ export async function GET(req: NextRequest) {
       const planned = new Array(totalQ).fill(0);
       const shifts: Shift[] = [];
       const minQ = 12;
-      const maxQ = maxShiftHours>0 ? maxShiftHours*4 : Number.POSITIVE_INFINITY;
 
       function budgetOK(start:number,end:number,add:number){
         for(let i=start;i<end;i++){
           const budget = 0.23*omzet[i];
-          const cost = (planned[i]+add)*costFrontHere + keukenBasis*costKeuken;
+          const cost = (planned[i]+add)*costPerQ + keukenBasis*costKeuken;
           if (cost > budget + 1e-6) return false;
         }
         return true;
       }
       function addFront(blockStartHour:number, startLocal:number, endLocal:number, count:number){
         if (count<=0 || endLocal<=startLocal) return;
-        shifts.push({ role:"front", start:qToTime(blockStartHour,startLocal), end:qToTime(blockStartHour,endLocal), count });
+        shifts.push({ role:"front", start:qToTime(dayStartHour,startLocal), end:qToTime(dayStartHour,endLocal), count });
         for(let i=startLocal;i<endLocal;i++) planned[i]+=count;
       }
       function fillBlock(absStartQ:number, absEndQ:number, blockStartHour:number){
