@@ -33,13 +33,6 @@ function groupByHour(slots: any[]) {
   for (const s of slots) (by[s.uur] ??= []).push(s);
   return Object.keys(by).map(Number).sort((a,b)=>a-b).map(h=>({ uur:h, slots: by[h] }));
 }
-function parseHHMM(s: string) {
-  const [hRaw,mRaw] = (s||"0:0").split(":");
-  const h = Number(hRaw), m = Number(mRaw);
-  return (Number.isFinite(h)?h:0) + ((Number.isFinite(m)?m:0)/60);
-}
-function quartersBetween(startHour:number,endHour:number){ return Math.max(0, Math.round((endHour-startHour)*4)); }
-function cleanHourForMonth(maand:number){ return maand===3 ? 21 : 23; }
 
 /* ------------ page ------------ */
 export default function ForecastPlanningPage() {
@@ -54,21 +47,34 @@ export default function ForecastPlanningPage() {
   const [showStaff, setShowStaff] = useState(false);
   const [jaar, setJaar] = useState(nu.getFullYear());
   const [groei, setGroei] = useState(1.03);
-  const [norm, setNorm] = useState(100);      // €/med/kw bij 15m
-  const [costPerQ, setCostPerQ] = useState(6.25); // €/kw front
-  const [itemsPerQ, setItemsPerQ] = useState(10); // items/med/kw
+  const [norm, setNorm] = useState(100);      // €/med/15m
+  const [costPerQ, setCostPerQ] = useState(6.25); // €/15m front
+  const [itemsPerQ, setItemsPerQ] = useState(10); // items/med/15m
 
   // Keuken baseline
   const [kDayStart, setKDayStart] = useState("10:00");
   const [kDayCount, setKDayCount] = useState(1);
   const [kEveCount, setKEveCount] = useState(1);
-  const [kCostPerQ, setKCostPerQ] = useState(7.5); // €/kw
+  const [kCostPerQ, setKCostPerQ] = useState(7.5); // €/15m
+
+  // Pre-open / Clean (front geforceerd)
+  const [openLead, setOpenLead] = useState(30); // minuten
+  const [closeTrail, setCloseTrail] = useState(60);
+  const [startupFront, setStartupFront] = useState(1);
+  const [cleanFront, setCleanFront] = useState(2);
 
   // Blokgrootte
   const [blockMinutes, setBlockMinutes] = useState<15|30>(15);
 
   const query = useMemo(() => {
-    const p = new URLSearchParams({ maand: String(maand), block_minutes: String(blockMinutes) });
+    const p = new URLSearchParams({
+      maand: String(maand),
+      block_minutes: String(blockMinutes),
+      open_lead_minutes: String(openLead),
+      close_trail_minutes: String(closeTrail),
+      startup_front_count: String(startupFront),
+      clean_front_count: String(cleanFront),
+    });
     if (robust) { p.set("robust","1"); p.set("winsor_alpha", String(winsorAlpha)); }
     if (showStaff) {
       p.set("show_staff", "1");
@@ -83,13 +89,13 @@ export default function ForecastPlanningPage() {
       p.set("kitchen_cost_per_q", String(kCostPerQ));
     }
     return `/api/rapportage/profielen/overzicht?${p.toString()}`;
-  }, [maand, blockMinutes, robust, winsorAlpha, showStaff, jaar, groei, norm, costPerQ, itemsPerQ, kDayStart, kDayCount, kEveCount, kCostPerQ]);
+  }, [maand, blockMinutes, openLead, closeTrail, startupFront, cleanFront, robust, winsorAlpha, showStaff, jaar, groei, norm, costPerQ, itemsPerQ, kDayStart, kDayCount, kEveCount, kCostPerQ]);
 
   const { data, error, isLoading } = useSWR(query, fetcher);
 
   return (
     <div className="p-6 space-y-6">
-      {/* Titel + maand */}
+      {/* Titel + maand + blokgrootte */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <h1 className="text-2xl font-bold">Gemiddelde omzet – {maandNamen[maand]}</h1>
         <div className="flex items-end gap-4 flex-wrap">
@@ -109,7 +115,7 @@ export default function ForecastPlanningPage() {
         </div>
       </div>
 
-      {/* Toggles */}
+      {/* Toggles & instellingen */}
       <div className="border rounded-lg p-4 shadow space-y-3">
         <div className="flex flex-wrap items-center gap-6">
           <label className="inline-flex items-center gap-2 cursor-pointer">
@@ -151,7 +157,7 @@ export default function ForecastPlanningPage() {
                 <input type="number" value={itemsPerQ} onChange={e=>setItemsPerQ(Number(e.target.value))}
                        className="border rounded px-2 py-1 w-full" /></div>
 
-              {/* Keuken baseline */}
+              {/* Keuken & non-sales blokken */}
               <div><label className="block text-sm mb-1">Keuken dag start</label>
                 <input type="time" step={900} value={kDayStart} onChange={e=>setKDayStart(e.target.value)}
                        className="border rounded px-2 py-1 w-full" /></div>
@@ -164,16 +170,20 @@ export default function ForecastPlanningPage() {
               <div className="md:col-span-1 xl:col-span-2"><label className="block text-sm mb-1">Keuken € / 15m</label>
                 <input type="number" step="0.01" value={kCostPerQ} onChange={e=>setKCostPerQ(Number(e.target.value))}
                        className="border rounded px-2 py-1 w-full" /></div>
-            </div>
 
-            {/* Meta uit API (indien aanwezig) */}
-            {data?.staff_meta && (
-              <div className="text-sm text-gray-700 flex flex-wrap gap-4">
-                <span><b>avg €/item:</b> {fmtEUR2(data.staff_meta.avg_item_rev_month || 0)}</span>
-                <span><b>€ front / blok:</b> {fmtEUR2(data.staff_meta.unit_cost_front || 0)}</span>
-                <span><b>€ keuken / blok:</b> {fmtEUR2(data.staff_meta.unit_cost_kitchen || 0)}</span>
-              </div>
-            )}
+              <div><label className="block text-sm mb-1">Opstart (min voor open)</label>
+                <input type="number" min={0} step={15} value={openLead} onChange={e=>setOpenLead(Number(e.target.value))}
+                       className="border rounded px-2 py-1 w-full" /></div>
+              <div><label className="block text-sm mb-1">Schoonmaak (min na sluit)</label>
+                <input type="number" min={0} step={15} value={closeTrail} onChange={e=>setCloseTrail(Number(e.target.value))}
+                       className="border rounded px-2 py-1 w-full" /></div>
+              <div><label className="block text-sm mb-1">Front opstart (#)</label>
+                <input type="number" min={0} value={startupFront} onChange={e=>setStartupFront(Number(e.target.value))}
+                       className="border rounded px-2 py-1 w-full" /></div>
+              <div><label className="block text-sm mb-1">Front schoonmaak (#)</label>
+                <input type="number" min={0} value={cleanFront} onChange={e=>setCleanFront(Number(e.target.value))}
+                       className="border rounded px-2 py-1 w-full" /></div>
+            </div>
           </>
         )}
       </div>
@@ -186,48 +196,42 @@ export default function ForecastPlanningPage() {
       {data?.ok && Array.isArray(data?.weekdays) && (
         <div className="space-y-10">
           {data.weekdays.map((wd: any) => {
-            // Waarde voor heatmap (raw of robust)
-            const vals = wd.slots.map((s: any) =>
-              Number(robust && s.omzet_avg_robust != null ? s.omzet_avg_robust : s.omzet_avg)
-            );
+            // Heatmap op basis van omzet (pre/clean = 0)
+            const vals = wd.slots.map((s: any) => Number(robust && s.omzet_avg_robust != null ? s.omzet_avg_robust : s.omzet_avg));
             const min = Math.min(...vals);
             const max = Math.max(...vals);
-
             const grouped = groupByHour(wd.slots);
 
-            // Dagomzet (raw of robust)
+            // Dagomzet (alleen sales-blokken)
             const dayRevenue = wd.slots.reduce((sum: number, s: any) => {
+              const isSales = s.slot_type === "sales";
+              if (!isSales) return sum;
               const v = Number(robust && s.omzet_avg_robust != null ? s.omzet_avg_robust : s.omzet_avg);
               return sum + v;
             }, 0);
 
-            // Personeelskosten header (Plan): front (som s.staff_plan * unit_cost_front) + keuken (dag-avond baseline)
+            // Personeelskosten header (Plan):
+            // – Front: som staff_plan * unit_cost_front over ALLE blokken (sales + pre + clean)
+            // – Keuken: som kitchen_cost_this_slot over ALLE blokken
             let headerCostNode: React.ReactNode = null;
             if (showStaff) {
-              const splitHour = 17.5;
-              const cleanHour = cleanHourForMonth(maand);
-              const kStartHour = parseHHMM(kDayStart);
-              const qKDay = quartersBetween(kStartHour, Math.min(splitHour, cleanHour));
-              const qKEve = quartersBetween(splitHour, cleanHour);
-              const kitchenCostDay = kDayCount * qKDay * kCostPerQ;
-              const kitchenCostEve = kEveCount * qKEve * kCostPerQ;
-              const kitchenCostTotal = kitchenCostDay + kitchenCostEve;
-
-              // front som s.staff_plan * unit_cost_front (unit kost per blok komt uit API)
               const frontPlanCost = wd.slots.reduce(
                 (sum: number, s: any) => sum + (Number(s.staff_plan || 0) * Number(s.unit_cost_front || 0)),
                 0
               );
-              const totalCost = frontPlanCost + kitchenCostTotal;
-
-              const pctCost = dayRevenue > 0 ? (totalCost / dayRevenue) * 100 : 0;
+              const kitchenCostAll = wd.slots.reduce(
+                (sum: number, s: any) => sum + Number(s.kitchen_cost_this_slot || 0),
+                0
+              );
+              const totalCost = frontPlanCost + kitchenCostAll;
+              const pctCost   = dayRevenue > 0 ? (totalCost / dayRevenue) * 100 : 0;
 
               headerCostNode = (
                 <span className="text-sm text-gray-700">
                   • Dagomzet: <b>{fmtEUR0(dayRevenue)}</b>
                   {"  "}• Personeelskosten (Plan): <b>{fmtEUR0(totalCost)}</b>
                   {"  "}(<b>{fmtPct1(pctCost)}</b>%)
-                  <span className="opacity-80"> — front {fmtEUR0(frontPlanCost)}, keuken {fmtEUR0(kitchenCostTotal)}</span>
+                  <span className="opacity-80"> — front {fmtEUR0(frontPlanCost)}, keuken {fmtEUR0(kitchenCostAll)}</span>
                 </span>
               );
             } else {
@@ -256,6 +260,7 @@ export default function ForecastPlanningPage() {
                   </div>
                 </div>
 
+                {/* Tabel per uur */}
                 <div className="overflow-x-auto">
                   <table className="min-w-[720px] w-full text-sm border-separate border-spacing-y-2">
                     <tbody>
@@ -270,12 +275,14 @@ export default function ForecastPlanningPage() {
                             return (
                               <td key={idx} className={data?.block_minutes===30 ? "w-1/2" : "w-1/4"}>
                                 <div
-                                  className="rounded-md px-3 py-2 flex flex-col gap-1 shadow-sm border"
+                                  className={`rounded-md px-3 py-2 flex flex-col gap-1 shadow-sm border ${s.slot_type!=="sales" ? "opacity-95 ring-1 ring-gray-300" : ""}`}
                                   style={{ background: bg, color: fg, borderColor: "rgba(0,0,0,0.06)" }}
-                                  title={`${s.from_to} • ${fmtEUR0(value)}`}
+                                  title={`${s.from_to} • ${fmtEUR0(value)}${s.slot_type!=="sales" ? " (niet-verkoopblok)" : ""}`}
                                 >
                                   <div className="flex items-center justify-between">
-                                    <span className="font-mono text-xs sm:text-[13px]">{s.from_to}</span>
+                                    <span className="font-mono text-xs sm:text-[13px]">
+                                      {s.from_to}{s.slot_type!=="sales" ? " • NS" : ""}
+                                    </span>
                                     <span className="font-semibold">{fmtEUR0(value)}</span>
                                   </div>
 
@@ -305,6 +312,7 @@ export default function ForecastPlanningPage() {
                     </tbody>
                   </table>
                 </div>
+
               </div>
             );
           })}
