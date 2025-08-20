@@ -18,6 +18,7 @@ const maandNamen = ["","januari","februari","maart","april","mei","juni","juli",
 
 const fmtEUR0 = (n: number) => new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Number.isFinite(n)?n:0);
 const fmtEUR2 = (n: number) => new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR",maximumFractionDigits:2}).format(Number.isFinite(n)?n:0);
+const fmtPct1 = (n: number) => new Intl.NumberFormat("nl-NL",{minimumFractionDigits:1,maximumFractionDigits:1}).format(Number.isFinite(n)?n:0);
 
 function heatColor(value: number, min: number, max: number) {
   if (!isFinite(value) || max <= min) return { bg: "hsl(210 40% 94%)", fg: "#111" };
@@ -200,7 +201,7 @@ export default function ForecastPlanningPage() {
               return sum + v;
             }, 0);
 
-            // Personeelskosten header (Plan): front (som s.staff_plan * unit_cost_front) + keuken (dag-avond baseline buiten sales-uren ook mee)
+            // Personeelskosten header (Plan): front (som s.staff_plan * unit_cost_front) + keuken (dag-avond baseline)
             let headerCostNode: React.ReactNode = null;
             if (showStaff) {
               const splitHour = 17.5;
@@ -219,17 +220,20 @@ export default function ForecastPlanningPage() {
               );
               const totalCost = frontPlanCost + kitchenCostTotal;
 
+              const pctCost = dayRevenue > 0 ? (totalCost / dayRevenue) * 100 : 0;
+
               headerCostNode = (
                 <span className="text-sm text-gray-700">
-                  • Dagomzet: <b>{fmtEUR2(dayRevenue)}</b>
-                  {"  "}• Personeelskosten (Plan): <b>{fmtEUR2(totalCost)}</b>
-                  <span className="opacity-80"> — front {fmtEUR2(frontPlanCost)}, keuken {fmtEUR2(kitchenCostTotal)}</span>
+                  • Dagomzet: <b>{fmtEUR0(dayRevenue)}</b>
+                  {"  "}• Personeelskosten (Plan): <b>{fmtEUR0(totalCost)}</b>
+                  {"  "}(<b>{fmtPct1(pctCost)}</b>%)
+                  <span className="opacity-80"> — front {fmtEUR0(frontPlanCost)}, keuken {fmtEUR0(kitchenCostTotal)}</span>
                 </span>
               );
             } else {
               headerCostNode = (
                 <span className="text-sm text-gray-700">
-                  • Dagomzet: <b>{fmtEUR2(dayRevenue)}</b>
+                  • Dagomzet: <b>{fmtEUR0(dayRevenue)}</b>
                 </span>
               );
             }
@@ -264,7 +268,7 @@ export default function ForecastPlanningPage() {
                             const value = Number(robust && s.omzet_avg_robust != null ? s.omzet_avg_robust : s.omzet_avg);
                             const { bg, fg } = heatColor(value, min, max);
                             return (
-                              <td key={idx} className={blockMinutes===30 ? "w-1/2" : "w-1/4"}>
+                              <td key={idx} className={data?.block_minutes===30 ? "w-1/2" : "w-1/4"}>
                                 <div
                                   className="rounded-md px-3 py-2 flex flex-col gap-1 shadow-sm border"
                                   style={{ background: bg, color: fg, borderColor: "rgba(0,0,0,0.06)" }}
