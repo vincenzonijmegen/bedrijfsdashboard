@@ -16,9 +16,15 @@ const fetcher = async (url: string) => {
 
 const maandNamen = ["","januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
 
-const fmtEUR0 = (n: number) => new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Number.isFinite(n)?n:0);
-const fmtEUR2 = (n: number) => new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR",maximumFractionDigits:2}).format(Number.isFinite(n)?n:0);
-const fmtPct1 = (n: number) => new Intl.NumberFormat("nl-NL",{minimumFractionDigits:1,maximumFractionDigits:1}).format(Number.isFinite(n)?n:0);
+const fmtEUR0 = (n: number) =>
+  new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR",maximumFractionDigits:0})
+    .format(Number.isFinite(n)?n:0);
+const fmtEUR2 = (n: number) =>
+  new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR",maximumFractionDigits:2})
+    .format(Number.isFinite(n)?n:0);
+const fmtPct1 = (n: number) =>
+  new Intl.NumberFormat("nl-NL",{minimumFractionDigits:1,maximumFractionDigits:1})
+    .format(Number.isFinite(n)?n:0);
 
 function heatColor(value: number, min: number, max: number) {
   if (!isFinite(value) || max <= min) return { bg: "hsl(210 40% 94%)", fg: "#111" };
@@ -32,6 +38,19 @@ function groupByHour(slots: any[]) {
   const by: Record<number, any[]> = {};
   for (const s of slots) (by[s.uur] ??= []).push(s);
   return Object.keys(by).map(Number).sort((a,b)=>a-b).map(h=>({ uur:h, slots: by[h] }));
+}
+function cleanHourForMonth(maand:number){ return maand===3 ? 21 : 23; }
+
+/** Tel kalenderdagen met een ISO-weekdag (1=ma .. 7=zo) binnen een maand */
+function countWeekdaysInMonth(year:number, month1to12:number, isodow:1|2|3|4|5|6|7){
+  let cnt = 0;
+  const start = new Date(Date.UTC(year, month1to12-1, 1));
+  const end   = new Date(Date.UTC(year, month1to12, 0));
+  for (let d = new Date(start); d <= end; d = new Date(d.getTime()+86400000)){
+    const iso = (((d.getUTCDay()+6)%7)+1) as 1|2|3|4|5|6|7;
+    if (iso === isodow) cnt++;
+  }
+  return cnt;
 }
 
 /* ------------ page ------------ */
@@ -69,6 +88,10 @@ export default function ForecastPlanningPage() {
   // Budgetmethode
   const [budgetMode, setBudgetMode] = useState<"monthly"|"slot">("monthly");
 
+  // Jaarcheck state
+  const [yearCheck, setYearCheck] = useState<{rev:number; cost:number; pct:number} | null>(null);
+  const [checking, setChecking] = useState(false);
+
   const query = useMemo(() => {
     const p = new URLSearchParams({
       maand: String(maand),
@@ -100,6 +123,72 @@ export default function ForecastPlanningPage() {
   ]);
 
   const { data, error, isLoading } = useSWR(query, fetcher);
+
+  // Jaarcheck functie (loopt alle maanden × weekdagen en telt op met kalenderdagen)
+  async function runYearCheck(){
+    try{
+      setChecking(true);
+      let totalRev = 0, totalCost = 0;
+
+      for (let m = 1; m <= 12; m++){
+        // haal per maand 1 response op
+        const p = new URLSearchParams({
+          maand: String(m),
+          block_minutes: String(blockMinutes),
+          open_lead_minutes: String(openLead),
+          close_trail_minutes: String(closeTrail),
+          startup_front_count: String(startupFront),
+          clean_front_count: String(cleanFront),
+          budget_mode: budgetMode,
+          // we willen altijd staff-velden voor de jaarcheck:
+          show_staff: "1",
+          jaar: String(jaar),
+          groei: String(groei),
+          norm: String(norm),
+          cost_per_q: String(costPerQ),
+          items_per_q: String(itemsPerQ),
+          kitchen_day_start: kDayStart,
+          kitchen_day_count: String(kDayCount),
+          kitchen_eve_count: String(kEveCount),
+          kitchen_cost_per_q: String(kCostPerQ),
+        });
+        if (robust) { p.set("robust","1"); p.set("winsor_alpha", String(winsorAlpha)); }
+
+        const res = await fetch(`/api/rapportage/profielen/overzicht?${p.toString()}`);
+        const json = await res.json();
+
+        // per ISO-weekdag (1..7)
+        for (let iso = 1 as 1|2|3|4|5|6|7; iso <= 7; iso = (iso + 1) as any){
+          const wd = (json.weekdays || []).find((w:any)=> w.isodow === iso);
+          if (!wd) continue;
+
+          // dagomzet (alleen sales-blokken)
+          const dayRevenue = wd.slots.reduce((sum:number, s:any)=>{
+            if (s.slot_type !== "sales") return sum;
+            const v = Number(robust && s.omzet_avg_robust != null ? s.omzet_avg_robust : s.omzet_avg);
+            return sum + v;
+          }, 0);
+
+          // dagkosten = front (Plan) + keuken (alle blokken)
+          const frontCost = wd.slots.reduce(
+            (sum:number, s:any)=> sum + Number(s.staff_plan||0) * Number(s.unit_cost_front||0), 0
+          );
+          const kitchenCost = wd.slots.reduce(
+            (sum:number, s:any)=> sum + Number(s.kitchen_cost_this_slot||0), 0
+          );
+          const dayCost = frontCost + kitchenCost;
+
+          const days = countWeekdaysInMonth(jaar, m, iso);
+          totalRev  += dayRevenue * days;
+          totalCost += dayCost    * days;
+        }
+      }
+      const pct = totalRev>0 ? (totalCost/totalRev)*100 : 0;
+      setYearCheck({ rev: totalRev, cost: totalCost, pct });
+    } finally {
+      setChecking(false);
+    }
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -150,6 +239,19 @@ export default function ForecastPlanningPage() {
             <input type="checkbox" className="h-4 w-4" checked={showStaff} onChange={e=>setShowStaff(e.target.checked)} />
             <span className="font-semibold">Toon personeelsbehoefte</span>
           </label>
+
+          {/* Jaarcheck knop + resultaten */}
+          <div className="flex items-center gap-3 ml-auto">
+            <button onClick={runYearCheck} disabled={checking}
+              className="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+              {checking ? "Jaarcheck…" : "Jaarcheck 23%"}
+            </button>
+            {yearCheck && (
+              <span className="text-sm text-gray-700">
+                Jaaromzet <b>{fmtEUR0(yearCheck.rev)}</b> • Personeel <b>{fmtEUR0(yearCheck.cost)}</b> • <b>{fmtPct1(yearCheck.pct)}</b>%
+              </span>
+            )}
+          </div>
         </div>
 
         {showStaff && (
@@ -199,16 +301,6 @@ export default function ForecastPlanningPage() {
                 <input type="number" min={0} value={cleanFront} onChange={e=>setCleanFront(Number(e.target.value))}
                        className="border rounded px-2 py-1 w-full" /></div>
             </div>
-
-            {/* (optioneel) meta uit API: items_per_unit, unit_cost_front/kitchen, etc. */}
-            {data?.staff_meta && (
-              <div className="text-sm text-gray-700 flex flex-wrap gap-4">
-                <span><b>avg €/item:</b> {fmtEUR2(data.staff_meta.avg_item_rev_month || 0)}</span>
-                <span><b>€ front / blok:</b> {fmtEUR2(data.staff_meta.unit_cost_front || 0)}</span>
-                <span><b>€ keuken / blok:</b> {fmtEUR2(data.staff_meta.unit_cost_kitchen || 0)}</span>
-                <span><b>budget:</b> {data?.staff_meta?.budget_mode}</span>
-              </div>
-            )}
           </>
         )}
       </div>
@@ -222,7 +314,8 @@ export default function ForecastPlanningPage() {
         <div className="space-y-10">
           {data.weekdays.map((wd: any) => {
             // Heatmap op basis van omzet (pre/clean = 0)
-            const vals = wd.slots.map((s: any) => Number(robust && s.omzet_avg_robust != null ? s.omzet_avg_robust : s.omzet_avg));
+            const vals = wd.slots.map((s: any) =>
+              Number(robust && s.omzet_avg_robust != null ? s.omzet_avg_robust : s.omzet_avg));
             const min = Math.min(...vals);
             const max = Math.max(...vals);
             const grouped = groupByHour(wd.slots);
@@ -234,9 +327,7 @@ export default function ForecastPlanningPage() {
               return sum + v;
             }, 0);
 
-            // Personeelskosten header (Plan):
-            // – Front: som staff_plan * unit_cost_front over ALLE blokken (sales + pre + clean)
-            // – Keuken: som kitchen_cost_this_slot over ALLE blokken
+            // Personeelskosten header (Plan) = front + keuken over alle blokken
             let headerCostNode: React.ReactNode = null;
             if (showStaff) {
               const frontPlanCost = wd.slots.reduce(
