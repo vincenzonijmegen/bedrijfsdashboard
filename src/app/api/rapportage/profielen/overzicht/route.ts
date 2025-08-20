@@ -93,7 +93,8 @@ export async function GET(req: NextRequest) {
     let yearPrev = 0;
     let monthExpThis = 0;
     let yearExp = 0;
-    let dayAvgByIso: Record<number, number> = {};
+    const dayAvgByIso: Record<number, number> = {};
+
 
     if (includeStaff) {
       // 2a) Jaaromzet vorig jaar uit ruwe tabel
