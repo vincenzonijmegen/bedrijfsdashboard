@@ -14,7 +14,28 @@ import {
   Legend,
 } from "recharts";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+// Robuuste fetcher: bewaakt status + content-type en geeft duidelijke fout
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  const ct = res.headers.get("content-type") || "";
+  const body = await res.text();
+
+  if (!res.ok) {
+    const snippet = body.slice(0, 400);
+    throw new Error(`HTTP ${res.status} — ${snippet}`);
+  }
+  if (!ct.includes("application/json")) {
+    const snippet = body.slice(0, 200);
+    throw new Error(
+      `Non-JSON response (content-type: ${ct}). Eerste bytes: ${snippet}`
+    );
+  }
+  try {
+    return JSON.parse(body);
+  } catch (e: any) {
+    throw new Error(`JSON parse error: ${e?.message || e}`);
+  }
+};
 
 const maandNamen = [
   "", // 0 placeholder
@@ -53,9 +74,10 @@ export default function ForecastPlanningPage() {
   const [maand, setMaand] = useState<number>(defaultMaand);
   const [weekdag, setWeekdag] = useState<string>(defaultWeekdag);
 
+  // parameters
   const [norm, setNorm] = useState<number>(100); // € per medewerker per kwartier
   const [costPerQ, setCostPerQ] = useState<number>(3.75); // €15/u
-  const [keukenBasis, setKeukenBasis] = useState<number>(0); // 0/1, telt mee in kosten
+  const [keukenBasis, setKeukenBasis] = useState<number>(0); // 0/1 (kostentelling)
   const [standbyDayStart, setStandbyDayStart] = useState<string>("14:00"); // HH:MM
   const [standbyEveStart, setStandbyEveStart] = useState<string>("19:00"); // HH:MM
 
@@ -63,10 +85,10 @@ export default function ForecastPlanningPage() {
     const p = new URLSearchParams({
       jaar: String(jaar),
       maand: String(maand),
-      weekdag: weekdag, // 'ma','di',... of 1..7: route kan beide
+      weekdag: weekdag, // 'ma','di',... (route ondersteunt ook 1..7)
       norm: String(norm),
       cost_per_q: String(costPerQ),
-      keuken_basis: String(keukenBasis), // let op: exact "0" of "1"
+      keuken_basis: String(keukenBasis), // exact "0" of "1"
       standby_day_start: standbyDayStart,
       standby_eve_start: standbyEveStart,
     });
@@ -75,7 +97,6 @@ export default function ForecastPlanningPage() {
 
   const { data, error, isLoading } = useSWR(query, fetcher);
 
-  // Chartdata voor month-weekday modus
   const chartData =
     data?.mode === "month-weekday" && Array.isArray(data?.quarters)
       ? data.quarters.map((q: any) => ({
@@ -181,9 +202,13 @@ export default function ForecastPlanningPage() {
 
       {/* Status */}
       {isLoading && <p>Bezig met laden…</p>}
-      {error && <p className="text-red-600">Error: {String(error)}</p>}
+      {error && (
+        <div className="text-red-600 whitespace-pre-wrap text-sm">
+          <strong>Fout bij laden:</strong> {String(error)}
+        </div>
+      )}
 
-      {/* Mode: month-weekday */}
+      {/* Mode: maand × weekdag */}
       {data?.mode === "month-weekday" && (
         <div className="space-y-6">
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-700">
@@ -239,7 +264,7 @@ export default function ForecastPlanningPage() {
         </div>
       )}
 
-      {/* Terugval: oude date-range render (alleen als je toch zo aanroept) */}
+      {/* Fallback: oude date-range (alleen als die mode per ongeluk actief is) */}
       {data?.mode === "date-range" && data?.days && (
         <div className="space-y-8">
           {data.days.map((day: any) => (
