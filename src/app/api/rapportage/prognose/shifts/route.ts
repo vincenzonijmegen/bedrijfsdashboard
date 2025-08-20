@@ -1,13 +1,11 @@
+// src/app/api/rapportage/prognose/shifts/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { dbRapportage } from "@/lib/dbRapportage";
 
 export const runtime = "nodejs";
 
-/* ================= helpers ================= */
+/* ===== helpers ===== */
 const pad2 = (n: number) => String(n).padStart(2, "0");
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
-const clamp = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
-
 function toDateISO(s: string) {
   const d = new Date(s + "T00:00:00Z");
   if (Number.isNaN(d.getTime())) throw new Error("Ongeldige datum: " + s);
@@ -47,19 +45,18 @@ function qToTime(blockStartHour: number, qIdx: number) {
   return `${pad2(hh)}:${pad2(mm)}`;
 }
 
-/* ================= route ================= */
+/* ===== route ===== */
 export async function GET(req: NextRequest) {
   const started = Date.now();
   const { searchParams } = new URL(req.url);
   const now = new Date();
 
-  // -------- parameters (met hardening) --------
+  // Params + hardening
   const jaar = takeFirstNumeric(searchParams.get("jaar"), now.getFullYear());
   const groei = Number(searchParams.get("groei") ?? "1.03");
-
-  const norm = takeFirstNumeric(searchParams.get("norm"), 100);               // € per medewerker/kwartier
-  const costPerQ = takeFirstNumeric(searchParams.get("cost_per_q"), 3.75);    // €15/u front
-  const keukenBasis = parseBinaryParam(searchParams.get("keuken_basis"), 0);  // 0/1 (alleen kosten)
+  const norm = takeFirstNumeric(searchParams.get("norm"), 100);
+  const costPerQ = takeFirstNumeric(searchParams.get("cost_per_q"), 3.75);
+  const keukenBasis = parseBinaryParam(searchParams.get("keuken_basis"), 0);
   const standbyDayStartStr = (searchParams.get("standby_day_start") ?? "14:00").trim();
   const standbyEveStartStr = (searchParams.get("standby_eve_start") ?? "19:00").trim();
   const maxShiftHours = takeFirstNumeric(searchParams.get("max_shift_hours"), 6);
@@ -68,29 +65,47 @@ export async function GET(req: NextRequest) {
   const weekdagParam = searchParams.get("weekdag") ?? searchParams.get("weekday") ?? searchParams.get("wd");
   const maand = maandParam ? takeFirstNumeric(maandParam, 0) : 0;
   const isoWd = parseWeekday(weekdagParam);
+  const useMonthWeekday = !!(maand && isoWd);
 
   const startParam = searchParams.get("start");
   const eindeParam = searchParams.get("einde");
 
-  const useMonthWeekday = !!(maand && isoWd);
-
-  // Gemeenschappelijk (kosten)
   const costFront = costPerQ;
   const costKeuken = 5.0; // €20/u => €5/kw
   type Shift = { role: "front" | "standby"; start: string; end: string; count: number };
 
-  // ------------- TOP-LEVEL TRY so we ALWAYS return JSON -------------
+  // --- Selftest (geen DB) ---
+  if (searchParams.get("selftest") === "1") {
+    return NextResponse.json({
+      ok: true,
+      mode: useMonthWeekday ? "month-weekday" : "date-range",
+      echo: {
+        jaar, groei, maand, weekdag: isoWd,
+        norm, costPerQ, keukenBasis, standbyDayStartStr, standbyEveStartStr, maxShiftHours,
+        start: startParam, einde: eindeParam
+      },
+      took_ms: Date.now() - started
+    });
+  }
+
+  // --- DB dynamisch importeren (zodat import-fouten als JSON terugkomen) ---
+  let dbRapportage: any;
   try {
-    /* ========== MODE A: maand × weekdag ========== */
-    if (useMonthWeekday) {
-      const stage = "month-weekday";
+    const mod = await import("@/lib/dbRapportage");
+    dbRapportage = mod.dbRapportage;
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, stage: "import-db", error: e?.message || String(e) }, { status: 500 });
+  }
+
+  // ===== MODE A: maand × weekdag =====
+  if (useMonthWeekday) {
+    try {
       const isSunday = isoWd === 7;
-      const openHour = maand === 3 ? (isSunday ? 13 : 12) : (isSunday ? 13 : 12);
+      const openHour  = maand === 3 ? (isSunday ? 13 : 12) : (isSunday ? 13 : 12);
       const closeHour = maand === 3 ? 20 : 22;
       const cleanHour = maand === 3 ? 21 : 23;
-      const coverageStartHour = isSunday ? 12.5 : 11.5; // 12:30 of 11:30
+      const coverageStartHour = isSunday ? 12.5 : 11.5;
 
-      // --- SQL: gemiddelde dag voor (maand × weekdag) ---
       const sql = `
         WITH
         hist_day AS (
@@ -220,9 +235,8 @@ export async function GET(req: NextRequest) {
       `;
 
       const raw = await dbRapportage.query(sql, [
-        jaar, groei, maand, isoWd, maand === 3 ? 1 : 0, norm,
+        jaar, groei, maand, isoWd, maand === 3 ? 1 : 0, norm
       ]);
-
       type RowMW = { uur: number; kwartier: number; omzet_forecast: number; need_front: number };
       const rows: RowMW[] = raw.rows.map((r:any)=>({
         uur: Number(r.uur),
@@ -231,11 +245,11 @@ export async function GET(req: NextRequest) {
         need_front: Math.max(1, Number(r.need_front) || 1),
       }));
 
-      // coverage: 11:30 (of 12:30 op zo/feest) t/m clean
-      const qStart = Math.round((isSunday ? 12.5 : 11.5) * 4);
-      const qOpen  = Math.round((isSunday ? 13 : (maand===3?12:12)) * 4);
-      const qClose = Math.round((maand===3?20:22) * 4);
-      const qClean = Math.round((maand===3?21:23) * 4);
+      // coverage
+      const qStart = Math.round((isoWd === 7 ? 12.5 : 11.5) * 4);
+      const qOpen  = Math.round(openHour * 4);
+      const qClose = Math.round(closeHour * 4);
+      const qClean = Math.round(cleanHour * 4);
       const splitQ = Math.round(17.5 * 4);
       const totalQ = qClean - qStart;
 
@@ -252,7 +266,7 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // packer
+      // packen
       const planned = new Array(totalQ).fill(0);
       const shifts: Shift[] = [];
       const minQ = 12;
@@ -261,21 +275,19 @@ export async function GET(req: NextRequest) {
       function budgetOK(start:number,end:number,add:number){
         for(let i=start;i<end;i++){
           const budget = 0.23 * omzet[i];
-          const cost = (planned[i]+add)*costFront + keukenBasis*costKeuken;
+          const cost = (planned[i]+add)*costPerQ + keukenBasis*costKeuken;
           if (cost > budget + 1e-6) return false;
         }
         return true;
       }
       function addFront(blockStartHour:number, startLocal:number, endLocal:number, count:number){
         if (count<=0 || endLocal<=startLocal) return;
-        shifts.push({ role:"front", start:qToTime(isSunday?12.5:11.5, startLocal), end:qToTime(isSunday?12.5:11.5, endLocal), count });
+        shifts.push({ role:"front", start:qToTime(isoWd===7?12.5:11.5, startLocal), end:qToTime(isoWd===7?12.5:11.5, endLocal), count });
         for(let i=startLocal;i<endLocal;i++) planned[i]+=count;
       }
       function fillBlock(absStartQ:number, absEndQ:number){
         const s = absStartQ - qStart, e = absEndQ - qStart;
-        // baseline 1
-        addFront(isSunday?12.5:11.5, 0, e - s, 1);
-        // aanvullen
+        addFront(isoWd===7?12.5:11.5, 0, e - s, 1);
         while(true){
           let first=-1; for(let i=s;i<e;i++){ if(planned[i]<need[i]){first=i;break;} }
           if (first===-1) break;
@@ -285,39 +297,34 @@ export async function GET(req: NextRequest) {
           let add=Math.max(1,gap);
           while(add>0 && !budgetOK(start,end,add)) add--;
           if(add<=0){ planned[start]=Math.max(planned[start],need[start]); continue; }
-          addFront(isSunday?12.5:11.5, start - s, end - s, add);
+          addFront(isoWd===7?12.5:11.5, start - s, end - s, add);
         }
       }
 
-      // blokken: [coverage..17:30) en [17:30..clean]
       fillBlock(qStart, Math.min(splitQ,qClean));
-      // avondblok start op 17:30
-      const eveStartQ = Math.min(splitQ,qClean);
-      fillBlock(eveStartQ, qClean);
+      fillBlock(Math.min(splitQ,qClean), qClean);
 
       // standby (dag & avond)
       const [sdH, sdM] = standbyDayStartStr.split(":").map(Number);
       const dayStandbyStartHour = (Number.isFinite(sdH)?sdH:14) + ((Number.isFinite(sdM)?sdM:0)/60);
       const dayStandbyAbsQ = Math.max(qStart, Math.round(dayStandbyStartHour*4));
       if (Math.min(splitQ,qClean) > dayStandbyAbsQ) {
-        shifts.push({ role:"standby", start:qToTime(isSunday?12.5:11.5, dayStandbyAbsQ - qStart), end:qToTime(isSunday?12.5:11.5, Math.min(splitQ,qClean)-qStart), count:1 });
+        shifts.push({ role:"standby", start:qToTime(isoWd===7?12.5:11.5, dayStandbyAbsQ - qStart), end:qToTime(isoWd===7?12.5:11.5, Math.min(splitQ,qClean)-qStart), count:1 });
       }
-
       const [seH, seM] = standbyEveStartStr.split(":").map(Number);
       const eveStandbyStartHour = (Number.isFinite(seH)?seH:19) + ((Number.isFinite(seM)?seM:0)/60);
       const eveStandbyAbsQ = Math.max(Math.round(17.5*4), Math.round(eveStandbyStartHour*4));
       if (qClean > eveStandbyAbsQ) {
-        shifts.push({ role:"standby", start:qToTime(isSunday?12.5:11.5, eveStandbyAbsQ - qStart), end:qToTime(isSunday?12.5:11.5, qClean - qStart), count:1 });
+        shifts.push({ role:"standby", start:qToTime(isoWd===7?12.5:11.5, eveStandbyAbsQ - qStart), end:qToTime(isoWd===7?12.5:11.5, qClean - qStart), count:1 });
       }
 
-      const totalMs = Date.now() - started;
       return NextResponse.json({
         ok: true,
-        mode: stage,
-        took_ms: totalMs,
+        mode: "month-weekday",
+        took_ms: Date.now() - started,
         params: { jaar, groei, maand, weekdag: isoWd, norm, costPerQ, keukenBasis, standbyDayStartStr, standbyEveStartStr, maxShiftHours },
         coverage: {
-          start: `${pad2(Math.floor(isSunday?12.5:11.5))}:${pad2(((isSunday?12.5:11.5)%1)*60||0)}`,
+          start: `${pad2(Math.floor(isoWd===7?12.5:11.5))}:${pad2(((isoWd===7?12.5:11.5)%1)*60||0)}`,
           open: `${pad2(openHour)}:00`,
           split: "17:30",
           close: `${pad2(closeHour)}:00`,
@@ -325,7 +332,7 @@ export async function GET(req: NextRequest) {
         },
         shifts,
         quarters: Array.from({length: totalQ}, (_,i)=>{
-          const mins = (isSunday?12.5:11.5)*60 + i*15;
+          const mins = (isoWd===7?12.5:11.5)*60 + i*15;
           const h = Math.floor(mins/60), m = mins%60;
           return {
             time: `${pad2(h)}:${pad2(m)}`,
@@ -333,13 +340,17 @@ export async function GET(req: NextRequest) {
             planned: planned[i],
             omzet: Number(omzet[i]?.toFixed(2) ?? "0"),
             budget: Number((0.23*omzet[i])?.toFixed(2) ?? "0"),
-            cost_front: Number((planned[i]*costFront + keukenBasis*costKeuken)?.toFixed(2) ?? "0"),
+            cost_front: Number((planned[i]*costPerQ + keukenBasis*costKeuken)?.toFixed(2) ?? "0"),
           };
         })
       });
+    } catch (e: any) {
+      return NextResponse.json({ ok:false, stage:"month-weekday", error: e?.message || String(e) }, { status: 500 });
     }
+  }
 
-    /* ========== MODE B: date-range (fallback) ========== */
+  // ===== MODE B: date-range =====
+  try {
     const startDate = startParam && eindeParam ? toDateISO(startParam) : toDateISO(`${jaar}-01-01`);
     const endDate   = startParam && eindeParam ? toDateISO(eindeParam)   : toDateISO(`${jaar}-12-31`);
 
@@ -488,10 +499,11 @@ export async function GET(req: NextRequest) {
     `;
 
     const raw = await dbRapportage.query(sqlRange, [
-      jaar, norm, costPerQ, isoDate(startParam ? toDateISO(startParam) : toDateISO(`${jaar}-01-01`)), isoDate(eindeParam ? toDateISO(eindeParam) : toDateISO(`${jaar}-12-31`))
+      jaar, norm, costPerQ,
+      isoDate(startParam ? toDateISO(startParam) : toDateISO(`${jaar}-01-01`)),
+      isoDate(eindeParam ? toDateISO(eindeParam) : toDateISO(`${jaar}-12-31`)),
     ]);
 
-    // group per dag en plan (zelfde packer als eerder)
     const rows = raw.rows.map((r:any)=>({
       datum: typeof r.datum === "string" ? r.datum : new Date(r.datum).toISOString().slice(0,10),
       uur: Number(r.uur),
@@ -500,14 +512,16 @@ export async function GET(req: NextRequest) {
       front_needed: Math.max(0, Number(r.front_needed)||0),
     }));
 
+    // Per dag plannen (zelfde constraints)
+    const costFrontHere = costPerQ;
+    const plannedDays:any[] = [];
     const byDate: Record<string, typeof rows> = {};
     for (const r of rows) (byDate[r.datum] ||= []).push(r);
 
-    const days:any[] = [];
     for (const dateISO of Object.keys(byDate).sort()) {
       const d = new Date(dateISO + "T00:00:00Z");
-      const wknd = (((d.getUTCDay()+6)%7)+1) >= 6;
       const month = d.getUTCMonth()+1;
+      const wknd = (((d.getUTCDay()+6)%7)+1) >= 6;
 
       const openHour  = month === 3 ? (wknd ? 13 : 12) : (wknd ? 13 : 12);
       const cleanHour = month === 3 ? 21 : 23;
@@ -534,19 +548,20 @@ export async function GET(req: NextRequest) {
 
       const planned = new Array(totalQ).fill(0);
       const shifts: Shift[] = [];
-      const minQ=12, maxQ = maxShiftHours>0 ? maxShiftHours*4 : Number.POSITIVE_INFINITY;
+      const minQ = 12;
+      const maxQ = maxShiftHours>0 ? maxShiftHours*4 : Number.POSITIVE_INFINITY;
 
       function budgetOK(start:number,end:number,add:number){
         for(let i=start;i<end;i++){
           const budget = 0.23*omzet[i];
-          const cost = (planned[i]+add)*costFront + keukenBasis*costKeuken;
+          const cost = (planned[i]+add)*costFrontHere + keukenBasis*costKeuken;
           if (cost > budget + 1e-6) return false;
         }
         return true;
       }
       function addFront(blockStartHour:number, startLocal:number, endLocal:number, count:number){
         if (count<=0 || endLocal<=startLocal) return;
-        shifts.push({ role:"front", start:qToTime(dayStartHour,startLocal), end:qToTime(dayStartHour,endLocal), count });
+        shifts.push({ role:"front", start:qToTime(blockStartHour,startLocal), end:qToTime(blockStartHour,endLocal), count });
         for(let i=startLocal;i<endLocal;i++) planned[i]+=count;
       }
       function fillBlock(absStartQ:number, absEndQ:number, blockStartHour:number){
@@ -568,31 +583,26 @@ export async function GET(req: NextRequest) {
       fillBlock(qStart, Math.min(splitQ,qEnd), dayStartHour);
       fillBlock(Math.min(splitQ,qEnd), qEnd, 17.5);
 
-      // standby in beide blokken
+      // standby
       shifts.push({ role:"standby", start:"14:00", end:"17:30", count:1 });
       shifts.push({ role:"standby", start:"19:00", end: month===3 ? "21:00" : "23:00", count:1 });
 
-      days.push({ date: dateISO, open:`${pad2(openHour)}:00`, clean_done:`${pad2(cleanHour)}:00`, shifts });
+      plannedDays.push({ date: dateISO, open:`${pad2(openHour)}:00`, clean_done:`${pad2(cleanHour)}:00`, shifts });
     }
 
     return NextResponse.json({
-      ok:true,
-      mode:"date-range",
-      params:{ jaar, norm, costPerQ, keukenBasis },
-      days
+      ok: true,
+      mode: "date-range",
+      took_ms: Date.now() - started,
+      params: { jaar, norm, costPerQ, keukenBasis, maxShiftHours, start: startParam, einde: eindeParam },
+      days: plannedDays
     });
-  } catch (err:any) {
-    // Dit vangt *alles* af → geen HTML 500 meer
+  } catch (e: any) {
     return NextResponse.json({
-      ok:false,
-      stage:"top-level",
-      error: err?.message || String(err),
-      received: {
-        jaar, groei, maand, weekdag: isoWd,
-        norm, costPerQ, keukenBasis,
-        standbyDayStartStr, standbyEveStartStr, maxShiftHours,
-        start: startParam, einde: eindeParam
-      }
+      ok: false,
+      stage: "date-range",
+      error: e?.message || String(e),
+      params: { jaar, norm, costPerQ, keukenBasis, maxShiftHours, start: startParam, einde: eindeParam }
     }, { status: 500 });
   }
 }
