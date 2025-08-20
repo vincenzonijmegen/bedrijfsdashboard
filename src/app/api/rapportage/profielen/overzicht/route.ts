@@ -191,15 +191,14 @@ export async function GET(req: NextRequest) {
     const totOmzet = Number(avgItemRs.rows[0]?.omzet || 0);
     const avgItemRevMonth = totItems > 0 ? (totOmzet / totItems) : 0;
 
-    /* ---------- MONTHLY: jaar→maand baseline & sales-budget ---------- */
-    const monthSalesBudgetMap: Record<number, number> = {};
-    let baseYearExp = 0;
+    /* ---------- Groei-schaalfactor voor omzet (rev_scale) ---------- */
+    let revScale = 1;
     let yearPrev = 0;
     let yearTarget = 0;
-    let revScale = 1;
+    let baseYearExp = 0;
 
-    if (includeStaff && useMonthly) {
-      // jaarbudget 23% (vorig jaar × groei)
+    if (includeStaff) {
+      // Vorig jaar & target (met groei)
       const prev = await db.query(
         `SELECT COALESCE(SUM(aantal * eenheidsprijs),0) AS y
          FROM rapportage.omzet
@@ -207,9 +206,37 @@ export async function GET(req: NextRequest) {
       );
       yearPrev   = Number(prev.rows[0]?.y || 0);
       yearTarget = Math.round(yearPrev * (isFinite(groei) && groei > 0 ? groei : 1));
+
+      // Basis-jaaromzet uit profielen (alle maanden/weekdagen)
+      const mexp = await db.query(`
+        WITH day_avg AS (
+          SELECT maand, isodow, AVG(dagomzet_avg)::numeric AS day_avg
+          FROM rapportage.omzet_profiel_mw_kwartier
+          GROUP BY maand, isodow
+        ),
+        day_counts AS (
+          SELECT EXTRACT(MONTH FROM d)::int AS maand,
+                 EXTRACT(ISODOW FROM d)::int AS isodow,
+                 COUNT(*)::int AS n_days
+          FROM generate_series(make_date($1,1,1), make_date($1,12,31), '1 day') d
+          GROUP BY 1,2
+        )
+        SELECT SUM(COALESCE(da.day_avg,0) * dc.n_days)::numeric AS base_year_exp
+        FROM day_counts dc
+        LEFT JOIN day_avg da ON da.maand = dc.maand AND da.isodow = dc.isodow
+      `, [jaar]);
+      baseYearExp = Number(mexp.rows[0]?.base_year_exp || 0);
+
+      revScale = baseYearExp > 0 ? (yearTarget / baseYearExp) : 1;
+    }
+
+    /* ---------- MONTHLY: jaar→maand baseline & sales-budget ---------- */
+    const monthSalesBudgetMap: Record<number, number> = {};
+    if (includeStaff && (searchParams.get("budget_mode") || "monthly").toLowerCase() === "monthly") {
+      // jaarbudget 23%
       const yearBudget = yearTarget * 0.23;
 
-      // Verwachte maandomzetten voor bezettingscurve
+      // Verwachte maandomzetten (voor occ-curve)
       const sqlMonthExp = `
         WITH day_avg AS (
           SELECT maand, isodow, AVG(dagomzet_avg)::numeric AS day_avg
@@ -234,10 +261,8 @@ export async function GET(req: NextRequest) {
       const mexp = await db.query(sqlMonthExp, [jaar]);
       const monthExp: { maand:number; month_exp:number }[] =
         mexp.rows.map((r:any)=>({ maand:Number(r.maand), month_exp:Number(r.month_exp||0) }));
-      baseYearExp = monthExp.reduce((a,b)=>a+b.month_exp, 0);
-      revScale = baseYearExp > 0 ? (yearTarget / baseYearExp) : 1;
 
-      // Jaar-baseline (keuken + NS-front) per maand op 15m-eenheid
+      // Jaar-baseline (keuken + NS-front) per maand (op 15m-eenheid)
       const unitFront15   = costPerQ;         // €/15m
       const unitKitchen15 = kitchenCostPerQ;  // €/15m
       const monthlyBaseline: Record<number, number> = {};
@@ -452,9 +477,11 @@ export async function GET(req: NextRequest) {
 
       if (includeStaff) {
         if (!useMonthly) {
-          // SLOT-MODE: 23% per blok – keuken
+          // SLOT-MODE: 23% per blok – keuken (*** MET GROEI ***)
           for (const s of slots) {
-            const value = Number(robustOn && s.omzet_avg_robust!=null ? s.omzet_avg_robust : s.omzet_avg);
+            const base = Number(robustOn && s.omzet_avg_robust!=null ? s.omzet_avg_robust : s.omzet_avg);
+            const value = base * revScale; // <-- groei toepassen
+
             const staff_norm     = normPerUnit>0 ? Math.ceil(value / normPerUnit) : 0;
             const staff_capacity = capRevPerStaffUnit>0 ? Math.ceil(value / capRevPerStaffUnit) : 0;
 
@@ -483,7 +510,6 @@ export async function GET(req: NextRequest) {
           }
         } else {
           // MONTHLY-MODE (baseline-first) + HYBRID verdeling met lokale 23% cap
-
           // 1) dag-salesbudget: maand-salesbudget → dagen o.b.v. daggemiddelden & #dagen
           const listForDay = (byDay.get(d) || []);
           const dayAvg = listForDay.length ? (listForDay[0].day_avg ?? 0) : 0;
@@ -498,13 +524,14 @@ export async function GET(req: NextRequest) {
           const nDaysThis    = countWeekdaysInMonth(jaar, maand, d);
 
           const monthSalesBudget = monthSalesBudgetMap[maand] || 0;
-          const daySalesBudget =
+          const daySalesBudget   =
             (sumMonthDays>0 && nDaysThis>0) ? (monthSalesBudget * (dayAvg/sumMonthDays)) / nDaysThis : 0;
 
           // 2) need-proxy per sales-blok
           const salesSlots = slots.filter((x:any)=> x.slot_type==="sales");
           const needProxies = salesSlots.map((x:any)=>{
-            const v = Number(robustOn && x.omzet_avg_robust!=null ? x.omzet_avg_robust : x.omzet_avg);
+            const base = Number(robustOn && x.omzet_avg_robust!=null ? x.omzet_avg_robust : x.omzet_avg);
+            const v = base * revScale; // groei ook meenemen in behoefte
             const n  = normPerUnit>0        ? v / normPerUnit        : 0;
             const cap= capRevPerStaffUnit>0 ? v / capRevPerStaffUnit : 0;
             return Math.max(n, cap, 1e-6);
@@ -513,7 +540,8 @@ export async function GET(req: NextRequest) {
 
           // 3) Bud per sales-blok = min( share_need*daySalesBudget,  23%*omzet − keuken )
           salesSlots.forEach((s:any, idx:number)=>{
-            const value = Number(robustOn && s.omzet_avg_robust!=null ? s.omzet_avg_robust : s.omzet_avg);
+            const base = Number(robustOn && s.omzet_avg_robust!=null ? s.omzet_avg_robust : s.omzet_avg);
+            const value = base * revScale; // groei toepassen voor lokale cap
 
             const shareNeed = needSum>0 ? (needProxies[idx]/needSum) : (1/salesSlots.length);
             const allowedFromDay = daySalesBudget * shareNeed;
@@ -560,41 +588,27 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Meta met rev_scale (zodat UI jaaromzet met groei kan schalen)
-    let staffMeta: any = undefined;
-    if (includeStaff) {
-      staffMeta = {
-        jaar,
-        groei,
-        budget_mode: useMonthly ? "monthly" : "slot",
-        avg_item_rev_month: Number((totItems>0 ? totOmzet/totItems : 0).toFixed(4)),
-        items_per_unit: itemsPerQ * blockFactor,
-        unit_cost_front: costPerQ * blockFactor,
-        unit_cost_kitchen: kitchenCostPerQ * blockFactor,
-        startup_front_count: startupFront,
-        clean_front_count: cleanFront,
-        open_lead_minutes: preMinutes,
-        close_trail_minutes: postMinutes,
-      };
-      if (useMonthly) {
-        // stuur jaarcijfers & schaalfactor mee
-        const prev = await db.query(
-          `SELECT COALESCE(SUM(aantal * eenheidsprijs),0) AS y
-           FROM rapportage.omzet
-           WHERE EXTRACT(YEAR FROM datum)::int = $1`, [jaar - 1]
-        );
-        const yPrev = Number(prev.rows[0]?.y || 0);
-        const yTarget = Math.round(yPrev * (isFinite(groei) && groei > 0 ? groei : 1));
-        // baseYearExp is al berekend in monthly-branch
-        const scale = (baseYearExp>0 ? yTarget/baseYearExp : 1);
-        staffMeta.year_prev_revenue = yPrev;
-        staffMeta.year_target_revenue = yTarget;
-        staffMeta.base_year_exp = baseYearExp;
-        staffMeta.rev_scale = scale;
-      } else {
-        staffMeta.rev_scale = 1;
-      }
-    }
+    // staff_meta met rev_scale (altijd meesturen als staff aan staat)
+    const staffMeta = includeStaff ? {
+      jaar,
+      groei,
+      budget_mode: useMonthly ? "monthly" : "slot",
+      avg_item_rev_month: Number((totItems>0 ? totOmzet/totItems : 0).toFixed(4)),
+      items_per_unit: itemsPerQ * blockFactor,
+      unit_cost_front: costPerQ * blockFactor,
+      unit_cost_kitchen: kitchenCostPerQ * blockFactor,
+      startup_front_count: startupFront,
+      clean_front_count: cleanFront,
+      open_lead_minutes: preMinutes,
+      close_trail_minutes: postMinutes,
+      // groei-schaal (ook bruikbaar voor jaarcheck)
+      year_prev_revenue: yearPrev,
+      year_target_revenue: yearTarget,
+      base_year_exp: baseYearExp,
+      rev_scale: revScale,
+      // (optioneel) stuur ook bezettingscurve mee
+      minOcc, maxOcc, pctAtMin, pctAtMax,
+    } : undefined;
 
     return NextResponse.json({
       ok: true,
