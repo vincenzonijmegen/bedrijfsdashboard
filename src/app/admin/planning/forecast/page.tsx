@@ -17,46 +17,55 @@ const maandNamen = [
   "", "januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"
 ];
 
-const fmtEUR = (n: number) =>
+const fmtEUR0 = (n: number) =>
   new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+const fmtEUR2 = (n: number) =>
+  new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 2 }).format(n);
 
-/** Heatmap-kleur o.b.v. waarde binnen (min..max) van dezelfde weekdag */
 function heatColor(value: number, min: number, max: number) {
-  if (!isFinite(value) || max <= min) {
-    return { bg: "hsl(210 40% 94%)", fg: "#111" }; // neutraal licht
-  }
-  const t = Math.max(0, Math.min(1, (value - min) / (max - min))); // 0..1
-  // HSL-blauw van licht (L=92%) naar donker (L=42%)
+  if (!isFinite(value) || max <= min) return { bg: "hsl(210 40% 94%)", fg: "#111" };
+  const t = Math.max(0, Math.min(1, (value - min) / (max - min)));
   const lightness = 92 - t * 50;
   const bg = `hsl(210 70% ${lightness}%)`;
   const fg = lightness < 55 ? "#fff" : "#111";
   return { bg, fg };
 }
 
-/** Groepeer kwartieren per uur (verwacht 4 kwartieren per uur) */
 function groupByHour(slots: any[]) {
   const by: Record<number, any[]> = {};
-  for (const s of slots) {
-    (by[s.uur] ??= []).push(s);
-  }
-  const hours = Object.keys(by)
+  for (const s of slots) (by[s.uur] ??= []).push(s);
+  return Object.keys(by)
     .map((h) => Number(h))
     .sort((a, b) => a - b)
-    .map((h) => {
-      const q = by[h].slice().sort((a, b) => a.kwartier - b.kwartier);
-      return { uur: h, slots: q };
-    });
-  return hours;
+    .map((h) => ({ uur: h, slots: by[h].sort((a, b) => a.kwartier - b.kwartier) }));
 }
 
 export default function ForecastPlanningPage() {
   const nu = new Date();
   const [maand, setMaand] = useState<number>(nu.getMonth() + 1);
 
+  // Toggle personeel
+  const [showStaff, setShowStaff] = useState<boolean>(false);
+  const [jaar, setJaar] = useState<number>(nu.getFullYear());
+  const [groei, setGroei] = useState<number>(1.03);
+  const [norm, setNorm] = useState<number>(100);        // € omzet / medewerker / kwartier
+  const [costPerQ, setCostPerQ] = useState<number>(3.75); // €15/u
+  const [avgItemRev, setAvgItemRev] = useState<number>(0); // optioneel
+  const [capItemsQ, setCapItemsQ] = useState<number>(0);   // optioneel
+
   const query = useMemo(() => {
     const p = new URLSearchParams({ maand: String(maand) });
+    if (showStaff) {
+      p.set("show_staff", "1");
+      p.set("jaar", String(jaar));
+      p.set("groei", String(groei));
+      p.set("norm", String(norm));
+      p.set("cost_per_q", String(costPerQ));
+      if (avgItemRev > 0) p.set("avg_item_rev", String(avgItemRev));
+      if (capItemsQ > 0) p.set("cap_items_q", String(capItemsQ));
+    }
     return `/api/rapportage/profielen/overzicht?${p.toString()}`;
-  }, [maand]);
+  }, [maand, showStaff, jaar, groei, norm, costPerQ, avgItemRev, capItemsQ]);
 
   const { data, error, isLoading } = useSWR(query, fetcher);
 
@@ -66,46 +75,74 @@ export default function ForecastPlanningPage() {
         <h1 className="text-2xl font-bold">Gemiddelde omzet – {maandNamen[maand]}</h1>
         <div className="w-full sm:w-60">
           <label className="block text-sm mb-1">Maand</label>
-          <select
-            value={maand}
-            onChange={(e) => setMaand(Number(e.target.value))}
-            className="border rounded px-2 py-1 w-full"
-          >
+          <select value={maand} onChange={(e) => setMaand(Number(e.target.value))}
+                  className="border rounded px-2 py-1 w-full">
             {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-              <option key={m} value={m}>
-                {maandNamen[m]}
-              </option>
+              <option key={m} value={m}>{maandNamen[m]}</option>
             ))}
           </select>
         </div>
       </div>
 
+      {/* Toggle personeel */}
+      <div className="border rounded-lg p-4 shadow space-y-3">
+        <label className="inline-flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" className="h-4 w-4" checked={showStaff} onChange={e=>setShowStaff(e.target.checked)}/>
+          <span className="font-semibold">Toon personeelsbehoefte (23% + capaciteit)</span>
+        </label>
+        {showStaff && (
+          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-6 gap-3">
+            <div>
+              <label className="block text-sm mb-1">Jaar</label>
+              <input type="number" value={jaar} onChange={e=>setJaar(Number(e.target.value))}
+                     className="border rounded px-2 py-1 w-full"/>
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Groei (×)</label>
+              <input type="number" step="0.01" value={groei} onChange={e=>setGroei(Number(e.target.value))}
+                     className="border rounded px-2 py-1 w-full"/>
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Norm € / medewerker / kwartier</label>
+              <input type="number" value={norm} onChange={e=>setNorm(Number(e.target.value))}
+                     className="border rounded px-2 py-1 w-full"/>
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Kosten € / medewerker / kwartier</label>
+              <input type="number" step="0.01" value={costPerQ} onChange={e=>setCostPerQ(Number(e.target.value))}
+                     className="border rounded px-2 py-1 w-full"/>
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Gem. omzet per item (optioneel)</label>
+              <input type="number" step="0.01" value={avgItemRev} onChange={e=>setAvgItemRev(Number(e.target.value))}
+                     className="border rounded px-2 py-1 w-full" placeholder="bv. 2.50"/>
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Max items / medewerker / kwartier (opt.)</label>
+              <input type="number" value={capItemsQ} onChange={e=>setCapItemsQ(Number(e.target.value))}
+                     className="border rounded px-2 py-1 w-full" placeholder="bv. 35"/>
+            </div>
+          </div>
+        )}
+      </div>
+
       {isLoading && <p>Bezig met laden…</p>}
-      {error && (
-        <p className="text-red-600 text-sm whitespace-pre-wrap">
-          Fout: {String(error.message || error)}
-        </p>
-      )}
+      {error && <p className="text-red-600 text-sm whitespace-pre-wrap">Fout: {String(error.message || error)}</p>}
 
       {data?.ok && Array.isArray(data?.weekdays) && (
         <div className="space-y-10">
           {data.weekdays.map((wd: any) => {
-            // min/max voor heatmap binnen deze weekdag
-            const values = wd.slots.map((s: any) => Number(s.omzet_avg || 0));
-            const min = Math.min(...values);
-            const max = Math.max(...values);
+            const vals = wd.slots.map((s: any) => Number(s.omzet_avg || 0));
+            const min = Math.min(...vals);
+            const max = Math.max(...vals);
             const grouped = groupByHour(wd.slots);
 
             return (
               <div key={wd.isodow} className="border rounded-lg p-4 shadow">
                 <div className="flex items-center justify-between mb-3">
                   <h2 className="text-lg font-semibold">
-                    {wd.naam}{" "}
-                    <span className="text-sm text-gray-600">
-                      ({wd.open} – {wd.close})
-                    </span>
+                    {wd.naam} <span className="text-sm text-gray-600">({wd.open} – {wd.close})</span>
                   </h2>
-                  {/* Kleine legenda */}
                   <div className="hidden sm:flex items-center gap-2 text-xs text-gray-600">
                     <span>laag</span>
                     <div className="h-3 w-16 rounded" style={{ background: "hsl(210 70% 92%)" }} />
@@ -115,29 +152,42 @@ export default function ForecastPlanningPage() {
                   </div>
                 </div>
 
-                {/* Tabel: per uur één regel, vier kwartieren per rij */}
                 <div className="overflow-x-auto">
-                  <table className="min-w-[640px] w-full text-sm border-separate border-spacing-y-2">
+                  <table className="min-w-[720px] w-full text-sm border-separate border-spacing-y-2">
                     <tbody>
                       {grouped.map((row) => (
                         <tr key={row.uur}>
-                          {/* Uur-label links */}
                           <td className="align-middle pr-2 whitespace-nowrap text-gray-700 w-16 text-right font-medium">
                             {String(row.uur).padStart(2, "0")}:00
                           </td>
-
-                          {/* Vier kwartiercellen */}
                           {row.slots.map((s: any, idx: number) => {
                             const { bg, fg } = heatColor(Number(s.omzet_avg || 0), min, max);
                             return (
                               <td key={idx} className="w-1/4">
                                 <div
-                                  className="rounded-md px-3 py-2 flex items-center justify-between shadow-sm border"
+                                  className="rounded-md px-3 py-2 flex flex-col gap-1 shadow-sm border"
                                   style={{ background: bg, color: fg, borderColor: "rgba(0,0,0,0.06)" }}
-                                  title={`${s.from_to} • ${fmtEUR(Number(s.omzet_avg || 0))}`}
+                                  title={
+                                    !showStaff
+                                      ? `${s.from_to} • ${fmtEUR0(Number(s.omzet_avg || 0))}`
+                                      : `${s.from_to} • ${fmtEUR0(Number(s.omzet_avg || 0))} • Budget ${fmtEUR2(Number(s.budget_eur||0))}`
+                                  }
                                 >
-                                  <span className="font-mono text-xs sm:text-[13px]">{s.from_to}</span>
-                                  <span className="font-semibold">{fmtEUR(Number(s.omzet_avg || 0))}</span>
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-mono text-xs sm:text-[13px]">{s.from_to}</span>
+                                    <span className="font-semibold">{fmtEUR0(Number(s.omzet_avg || 0))}</span>
+                                  </div>
+                                  {showStaff && (
+                                    <div className="flex items-center justify-between text-xs opacity-90">
+                                      <span>
+                                        N {s.staff_norm ?? 0}
+                                        { (s.staff_capacity ?? 0) > 0 && ` | Cap ${s.staff_capacity}` }
+                                      </span>
+                                      <span>
+                                        Bud {s.staff_budget_cap ?? 0} ➜ Plan <strong>{s.staff_plan ?? 0}</strong>
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               </td>
                             );
