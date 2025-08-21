@@ -19,6 +19,9 @@ const MONTH_NL = ["", "januari","februari","maart","april","mei","juni","juli","
 
 const PAD = (n: number) => String(n).padStart(2, "0");
 
+// Alleen maart t/m september open
+const isOpenMonth = (m: number) => m >= 3 && m <= 9;
+
 function labelFor(startHour: number, minutes: number) {
   const h1 = Math.floor(startHour);
   const m1 = Math.round((startHour - h1) * 60);
@@ -29,9 +32,11 @@ function labelFor(startHour: number, minutes: number) {
 }
 
 function opening(maand: number, isodow: number) {
+  // Gesloten maanden: geen openingstijden
+  if (!isOpenMonth(maand)) return { openHour: NaN, closeHour: NaN, cleanHour: NaN, closed: true as const };
   // Verkoopuren (zonder opstart/schoonmaak)
-  if (maand === 3) return { openHour: isodow === 7 ? 13 : 12, closeHour: 20, cleanHour: 21 };
-  return { openHour: isodow === 7 ? 13 : 12, closeHour: 22, cleanHour: 23 };
+  if (maand === 3) return { openHour: isodow === 7 ? 13 : 12, closeHour: 20, cleanHour: 21, closed: false as const };
+  return { openHour: isodow === 7 ? 13 : 12, closeHour: 22, cleanHour: 23, closed: false as const };
 }
 
 function cleanHourForMonth(maand: number) {
@@ -39,7 +44,6 @@ function cleanHourForMonth(maand: number) {
 }
 
 function slotStartHour(uur: number, kwartier: number) {
-  // kwartier 1..4 => offset 0, 0.25, 0.5, 0.75 uur
   return uur + (kwartier - 1) * 0.25;
 }
 
@@ -78,33 +82,30 @@ export async function GET(req: NextRequest) {
     }
 
     const robustOn = searchParams.get("robust") === "1";
-    const winsorAlpha = Number(searchParams.get("winsor_alpha") || "0.10"); // 10%
+    const winsorAlpha = Number(searchParams.get("winsor_alpha") || "0.10");
 
     const includeStaff = searchParams.get("show_staff") === "1";
     const jaar = Number(searchParams.get("jaar") || new Date().getFullYear());
     const groei = Number(searchParams.get("groei") || "1.03");
 
-    // kosten/norm per 15 minuten — DEFAULTS: front 3.75, keuken 5.00
-    const normRevQ   = Number(searchParams.get("norm")       || "100");  // € omzet / med / 15m
-    const costPerQ   = Number(searchParams.get("cost_per_q") || "3.75"); // € / 15m front (all-in)
-    const itemsPerQ  = Number(searchParams.get("items_per_q")|| "10");   // items / med / 15m
+    // Kosten/norm per 15m — defaults: front 3.75, keuken 5.00
+    const normRevQ   = Number(searchParams.get("norm")       || "100");
+    const costPerQ   = Number(searchParams.get("cost_per_q") || "3.75");
+    const itemsPerQ  = Number(searchParams.get("items_per_q")|| "10");
 
-    // keuken-baseline
+    // Keuken-baseline
     const kitchenDayStartStr = (searchParams.get("kitchen_day_start") || "10:00").trim();
     const [kdsH, kdsM] = kitchenDayStartStr.split(":").map(Number);
     const kitchenDayStart = (Number.isFinite(kdsH) ? kdsH : 10) + ((Number.isFinite(kdsM) ? kdsM : 0) / 60);
     const kitchenDayCount = Number(searchParams.get("kitchen_day_count") || "1");
     const kitchenEveCount = Number(searchParams.get("kitchen_eve_count") || "1");
-    const kitchenCostPerQ = Number(searchParams.get("kitchen_cost_per_q") || "5"); // € / 15m keuken (all-in)
+    const kitchenCostPerQ = Number(searchParams.get("kitchen_cost_per_q") || "5");
 
-    // opstart/schoonmaak
+    // Opstart/schoonmaak
     const preMinutes   = Number(searchParams.get("open_lead_minutes")  || "30");
     const postMinutes  = Number(searchParams.get("close_trail_minutes")|| "60");
-    const startupFront = Number(searchParams.get("startup_front_count")|| "1"); // 2 totaal incl 1 keuken => 1 front
-    const cleanFront   = Number(searchParams.get("clean_front_count")  || "2"); // 3 totaal incl 1 keuken => 2 front
-
-    // (voorheen budget_mode) — unified methode; waarde genegeerd
-    // bezettingscurve parameters kunnen later gebruikt worden voor occ-tuning (optioneel)
+    const startupFront = Number(searchParams.get("startup_front_count")|| "1"); // front; totaal opstart=2 incl 1 keuken
+    const cleanFront   = Number(searchParams.get("clean_front_count")  || "2"); // front; totaal schoonmaak=3 incl 1 keuken
 
     /* -------- DB -------- */
     const mod = await import("@/lib/dbRapportage");
@@ -246,12 +247,49 @@ export async function GET(req: NextRequest) {
       }>;
     }> = [];
 
+    // Gesloten maand? lever lege weekdagen (open/close="gesloten") en klaar
+    if (!isOpenMonth(maand)) {
+      for (let d = 1; d <= 7; d++) {
+        weekdays.push({
+          isodow: d,
+          naam: WD_NL[d],
+          open: "gesloten",
+          close: "gesloten",
+          slots: [],
+        });
+      }
+      return NextResponse.json({
+        ok: true,
+        maand,
+        maand_naam: MONTH_NL[maand],
+        robust: robustOn ? { winsor_alpha: winsorAlpha } : undefined,
+        block_minutes: blockMinutes,
+        weekdays,
+        staff_meta: includeStaff ? {
+          jaar, groei, budget_mode: "unified",
+          avg_item_rev_month: Number((totItems>0 ? totOmzet/totItems : 0).toFixed(4)),
+          items_per_unit: itemsPerQ * blockFactor,
+          unit_cost_front: costPerQ * blockFactor,
+          unit_cost_kitchen: kitchenCostPerQ * blockFactor,
+          startup_front_count: startupFront,
+          clean_front_count: cleanFront,
+          open_lead_minutes: preMinutes,
+          close_trail_minutes: postMinutes,
+          year_prev_revenue: yearPrev,
+          year_target_revenue: yearTarget,
+          rev_scale: revScale,
+        } : undefined,
+      });
+    }
+
+    // --- open maand: bouw slots ---
     for (let d = 1; d <= 7; d++) {
-      const { openHour, closeHour } = opening(maand, d);
+      const o = opening(maand, d);
+      const openHour  = Number(o.openHour);
+      const closeHour = Number(o.closeHour);
       const cleanHour = cleanHourForMonth(maand);
       const salesRows = (byDay.get(d) || []).filter(r => r.uur >= openHour && r.uur < closeHour);
 
-      // som per uur voor sales (raw)
       const hourSumRaw: Record<number, number> = {};
       const hourQRaw: Record<number, number[]> = {};
       for (const r of salesRows) {
@@ -261,153 +299,95 @@ export async function GET(req: NextRequest) {
 
       const slots: any[] = [];
 
-      // A) pre-open
+      // pre-open
       if (preMinutes > 0) {
         const preStart = openHour - preMinutes / 60;
-        for (let start = preStart; start < openHour - 1e-9; start += blockMinutes / 60) {
-          slots.push({
-            from_to: labelFor(start, blockMinutes),
-            uur: Math.floor(start),
-            block_minutes: blockMinutes,
-            slot_type: "preopen" as const,
-            omzet_avg: 0
-          });
+        for (let start = preStart; start < openHour - 1e-9; start += blockMinutes/60) {
+          slots.push({ from_to: labelFor(start, blockMinutes), uur: Math.floor(start), block_minutes: blockMinutes, slot_type: "preopen", omzet_avg: 0 });
         }
       }
 
-      // B) sales
+      // sales
       for (let h = openHour; h < closeHour; h++) {
         const qs = hourQRaw[h] || [0,0,0,0];
         const hourTotalRaw = hourSumRaw[h] || 0;
         const winsorHour   = robustOn ? (robustHourMap[d]?.[h] ?? 0) : 0;
 
         if (blockMinutes === 15) {
-          for (let q = 1; q <= 4; q++) {
-            const raw = qs[q - 1] || 0;
-            const rob = robustOn ? (hourTotalRaw > 0 ? winsorHour * (raw / hourTotalRaw) : winsorHour / 4) : undefined;
+          for (let q=1; q<=4; q++) {
+            const raw = qs[q-1] || 0;
+            const rob = robustOn ? (hourTotalRaw>0 ? winsorHour*(raw/hourTotalRaw) : winsorHour/4) : undefined;
             slots.push({
-              from_to: labelFor(slotStartHour(h, q), 15),
-              uur: h,
-              kwartier: q,
-              block_minutes: 15,
-              slot_type: "sales" as const,
-              omzet_avg: raw,
-              ...(robustOn ? { omzet_avg_robust: Number((rob || 0).toFixed(2)) } : {})
+              from_to: labelFor(slotStartHour(h,q), 15),
+              uur: h, kwartier: q, block_minutes: 15, slot_type: "sales",
+              omzet_avg: raw, ...(robustOn ? { omzet_avg_robust: Number((rob||0).toFixed(2)) } : {})
             });
           }
         } else {
-          // 30-min blokken: q1+q2 en q3+q4
-          const rawA = (qs[0]||0) + (qs[1]||0);
-          const rawB = (qs[2]||0) + (qs[3]||0);
-          const wA = hourTotalRaw > 0 ? rawA / hourTotalRaw : 0.5;
-          const wB = 1 - wA;
-          const robA = robustOn ? winsorHour * wA : undefined;
-          const robB = robustOn ? winsorHour * wB : undefined;
-
-          slots.push({
-            from_to: labelFor(h, 30),
-            uur: h,
-            block: 1,
-            block_minutes: 30,
-            slot_type: "sales" as const,
-            omzet_avg: rawA,
-            ...(robustOn ? { omzet_avg_robust: Number((robA || 0).toFixed(2)) } : {})
-          });
-          slots.push({
-            from_to: labelFor(h + 0.5, 30),
-            uur: h,
-            block: 2,
-            block_minutes: 30,
-            slot_type: "sales" as const,
-            omzet_avg: rawB,
-            ...(robustOn ? { omzet_avg_robust: Number((robB || 0).toFixed(2)) } : {})
-          });
+          const rawA = (qs[0]||0)+(qs[1]||0);
+          const rawB = (qs[2]||0)+(qs[3]||0);
+          const wA   = hourTotalRaw>0 ? rawA/hourTotalRaw : 0.5;
+          const wB   = 1-wA;
+          const robA = robustOn ? winsorHour*wA : undefined;
+          const robB = robustOn ? winsorHour*wB : undefined;
+          slots.push({ from_to: labelFor(h,30),   uur:h, block:1, block_minutes:30, slot_type:"sales", omzet_avg: rawA, ...(robustOn ? { omzet_avg_robust: Number((robA||0).toFixed(2)) } : {}) });
+          slots.push({ from_to: labelFor(h+.5,30), uur:h, block:2, block_minutes:30, slot_type:"sales", omzet_avg: rawB, ...(robustOn ? { omzet_avg_robust: Number((robB||0).toFixed(2)) } : {}) });
         }
       }
 
-      // C) clean
+      // clean
       if (postMinutes > 0) {
-        const wantedEnd = closeHour + postMinutes / 60;
+        const wantedEnd = closeHour + postMinutes/60;
         const end = Math.min(cleanHour, wantedEnd);
-        for (let start = closeHour; start < end - 1e-9; start += blockMinutes / 60) {
-          slots.push({
-            from_to: labelFor(start, blockMinutes),
-            uur: Math.floor(start),
-            block_minutes: blockMinutes,
-            slot_type: "clean" as const,
-            omzet_avg: 0
-          });
+        for (let start = closeHour; start < end - 1e-9; start += blockMinutes/60) {
+          slots.push({ from_to: labelFor(start, blockMinutes), uur: Math.floor(start), block_minutes: blockMinutes, slot_type: "clean", omzet_avg: 0 });
         }
       }
 
-      // D) keuken-kosten per slot + unit front cost
-      const unitFront = costPerQ * blockFactor;
+      // kosten per slot
+      const unitFront   = costPerQ * blockFactor;
       const unitKitchen = kitchenCostPerQ * blockFactor;
 
       for (const s of slots) {
         const hh = Number(s.from_to.slice(0,2));
         const mm = Number(s.from_to.slice(3,5));
         const startH = hh + mm/60;
-
         const inDay = startH >= kitchenDayStart && startH < 17.5;
         const inEve = startH >= 17.5 && startH < cleanHourForMonth(maand);
         const kCostThis = (inDay ? kitchenDayCount : 0) * unitKitchen
                         + (inEve ? kitchenEveCount : 0) * unitKitchen;
-
         s.kitchen_cost_this_slot = Number(kCostThis.toFixed(2));
         s.unit_cost_front = unitFront;
       }
 
-      // E) personeel + unified budgettering
-      const normPerUnit = normRevQ * blockFactor;
-      const capRevPerStaffUnit = (itemsPerQ * blockFactor) * avgItemRevMonth;
-
+      // unified budgettering
       if (includeStaff) {
-        // unified methode (baseline-first top-down + need-share + lokale 23% cap), groei via revScale
+        const normPerUnit = normRevQ * blockFactor;
+        const capRevPerStaffUnit = (itemsPerQ * blockFactor) * avgItemRevMonth;
 
-        // 1) dag-salesbudget — we bepalen het *verhoudingsgewijs* binnen de maand (zonder harde occ-parameters; dagprofiel dicteert)
-        const listForDay = (byDay.get(d) || []);
-        const dayAvg = listForDay.length ? (listForDay[0].day_avg ?? 0) : 0;
-
-        // Totale dagomzet-schaal in deze maand
-        const monthDayTotals: number[] = [];
-        for (let iso=1; iso<=7; iso++){
-          const da = (byDay.get(iso) || [])[0]?.day_avg || 0;
-          const nd = countWeekdaysInMonth(jaar, maand, iso);
-          monthDayTotals.push(da*nd);
-        }
-        const sumMonthDays = monthDayTotals.reduce((a,b)=>a+b,0);
-        const nDaysThis = countWeekdaysInMonth(jaar, maand, d);
-
-        // We stellen een *verdelingspot* afgeleid van jaar-target: 23% × yearTarget × (verhouding maand/dag)
-        // NB: Om lokale over- of onderschrijding te voorkomen, nemen we hier pragmatisch:
-        // daySalesBudgetPot = 0.23 × (dayAvg × revScale)
-        // (We laten baseline/NS buiten de blokverdeling; die worden toch los gepland met Bud=0.)
+        // dagbudgetpot (alleen sales) ~ 23% * (dagomzet * revScale)
+        const dayAvg = (byDay.get(d) || [])[0]?.day_avg || 0;
         const daySalesBudget = 0.23 * (dayAvg * revScale);
 
-        // 2) need-proxy per sales-blok
         const salesSlots = slots.filter((x:any)=> x.slot_type==="sales");
         const needProxies = salesSlots.map((x:any)=>{
           const base = Number(robustOn && x.omzet_avg_robust!=null ? x.omzet_avg_robust : x.omzet_avg);
-          const v = base * revScale; // groei toepassen
+          const v = base * revScale;
           const n  = normPerUnit>0        ? v / normPerUnit        : 0;
           const cap= capRevPerStaffUnit>0 ? v / capRevPerStaffUnit : 0;
           return Math.max(n, cap, 1e-6);
         });
         const needSum = needProxies.reduce((a,b)=>a+b,0);
 
-        // 3) Bud per sales-blok = min( share_need*daySalesBudget,  23%*omzet_scal − keuken )
         salesSlots.forEach((s:any, idx:number)=>{
-          const base = Number(robustOn && s.omzet_avg_robust!=null ? s.omzet_avg_robust : s.omzet_avg);
+          const base  = Number(robustOn && s.omzet_avg_robust!=null ? s.omzet_avg_robust : s.omzet_avg);
           const value = base * revScale;
 
-          const shareNeed = needSum>0 ? (needProxies[idx]/needSum) : (1/salesSlots.length);
+          const shareNeed      = needSum>0 ? (needProxies[idx]/needSum) : (1/salesSlots.length);
           const allowedFromDay = daySalesBudget * shareNeed;
-
-          const front23 = Math.max(0, 0.23*value - Number(s.kitchen_cost_this_slot||0));
-
-          const allowed = Math.min(allowedFromDay, front23);
-          const bud = unitFront>0 ? Math.floor(allowed / unitFront) : 0;
+          const front23        = Math.max(0, 0.23*value - Number(s.kitchen_cost_this_slot||0));
+          const allowed        = Math.min(allowedFromDay, front23);
+          const bud            = unitFront>0 ? Math.floor(allowed / unitFront) : 0;
 
           const staff_norm     = normPerUnit>0 ? Math.ceil(value / normPerUnit) : 0;
           const staff_capacity = capRevPerStaffUnit>0 ? Math.ceil(value / capRevPerStaffUnit) : 0;
@@ -426,7 +406,7 @@ export async function GET(req: NextRequest) {
           s.budget_gap_eur = budget_gap_eur;
         });
 
-        // 4) NS-blokken: geforceerd Plan, Bud=0, gap = plan*unitFront (valt onder baselinejaar)
+        // NS-blokken geforceerd Plan, Bud=0
         slots.filter((x:any)=>x.slot_type!=="sales").forEach((s:any)=>{
           const forcePlan = s.slot_type==="preopen" ? startupFront : cleanFront;
           s.staff_budget_cap = 0;
@@ -445,10 +425,9 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // staff_meta met rev_scale (altijd als staff aan staat)
+    // staff_meta met rev_scale
     const staffMeta = includeStaff ? {
-      jaar,
-      groei,
+      jaar, groei,
       budget_mode: "unified",
       avg_item_rev_month: Number((totItems>0 ? totOmzet/totItems : 0).toFixed(4)),
       items_per_unit: itemsPerQ * blockFactor,
@@ -458,7 +437,6 @@ export async function GET(req: NextRequest) {
       clean_front_count: cleanFront,
       open_lead_minutes: preMinutes,
       close_trail_minutes: postMinutes,
-      // groei-schaal (ook bruikbaar voor jaarcheck)
       year_prev_revenue: yearPrev,
       year_target_revenue: yearTarget,
       rev_scale: revScale,
