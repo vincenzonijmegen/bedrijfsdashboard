@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-
 export const runtime = "nodejs";
 
 type MonthShift = { [month1to12: number]: number };
@@ -54,6 +53,11 @@ export async function POST(req: NextRequest) {
     const openShift: MonthShift  = body.open_shift  ?? {};
     const closeShift: MonthShift = body.close_shift ?? {};
 
+    // ISO-weekdagen waarop shifts gelden; kan string "1,2,3,4,5,6" of array [1,2,3,4,5,6] zijn
+    const applyShiftIsodow = Array.isArray(body.apply_shift_isodow)
+      ? (body.apply_shift_isodow as number[]).filter(n => Number.isInteger(n) && n>=1 && n<=7)
+      : (typeof body.apply_shift_isodow === "string" ? body.apply_shift_isodow : "");
+
     const proto = req.headers.get("x-forwarded-proto") ?? "https";
     const host  = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
     if(!host) return NextResponse.json({ok:false, error:"Host niet bekend"}, {status:500});
@@ -73,6 +77,11 @@ export async function POST(req: NextRequest) {
         ...(withShifts ? {
           open_shift_minutes:  Number(openShift[m]  ?? 0),
           close_shift_minutes: Number(closeShift[m] ?? 0),
+          ...(applyShiftIsodow ? {
+            apply_shift_isodow: Array.isArray(applyShiftIsodow)
+              ? applyShiftIsodow.join(",")
+              : String(applyShiftIsodow)
+          } : {})
         } : {})
       });
 
@@ -85,7 +94,7 @@ export async function POST(req: NextRequest) {
 
         const dayRev = (wd.slots as any[]).reduce((s,x)=>{
           if (x.slot_type!=="sales") return s;
-          const v = Number(robust && x.omzet_avg_robust!=null ? x.omzet_avg_robust : x.omzet_avg);
+          const v = Number(x.omzet_avg); // onge-schaald
           return s + v;
         },0) * revScale;
 

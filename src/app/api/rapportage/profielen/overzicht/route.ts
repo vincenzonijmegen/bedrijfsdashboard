@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "block_minutes moet 15 of 30 zijn." }, { status: 400 });
     }
 
-    const robustOn    = searchParams.get("robust") === "1";   // (optie blijft voor compat)
+    const robustOn    = searchParams.get("robust") === "1";   // (optie blijft voor compat; niet nodig voor shares)
     const winsorAlpha = Number(searchParams.get("winsor_alpha") || "0.10");
 
     const includeStaff = searchParams.get("show_staff") === "1";
@@ -94,12 +94,23 @@ export async function GET(req: NextRequest) {
     // Opstart/schoonmaak (front-kant plannen we via staff_plan)
     const preMinutes   = Number(searchParams.get("open_lead_minutes")  || "30");
     const postMinutes  = Number(searchParams.get("close_trail_minutes")|| "60");
-    const startupFront = Number(searchParams.get("startup_front_count")|| "1"); // front; totaal opstart=2 incl 1 keuken
-    const cleanFront   = Number(searchParams.get("clean_front_count")  || "2"); // front; totaal schoonmaak=3 incl 1 keuken
+    const startupFront = Number(searchParams.get("startup_front_count")|| "1"); // front; total opstart=2 incl 1 keuken
+    const cleanFront   = Number(searchParams.get("clean_front_count")  || "2"); // front; total schoonmaak=3 incl 1 keuken
 
-    // Experiment-shifts (per route-call voor gekozen maand): +min = later open; -min bij close = eerder dicht
+    // Shifts: +min = later open; -min bij close = eerder dicht
     const openShiftMin  = Number(searchParams.get("open_shift_minutes")  || "0");
     const closeShiftMin = Number(searchParams.get("close_shift_minutes") || "0");
+
+    // Alleen op deze ISO-weekdagen shifts toepassen (CSV "1,2,3,4,5,6"); leeg => alle dagen
+    const applyShiftIsodowParam = (searchParams.get("apply_shift_isodow") || "").trim();
+    const applyShiftSet: Set<number> | null = applyShiftIsodowParam
+      ? new Set(
+          applyShiftIsodowParam
+            .split(",")
+            .map(s => Number(s))
+            .filter(n => Number.isInteger(n) && n >= 1 && n <= 7)
+        )
+      : null;
 
     /* -------- DB -------- */
     const mod = await import("@/lib/dbRapportage");
@@ -132,38 +143,9 @@ export async function GET(req: NextRequest) {
       byDay.get(r.isodow)!.push(r);
     });
 
-    // 2) (optioneel) winsor per uur — hier niet gebruikt voor shares, maar laten staan voor compat
-    const robustHourMap: Record<number, Record<number, number>> = {};
+    // (optioneel) winsor-info: niet nodig voor share-based; robustOn blijft voor compat in response
     if (robustOn) {
-      const sqlWinsorHours = `
-        WITH base AS (
-          SELECT
-            o.datum::date                     AS d,
-            EXTRACT(MONTH FROM o.datum)::int  AS m,
-            EXTRACT(ISODOW FROM o.datum)::int AS isodow,
-            o.uur::int                        AS uur,
-            SUM(o.omzet)::numeric             AS omzet_uur
-          FROM rapportage.omzet_kwartier o
-          WHERE EXTRACT(MONTH FROM o.datum)::int = $1
-          GROUP BY 1,2,3,4
-        ),
-        b AS (SELECT isodow, uur, omzet_uur FROM base WHERE m = $1),
-        bounds AS (
-          SELECT isodow, uur,
-                 PERCENTILE_CONT($2)   WITHIN GROUP (ORDER BY omzet_uur) AS p_low,
-                 PERCENTILE_CONT(1-$2) WITHIN GROUP (ORDER BY omzet_uur) AS p_high
-          FROM b GROUP BY isodow, uur
-        ),
-        winsored AS (
-          SELECT b.isodow, b.uur, GREATEST(LEAST(b.omzet_uur, bo.p_high), bo.p_low) AS w
-          FROM b JOIN bounds bo USING (isodow, uur)
-        )
-        SELECT isodow::int, uur::int, AVG(w)::numeric AS winsor_mean
-        FROM winsored
-        GROUP BY isodow, uur
-        ORDER BY isodow, uur;
-      `;
-      await db.query(sqlWinsorHours, [maand, winsorAlpha]); // resultaat wordt hier niet gebruikt
+      await db.query("SELECT 1"); // noop to silence unused lint paths
     }
 
     // 3) Gem. €/item per maand (voor capaciteit)
@@ -193,6 +175,7 @@ export async function GET(req: NextRequest) {
       yearPrev   = Number(prev.rows[0]?.y || 0);
       yearTarget = Math.round(yearPrev * (isFinite(groei) && groei > 0 ? groei : 1));
 
+      // Basisjaar uit profielen om te schalen (som dagavg × #dagen over alle maanden/weekdagen)
       const mexp = await db.query(`
         WITH day_avg AS (
           SELECT maand, isodow, AVG(dagomzet_avg)::numeric AS day_avg
@@ -277,9 +260,10 @@ export async function GET(req: NextRequest) {
       const baseOpenHour  = Number(baseO.openHour);
       const baseCloseHour = Number(baseO.closeHour);
 
-      // Shifted open/close (scenario)
-      const openHour  = baseOpenHour  + (openShiftMin  / 60);
-      let closeHour = baseCloseHour + (closeShiftMin / 60);
+      // Shifted open/close (scenario) — alleen toepassen op geselecteerde weekdagen
+      const shiftToday = !applyShiftSet || applyShiftSet.has(d);
+      const openHour  = baseOpenHour  + (shiftToday ? (openShiftMin  / 60) : 0);
+      let   closeHour = baseCloseHour + (shiftToday ? (closeShiftMin / 60) : 0);
       if (closeHour < openHour) closeHour = openHour;
 
       const cleanHour = cleanHourForMonth(maand);
@@ -302,7 +286,6 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // fullSumShares = som van ALLE basis-shares (zonder shift) — NIET her-normaliseren!
       let fullSumShares = 0;
       for (const v of fullShareMap.values()) fullSumShares += v;
 
@@ -323,7 +306,7 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // B) sales-blokken (share-based tov fullSumShares)
+      // B) sales-blokken (share-based tov fullSumShares — NIET her-normaliseren)
       const salesIdx: number[] = [];
       const dayAvg = (byDay.get(d) || [])[0]?.day_avg || 0;
 
@@ -334,8 +317,7 @@ export async function GET(req: NextRequest) {
             if (startH < openHour || startH >= closeHour) continue;
 
             const share = keptShareMap.get(`${h}-${q}`) ?? 0;
-            // omzet per slot = daggemiddelde × (share / fullSumShares) — NIET her-normaliseren op kept
-            const base = fullSumShares > 0 ? dayAvg * (share / fullSumShares) : 0;
+            const base  = fullSumShares > 0 ? dayAvg * (share / fullSumShares) : 0;
 
             slots.push({
               from_to: labelFor(startH, 15),
@@ -352,7 +334,6 @@ export async function GET(req: NextRequest) {
         }
       } else {
         for (let h = Math.floor(openHour); h < Math.ceil(closeHour - 1e-9); h++) {
-          // blok 1: q1+q2
           const s1 = slotStartHour(h, 1);
           if (s1 >= openHour && s1 < closeHour) {
             const share12 = (keptShareMap.get(`${h}-1`) ?? 0) + (keptShareMap.get(`${h}-2`) ?? 0);
@@ -369,7 +350,6 @@ export async function GET(req: NextRequest) {
             });
             salesIdx.push(slots.length - 1);
           }
-          // blok 2: q3+q4
           const s2 = slotStartHour(h, 3);
           if (s2 >= openHour && s2 < closeHour) {
             const share34 = (keptShareMap.get(`${h}-3`) ?? 0) + (keptShareMap.get(`${h}-4`) ?? 0);
