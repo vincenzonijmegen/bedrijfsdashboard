@@ -14,7 +14,7 @@ const fetcher = async (url: string) => {
 };
 
 const maandNamen = ["","januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
-
+const [applyShiftDays, setApplyShiftDays] = useState<number[]>([1,2,3,4,5,6]); // default ma–za
 const fmtEUR0 = (n: number) => new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Number.isFinite(n)?n:0);
 const fmtEUR2 = (n: number) => new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR",maximumFractionDigits:2}).format(Number.isFinite(n)?n:0);
 const fmtPct1 = (n: number) => new Intl.NumberFormat("nl-NL",{minimumFractionDigits:1,maximumFractionDigits:1}).format(Number.isFinite(n)?n:0);
@@ -142,7 +142,7 @@ export default function ForecastPlanningPage() {
         norm, cost_per_q: costPerQ, items_per_q: itemsPerQ,
         kitchen_day_start: kDayStart, kitchen_day_count: kDayCount, kitchen_eve_count: kEveCount, kitchen_cost_per_q: kCostPerQ,
         open_lead_minutes: openLead, close_trail_minutes: closeTrail, startup_front_count: startupFront, clean_front_count: cleanFront,
-        open_shift: openShift, close_shift: closeShift,
+        open_shift: openShift, close_shift: closeShift, apply_shift_isodow: applyShiftDays,
       };
       const res = await fetch("/api/rapportage/profielen/scenario", {
         method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)
@@ -283,6 +283,32 @@ export default function ForecastPlanningPage() {
           <p className="text-xs text-gray-600">
               Positief = later open (minuten). Negatief bij &quot;sluit min&quot; = eerder dicht (bijv. -60 voor 1 uur eerder).
           </p>
+          {/* Weekdag-filter voor shift */}
+<div className="flex items-center gap-2 text-sm">
+  <span className="font-medium">Shift toepassen op:</span>
+  {[
+    {n:1,l:"ma"},{n:2,l:"di"},{n:3,l:"wo"},
+    {n:4,l:"do"},{n:5,l:"vr"},{n:6,l:"za"},{n:7,l:"zo"}
+  ].map(d => {
+    const on = applyShiftDays.includes(d.n);
+    return (
+      <button
+        key={d.n}
+        type="button"
+        onClick={()=>setApplyShiftDays(prev=>{
+          return prev.includes(d.n) ? prev.filter(x=>x!==d.n) : [...prev, d.n].sort((a,b)=>a-b);
+        })}
+        className={`px-2 py-1 rounded border text-xs ${
+          on ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-700 border-gray-300"
+        }`}
+        title={`Include ${d.l}`}
+      >
+        {d.l}
+      </button>
+    );
+  })}
+</div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-2">
             {Array.from({length:12},(_,i)=>i+1).map(m=>(
               <div key={m} className="border rounded p-2 text-sm">
