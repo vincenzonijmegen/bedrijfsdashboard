@@ -1,4 +1,3 @@
-// src/app/admin/planning/forecast/page.tsx
 "use client";
 
 import React, { useMemo, useState } from "react";
@@ -58,19 +57,26 @@ export default function ForecastPlanningPage() {
   const [kCostPerQ, setKCostPerQ] = useState(5);  // €/15m keuken (default)
 
   // Niet-verkoopblokken
-  const [openLead, setOpenLead] = useState(30);   // min voor open
-  const [closeTrail, setCloseTrail] = useState(60); // min na sluit
-  const [startupFront, setStartupFront] = useState(1); // front (totaal = 2 incl 1 keuken)
-  const [cleanFront, setCleanFront] = useState(2);     // front (totaal = 3 incl 1 keuken)
+  const [openLead, setOpenLead] = useState(30);
+  const [closeTrail, setCloseTrail] = useState(60);
+  const [startupFront, setStartupFront] = useState(1);
+  const [cleanFront, setCleanFront] = useState(2);
 
   // Blokgrootte
   const [blockMinutes, setBlockMinutes] = useState<15|30>(15);
 
-  // Jaarcheck (server-side endpoint)
+  // Jaarcheck (server)
   const [yearCheck, setYearCheck] = useState<{rev:number; cost:number; pct:number} | null>(null);
   const [perMonth, setPerMonth] = useState<Array<{maand:number; revenue:number; cost:number; pct:number}>>([]);
   const [checking, setChecking] = useState(false);
   const [checkErr, setCheckErr] = useState<string | null>(null);
+
+  // Scenario (open/close shifts per maand)
+  const [openShift, setOpenShift]   = useState<Record<number, number>>({});
+  const [closeShift, setCloseShift] = useState<Record<number, number>>({});
+  const [scenario, setScenario] = useState<{base?:any; scen?:any; delta?:any} | null>(null);
+  const [simulating, setSimulating] = useState(false);
+  const [scenarioErr, setScenarioErr] = useState<string | null>(null);
 
   const query = useMemo(() => {
     const p = new URLSearchParams({
@@ -105,32 +111,16 @@ export default function ForecastPlanningPage() {
 
   async function runYearCheck(){
     try{
-      setChecking(true);
-      setCheckErr(null);
-      setYearCheck(null);
-      setPerMonth([]);
-
+      setChecking(true); setCheckErr(null); setYearCheck(null); setPerMonth([]);
       const qs = new URLSearchParams({
-        jaar: String(jaar),
-        groei: String(groei),
-        block_minutes: String(blockMinutes),
-        norm: String(norm),
-        cost_per_q: String(costPerQ),
-        items_per_q: String(itemsPerQ),
-        kitchen_day_start: kDayStart,
-        kitchen_day_count: String(kDayCount),
-        kitchen_eve_count: String(kEveCount),
-        kitchen_cost_per_q: String(kCostPerQ),
-        open_lead_minutes: String(openLead),
-        close_trail_minutes: String(closeTrail),
-        startup_front_count: String(startupFront),
-        clean_front_count: String(cleanFront),
+        jaar: String(jaar), groei: String(groei), block_minutes: String(blockMinutes),
+        norm: String(norm), cost_per_q: String(costPerQ), items_per_q: String(itemsPerQ),
+        kitchen_day_start: kDayStart, kitchen_day_count: String(kDayCount),
+        kitchen_eve_count: String(kEveCount), kitchen_cost_per_q: String(kCostPerQ),
+        open_lead_minutes: String(openLead), close_trail_minutes: String(closeTrail),
+        startup_front_count: String(startupFront), clean_front_count: String(cleanFront),
       });
-      if (robust) {
-        qs.set("robust","1");
-        qs.set("winsor_alpha", String(winsorAlpha));
-      }
-
+      if (robust) { qs.set("robust","1"); qs.set("winsor_alpha", String(winsorAlpha)); }
       const res = await fetch(`/api/rapportage/profielen/yearcheck?${qs.toString()}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0,300)}`);
       const json = await res.json();
@@ -140,11 +130,30 @@ export default function ForecastPlanningPage() {
         pct: Number(json?.totals?.pct || 0),
       });
       setPerMonth(Array.isArray(json?.per_month) ? json.per_month : []);
-    } catch (e:any) {
-      setCheckErr(e?.message || String(e));
-    } finally {
-      setChecking(false);
-    }
+    } catch (e:any) { setCheckErr(e?.message || String(e)); }
+    finally { setChecking(false); }
+  }
+
+  async function runScenario(){
+    try{
+      setSimulating(true); setScenarioErr(null); setScenario(null);
+      const body = {
+        jaar, groei, robust, winsor_alpha: winsorAlpha, block_minutes: blockMinutes,
+        norm, cost_per_q: costPerQ, items_per_q: itemsPerQ,
+        kitchen_day_start: kDayStart, kitchen_day_count: kDayCount, kitchen_eve_count: kEveCount, kitchen_cost_per_q: kCostPerQ,
+        open_lead_minutes: openLead, close_trail_minutes: closeTrail, startup_front_count: startupFront, clean_front_count: cleanFront,
+        open_shift: openShift, close_shift: closeShift,
+      };
+      const res = await fetch("/api/rapportage/profielen/scenario", {
+        method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0,300)}`);
+      const json = await res.json();
+      setScenario({
+        base: json?.baseline, scen: json?.scenario, delta: json?.delta
+      });
+    } catch (e:any) { setScenarioErr(e?.message || String(e)); }
+    finally { setSimulating(false); }
   }
 
   return (
@@ -207,7 +216,7 @@ export default function ForecastPlanningPage() {
           </div>
         </div>
 
-        {/* Forecast sectie */}
+        {/* Forecast & Normen */}
         <div className="rounded-lg border p-3">
           <div className="text-sm font-semibold mb-2">Forecast & normen</div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
@@ -230,7 +239,7 @@ export default function ForecastPlanningPage() {
           </div>
         </div>
 
-        {/* Keuken sectie – ALLES OP 1 RIJ vanaf md */}
+        {/* Keuken baseline (op één rij vanaf md) */}
         <div className="rounded-lg border p-3">
           <div className="text-sm font-semibold mb-2">Keuken (baseline)</div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -249,7 +258,7 @@ export default function ForecastPlanningPage() {
           </div>
         </div>
 
-        {/* Niet-verkoop sectie */}
+        {/* Niet-verkoopblokken */}
         <div className="rounded-lg border p-3">
           <div className="text-sm font-semibold mb-2">Niet-verkoopblokken</div>
           <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -265,6 +274,49 @@ export default function ForecastPlanningPage() {
             <div><label className="block text-sm mb-1">Front schoonmaak (#)</label>
               <input type="number" min={0} value={cleanFront} onChange={e=>setCleanFront(Number(e.target.value))}
                      className="border rounded px-2 py-1 w-full" /></div>
+          </div>
+        </div>
+
+        {/* Scenario simulator */}
+        <div className="rounded-lg border p-3 space-y-3">
+          <div className="text-sm font-semibold">Scenario: per maand later open / eerder dicht</div>
+          <p className="text-xs text-gray-600">
+            Positief = later open (minuten). Negatief bij "sluit min" = eerder dicht (bijv. -60 voor 1 uur eerder).
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-2">
+            {Array.from({length:12},(_,i)=>i+1).map(m=>(
+              <div key={m} className="border rounded p-2 text-sm">
+                <div className="font-medium mb-1">{maandNamen[m]}</div>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="block text-xs mb-0.5">open +min</label>
+                    <input type="number" step={15} value={openShift[m] ?? 0}
+                      onChange={e=>setOpenShift(s=>({...s,[m]: Number(e.target.value)}))}
+                      className="border rounded px-2 py-1 w-full" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs mb-0.5">sluit min</label>
+                    <input type="number" step={15} value={closeShift[m] ?? 0}
+                      onChange={e=>setCloseShift(s=>({...s,[m]: Number(e.target.value)}))}
+                      className="border rounded px-2 py-1 w-full" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={runScenario} disabled={simulating}
+              className="px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">
+              {simulating ? "Simuleren…" : "Simuleer scenario"}
+            </button>
+            {scenarioErr && <span className="text-sm text-rose-700">{scenarioErr}</span>}
+            {scenario && (
+              <div className="text-sm text-gray-800">
+                <b>Baseline:</b> {fmtEUR0(scenario.base?.revenue||0)} • {fmtEUR0(scenario.base?.cost||0)} • {fmtPct1(scenario.base?.pct||0)}% &nbsp;|&nbsp;
+                <b>Scenario:</b> {fmtEUR0(scenario.scen?.revenue||0)} • {fmtEUR0(scenario.scen?.cost||0)} • {fmtPct1(scenario.scen?.pct||0)}% &nbsp;|&nbsp;
+                <b>Δ</b> {fmtEUR0(scenario.delta?.revenue||0)} • {fmtEUR0(scenario.delta?.cost||0)} • {fmtPct1(scenario.delta?.pct_pt||0)} pt
+              </div>
+            )}
           </div>
         </div>
 
@@ -286,7 +338,7 @@ export default function ForecastPlanningPage() {
 
       {/* Status */}
       {isLoading && <p>Bezig met laden…</p>}
-      {error && <p className="text-red-600 text-sm whitespace-pre-wrap">Fout: {String(error.message || error)}</p>}
+      {error && <p className="text-rose-700 text-sm whitespace-pre-wrap">Fout: {String(error.message || error)}</p>}
 
       {/* Overzicht per weekdag */}
       {data?.ok && Array.isArray(data?.weekdays) && (
@@ -298,7 +350,6 @@ export default function ForecastPlanningPage() {
             const max = Math.max(...vals);
             const grouped = groupByHour(wd.slots);
 
-            // Dagomzet (alleen sales) – schalen met rev_scale
             const revScale = Number(data?.staff_meta?.rev_scale ?? 1);
             const dayRevenue = wd.slots.reduce((sum: number, s: any) => {
               if (s.slot_type !== "sales") return sum;
@@ -306,7 +357,6 @@ export default function ForecastPlanningPage() {
               return sum + v;
             }, 0) * revScale;
 
-            // Kopregel met dagomzet + personeelskosten
             let headerCostNode: React.ReactNode = null;
             if (showStaff) {
               const frontPlanCost = wd.slots.reduce((sum: number, s: any) =>
@@ -344,7 +394,6 @@ export default function ForecastPlanningPage() {
                   </div>
                 </div>
 
-                {/* Tabel per uur */}
                 <div className="overflow-x-auto">
                   <table className="min-w-[720px] w-full text-sm border-separate border-spacing-y-2">
                     <tbody>

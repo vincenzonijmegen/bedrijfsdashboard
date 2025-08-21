@@ -1,4 +1,3 @@
-// src/app/api/rapportage/profielen/overzicht/route.ts
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -16,7 +15,6 @@ type ProfRow = {
 
 const WD_NL = ["", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"];
 const MONTH_NL = ["", "januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
-
 const PAD = (n: number) => String(n).padStart(2, "0");
 
 // Alleen maart t/m september open
@@ -32,26 +30,17 @@ function labelFor(startHour: number, minutes: number) {
 }
 
 function opening(maand: number, isodow: number) {
-  // Gesloten maanden: geen openingstijden
   if (!isOpenMonth(maand)) return { openHour: NaN, closeHour: NaN, cleanHour: NaN, closed: true as const };
-  // Verkoopuren (zonder opstart/schoonmaak)
   if (maand === 3) return { openHour: isodow === 7 ? 13 : 12, closeHour: 20, cleanHour: 21, closed: false as const };
   return { openHour: isodow === 7 ? 13 : 12, closeHour: 22, cleanHour: 23, closed: false as const };
 }
 
-function cleanHourForMonth(maand: number) {
-  return maand === 3 ? 21 : 23; // 1h na sluit
-}
-
-function slotStartHour(uur: number, kwartier: number) {
-  return uur + (kwartier - 1) * 0.25;
-}
-
+function cleanHourForMonth(maand: number) { return maand === 3 ? 21 : 23; }
+function slotStartHour(uur: number, kwartier: number) { return uur + (kwartier - 1) * 0.25; }
 function blocksBetween(startHour: number, endHour: number, blockMinutes: number) {
   const unitsPerHour = 60 / blockMinutes;
   return Math.max(0, Math.round((endHour - startHour) * unitsPerHour));
 }
-
 function countWeekdaysInMonth(year: number, month1to12: number, isodow: number) {
   let cnt = 0;
   const start = new Date(Date.UTC(year, month1to12 - 1, 1));
@@ -106,6 +95,10 @@ export async function GET(req: NextRequest) {
     const postMinutes  = Number(searchParams.get("close_trail_minutes")|| "60");
     const startupFront = Number(searchParams.get("startup_front_count")|| "1"); // front; totaal opstart=2 incl 1 keuken
     const cleanFront   = Number(searchParams.get("clean_front_count")  || "2"); // front; totaal schoonmaak=3 incl 1 keuken
+
+    // Shifts (scenario): +min = later open; close_shift <0 = eerder dicht
+    const openShiftMin  = Number(searchParams.get("open_shift_minutes")  || "0");
+    const closeShiftMin = Number(searchParams.get("close_shift_minutes") || "0");
 
     /* -------- DB -------- */
     const mod = await import("@/lib/dbRapportage");
@@ -199,7 +192,6 @@ export async function GET(req: NextRequest) {
       yearPrev   = Number(prev.rows[0]?.y || 0);
       yearTarget = Math.round(yearPrev * (isFinite(groei) && groei > 0 ? groei : 1));
 
-      // Basis-jaaromzet uit profielen (alle maanden/weekdagen) – ter schaling
       const mexp = await db.query(`
         WITH day_avg AS (
           SELECT maand, isodow, AVG(dagomzet_avg)::numeric AS day_avg
@@ -247,21 +239,14 @@ export async function GET(req: NextRequest) {
       }>;
     }> = [];
 
-    // Gesloten maand? lever lege weekdagen (open/close="gesloten") en klaar
+    // Gesloten maand ⇒ lege weekdagen (0 kosten/omzet)
     if (!isOpenMonth(maand)) {
       for (let d = 1; d <= 7; d++) {
-        weekdays.push({
-          isodow: d,
-          naam: WD_NL[d],
-          open: "gesloten",
-          close: "gesloten",
-          slots: [],
-        });
+        weekdays.push({ isodow: d, naam: WD_NL[d], open: "gesloten", close: "gesloten", slots: [] });
       }
       return NextResponse.json({
         ok: true,
-        maand,
-        maand_naam: MONTH_NL[maand],
+        maand, maand_naam: MONTH_NL[maand],
         robust: robustOn ? { winsor_alpha: winsorAlpha } : undefined,
         block_minutes: blockMinutes,
         weekdays,
@@ -282,12 +267,17 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // --- open maand: bouw slots ---
     for (let d = 1; d <= 7; d++) {
       const o = opening(maand, d);
-      const openHour  = Number(o.openHour);
-      const closeHour = Number(o.closeHour);
+      let openHour  = Number(o.openHour);
+      let closeHour = Number(o.closeHour);
       const cleanHour = cleanHourForMonth(maand);
+
+      // Pas de experiment-shifts toe (min kan negatief/positief)
+      openHour  = openHour  + (openShiftMin  / 60);
+      closeHour = closeHour + (closeShiftMin / 60);
+      if (closeHour < openHour) closeHour = openHour;
+
       const salesRows = (byDay.get(d) || []).filter(r => r.uur >= openHour && r.uur < closeHour);
 
       const hourSumRaw: Record<number, number> = {};
@@ -365,7 +355,7 @@ export async function GET(req: NextRequest) {
         const normPerUnit = normRevQ * blockFactor;
         const capRevPerStaffUnit = (itemsPerQ * blockFactor) * avgItemRevMonth;
 
-        // dagbudgetpot (alleen sales) ~ 23% * (dagomzet * revScale)
+        // dagbudgetpot (alleen sales) ~ 23% * (dagomzet * revScale) via daggemiddelde
         const dayAvg = (byDay.get(d) || [])[0]?.day_avg || 0;
         const daySalesBudget = 0.23 * (dayAvg * revScale);
 
@@ -416,19 +406,11 @@ export async function GET(req: NextRequest) {
         });
       }
 
-      weekdays.push({
-        isodow: d,
-        naam: WD_NL[d],
-        open: `${PAD(openHour)}:00`,
-        close: `${PAD(closeHour)}:00`,
-        slots,
-      });
+      weekdays.push({ isodow: d, naam: WD_NL[d], open: `${PAD(openHour)}:00`, close: `${PAD(closeHour)}:00`, slots });
     }
 
-    // staff_meta met rev_scale
     const staffMeta = includeStaff ? {
-      jaar, groei,
-      budget_mode: "unified",
+      jaar, groei, budget_mode: "unified",
       avg_item_rev_month: Number((totItems>0 ? totOmzet/totItems : 0).toFixed(4)),
       items_per_unit: itemsPerQ * blockFactor,
       unit_cost_front: costPerQ * blockFactor,
