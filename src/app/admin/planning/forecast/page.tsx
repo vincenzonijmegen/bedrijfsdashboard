@@ -14,7 +14,7 @@ const fetcher = async (url: string) => {
 };
 
 const maandNamen = ["","januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
-const [applyShiftDays, setApplyShiftDays] = useState<number[]>([1,2,3,4,5,6]); // default ma–za
+
 const fmtEUR0 = (n: number) => new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(Number.isFinite(n)?n:0);
 const fmtEUR2 = (n: number) => new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR",maximumFractionDigits:2}).format(Number.isFinite(n)?n:0);
 const fmtPct1 = (n: number) => new Intl.NumberFormat("nl-NL",{minimumFractionDigits:1,maximumFractionDigits:1}).format(Number.isFinite(n)?n:0);
@@ -77,7 +77,7 @@ export default function ForecastPlanningPage() {
   const [scenario, setScenario] = useState<{base?:any; scen?:any; delta?:any} | null>(null);
   const [simulating, setSimulating] = useState(false);
   const [scenarioErr, setScenarioErr] = useState<string | null>(null);
-
+  const [applyShiftDays, setApplyShiftDays] = useState<number[]>([1,2,3,4,5,6]); // default ma–za
   const query = useMemo(() => {
     const p = new URLSearchParams({
       maand: String(maand),
