@@ -14,7 +14,9 @@ const fetcher = async (url: string) => {
   return JSON.parse(text);
 };
 
-const maandNamen = ["","januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"];
+const maandNamen = [
+  "", "januari","februari","maart","april","mei","juni","juli","augustus","september","oktober","november","december"
+];
 
 const fmtEUR0 = (n: number) =>
   new Intl.NumberFormat("nl-NL",{style:"currency",currency:"EUR",maximumFractionDigits:0})
@@ -39,19 +41,6 @@ function groupByHour(slots: any[]) {
   for (const s of slots) (by[s.uur] ??= []).push(s);
   return Object.keys(by).map(Number).sort((a,b)=>a-b).map(h=>({ uur:h, slots: by[h] }));
 }
-function cleanHourForMonth(maand:number){ return maand===3 ? 21 : 23; }
-
-/** Tel kalenderdagen met een ISO-weekdag (1=ma .. 7=zo) binnen een maand */
-function countWeekdaysInMonth(year:number, month1to12:number, isodow:1|2|3|4|5|6|7){
-  let cnt = 0;
-  const start = new Date(Date.UTC(year, month1to12-1, 1));
-  const end   = new Date(Date.UTC(year, month1to12, 0));
-  for (let d = new Date(start); d <= end; d = new Date(d.getTime()+86400000)){
-    const iso = (((d.getUTCDay()+6)%7)+1) as 1|2|3|4|5|6|7;
-    if (iso === isodow) cnt++;
-  }
-  return cnt;
-}
 
 /* ------------ page ------------ */
 export default function ForecastPlanningPage() {
@@ -67,30 +56,32 @@ export default function ForecastPlanningPage() {
   const [jaar, setJaar] = useState(nu.getFullYear());
   const [groei, setGroei] = useState(1.03);
   const [norm, setNorm] = useState(100);      // €/med/15m
-  const [costPerQ, setCostPerQ] = useState(3.75); // €/15m front (AANGEPAST)
+  const [costPerQ, setCostPerQ] = useState(3.75); // €/15m front (AANGEPAST default)
   const [itemsPerQ, setItemsPerQ] = useState(10); // items/med/15m
 
   // Keuken baseline
   const [kDayStart, setKDayStart] = useState("10:00");
   const [kDayCount, setKDayCount] = useState(1);
   const [kEveCount, setKEveCount] = useState(1);
-  const [kCostPerQ, setKCostPerQ] = useState(5); // €/15m keuken (AANGEPAST)
+  const [kCostPerQ, setKCostPerQ] = useState(5); // €/15m keuken (AANGEPAST default)
 
   // NS-blokken
   const [openLead, setOpenLead] = useState(30);
   const [closeTrail, setCloseTrail] = useState(60);
-  const [startupFront, setStartupFront] = useState(1);
-  const [cleanFront, setCleanFront] = useState(2);
+  const [startupFront, setStartupFront] = useState(1); // front; totaal opstart = 2 incl 1 keuken
+  const [cleanFront, setCleanFront] = useState(2);     // front; totaal schoonmaak = 3 incl 1 keuken
 
   // Blokgrootte
   const [blockMinutes, setBlockMinutes] = useState<15|30>(15);
 
-  // Budgetmethode
+  // (UI behoudt deze, unified route negeert budget_mode intern)
   const [budgetMode, setBudgetMode] = useState<"monthly"|"slot">("monthly");
 
-  // Jaarcheck state
+  // Jaarcheck state (nu via server-side endpoint)
   const [yearCheck, setYearCheck] = useState<{rev:number; cost:number; pct:number} | null>(null);
+  const [perMonth, setPerMonth] = useState<Array<{maand:number; revenue:number; cost:number; pct:number}>>([]);
   const [checking, setChecking] = useState(false);
+  const [checkErr, setCheckErr] = useState<string | null>(null);
 
   const query = useMemo(() => {
     const p = new URLSearchParams({
@@ -124,70 +115,49 @@ export default function ForecastPlanningPage() {
 
   const { data, error, isLoading } = useSWR(query, fetcher);
 
-  // Jaarcheck functie (loopt alle maanden × weekdagen en telt op met kalenderdagen)
   async function runYearCheck(){
     try{
       setChecking(true);
-      let totalRev = 0, totalCost = 0;
+      setCheckErr(null);
+      setYearCheck(null);
+      setPerMonth([]);
 
-      for (let m = 1; m <= 12; m++){
-        // haal per maand 1 response op
-        const p = new URLSearchParams({
-          maand: String(m),
-          block_minutes: String(blockMinutes),
-          open_lead_minutes: String(openLead),
-          close_trail_minutes: String(closeTrail),
-          startup_front_count: String(startupFront),
-          clean_front_count: String(cleanFront),
-          budget_mode: budgetMode,
-          // we willen altijd staff-velden voor de jaarcheck:
-          show_staff: "1",
-          jaar: String(jaar),
-          groei: String(groei),
-          norm: String(norm),
-          cost_per_q: String(costPerQ),
-          items_per_q: String(itemsPerQ),
-          kitchen_day_start: kDayStart,
-          kitchen_day_count: String(kDayCount),
-          kitchen_eve_count: String(kEveCount),
-          kitchen_cost_per_q: String(kCostPerQ),
-        });
-        if (robust) { p.set("robust","1"); p.set("winsor_alpha", String(winsorAlpha)); }
-
-        const res = await fetch(`/api/rapportage/profielen/overzicht?${p.toString()}`);
-        const json = await res.json();
-
-        // Schaalfactor voor omzet (zodat Groei (×) in jaaromzet zit)
-        const revScale = Number(json?.staff_meta?.rev_scale ?? 1);
-
-        // per ISO-weekdag (1..7)
-        for (let iso = 1 as 1|2|3|4|5|6|7; iso <= 7; iso = (iso + 1) as any){
-          const wd = (json.weekdays || []).find((w:any)=> w.isodow === iso);
-          if (!wd) continue;
-
-          // dagomzet (alleen sales-blokken) – GESCHAALD
-          const dayRev = wd.slots.reduce((sum:number, s:any)=>{
-            if (s.slot_type !== "sales") return sum;
-            const v = Number(robust && s.omzet_avg_robust != null ? s.omzet_avg_robust : s.omzet_avg);
-            return sum + v;
-          }, 0) * revScale;
-
-          // dagkosten = front (Plan) + keuken (alle blokken)
-          const frontCost = wd.slots.reduce(
-            (sum:number, s:any)=> sum + Number(s.staff_plan||0) * Number(s.unit_cost_front||0), 0
-          );
-          const kitchenCost = wd.slots.reduce(
-            (sum:number, s:any)=> sum + Number(s.kitchen_cost_this_slot||0), 0
-          );
-          const dayCost = frontCost + kitchenCost;
-
-          const days = countWeekdaysInMonth(jaar, m, iso);
-          totalRev  += dayRev  * days;
-          totalCost += dayCost * days;
-        }
+      const qs = new URLSearchParams({
+        jaar: String(jaar),
+        groei: String(groei),
+        block_minutes: String(blockMinutes),
+        norm: String(norm),
+        cost_per_q: String(costPerQ),
+        items_per_q: String(itemsPerQ),
+        kitchen_day_start: kDayStart,
+        kitchen_day_count: String(kDayCount),
+        kitchen_eve_count: String(kEveCount),
+        kitchen_cost_per_q: String(kCostPerQ),
+        open_lead_minutes: String(openLead),
+        close_trail_minutes: String(closeTrail),
+        startup_front_count: String(startupFront),
+        clean_front_count: String(cleanFront),
+      });
+      if (robust) {
+        qs.set("robust","1");
+        qs.set("winsor_alpha", String(winsorAlpha));
       }
-      const pct = totalRev>0 ? (totalCost/totalRev)*100 : 0;
-      setYearCheck({ rev: totalRev, cost: totalCost, pct });
+
+      const res = await fetch(`/api/rapportage/profielen/yearcheck?${qs.toString()}`);
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`HTTP ${res.status}: ${t.slice(0, 300)}`);
+      }
+      const json = await res.json();
+      const totals = json?.totals || {};
+      setYearCheck({
+        rev: Number(totals.revenue || 0),
+        cost: Number(totals.cost || 0),
+        pct: Number(totals.pct || 0),
+      });
+      setPerMonth(Array.isArray(json?.per_month) ? json.per_month : []);
+    } catch (e:any) {
+      setCheckErr(e?.message || String(e));
     } finally {
       setChecking(false);
     }
@@ -243,17 +213,18 @@ export default function ForecastPlanningPage() {
             <span className="font-semibold">Toon personeelsbehoefte</span>
           </label>
 
-          {/* Jaarcheck knop + resultaten */}
-          <div className="flex items-center gap-3 ml-auto">
+          {/* Jaarcheck knop + resultaten (server-side) */}
+          <div className="flex items-center gap-3 ml-auto flex-wrap">
             <button onClick={runYearCheck} disabled={checking}
               className="px-3 py-1.5 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
-              {checking ? "Jaarcheck…" : "Jaarcheck 23%"}
+              {checking ? "Jaarcheck…" : "Jaarcheck 23% (server)"}
             </button>
             {yearCheck && (
               <span className="text-sm text-gray-700">
                 Jaaromzet <b>{fmtEUR0(yearCheck.rev)}</b> • Personeel <b>{fmtEUR0(yearCheck.cost)}</b> • <b>{fmtPct1(yearCheck.pct)}</b>%
               </span>
             )}
+            {checkErr && <span className="text-sm text-rose-700">{checkErr}</span>}
           </div>
         </div>
 
@@ -270,7 +241,7 @@ export default function ForecastPlanningPage() {
               <div><label className="block text-sm mb-1">Norm € / med / 15m</label>
                 <input type="number" value={norm} onChange={e=>setNorm(Number(e.target.value))}
                        className="border rounded px-2 py-1 w-full" /></div>
-              <div><label className="block text-sm mb-1">Kosten € / med / 15m (front)</label>
+              <div><label className="block text-sm mb-1">Kosten € / 15m (front)</label>
                 <input type="number" step="0.01" value={costPerQ} onChange={e=>setCostPerQ(Number(e.target.value))}
                        className="border rounded px-2 py-1 w-full" /></div>
               <div><label className="block text-sm mb-1">Items / med / 15m</label>
@@ -306,6 +277,23 @@ export default function ForecastPlanningPage() {
             </div>
           </>
         )}
+
+        {/* (optioneel) detail weergave van jaarcheck per maand */}
+        {yearCheck && perMonth.length > 0 && (
+          <div className="mt-3 rounded border p-3">
+            <div className="text-sm font-semibold mb-2">Jaarcheck per maand</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
+              {perMonth.map((m) => (
+                <div key={m.maand} className="border rounded px-3 py-2 text-sm flex items-center justify-between">
+                  <span>{maandNamen[m.maand]}</span>
+                  <span>
+                    {fmtEUR0(m.revenue)} • {fmtEUR0(m.cost)} • <b>{fmtPct1(m.pct)}</b>%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Status */}
@@ -318,7 +306,8 @@ export default function ForecastPlanningPage() {
           {data.weekdays.map((wd: any) => {
             // Heatmap op basis van omzet (pre/clean = 0)
             const vals = wd.slots.map((s: any) =>
-              Number(robust && s.omzet_avg_robust != null ? s.omzet_avg_robust : s.omzet_avg));
+              Number(robust && s.omzet_avg_robust != null ? s.omzet_avg_robust : s.omzet_avg)
+            );
             const min = Math.min(...vals);
             const max = Math.max(...vals);
             const grouped = groupByHour(wd.slots);
