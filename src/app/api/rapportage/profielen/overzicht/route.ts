@@ -278,7 +278,7 @@ export async function GET(req: NextRequest) {
       const baseCloseHour = Number(baseO.closeHour);
 
       // Shifted open/close (scenario)
-      let openHour  = baseOpenHour  + (openShiftMin  / 60);
+      const openHour  = baseOpenHour  + (openShiftMin  / 60);
       let closeHour = baseCloseHour + (closeShiftMin / 60);
       if (closeHour < openHour) closeHour = openHour;
 
