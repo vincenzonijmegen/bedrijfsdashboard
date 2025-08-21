@@ -281,7 +281,7 @@ export default function ForecastPlanningPage() {
         <div className="rounded-lg border p-3 space-y-3">
           <div className="text-sm font-semibold">Scenario: per maand later open / eerder dicht</div>
           <p className="text-xs text-gray-600">
-            Positief = later open (minuten). Negatief bij "sluit min" = eerder dicht (bijv. -60 voor 1 uur eerder).
+              Positief = later open (minuten). Negatief bij &quot;sluit min&quot; = eerder dicht (bijv. -60 voor 1 uur eerder).
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-2">
             {Array.from({length:12},(_,i)=>i+1).map(m=>(
