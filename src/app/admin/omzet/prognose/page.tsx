@@ -259,7 +259,7 @@ export default function PrognosePage() {
                   const raw = fn(m);
                   let display = "";
                   if (isHeaderLabel(label)) display = maandNamen[m.maand - 3];
-                  else if (raw === null || raw === 0) display = "";
+                  else if (raw === null) display = "";   // alleen null verbergen, 0 gewoon tonen
                   else if (label === "dagen")
                     display = Math.round(raw).toLocaleString("nl-NL");
                   else if (label === "voor/achter in dagen")
