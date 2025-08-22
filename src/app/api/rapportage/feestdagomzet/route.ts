@@ -11,7 +11,7 @@ export async function GET(req: Request) {
     const res = await dbRapportage.query(
       `SELECT TO_CHAR(tijdstip, 'HH24:00') AS hour,
               ROUND(SUM(aantal * eenheidsprijs)) AS omzet
-         FROM rapportage.omzet
+         FROM rapportage.omzet_dag_product
         WHERE datum = $1
         GROUP BY hour
         ORDER BY hour`,

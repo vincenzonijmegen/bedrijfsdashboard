@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
         TO_CHAR(datum, 'YYYY-MM-DD') AS dag,
         TO_CHAR(tijdstip, 'HH24:00') AS uur,
         ROUND(SUM(aantal * eenheidsprijs)) AS omzet
-      FROM rapportage.omzet
+      FROM rapportage.omzet_dag_product
       WHERE datum BETWEEN $1 AND $2
       GROUP BY dag, uur
       ORDER BY dag, uur

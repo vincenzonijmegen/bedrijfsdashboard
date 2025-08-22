@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
     const avgItemRs = await db.query(
       `SELECT COALESCE(SUM(aantal),0) AS items,
               COALESCE(SUM(aantal*eenheidsprijs),0) AS omzet
-       FROM rapportage.omzet
+       FROM rapportage.omzet_dag_product
        WHERE EXTRACT(MONTH FROM datum)::int = $1`,
       [maand]
     );
@@ -168,7 +168,7 @@ export async function GET(req: NextRequest) {
     {
       const prev = await db.query(
         `SELECT COALESCE(SUM(aantal * eenheidsprijs),0) AS y
-         FROM rapportage.omzet
+         FROM rapportage.omzet_dag_product
          WHERE EXTRACT(YEAR FROM datum)::int = $1`,
         [jaar - 1]
       );

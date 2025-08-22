@@ -153,7 +153,7 @@ export async function GET(req: NextRequest) {
         baseline AS (
           SELECT COALESCE((
             SELECT SUM(aantal * eenheidsprijs)
-            FROM rapportage.omzet
+            FROM rapportage.omzet_dag_product
             WHERE EXTRACT(YEAR FROM datum)::int = $1 - 1
           ), 0) AS vorigjaar
         ),
@@ -414,7 +414,7 @@ export async function GET(req: NextRequest) {
       baseline AS (
         SELECT COALESCE((
           SELECT SUM(aantal * eenheidsprijs)
-          FROM rapportage.omzet
+          FROM rapportage.omzet_dag_product
           WHERE EXTRACT(YEAR FROM datum)::int = $1 - 1
         ), 0) AS vorigjaar
       ),
