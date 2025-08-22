@@ -28,7 +28,7 @@ export async function GET(req: Request) {
         ROUND(SUM(o.aantal * o.eenheidsprijs)) AS totaal,
         TO_CHAR(f.datum, 'YYYY-MM-DD') AS datum
       FROM rapportage.feestdagen f
-      LEFT JOIN rapportage.omzet o ON o.datum = f.datum
+      LEFT JOIN rapportage.omzet_dag_product o ON o.datum = f.datum
       GROUP BY f.naam, EXTRACT(YEAR FROM f.datum), f.datum
       HAVING SUM(o.aantal * o.eenheidsprijs) IS NOT NULL
       ORDER BY POSITION(f.naam IN '
