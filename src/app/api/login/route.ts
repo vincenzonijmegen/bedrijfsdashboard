@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
     // Stap 1: Medewerker ophalen
     const result = await db.query(
-      `SELECT naam, email, wachtwoord, functie, rol, moet_wachtwoord_wijzigen FROM medewerkers WHERE email = $1`,
+      `SELECT naam, email, wachtwoord, functie, rol, moet_wachtwoord_wijzigen FROM medewerkers WHERE lower(email) = lower($1) LIMIT 1`,
       [email]
     );
 

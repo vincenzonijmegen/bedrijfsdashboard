@@ -38,9 +38,9 @@ export async function GET(req: Request) {
 
     // 1) Vorig jaar omzet
     const vorigJaarOmzetRes = await db.query(
-      `SELECT COALESCE(SUM(aantal * eenheidsprijs), 0) AS totaal
-       FROM rapportage.omzet
-       WHERE EXTRACT(YEAR FROM datum)::int = $1`,
+      `SELECT COALESCE(SUM(totaal), 0) AS totaal
+        FROM rapportage.omzet_maand
+        WHERE jaar = $1`,
       [vorigJaar]
     );
     const vorigJaarOmzet = Number(vorigJaarOmzetRes.rows?.[0]?.totaal || 0);
