@@ -1,70 +1,81 @@
-// Bestand: src/app/api/rapportage/feestdagomzet/route.ts
-import { dbRapportage } from '@/lib/dbRapportage';
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import { dbRapportage } from "@/lib/dbRapportage";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+function isISO(s?: string | null) {
+  return !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+function toISO(d: string) {
+  if (/^\d{2}-\d{2}-\d{4}$/.test(d)) {
+    const [dd, mm, yyyy] = d.split("-");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  return d;
+}
+function yearRange(y: number) {
+  return [`${y}-01-01`, `${y}-12-31`] as const;
+}
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
-  const datum = url.searchParams.get('datum');
+  const now = new Date();
+  const jaarParam = url.searchParams.get("jaar");
+  const startRaw  = url.searchParams.get("start") ?? url.searchParams.get("van");
+  const endRaw    = url.searchParams.get("end")   ?? url.searchParams.get("tot");
 
-  if (datum) {
-    // Uur-op-uur omzet voor een specifieke dag
-    const res = await dbRapportage.query(
-      `SELECT TO_CHAR(tijdstip, 'HH24:00') AS hour,
-              ROUND(SUM(aantal * eenheidsprijs)) AS omzet
-         FROM rapportage.omzet_dag_product
-        WHERE datum = $1
-        GROUP BY hour
-        ORDER BY hour`,
-      [datum]
-    );
-    return NextResponse.json(res.rows);
-  }
+  let start: string;
+  let end:   string;
 
   try {
-    const resultaat = await dbRapportage.query(`
-      SELECT
-        f.naam AS feestdag,
-        EXTRACT(YEAR FROM f.datum) AS jaar,
-        ROUND(SUM(o.aantal * o.eenheidsprijs)) AS totaal,
-        TO_CHAR(f.datum, 'YYYY-MM-DD') AS datum
-      FROM rapportage.feestdagen f
-      LEFT JOIN rapportage.omzet_dag_product o ON o.datum = f.datum
-      GROUP BY f.naam, EXTRACT(YEAR FROM f.datum), f.datum
-      HAVING SUM(o.aantal * o.eenheidsprijs) IS NOT NULL
-      ORDER BY POSITION(f.naam IN '
-        Goede Vrijdag
-        1e Paasdag
-        2e Paasdag
-        1e Pinksterdag
-        2e Pinksterdag
-        Hemelvaartsdag
-        Koningsdag
-        Bevrijdingsdag
-        Moederdag
-        Vaderdag
-        meivakantie dag 1
-        meivakantie dag 2
-        meivakantie dag 3
-        meivakantie dag 4
-        meivakantie dag 5
-        meivakantie dag 6
-        meivakantie dag 7
-        meivakantie dag 8
-        meivakantie dag 9
-        Dag voor Zomerfeesten
-        Zomerfeesten dag 1
-        Zomerfeesten dag 2
-        Zomerfeesten dag 3
-        Zomerfeesten dag 4
-        Zomerfeesten dag 5
-        Zomerfeesten dag 6
-        Zomerfeesten dag 7
-      ')
-    `);
+    if (jaarParam) {
+      const y = Number(jaarParam);
+      if (!Number.isInteger(y) || y < 2000 || y > 2100) {
+        // Onzin-jaar: geef leeg array terug i.p.v. 500
+        return NextResponse.json([], { headers: { "Cache-Control": "no-store" } });
+      }
+      [start, end] = yearRange(y);
+    } else if (startRaw && endRaw) {
+      start = toISO(startRaw);
+      end   = toISO(endRaw);
+      if (!isISO(start) || !isISO(end)) {
+        return NextResponse.json([], { headers: { "Cache-Control": "no-store" } });
+      }
+    } else {
+      // Geen params: default naar huidig jaar
+      const y = now.getFullYear();
+      [start, end] = yearRange(y);
+    }
 
-    return NextResponse.json(resultaat.rows);
-  } catch (error) {
-    console.error('API fout:', error);
-    return NextResponse.json({ error: 'Fout bij ophalen feestdagomzet' }, { status: 500 });
+    const { rows } = await dbRapportage.query(
+      `
+      WITH f AS (
+        SELECT datum, naam
+        FROM rapportage.feestdagen
+        WHERE datum BETWEEN $1 AND $2
+      )
+      SELECT
+        f.datum::date                         AS datum,
+        f.naam                                AS naam,
+        COALESCE(SUM(odp.omzet), 0)::numeric  AS omzet,
+        COALESCE(SUM(odp.aantal), 0)::int     AS aantal
+      FROM f
+      LEFT JOIN rapportage.omzet_dag_product odp
+        ON odp.datum = f.datum
+      GROUP BY f.datum, f.naam
+      ORDER BY f.datum, f.naam
+      `,
+      [start, end]
+    );
+
+    // Altijd array terug
+    return NextResponse.json(Array.isArray(rows) ? rows : [], {
+      headers: { "Cache-Control": "no-store" },
+    });
+  } catch (e: any) {
+    console.error("[feestdagomzet] error:", e?.message ?? e);
+    // Voor de ui: liever leeg array dan 500, zodat .map() nooit crasht
+    return NextResponse.json([], { headers: { "Cache-Control": "no-store" } });
   }
 }
