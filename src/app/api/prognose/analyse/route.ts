@@ -1,6 +1,6 @@
 // src/app/api/prognose/analyse/route.ts
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { dbRapportage as db } from "@/lib/dbRapportage";
 
 type MaandData = {
   maand: number; // 3..9
@@ -53,8 +53,7 @@ const pctRes = await db.query(`
   WITH per_jaar_maand AS (
     SELECT jaar AS yr, maand AS m, COALESCE(totaal,0)::numeric AS omz
     FROM rapportage.omzet_maand
-    WHERE jaar BETWEEN 2022 AND 2024
-      AND maand BETWEEN 3 AND 9
+    WHERE jaar BETWEEN 2022 AND 2024 AND maand BETWEEN 3 AND 9
   ),
   per_jaar_totaal AS (
     SELECT yr, SUM(omz) AS jaar_omz
@@ -62,10 +61,8 @@ const pctRes = await db.query(`
     GROUP BY yr
   ),
   pct AS (
-    SELECT p.yr, p.m,
-           CASE WHEN t.jaar_omz > 0 THEN p.omz / t.jaar_omz ELSE 0 END AS pct
-    FROM per_jaar_maand p
-    JOIN per_jaar_totaal t ON t.yr = p.yr
+    SELECT p.yr, p.m, CASE WHEN t.jaar_omz > 0 THEN p.omz / t.jaar_omz ELSE 0 END AS pct
+    FROM per_jaar_maand p JOIN per_jaar_totaal t ON t.yr = p.yr
   )
   SELECT m, COALESCE(AVG(pct),0) AS avg_pct
   FROM pct
