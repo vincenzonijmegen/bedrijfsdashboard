@@ -49,75 +49,58 @@ export async function GET(req: Request) {
     const jaaromzet = Math.round(vorigJaarOmzet * 1.03);
 
     // 2) Gemiddelde maandpercentages 2022–2024 (alleen maanden 3..9)
-    const pctRes = await db.query(`
-      WITH bron AS (
-        SELECT
-          EXTRACT(YEAR  FROM datum)::int AS yr,
-          EXTRACT(MONTH FROM datum)::int AS m,
-          (aantal * eenheidsprijs)       AS omz
-        FROM rapportage.omzet
-        WHERE EXTRACT(YEAR FROM datum)::int BETWEEN 2022 AND 2024
-          AND EXTRACT(MONTH FROM datum)::int BETWEEN 3 AND 9
-      ),
-      per_jaar_maand AS (
-        SELECT yr, m, COALESCE(SUM(omz),0) AS omz
-        FROM bron
-        GROUP BY 1,2
-      ),
-      per_jaar_totaal AS (
-        SELECT yr, COALESCE(SUM(omz),0) AS jaar_omz
-        FROM per_jaar_maand
-        GROUP BY 1
-      ),
-      pct AS (
-        SELECT p.yr, p.m,
-               CASE WHEN t.jaar_omz > 0 THEN p.omz / t.jaar_omz ELSE 0 END AS pct
-        FROM per_jaar_maand p
-        JOIN per_jaar_totaal t ON t.yr = p.yr
-      )
-      SELECT m, COALESCE(AVG(pct),0) AS avg_pct
-      FROM pct
-      GROUP BY m
-    `);
+const pctRes = await db.query(`
+  WITH per_jaar_maand AS (
+    SELECT jaar AS yr, maand AS m, COALESCE(totaal,0)::numeric AS omz
+    FROM rapportage.omzet_maand
+    WHERE jaar BETWEEN 2022 AND 2024
+      AND maand BETWEEN 3 AND 9
+  ),
+  per_jaar_totaal AS (
+    SELECT yr, SUM(omz) AS jaar_omz
+    FROM per_jaar_maand
+    GROUP BY yr
+  ),
+  pct AS (
+    SELECT p.yr, p.m,
+           CASE WHEN t.jaar_omz > 0 THEN p.omz / t.jaar_omz ELSE 0 END AS pct
+    FROM per_jaar_maand p
+    JOIN per_jaar_totaal t ON t.yr = p.yr
+  )
+  SELECT m, COALESCE(AVG(pct),0) AS avg_pct
+  FROM pct
+  GROUP BY m
+  ORDER BY m
+`);
     const avgPctByMonth = new Map<number, number>();
-    for (const row of pctRes.rows || []) {
-      avgPctByMonth.set(Number(row.m), Number(row.avg_pct));
-    }
-    // fallback: gelijk verdelen als alle pct's 0 zijn
-    if (MAANDEN.every((m) => (avgPctByMonth.get(m) || 0) === 0)) {
-      const gelijk = 1 / MAANDEN.length;
-      MAANDEN.forEach((m) => avgPctByMonth.set(m, gelijk));
-    }
+for (const row of pctRes.rows || []) {
+  avgPctByMonth.set(Number(row.m), Number(row.avg_pct));
+}
+// Zorg dat 3..9 er altijd in zitten (met 0 als ze ontbreken)
+for (const m of MAANDEN) {
+  if (!avgPctByMonth.has(m)) avgPctByMonth.set(m, 0);
+}
+// Als alles 0 is → gelijk verdelen
+if (MAANDEN.every(m => (avgPctByMonth.get(m) || 0) === 0)) {
+  const gelijk = 1 / MAANDEN.length;
+  MAANDEN.forEach(m => avgPctByMonth.set(m, gelijk));
+}
 
     // 3) Realisatie huidig jaar (maanden 3..9): omzet + dagen_met_omzet
     const realRes = await db.query(
       `
-      WITH bron AS (
-        SELECT
-          EXTRACT(MONTH FROM datum)::int AS m,
-          datum::date                     AS d,
-          (aantal * eenheidsprijs)        AS omz
-        FROM rapportage.omzet
-        WHERE EXTRACT(YEAR FROM datum)::int = $1
-          AND EXTRACT(MONTH FROM datum)::int BETWEEN 3 AND 9
-      ),
-      per_dag AS (
-        SELECT m, d, COALESCE(SUM(omz),0) AS omz
-        FROM bron
-        GROUP BY 1,2
-      ),
-      per_maand AS (
-        SELECT m,
-               COALESCE(SUM(omz),0) AS omz,
-               COUNT(*)             AS dagen_met_omzet
-        FROM per_dag
-        GROUP BY 1
-      )
-      SELECT m, omz, dagen_met_omzet
-      FROM per_maand
-      `,
-      [jaar]
-    );
+      SELECT
+    EXTRACT(MONTH FROM datum)::int                          AS m,
+    COALESCE(SUM(omzet), 0)                                 AS omz,
+    COUNT(DISTINCT datum)                                   AS dagen_met_omzet
+  FROM rapportage.omzet_dag_product
+  WHERE EXTRACT(YEAR  FROM datum)::int = $1
+    AND EXTRACT(MONTH FROM datum)::int BETWEEN 3 AND 9
+  GROUP BY 1
+  ORDER BY 1
+  `,
+  [jaar]
+);
     const realByMonth = new Map<number, { omz: number; dagen_met_omzet: number }>();
     for (const r of realRes.rows || []) {
       realByMonth.set(Number(r.m), {
