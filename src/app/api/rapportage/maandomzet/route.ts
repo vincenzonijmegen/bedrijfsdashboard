@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
       ),
       last AS (
         SELECT MAX(datum) AS max_datum
-        FROM rapportage.omzet
+        FROM rapportage.omzet_maand
       )
       SELECT mv.jaar, mv.maand_start, mv.totaal, last.max_datum
       FROM mv
