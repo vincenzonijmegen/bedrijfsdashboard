@@ -49,28 +49,54 @@ export async function GET(req: Request) {
     }
 
     // 2) Data ophalen (LEFT JOIN zodat feestdagen zonder omzet ook terugkomen)
-    const { rows } = await dbRapportage.query(
-      `
-      WITH f AS (
-        SELECT datum::date AS datum, naam
-        FROM rapportage.feestdagen
-        WHERE datum BETWEEN $1 AND $2
-      )
-      SELECT
-        f.datum::date                           AS datum,
-        TO_CHAR(f.datum, 'YYYY-MM-DD')         AS dag,         -- alias tbv frontend
-        f.naam                                  AS naam,
-        f.naam                                  AS feestdag,    -- alias tbv frontend
-        COALESCE(SUM(odp.omzet), 0)::numeric    AS omzet,
-        COALESCE(SUM(odp.aantal), 0)::int       AS aantal
-      FROM f
-      LEFT JOIN rapportage.omzet_dag_product odp
-        ON odp.datum = f.datum
-      GROUP BY f.datum, f.naam
-      ORDER BY f.datum, f.naam
-      `,
-      [start, end]
-    );
+// 2) Data ophalen (LEFT JOIN zodat feestdagen zonder omzet ook terugkomen)
+// Gebruik dagomzet uit MV en val automatisch terug op ruwe tabel
+const { rows } = await dbRapportage.query(
+  `
+  WITH f AS (
+    SELECT datum::date AS datum, naam
+    FROM rapportage.feestdagen
+    WHERE datum BETWEEN $1 AND $2
+  ),
+  -- MV: dag × product -> aggregeer naar dag
+  mv_dag AS (
+    SELECT datum, SUM(omzet) AS omzet, SUM(aantal) AS aantal
+    FROM rapportage.omzet_dag_product
+    WHERE datum BETWEEN $1 AND $2
+    GROUP BY datum
+  ),
+  -- RAW fallback: zelfde bereik, direct uit ruwe omzetregels
+  raw_dag AS (
+    SELECT datum::date AS datum,
+           SUM(aantal * eenheidsprijs) AS omzet,
+           SUM(aantal)                 AS aantal
+    FROM rapportage.omzet
+    WHERE datum BETWEEN $1 AND $2
+    GROUP BY datum
+  ),
+  -- Combineer MV + RAW: neem MV waar beschikbaar, anders RAW
+  dagomzet AS (
+    SELECT COALESCE(m.datum, r.datum) AS datum,
+           COALESCE(m.omzet, r.omzet) AS omzet,
+           COALESCE(m.aantal, r.aantal) AS aantal
+    FROM raw_dag r
+    FULL JOIN mv_dag m ON m.datum = r.datum
+  )
+  SELECT
+    f.datum::date                           AS datum,
+    TO_CHAR(f.datum, 'YYYY-MM-DD')         AS dag,
+    f.naam                                  AS naam,
+    f.naam                                  AS feestdag,
+    COALESCE(d.omzet, 0)::numeric           AS omzet,
+    COALESCE(d.aantal, 0)::int              AS aantal
+  FROM f
+  LEFT JOIN dagomzet d
+    ON d.datum = f.datum
+  ORDER BY f.datum, f.naam
+  `,
+  [start, end]
+);
+
 
     if (debug) {
       // extra checks om snel te zien waar het misgaat
