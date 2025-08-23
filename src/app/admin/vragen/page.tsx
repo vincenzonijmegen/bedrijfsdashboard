@@ -17,7 +17,7 @@ export default function AdminVragenPagina() {
   const [antwoorden, setAntwoorden] = useState<Record<number, string>>({});
 
   useEffect(() => {
-    fetch("/api/admin/vragen")
+    fetch("/api/admin/vragen", { credentials: "include" })
       .then((res) => {
         if (!res.ok) throw new Error("Unauthorized");
         return res.json();
