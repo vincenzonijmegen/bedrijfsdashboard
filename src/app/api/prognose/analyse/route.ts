@@ -112,9 +112,8 @@ export async function GET(req: Request) {
          GROUP BY 1 ORDER BY 1`,
         [jaar]
       );
-      const rows = mv.rows ?? [];
-      if (rows.length) {
-        for (const r of rows)
+      if ((mv.rows ?? []).length) {
+        for (const r of mv.rows)
           realByMonth.set(Number(r.m), { omz: Number(r.omz) || 0, dagen: Number(r.dagen) || 0 });
       } else {
         const raw = await db.query(
@@ -137,23 +136,9 @@ export async function GET(req: Request) {
       }
     }
 
-    // 4) Prognose-dagen (tabel) → fallback kalenderdagen
-const progDays = new Map<number, number>();
-try {
-  const q = await db.query(
-    `SELECT o.maand::int AS m, COALESCE(o.dagen,0)::int AS d
-     FROM rapportage.omzetdagen o
-     WHERE o.jaar = $1 AND o.maand BETWEEN 3 AND 9
-     ORDER BY o.maand`,
-    [jaar]
-  );
-  for (const r of q.rows ?? []) progDays.set(Number(r.m), Number(r.d) || 0);
-} catch (e) {
-  // Als de kolom anders heet of de tabel (tijdelijk) ontbreekt,
-  // voorkom 500 en val terug op kalenderdagen.
-  for (const m of MAANDEN) progDays.set(m, daysInMonth(jaar, m));
-}
-
+    // 4) Prognose-dagen — tijdelijk: kalenderdagen (geen afhankelijkheid van 'omzetdagen')
+    const progDays = new Map<number, number>();
+    for (const m of MAANDEN) progDays.set(m, daysInMonth(jaar, m));
 
     // 5) Bouw maanddata
     const data: MaandData[] = MAANDEN.map((m) => {
