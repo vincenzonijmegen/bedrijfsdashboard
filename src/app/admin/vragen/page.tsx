@@ -19,15 +19,27 @@ export default function AdminVragenPagina() {
   const [antwoorden, setAntwoorden] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
 
+  async function laadVragen() {
+    try {
+      const res = await fetch("/api/admin/vragen", { credentials: "include" });
+      if (!res.ok) throw new Error("Unauthorized");
+      const data = await res.json();
+      setVragen(data);
+    } catch {
+      setVragen(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    fetch("/api/admin/vragen", { credentials: "include" })
-      .then((res) => {
-        if (!res.ok) throw new Error("Unauthorized");
-        return res.json();
-      })
-      .then((data) => setVragen(data))
-      .catch(() => setVragen(null))
-      .finally(() => setLoading(false));
+    laadVragen();
+
+    const interval = setInterval(() => {
+      laadVragen();
+    }, 10000); // elke 10 seconden (testfase)
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleBeantwoord = async (id: number) => {
