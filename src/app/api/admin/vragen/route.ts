@@ -5,7 +5,7 @@ import { verifyJWT } from "@/lib/auth";
 
 // Alleen leidinggevenden toegang geven
 function isLeiding(functie: string) {
-  return ["eigenaar", "leiding"].includes(functie.toLowerCase());
+  return ["eigenaar", "leiding", "beheerder"].includes(functie.toLowerCase());
 }
 
 export async function GET(req: NextRequest) {
