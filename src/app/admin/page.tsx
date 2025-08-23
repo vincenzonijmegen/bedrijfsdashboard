@@ -232,6 +232,7 @@ export default function AdminDashboard() {
       <Section id="management" title="📘 Management" color="blue" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} />
         <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} />
+        <LinkCard href="/admin/vragen" label="Vragen" color="blue" Icon={CheckSquare} />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} />
         <LinkCard href="/admin/contacten" label="Relaties" color="blue" Icon={Folder} />
       </Section>
