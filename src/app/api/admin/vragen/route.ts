@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyJWT } from "@/lib/auth";
 
-// Alleen leidinggevenden toegang geven
 function isLeiding(functie: string) {
   return ["eigenaar", "leiding", "beheerder"].includes(functie.toLowerCase());
 }
@@ -11,7 +10,9 @@ function isLeiding(functie: string) {
 export async function GET(req: NextRequest) {
   try {
     const payload = verifyJWT(req);
- if (!isLeiding(payload.functie ?? "")) {
+    console.log("JWT payload:", payload);
+
+    if (!isLeiding(payload.functie ?? "")) {
       return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
     }
 
