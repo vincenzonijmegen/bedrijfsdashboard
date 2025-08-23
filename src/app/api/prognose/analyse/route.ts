@@ -143,9 +143,30 @@ if (MAANDEN.every(m => (pctMap.get(m) || 0) === 0)) {
       }
     }
 
-    // 4) Prognose-dagen — tijdelijk: kalenderdagen (geen afhankelijkheid van 'omzetdagen')
-    const progDays = new Map<number, number>();
+// 4) Prognose-dagen (uit rapportage.omzetdagen) → fallback op kalenderdagen als er niets staat
+const progDays = new Map<number, number>();
+{
+  const q = await db.query(
+    `SELECT maand::int AS m, COALESCE(dagen,0)::int AS d
+     FROM rapportage.omzetdagen
+     WHERE jaar = $1
+       AND maand BETWEEN 3 AND 9
+     ORDER BY maand`,
+    [jaar]
+  );
+
+  for (const r of q.rows ?? []) {
+    progDays.set(Number(r.m), Number(r.d) || 0);
+  }
+
+  // Fallback: als er helemaal niets staat voor dit jaar, gebruik kalenderdagen
+  if ((q.rows ?? []).length === 0) {
     for (const m of MAANDEN) progDays.set(m, daysInMonth(jaar, m));
+  } else {
+    // Zorg dat alle maanden 3..9 aanwezig zijn (ontbrekende op 0 i.p.v. undefined)
+    for (const m of MAANDEN) if (!progDays.has(m)) progDays.set(m, 0);
+  }
+}
 
     // 5) Bouw maanddata
     const data: MaandData[] = MAANDEN.map((m) => {
