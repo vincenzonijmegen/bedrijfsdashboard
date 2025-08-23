@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyJWT } from "@/lib/auth";
 
 function isLeiding(functie: string) {
-  return ["eigenaar", "leiding"].includes(functie.toLowerCase());
+  return ["eigenaar", "leiding", "beheerder"].includes(functie.toLowerCase());
 }
 
 export async function PATCH(req: NextRequest, context: any) {
