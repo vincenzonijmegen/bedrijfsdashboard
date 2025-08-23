@@ -16,6 +16,7 @@ interface Vraag {
 export default function BerichtPagina() {
   const router = useRouter();
   const [vraag, setVraag] = useState("");
+  
   const [vragen, setVragen] = useState<Vraag[]>([]);
 
   useEffect(() => {
