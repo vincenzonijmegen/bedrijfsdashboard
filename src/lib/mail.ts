@@ -66,3 +66,25 @@ export async function sendReminderMail(email: string, naam: string, skillnaam: s
 
   console.log("✅ Herinneringsmail verzonden:", result);
 }
+
+export async function sendVraagMeldingAanLeiding(naam: string, email: string, vraag: string) {
+  const subject = `📩 Nieuwe vraag van ${naam}`;
+  const body = `
+    <p>Er is een nieuwe vraag binnengekomen in het werkinstructieportaal.</p>
+    <p><strong>Van:</strong> ${naam} (${email})</p>
+    <p><strong>Vraag:</strong></p>
+    <blockquote>${vraag}</blockquote>
+    <p>Bekijk de vraag in het dashboard:</p>
+    <p><a href="https://werkinstructies-app.vercel.app/admin/vragen">Open dashboard</a></p>
+  `;
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const result = await resend.emails.send({
+    from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
+    to: "info@ijssalonvincenzo.nl",
+    subject,
+    html: body,
+  });
+
+  console.log("📧 Vraagmelding verzonden:", result);
+}
