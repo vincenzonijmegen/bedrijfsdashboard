@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // 1) OMZET per maand: MV -> fallback RAW
-    let omzetByMonth = new Map<number, number>();
+    const omzetByMonth = new Map<number, number>();
     {
       const mv = await db.query(
         `SELECT maand::int AS m, COALESCE(totaal,0)::numeric AS omzet
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     }
 
     // 2) DAGEN met omzet per maand: dag×product -> fallback RAW
-    let daysByMonth = new Map<number, number>();
+    const daysByMonth = new Map<number, number>();
     {
       const mv = await db.query(
         `SELECT EXTRACT(MONTH FROM datum)::int AS m,
