@@ -34,6 +34,36 @@ import { EyeOff } from 'lucide-react'; // ⬅️ toegevoegd
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
+// 🆕 Vragen teller hook
+function useVragenTeller(intervalMs = 10000) {
+const [teller, setTeller] = React.useState<number | null>(null);
+
+
+const fetchAantal = async () => {
+try {
+const res = await fetch("/api/admin/vragen", { credentials: "include" });
+if (!res.ok) return;
+const data = await res.json();
+const open = Array.isArray(data)
+? data.filter((v: any) => !v.antwoord).length
+: 0;
+setTeller(open);
+} catch {
+setTeller(null);
+}
+};
+
+
+React.useEffect(() => {
+fetchAantal();
+const interval = setInterval(fetchAantal, intervalMs);
+return () => clearInterval(interval);
+}, [intervalMs]);
+
+
+return teller;
+}
+
 const bgColorMap: Record<string, string> = {
   green: 'bg-green-100 text-green-900 hover:bg-green-200',
   pink: 'bg-pink-100 text-pink-900 hover:bg-pink-200',
@@ -195,10 +225,21 @@ export default function AdminDashboard() {
     localStorage.setItem('activeSection', id);
   };
 
+const openVragenTeller = useVragenTeller(10000); // ⏱ elke 10s
+
   return (
     <main className="max-w-6xl mx-auto p-6">
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
+
+{openVragenTeller !== null && openVragenTeller > 0 && (
+  <div className="my-4 text-sm text-red-700 font-semibold">
+    📬 Er zijn {openVragenTeller} onbeantwoorde vraag{openVragenTeller > 1 ? "en" : ""}.
+    <Link href="/admin/vragen" className="ml-2 underline text-blue-600">Bekijk nu</Link>
+  </div>
+)}
+
+
 
         {/* Rechts: omzet + verbergknop */}
         <div className="flex items-center gap-2">
