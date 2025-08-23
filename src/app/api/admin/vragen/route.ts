@@ -9,8 +9,14 @@ function isLeiding(functie: string) {
 
 export async function GET(req: NextRequest) {
   try {
-    const payload = verifyJWT(req);
-    console.log("JWT payload:", payload);
+    let payload;
+    try {
+      payload = verifyJWT(req);
+      console.log("✅ JWT payload:", payload);
+    } catch (err) {
+      console.error("❌ Fout bij verifyJWT:", err);
+      return NextResponse.json({ error: "Ongeldige sessie" }, { status: 401 });
+    }
 
     if (!isLeiding(payload.functie ?? "")) {
       return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
