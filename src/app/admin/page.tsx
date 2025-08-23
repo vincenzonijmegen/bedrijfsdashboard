@@ -228,7 +228,7 @@ export default function AdminDashboard() {
 
 {openVragenTeller !== null && openVragenTeller > 0 && (
   <div className="my-4 text-sm text-red-700 font-semibold">
-    📬 Er zijn {openVragenTeller} onbeantwoorde vraag{openVragenTeller > 1 ? "en" : ""}.
+    📬 {openVragenTeller} onbeantwoorde vragen{openVragenTeller > 1 ? "en" : ""}.
     <Link href="/admin/vragen" className="ml-2 underline text-blue-600">Bekijk nu</Link>
   </div>
 )}
