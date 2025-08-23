@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { verifyJWT } from "@/lib/auth";
 import { Resend } from "resend";
 
-// Helperfunctie om medewerker-id op te halen via JWT
+// ✅ Helper: medewerker ophalen via JWT
 async function getGebruikerMetId(req: NextRequest) {
   try {
     const payload = verifyJWT(req); // bevat email, naam, functie
@@ -40,26 +40,33 @@ export async function GET(req: NextRequest) {
 // ✅ POST: nieuwe vraag indienen
 export async function POST(req: NextRequest) {
   try {
-    const gebruiker = await getGebruikerMetId(req);
-    if (!gebruiker) {
-      return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
-    }
-
+    const payload = verifyJWT(req);
     const { vraag } = await req.json();
-    const naam = gebruiker.naam || "(onbekend)";
-    const email = gebruiker.email;
+    const naam = payload.naam || "(onbekend)";
+    const email = payload.email;
 
     if (!vraag || typeof vraag !== "string") {
       return NextResponse.json({ error: "Ongeldige vraag" }, { status: 400 });
     }
 
-    // Opslaan in database (alleen medewerker_id en vraag)
+    // Medewerker ID ophalen
+    const { rows } = await db.query(
+      "SELECT id FROM medewerkers WHERE email = $1",
+      [email]
+    );
+    const medewerkerId = rows?.[0]?.id;
+    if (!medewerkerId) {
+      return NextResponse.json({ error: "Medewerker onbekend" }, { status: 403 });
+    }
+
+    // Invoegen in database
     await db.query(
-      `INSERT INTO vragen (medewerker_id, vraag) VALUES ($1, $2)`,
-      [gebruiker.id, vraag]
+      `INSERT INTO vragen (vraag, medewerker_id)
+       VALUES ($1, $2)`,
+      [vraag, medewerkerId]
     );
 
-    // E-mailmelding sturen
+    // Mail versturen naar leiding
     const resend = new Resend(process.env.RESEND_API_KEY);
     const result = await resend.emails.send({
       from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
