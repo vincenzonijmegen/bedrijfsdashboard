@@ -55,49 +55,56 @@ export async function GET(req: Request) {
     }
     const jaaromzet = Math.round(vorigJaarOmzet * 1.03);
 
-    // 2) Pct per maand (3..9): MV -> fallback raw
-    const pctMap = new Map<number, number>();
-    {
-      const mv = await db.query(`
-        WITH pjm AS (
-          SELECT jaar AS yr, maand AS m, COALESCE(totaal,0)::numeric AS omz
-          FROM rapportage.omzet_maand
-          WHERE jaar BETWEEN 2022 AND 2024 AND maand BETWEEN 3 AND 9
-        ), pjt AS (
-          SELECT yr, SUM(omz) AS jaar_omz FROM pjm GROUP BY yr
-        )
-        SELECT m, COALESCE(AVG(CASE WHEN pjt.jaar_omz>0 THEN pjm.omz/pjt.jaar_omz ELSE 0 END),0) AS pct
-        FROM pjm JOIN pjt ON pjt.yr = pjm.yr
-        GROUP BY m ORDER BY m`);
-      if ((mv.rows ?? []).length) {
-        for (const r of mv.rows) pctMap.set(Number(r.m), Number(r.pct) || 0);
-      } else {
-        const raw = await db.query(`
-          WITH bron AS (
-            SELECT EXTRACT(YEAR FROM datum)::int AS yr,
-                   EXTRACT(MONTH FROM datum)::int AS m,
-                   (aantal*eenheidsprijs) AS omz
-            FROM rapportage.omzet
-            WHERE EXTRACT(YEAR FROM datum)::int BETWEEN 2022 AND 2024
-              AND EXTRACT(MONTH FROM datum)::int BETWEEN 3 AND 9
-          ), pjm AS (
-            SELECT yr,m,SUM(omz) AS omz FROM bron GROUP BY 1,2
-          ), pjt AS (
-            SELECT yr,SUM(omz) AS jaar_omz FROM pjm GROUP BY 1
-          )
-          SELECT m, COALESCE(AVG(CASE WHEN pjt.jaar_omz>0 THEN pjm.omz/pjt.jaar_omz ELSE 0 END),0) AS pct
-          FROM pjm JOIN pjt ON pjt.yr=pjm.yr
-          GROUP BY m ORDER BY m`);
-        for (const r of raw.rows ?? []) pctMap.set(Number(r.m), Number(r.pct) || 0);
-      }
-      // zorg dat 3..9 er altijd in zitten
-      for (const m of MAANDEN) if (!pctMap.has(m)) pctMap.set(m, 0);
-      // als alles 0 is → gelijk verdelen
-      if (MAANDEN.every(m => (pctMap.get(m) || 0) === 0)) {
-        const g = 1 / MAANDEN.length;
-        MAANDEN.forEach(m => pctMap.set(m, g));
-      }
-    }
+    // 2) Pct per maand (3..9): MV proberen; bij fout of mismatch -> raw fallback
+const pctMap = new Map<number, number>();
+try {
+  // MV-poging (werkt alleen als omzet_maand ook 'maand' bevat)
+  const mv = await db.query(`
+    WITH pjm AS (
+      SELECT jaar AS yr, maand AS m, COALESCE(totaal,0)::numeric AS omz
+      FROM rapportage.omzet_maand
+      WHERE jaar BETWEEN 2022 AND 2024 AND maand BETWEEN 3 AND 9
+    ), pjt AS (
+      SELECT yr, SUM(omz) AS jaar_omz FROM pjm GROUP BY yr
+    )
+    SELECT m, COALESCE(AVG(CASE WHEN pjt.jaar_omz>0 THEN pjm.omz/pjt.jaar_omz ELSE 0 END),0) AS pct
+    FROM pjm JOIN pjt ON pjt.yr = pjm.yr
+    GROUP BY m ORDER BY m
+  `);
+  if ((mv.rows ?? []).length) {
+    for (const r of mv.rows) pctMap.set(Number(r.m), Number(r.pct) || 0);
+  } else {
+    throw new Error("mv_omzet_maand_geen_rijen");
+  }
+} catch {
+  // RAW fallback (zeker werkend, gebruikt alleen rapportage.omzet)
+  const raw = await db.query(`
+    WITH bron AS (
+      SELECT EXTRACT(YEAR FROM datum)::int  AS yr,
+             EXTRACT(MONTH FROM datum)::int AS m,
+             (aantal*eenheidsprijs)         AS omz
+      FROM rapportage.omzet
+      WHERE EXTRACT(YEAR  FROM datum)::int BETWEEN 2022 AND 2024
+        AND EXTRACT(MONTH FROM datum)::int BETWEEN 3 AND 9
+    ), pjm AS (
+      SELECT yr,m,SUM(omz) AS omz FROM bron GROUP BY 1,2
+    ), pjt AS (
+      SELECT yr,SUM(omz) AS jaar_omz FROM pjm GROUP BY 1
+    )
+    SELECT m, COALESCE(AVG(CASE WHEN pjt.jaar_omz>0 THEN pjm.omz/pjt.jaar_omz ELSE 0 END),0) AS pct
+    FROM pjm JOIN pjt ON pjt.yr=pjm.yr
+    GROUP BY m ORDER BY m
+  `);
+  for (const r of raw.rows ?? []) pctMap.set(Number(r.m), Number(r.pct) || 0);
+}
+
+// Zorg dat 3..9 erin zitten
+for (const m of MAANDEN) if (!pctMap.has(m)) pctMap.set(m, 0);
+// Als alles 0 is → gelijk verdelen
+if (MAANDEN.every(m => (pctMap.get(m) || 0) === 0)) {
+  const g = 1 / MAANDEN.length;
+  MAANDEN.forEach(m => pctMap.set(m, g));
+}
 
     // 3) Realisatie huidig jaar (3..9): dag×product MV -> fallback raw
     const realByMonth = new Map<number, { omz: number; dagen: number }>();
