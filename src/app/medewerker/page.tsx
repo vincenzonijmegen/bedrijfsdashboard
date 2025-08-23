@@ -36,7 +36,6 @@ export default function DashboardPagina() {
   const [instructieStatus, setInstructieStatus] = useState<Status | null>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
 
-  // Haal ingelogde gebruiker op
   useEffect(() => {
     fetch("/api/user")
       .then((res) => {
@@ -47,18 +46,15 @@ export default function DashboardPagina() {
       .catch(() => router.push("/sign-in"));
   }, [router]);
 
-  // Haal instructies, status en skills op zodra gebruiker bekend is
   useEffect(() => {
     if (!gebruiker?.email) return;
 
-    // 1) alle instructies
     fetch("/api/instructies")
       .then((res) => res.json())
       .then((all) => {
         setInstructies(all);
         const totaal = all.length;
 
-        // 2) statusrecords voor deze gebruiker
         fetch(`/api/instructiestatus?email=${gebruiker.email}`)
           .then((res) => res.json())
           .then((data: StatusRecord[]) => {
@@ -68,7 +64,6 @@ export default function DashboardPagina() {
           });
       });
 
-    // 3) skills
     fetch("/api/skills/mijn", { headers: { "x-user-email": gebruiker.email } })
       .then((res) => res.json())
       .then((data) => setSkills(data.skills || []));
@@ -124,8 +119,17 @@ export default function DashboardPagina() {
             ➤ Bekijk skills
           </Link>
         </div>
-                </section>
-            </main>
-            
+
+        <div className="p-4 border rounded bg-white shadow">
+          <h2 className="font-semibold mb-2">📩 Vragen aan de leiding</h2>
+          <p className="text-sm text-gray-700">
+            Heb je een korte vraag over je shift, werktijden of iets anders? Stuur een bericht naar de leiding.
+          </p>
+          <Link href="/bericht" className="inline-block mt-2 text-blue-600 underline">
+            ➤ Stel je vraag
+          </Link>
+        </div>
+      </section>
+    </main>
   );
 }
