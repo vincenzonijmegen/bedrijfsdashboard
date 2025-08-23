@@ -73,26 +73,40 @@ export default function AdminVragenPagina() {
         <p className="text-sm text-gray-500">Er zijn nog geen vragen gesteld.</p>
       ) : (
         <ul className="space-y-4">
-          {vragen.map((v) => (
-            <li key={v.id} className="border rounded p-4 shadow bg-white">
-              <p className="text-sm text-gray-500">🗓️ {new Date(v.aangemaakt_op).toLocaleString()}</p>
-              <p className="text-sm text-gray-600">👤 {v.naam} ({v.email})</p>
-              <p className="text-base font-medium mt-2">{v.vraag}</p>
-              {v.antwoord ? (
-                <p className="mt-2 text-green-700">💬 Antwoord: {v.antwoord}</p>
-              ) : (
-                <div className="mt-3 space-y-2">
-                  <Textarea
-                    value={antwoorden[v.id] || ""}
-                    onChange={(e) => setAntwoorden({ ...antwoorden, [v.id]: e.target.value })}
-                    placeholder="Typ hier je antwoord..."
-                    rows={3}
-                  />
-                  <Button onClick={() => handleBeantwoord(v.id)}>Verzend antwoord</Button>
-                </div>
-              )}
-            </li>
-          ))}
+          {vragen.map((v) => {
+            const d = new Date(v.aangemaakt_op);
+            const datumString = !isNaN(d.getTime())
+              ? d.toLocaleString("nl-NL", {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })
+              : "Datum onbekend";
+
+            return (
+              <li key={v.id} className="border rounded p-4 shadow bg-white">
+                <p className="text-sm text-gray-500">🗓️ {datumString}</p>
+                <p className="text-sm text-gray-600">👤 {v.naam} ({v.email})</p>
+                <p className="text-base font-medium mt-2">{v.vraag}</p>
+                {v.antwoord ? (
+                  <p className="mt-2 text-green-700">💬 Antwoord: {v.antwoord}</p>
+                ) : (
+                  <div className="mt-3 space-y-2">
+                    <Textarea
+                      value={antwoorden[v.id] || ""}
+                      onChange={(e) =>
+                        setAntwoorden({ ...antwoorden, [v.id]: e.target.value })
+                      }
+                      placeholder="Typ hier je antwoord..."
+                      rows={3}
+                    />
+                    <Button onClick={() => handleBeantwoord(v.id)}>
+                      Verzend antwoord
+                    </Button>
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </main>

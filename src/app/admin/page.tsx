@@ -223,34 +223,34 @@ export default function AdminDashboard() {
 
   return (
     <main className="max-w-6xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
+<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+  <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
 
+  {/* Rechts: omzet + verbergknop */}
+  <div className="mt-2 sm:mt-0 flex items-center gap-2">
+    <Link href="/admin/dashboard" className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200">
+      <DailyTotalDisplay mask={hideOmzet} />
+    </Link>
+    <button
+      type="button"
+      onClick={() => setHideOmzet(v => !v)}
+      className="p-2 rounded bg-gray-100 hover:bg-gray-200"
+      title={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
+      aria-label={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
+    >
+      {hideOmzet ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+    </button>
+  </div>
+</div>
+
+{/* Melding over vragen onder dashboardtitel, altijd apart */}
 {openVragenTeller !== null && openVragenTeller > 0 && (
-  <div className="my-4 text-sm text-red-700 font-semibold">
-    📬 {openVragenTeller} onbeantwoorde vragen{openVragenTeller > 1 ? "en" : ""}.
+  <div className="mb-6 text-sm text-red-700 font-semibold">
+    📬 Er zijn {openVragenTeller} onbeantwoorde vraag{openVragenTeller > 1 ? "en" : ""}.
     <Link href="/admin/vragen" className="ml-2 underline text-blue-600">Bekijk nu</Link>
   </div>
 )}
 
-
-
-        {/* Rechts: omzet + verbergknop */}
-        <div className="flex items-center gap-2">
-          <Link href="/admin/dashboard" className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200">
-            <DailyTotalDisplay mask={hideOmzet} />
-          </Link>
-          <button
-            type="button"
-            onClick={() => setHideOmzet(v => !v)}
-            className="p-2 rounded bg-gray-100 hover:bg-gray-200"
-            title={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
-            aria-label={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
-          >
-            {hideOmzet ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
-          </button>
-        </div>
-      </div>
 
       <Section id="meest" title="👥 Meest gebruikte onderdelen" color="slate" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/acties" label="Actielijsten" color="slate" Icon={CheckSquare} />
