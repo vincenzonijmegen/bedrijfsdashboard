@@ -1,82 +1,82 @@
-// src/app/api/rapportage/maandomzet/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { dbRapportage as db } from "@/lib/dbRapportage";
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-import { startTimer } from "@/lib/timing";
-import { dbRapportage } from "@/lib/dbRapportage";
-import { NextResponse, NextRequest } from "next/server";
-
-type Row = { jaar: number; maand_start: string; totaal: number };
-type Payload = { rows: Row[]; max_datum: string | null };
-
-// 🔒 Cache in memory per serverless-instance
-declare global {
-  // eslint-disable-next-line no-var
-  var __maandomzet_cache:
-    | { ts: number; payload: Payload }
-    | undefined;
-}
-const TTL_MS = 60_000; // 60s; kun je naar 300_000 (5 min) zetten als je wilt
+type Row = { maand: number; omzet: number; dagen: number };
 
 export async function GET(req: NextRequest) {
-  const tAll = startTimer("/api/rapportage/maandomzet");
-
-  // Handmatige refresh trigger: /api/rapportage/maandomzet?refresh=1
-  const force = req.nextUrl.searchParams.get("refresh") === "1";
-
-  // 1) Serve from cache als vers en niet geforceerd
-  if (!force && global.__maandomzet_cache) {
-    const age = Date.now() - global.__maandomzet_cache.ts;
-    if (age < TTL_MS) {
-      return NextResponse.json(global.__maandomzet_cache.payload, {
-        headers: { "Cache-Control": `private, max-age=${Math.floor((TTL_MS - age)/1000)}` },
-      });
-    }
-  }
+  const url = new URL(req.url);
+  const y = Number(url.searchParams.get("jaar") ?? new Date().getFullYear());
 
   try {
-    // 2) Één DB-roundtrip (MV + max_datum)
-    const t1 = startTimer("maandomzet:singlecall");
-    const { rows } = await dbRapportage.query(`
-      WITH mv AS (
-        SELECT
-          jaar,
-          to_char(maand_start, 'YYYY-MM-01') AS maand_start,
-          totaal
-        FROM rapportage.omzet_maand
-        ORDER BY maand_start
-      ),
-      last AS (
-        SELECT MAX(datum) AS max_datum
-        FROM rapportage.omzet_maand
-      )
-      SELECT mv.jaar, mv.maand_start, mv.totaal, last.max_datum
-      FROM mv
-      CROSS JOIN last
-    `);
-    t1.end();
+    // 1) OMZET per maand: MV -> fallback RAW
+    let omzetByMonth = new Map<number, number>();
+    {
+      const mv = await db.query(
+        `SELECT maand::int AS m, COALESCE(totaal,0)::numeric AS omzet
+         FROM rapportage.omzet_maand
+         WHERE jaar = $1`,
+        [y]
+      );
+      if ((mv.rows ?? []).length > 0) {
+        for (const r of mv.rows) omzetByMonth.set(Number(r.m), Number(r.omzet) || 0);
+      } else {
+        const raw = await db.query(
+          `SELECT EXTRACT(MONTH FROM datum)::int AS m,
+                  COALESCE(SUM(aantal*eenheidsprijs),0)::numeric AS omzet
+           FROM rapportage.omzet
+           WHERE EXTRACT(YEAR FROM datum)::int = $1
+           GROUP BY 1`,
+          [y]
+        );
+        for (const r of raw.rows ?? []) omzetByMonth.set(Number(r.m), Number(r.omzet) || 0);
+      }
+    }
 
-    const payload: Payload = {
-      rows: rows.map(r => ({
-        jaar: Number(r.jaar),
-        maand_start: String(r.maand_start),
-        totaal: Number(r.totaal),
-      })),
-      max_datum: rows[0]?.max_datum ?? null,
-    };
+    // 2) DAGEN met omzet per maand: dag×product -> fallback RAW
+    let daysByMonth = new Map<number, number>();
+    {
+      const mv = await db.query(
+        `SELECT EXTRACT(MONTH FROM datum)::int AS m,
+                COUNT(DISTINCT datum)::int        AS dagen
+         FROM rapportage.omzet_dag_product
+         WHERE EXTRACT(YEAR FROM datum)::int = $1
+         GROUP BY 1`,
+        [y]
+      );
+      if ((mv.rows ?? []).length > 0) {
+        for (const r of mv.rows) daysByMonth.set(Number(r.m), Number(r.dagen) || 0);
+      } else {
+        const raw = await db.query(
+          `SELECT EXTRACT(MONTH FROM datum)::int AS m,
+                  COUNT(DISTINCT datum)::int       AS dagen
+           FROM rapportage.omzet
+           WHERE EXTRACT(YEAR FROM datum)::int = $1
+           GROUP BY 1`,
+          [y]
+        );
+        for (const r of raw.rows ?? []) daysByMonth.set(Number(r.m), Number(r.dagen) || 0);
+      }
+    }
 
-    // 3) Cache setten
-    global.__maandomzet_cache = { ts: Date.now(), payload };
-
-    return NextResponse.json(payload, {
-      headers: { "Cache-Control": "private, max-age=60" },
+    // 3) Always 12 maanden teruggeven (1..12), 0 waar niets is
+    const maanden: Row[] = Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      return {
+        maand: m,
+        omzet: Math.round(omzetByMonth.get(m) || 0),
+        dagen: daysByMonth.get(m) || 0,
+      };
     });
-  } catch (err) {
-    console.error("API maandomzet fout:", err);
-    const empty: Payload = { rows: [], max_datum: null };
-    // voorkom UI-crash; cache niet bij fout
-    return NextResponse.json(empty, { status: 200 });
-  } finally {
-    tAll.end({ hint: "maandomzet" });
+
+    return NextResponse.json({ jaar: y, maanden }, { headers: { "Cache-Control": "no-store" } });
+  } catch (e: any) {
+    console.error("[/api/rapportage/maandomzet] error:", e?.message ?? e);
+    return NextResponse.json(
+      { error: "Serverfout in maandomzet", detail: String(e?.message ?? e) },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
+    );
   }
 }
