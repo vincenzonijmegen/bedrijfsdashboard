@@ -17,6 +17,7 @@ interface Vraag {
 export default function AdminVragenPagina() {
   const [vragen, setVragen] = useState<Vraag[] | null>(null);
   const [antwoorden, setAntwoorden] = useState<Record<number, string>>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/admin/vragen", { credentials: "include" })
@@ -24,8 +25,9 @@ export default function AdminVragenPagina() {
         if (!res.ok) throw new Error("Unauthorized");
         return res.json();
       })
-      .then(setVragen)
-      .catch(() => setVragen(null));
+      .then((data) => setVragen(data))
+      .catch(() => setVragen(null))
+      .finally(() => setLoading(false));
   }, []);
 
   const handleBeantwoord = async (id: number) => {
@@ -51,15 +53,13 @@ export default function AdminVragenPagina() {
     <main className="max-w-3xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">📥 Binnengekomen vragen</h1>
 
-      {!Array.isArray(vragen) && (
+      {loading ? (
+        <p className="text-gray-500">⏳ Bezig met laden...</p>
+      ) : !vragen ? (
         <p className="text-sm text-red-600">❌ Fout bij laden of je hebt geen toegang.</p>
-      )}
-
-      {Array.isArray(vragen) && vragen.length === 0 && (
+      ) : vragen.length === 0 ? (
         <p className="text-sm text-gray-500">Er zijn nog geen vragen gesteld.</p>
-      )}
-
-      {Array.isArray(vragen) && (
+      ) : (
         <ul className="space-y-4">
           {vragen.map((v) => (
             <li key={v.id} className="border rounded p-4 shadow bg-white">
