@@ -9,7 +9,7 @@ function isLeiding(functie: string) {
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Record<string, string> }
 ) {
   try {
     const payload = verifyJWT(req);
