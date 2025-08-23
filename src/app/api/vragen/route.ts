@@ -40,23 +40,27 @@ export async function GET(req: NextRequest) {
 // ✅ POST: nieuwe vraag indienen
 export async function POST(req: NextRequest) {
   try {
-    const payload = verifyJWT(req);
+    const gebruiker = await getGebruikerMetId(req);
+    if (!gebruiker) {
+      return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+    }
+
     const { vraag } = await req.json();
-    const naam = payload.naam || "(onbekend)";
-    const email = payload.email;
+    const naam = gebruiker.naam || "(onbekend)";
+    const email = gebruiker.email;
 
     if (!vraag || typeof vraag !== "string") {
       return NextResponse.json({ error: "Ongeldige vraag" }, { status: 400 });
     }
 
+    // Opslaan in database (alleen medewerker_id en vraag)
     await db.query(
-      `INSERT INTO vragen (vraag, email, naam)
-       VALUES ($1, $2, $3)`,
-      [vraag, email, naam]
+      `INSERT INTO vragen (medewerker_id, vraag) VALUES ($1, $2)`,
+      [gebruiker.id, vraag]
     );
 
+    // E-mailmelding sturen
     const resend = new Resend(process.env.RESEND_API_KEY);
-
     const result = await resend.emails.send({
       from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
       to: "info@ijssalonvincenzo.nl",
