@@ -1,27 +1,5 @@
-// src/app/api/prognose/analyse/route.ts
 import { NextResponse } from "next/server";
 import { dbRapportage as db } from "@/lib/dbRapportage";
-
-type MaandData = {
-  maand: number; // 3..9
-  prognoseOmzet: number;
-  prognoseDagen: number;
-  prognosePerDag: number;
-  realisatieOmzet: number;
-  realisatieDagen: number;
-  realisatiePerDag: number | null;
-  todoOmzet: number;
-  todoDagen: number;
-  todoPerDag: number | null;
-  prognoseHuidig: number;
-  plusmin: number;
-  cumulatiefPlus: number;
-  cumulatiefPrognose: number;
-  cumulatiefRealisatie: number;
-  voorAchterInDagen: number | null;
-  procentueel: number | null;
-  jrPrognoseObvTotNu: number;
-};
 
 const MAANDEN = [3, 4, 5, 6, 7, 8, 9];
 const daysInMonth = (y: number, m: number) => new Date(y, m, 0).getDate();
@@ -33,173 +11,101 @@ export async function GET(req: Request) {
   const vorigJaar = jaar - 1;
 
   try {
-    // 1) Vorig jaar totaal: MV -> fallback raw
-    let vorigJaarOmzet = 0;
-    {
-      const mv = await db.query(
-        `SELECT COALESCE(SUM(totaal),0) AS t
-         FROM rapportage.omzet_maand
-         WHERE jaar = $1`,
-        [vorigJaar]
-      );
-      vorigJaarOmzet = Number(mv.rows?.[0]?.t || 0);
-      if (!vorigJaarOmzet) {
-        const raw = await db.query(
-          `SELECT COALESCE(SUM(aantal*eenheidsprijs),0) AS t
-           FROM rapportage.omzet
-           WHERE EXTRACT(YEAR FROM datum)::int = $1`,
-          [vorigJaar]
-        );
-        vorigJaarOmzet = Number(raw.rows?.[0]?.t || 0);
-      }
-    }
+    // 1) Vorig jaar totaal
+    const vorigJaarOmzetRes = await db.query(
+      `SELECT COALESCE(SUM(aantal * eenheidsprijs), 0) AS totaal
+       FROM rapportage.omzet
+       WHERE EXTRACT(YEAR FROM datum)::int = $1`,
+      [vorigJaar]
+    );
+    const vorigJaarOmzet = Number(vorigJaarOmzetRes.rows?.[0]?.totaal || 0);
     const jaaromzet = Math.round(vorigJaarOmzet * 1.03);
 
-    // 2) Pct per maand (3..9): MV proberen; bij fout of mismatch -> raw fallback
-const pctMap = new Map<number, number>();
-try {
-  // MV-poging (werkt alleen als omzet_maand ook 'maand' bevat)
-  const mv = await db.query(`
-    WITH pjm AS (
-      SELECT jaar AS yr, maand AS m, COALESCE(totaal,0)::numeric AS omz
-      FROM rapportage.omzet_maand
-      WHERE jaar BETWEEN 2022 AND 2024 AND maand BETWEEN 3 AND 9
-    ), pjt AS (
-      SELECT yr, SUM(omz) AS jaar_omz FROM pjm GROUP BY yr
-    )
-    SELECT m, COALESCE(AVG(CASE WHEN pjt.jaar_omz>0 THEN pjm.omz/pjt.jaar_omz ELSE 0 END),0) AS pct
-    FROM pjm JOIN pjt ON pjt.yr = pjm.yr
-    GROUP BY m ORDER BY m
-  `);
-  if ((mv.rows ?? []).length) {
-    for (const r of mv.rows) pctMap.set(Number(r.m), Number(r.pct) || 0);
-  } else {
-    throw new Error("mv_omzet_maand_geen_rijen");
-  }
-} catch {
-  // RAW fallback (zeker werkend, gebruikt alleen rapportage.omzet)
-  const raw = await db.query(`
-    WITH bron AS (
-      SELECT EXTRACT(YEAR FROM datum)::int  AS yr,
-             EXTRACT(MONTH FROM datum)::int AS m,
-             (aantal*eenheidsprijs)         AS omz
-      FROM rapportage.omzet
-      WHERE EXTRACT(YEAR  FROM datum)::int BETWEEN 2022 AND 2024
-        AND EXTRACT(MONTH FROM datum)::int BETWEEN 3 AND 9
-    ), pjm AS (
-      SELECT yr,m,SUM(omz) AS omz FROM bron GROUP BY 1,2
-    ), pjt AS (
-      SELECT yr,SUM(omz) AS jaar_omz FROM pjm GROUP BY 1
-    )
-    SELECT m, COALESCE(AVG(CASE WHEN pjt.jaar_omz>0 THEN pjm.omz/pjt.jaar_omz ELSE 0 END),0) AS pct
-    FROM pjm JOIN pjt ON pjt.yr=pjm.yr
-    GROUP BY m ORDER BY m
-  `);
-  for (const r of raw.rows ?? []) pctMap.set(Number(r.m), Number(r.pct) || 0);
-}
-
-// Zorg dat 3..9 erin zitten
-for (const m of MAANDEN) if (!pctMap.has(m)) pctMap.set(m, 0);
-// Als alles 0 is → gelijk verdelen
-if (MAANDEN.every(m => (pctMap.get(m) || 0) === 0)) {
-  const g = 1 / MAANDEN.length;
-  MAANDEN.forEach(m => pctMap.set(m, g));
-}
-
-    // 3) Realisatie huidig jaar (3..9): dag×product MV -> fallback raw
-    const realByMonth = new Map<number, { omz: number; dagen: number }>();
-    {
-      const mv = await db.query(
-        `SELECT EXTRACT(MONTH FROM datum)::int AS m,
-                SUM(omzet) AS omz,
-                COUNT(DISTINCT datum) AS dagen
-         FROM rapportage.omzet_dag_product
-         WHERE EXTRACT(YEAR FROM datum)::int = $1
-           AND EXTRACT(MONTH FROM datum)::int BETWEEN 3 AND 9
-         GROUP BY 1 ORDER BY 1`,
-        [jaar]
-      );
-      if ((mv.rows ?? []).length) {
-        for (const r of mv.rows)
-          realByMonth.set(Number(r.m), { omz: Number(r.omz) || 0, dagen: Number(r.dagen) || 0 });
-      } else {
-        const raw = await db.query(
-          `WITH bron AS (
-             SELECT EXTRACT(MONTH FROM datum)::int AS m,
-                    datum::date AS d,
-                    (aantal*eenheidsprijs) AS omz
-             FROM rapportage.omzet
-             WHERE EXTRACT(YEAR FROM datum)::int = $1
-               AND EXTRACT(MONTH FROM datum)::int BETWEEN 3 AND 9
-           ), per_dag AS (
-             SELECT m,d,SUM(omz) AS omz FROM bron GROUP BY 1,2
-           )
-           SELECT m, SUM(omz) AS omz, COUNT(*) AS dagen
-           FROM per_dag GROUP BY 1 ORDER BY 1`,
-          [jaar]
-        );
-        for (const r of raw.rows ?? [])
-          realByMonth.set(Number(r.m), { omz: Number(r.omz) || 0, dagen: Number(r.dagen) || 0 });
-      }
+    // 2) Pct per maand (op basis van klassieke omzet 2022-2024)
+    const pctMap = new Map<number, number>();
+    const pctRes = await db.query(`
+      WITH bron AS (
+        SELECT EXTRACT(YEAR FROM datum)::int AS yr,
+               EXTRACT(MONTH FROM datum)::int AS m,
+               (aantal * eenheidsprijs) AS omz
+        FROM rapportage.omzet
+        WHERE EXTRACT(YEAR FROM datum)::int BETWEEN 2022 AND 2024
+          AND EXTRACT(MONTH FROM datum)::int BETWEEN 3 AND 9
+      ), pjm AS (
+        SELECT yr, m, SUM(omz) AS omz FROM bron GROUP BY 1, 2
+      ), pjt AS (
+        SELECT yr, SUM(omz) AS jaar_omz FROM pjm GROUP BY 1
+      )
+      SELECT m, COALESCE(AVG(CASE WHEN pjt.jaar_omz > 0 THEN pjm.omz / pjt.jaar_omz ELSE 0 END), 0) AS pct
+      FROM pjm JOIN pjt ON pjt.yr = pjm.yr
+      GROUP BY m ORDER BY m
+    `);
+    for (const r of pctRes.rows ?? []) pctMap.set(Number(r.m), Number(r.pct) || 0);
+    for (const m of MAANDEN) if (!pctMap.has(m)) pctMap.set(m, 0);
+    if (MAANDEN.every(m => (pctMap.get(m) || 0) === 0)) {
+      const g = 1 / MAANDEN.length;
+      MAANDEN.forEach(m => pctMap.set(m, g));
     }
 
-// 4) Prognose-dagen (uit rapportage.omzetdagen) → fallback op kalenderdagen als er niets staat
-const progDays = new Map<number, number>();
-{
-  const q = await db.query(
-    `SELECT maand::int AS m, COALESCE(dagen,0)::int AS d
-     FROM rapportage.omzetdagen
-     WHERE jaar = $1
-       AND maand BETWEEN 3 AND 9
-     ORDER BY maand`,
-    [jaar]
-  );
+    // 3) Realisatie huidig jaar (dagtellingen uit klassieke omzet)
+    const realByMonth = new Map<number, { omz: number; dagen: number }>();
+    const realRaw = await db.query(`
+      WITH bron AS (
+        SELECT EXTRACT(MONTH FROM datum)::int AS m,
+               datum::date AS d,
+               (aantal * eenheidsprijs) AS omz
+        FROM rapportage.omzet
+        WHERE EXTRACT(YEAR FROM datum)::int = $1
+          AND EXTRACT(MONTH FROM datum)::int BETWEEN 3 AND 9
+      ), per_dag AS (
+        SELECT m, d, SUM(omz) AS omz FROM bron GROUP BY 1, 2
+      )
+      SELECT m, SUM(omz) AS omz, COUNT(*) AS dagen
+      FROM per_dag GROUP BY 1 ORDER BY 1
+    `, [jaar]);
+    for (const r of realRaw.rows ?? []) {
+      realByMonth.set(Number(r.m), {
+        omz: Number(r.omz) || 0,
+        dagen: Number(r.dagen) || 0
+      });
+    }
 
-  for (const r of q.rows ?? []) {
-    progDays.set(Number(r.m), Number(r.d) || 0);
-  }
+    // 4) Prognose-dagen
+    const progDays = new Map<number, number>();
+    const progQ = await db.query(
+      `SELECT maand::int AS m, COALESCE(dagen,0)::int AS d
+       FROM rapportage.omzetdagen
+       WHERE jaar = $1 AND maand BETWEEN 3 AND 9
+       ORDER BY maand`,
+      [jaar]
+    );
+    for (const r of progQ.rows ?? []) {
+      progDays.set(Number(r.m), Number(r.d) || 0);
+    }
+    if ((progQ.rows ?? []).length === 0) {
+      for (const m of MAANDEN) progDays.set(m, daysInMonth(jaar, m));
+    } else {
+      for (const m of MAANDEN) if (!progDays.has(m)) progDays.set(m, 0);
+    }
 
-  // Fallback: als er helemaal niets staat voor dit jaar, gebruik kalenderdagen
-  if ((q.rows ?? []).length === 0) {
-    for (const m of MAANDEN) progDays.set(m, daysInMonth(jaar, m));
-  } else {
-    // Zorg dat alle maanden 3..9 aanwezig zijn (ontbrekende op 0 i.p.v. undefined)
-    for (const m of MAANDEN) if (!progDays.has(m)) progDays.set(m, 0);
-  }
-}
-
-    // 5) Bouw maanddata
-    const data: MaandData[] = MAANDEN.map((m) => {
+    // 5) Maanddata opbouwen
+    const data = MAANDEN.map((m) => {
       const pct = pctMap.get(m) || 0;
       const prognoseOmzet = Math.round(jaaromzet * pct);
       const prognoseDagen = progDays.get(m) ?? daysInMonth(jaar, m);
-
       const real = realByMonth.get(m);
       const realisatieOmzet = real?.omz ?? 0;
       const realisatieDagen = real?.dagen ?? 0;
-
       const prognosePerDag = prognoseDagen > 0 ? Math.round(prognoseOmzet / prognoseDagen) : 0;
       const realisatiePerDag = realisatieDagen > 0 ? Math.round(realisatieOmzet / realisatieDagen) : null;
-
       const todoOmzet = prognoseOmzet - realisatieOmzet;
       const todoDagen = Math.max(prognoseDagen - realisatieDagen, 0);
       const todoPerDag = todoDagen > 0 ? Math.round(todoOmzet / todoDagen) : null;
-
-      const verwachtTotNu = prognoseDagen > 0
-        ? (prognoseOmzet * (realisatieDagen / prognoseDagen))
-        : 0;
+      const verwachtTotNu = prognoseDagen > 0 ? (prognoseOmzet * (realisatieDagen / prognoseDagen)) : 0;
       const plusmin = Math.round(realisatieOmzet - verwachtTotNu);
-
       const prognoseHuidig = realisatieOmzet + Math.max(prognoseOmzet - realisatieOmzet, 0);
-
-      const voorAchterInDagen = prognosePerDag > 0
-        ? Number(((realisatieOmzet / prognosePerDag) - realisatieDagen).toFixed(1))
-        : null;
-
-      const procentueel = prognoseOmzet > 0
-        ? Number(((realisatieOmzet / prognoseOmzet) * 100).toFixed(1))
-        : null;
-
+      const voorAchterInDagen = prognosePerDag > 0 ? Number(((realisatieOmzet / prognosePerDag) - realisatieDagen).toFixed(1)) : null;
+      const procentueel = prognoseOmzet > 0 ? Number(((realisatieOmzet / prognoseOmzet) * 100).toFixed(1)) : null;
       return {
         maand: m,
         prognoseOmzet,
@@ -232,7 +138,6 @@ const progDays = new Map<number, number>();
       r.cumulatiefRealisatie = cumR;
       r.cumulatiefPlus = cumPlus;
     }
-
     const totNuPrognose = data.filter(r => r.realisatieDagen > 0).reduce((s,r)=>s+r.prognoseOmzet,0);
     const totNuRealisatie = data.filter(r => r.realisatieDagen > 0).reduce((s,r)=>s+r.realisatieOmzet,0);
     const factor = totNuPrognose > 0 ? (totNuRealisatie / totNuPrognose) : 0;
