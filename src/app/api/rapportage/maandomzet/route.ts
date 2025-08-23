@@ -1,82 +1,65 @@
+// ================================
+// File: src/app/api/rapportage/maandomzet/route.ts
+// ================================
 import { NextRequest, NextResponse } from "next/server";
-import { dbRapportage as db } from "@/lib/dbRapportage";
+import { pool } from "@/lib/db";
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export const runtime = "nodejs";
 
-type Row = { maand: number; omzet: number; dagen: number };
+type MaandRecord = {
+  maand: number;       // 1..12
+  omzet: number;       // som(aantal*eenheidsprijs)
+  dagen: number;       // aantal unieke dagen met omzet in die maand
+};
 
 export async function GET(req: NextRequest) {
-  const url = new URL(req.url);
-  const y = Number(url.searchParams.get("jaar") ?? new Date().getFullYear());
-
   try {
-    // 1) OMZET per maand: MV -> fallback RAW
-    const omzetByMonth = new Map<number, number>();
-    {
-      const mv = await db.query(
-        `SELECT maand::int AS m, COALESCE(totaal,0)::numeric AS omzet
-         FROM rapportage.omzet_maand
-         WHERE jaar = $1`,
-        [y]
-      );
-      if ((mv.rows ?? []).length > 0) {
-        for (const r of mv.rows) omzetByMonth.set(Number(r.m), Number(r.omzet) || 0);
-      } else {
-        const raw = await db.query(
-          `SELECT EXTRACT(MONTH FROM datum)::int AS m,
-                  COALESCE(SUM(aantal*eenheidsprijs),0)::numeric AS omzet
-           FROM rapportage.omzet
-           WHERE EXTRACT(YEAR FROM datum)::int = $1
-           GROUP BY 1`,
-          [y]
-        );
-        for (const r of raw.rows ?? []) omzetByMonth.set(Number(r.m), Number(r.omzet) || 0);
-      }
-    }
+    // Jaar uit querystring of default = huidig jaar
+    const jaar =
+      parseInt(req.nextUrl.searchParams.get("jaar") || "", 10) ||
+      new Date().getFullYear();
 
-    // 2) DAGEN met omzet per maand: dag×product -> fallback RAW
-    const daysByMonth = new Map<number, number>();
-    {
-      const mv = await db.query(
-        `SELECT EXTRACT(MONTH FROM datum)::int AS m,
-                COUNT(DISTINCT datum)::int        AS dagen
-         FROM rapportage.omzet_dag_product
-         WHERE EXTRACT(YEAR FROM datum)::int = $1
-         GROUP BY 1`,
-        [y]
-      );
-      if ((mv.rows ?? []).length > 0) {
-        for (const r of mv.rows) daysByMonth.set(Number(r.m), Number(r.dagen) || 0);
-      } else {
-        const raw = await db.query(
-          `SELECT EXTRACT(MONTH FROM datum)::int AS m,
-                  COUNT(DISTINCT datum)::int       AS dagen
-           FROM rapportage.omzet
-           WHERE EXTRACT(YEAR FROM datum)::int = $1
-           GROUP BY 1`,
-          [y]
-        );
-        for (const r of raw.rows ?? []) daysByMonth.set(Number(r.m), Number(r.dagen) || 0);
-      }
-    }
+    // We berekenen maandcijfers direct uit rapportage.omzet
+    // en zorgen met generate_series(1,12) dat alle maanden aanwezig zijn.
+    const { rows } = await pool.query<MaandRecord>(
+      `
+      WITH maanden AS (
+        SELECT gs::int AS maand
+        FROM generate_series(1, 12) AS gs
+      ),
+      omzet_per_maand AS (
+        SELECT
+          EXTRACT(MONTH FROM o.datum)::int AS maand,
+          SUM(o.aantal * o.eenheidsprijs)::numeric(18,2) AS omzet,
+          COUNT(DISTINCT date_trunc('day', o.datum))::int AS dagen
+        FROM rapportage.omzet o
+        WHERE EXTRACT(YEAR FROM o.datum)::int = $1
+        GROUP BY 1
+      )
+      SELECT
+        m.maand,
+        COALESCE(opm.omzet, 0)::float8 AS omzet,
+        COALESCE(opm.dagen, 0)        AS dagen
+      FROM maanden m
+      LEFT JOIN omzet_per_maand opm USING (maand)
+      ORDER BY m.maand;
+      `,
+      [jaar]
+    );
 
-    // 3) Always 12 maanden teruggeven (1..12), 0 waar niets is
-    const maanden: Row[] = Array.from({ length: 12 }, (_, i) => {
-      const m = i + 1;
-      return {
-        maand: m,
-        omzet: Math.round(omzetByMonth.get(m) || 0),
-        dagen: daysByMonth.get(m) || 0,
-      };
-    });
+    // Zorg voor consistente shape
+    const maanden = rows.map((r) => ({
+      maand: r.maand,
+      omzet: Number(r.omzet) || 0,
+      dagen: Number(r.dagen) || 0,
+    }));
 
-    return NextResponse.json({ jaar: y, maanden }, { headers: { "Cache-Control": "no-store" } });
-  } catch (e: any) {
-    console.error("[/api/rapportage/maandomzet] error:", e?.message ?? e);
+    return NextResponse.json({ jaar, maanden });
+  } catch (err) {
+    console.error("[/api/rapportage/maandomzet] error:", err);
     return NextResponse.json(
-      { error: "Serverfout in maandomzet", detail: String(e?.message ?? e) },
-      { status: 500, headers: { "Cache-Control": "no-store" } }
+      { error: "Serverfout", details: (err as Error).message },
+      { status: 500 }
     );
   }
 }
