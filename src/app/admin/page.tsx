@@ -34,36 +34,6 @@ import { EyeOff } from 'lucide-react'; // ⬅️ toegevoegd
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
-// 🆕 Vragen teller hook
-function useVragenTeller(intervalMs = 10000) {
-const [teller, setTeller] = React.useState<number | null>(null);
-
-
-const fetchAantal = async () => {
-try {
-const res = await fetch("/api/admin/vragen", { credentials: "include" });
-if (!res.ok) return;
-const data = await res.json();
-const open = Array.isArray(data)
-? data.filter((v: any) => !v.antwoord).length
-: 0;
-setTeller(open);
-} catch {
-setTeller(null);
-}
-};
-
-
-React.useEffect(() => {
-fetchAantal();
-const interval = setInterval(fetchAantal, intervalMs);
-return () => clearInterval(interval);
-}, [intervalMs]);
-
-
-return teller;
-}
-
 const bgColorMap: Record<string, string> = {
   green: 'bg-green-100 text-green-900 hover:bg-green-200',
   pink: 'bg-pink-100 text-pink-900 hover:bg-pink-200',
@@ -86,6 +56,30 @@ type LinkCardProps = {
   color: string;
   Icon: React.FC<React.SVGProps<SVGSVGElement>>;
 };
+
+function useVragenTeller(intervalMs = 10000) {
+  const [teller, setTeller] = React.useState<number | null>(null);
+
+  const fetchAantal = async () => {
+    try {
+      const res = await fetch("/api/admin/vragen", { credentials: "include" });
+      if (!res.ok) return;
+      const data = await res.json();
+      const open = Array.isArray(data) ? data.filter((v: any) => !v.antwoord).length : 0;
+      setTeller(open);
+    } catch {
+      setTeller(null);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchAantal();
+    const interval = setInterval(fetchAantal, intervalMs);
+    return () => clearInterval(interval);
+  }, [intervalMs]);
+
+  return teller;
+}
 
 const LinkCard = ({ href, label, color, Icon }: LinkCardProps) => (
   <Link
@@ -197,6 +191,8 @@ export default function AdminDashboard() {
     }
   });
 
+  const openVragenTeller = useVragenTeller(10000); // elke 10s tijdens testen
+
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('omzetHidden', hideOmzet ? '1' : '0');
@@ -224,8 +220,6 @@ export default function AdminDashboard() {
     setActive(id);
     localStorage.setItem('activeSection', id);
   };
-
-const openVragenTeller = useVragenTeller(10000); // ⏱ elke 10s
 
   return (
     <main className="max-w-6xl mx-auto p-6">
