@@ -1,60 +1,44 @@
 // ================================
 // File: src/app/api/rapportage/maandomzet/route.ts
 // ================================
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 
 export const runtime = "nodejs";
 
-type MaandRecord = {
-  maand: number;       // 1..12
-  omzet: number;       // som(aantal*eenheidsprijs)
-  dagen: number;       // aantal unieke dagen met omzet in die maand
-};
-
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    // Jaar uit querystring of default = huidig jaar
-    const jaar =
-      parseInt(req.nextUrl.searchParams.get("jaar") || "", 10) ||
-      new Date().getFullYear();
-
-    // We berekenen maandcijfers direct uit rapportage.omzet
-    // en zorgen met generate_series(1,12) dat alle maanden aanwezig zijn.
-    const { rows } = await pool.query<MaandRecord>(
-      `
-      WITH maanden AS (
-        SELECT gs::int AS maand
-        FROM generate_series(1, 12) AS gs
-      ),
-      omzet_per_maand AS (
+    // Aggregatie: per kalendermaand (month start) en per jaar, over alle jaren in de tabel
+    const { rows } = await pool.query<{
+      jaar: number;
+      maand_start: string; // date
+      totaal: string;      // numeric
+    }>(`
+      WITH bron AS (
         SELECT
-          EXTRACT(MONTH FROM o.datum)::int AS maand,
-          SUM(o.aantal * o.eenheidsprijs)::numeric(18,2) AS omzet,
-          COUNT(DISTINCT date_trunc('day', o.datum))::int AS dagen
-        FROM rapportage.omzet o
-        WHERE EXTRACT(YEAR FROM o.datum)::int = $1
-        GROUP BY 1
+          EXTRACT(YEAR FROM datum)::int AS jaar,
+          date_trunc('month', datum)::date AS maand_start,
+          SUM(aantal * eenheidsprijs)::numeric(18,2) AS totaal
+        FROM rapportage.omzet
+        GROUP BY 1, 2
       )
-      SELECT
-        m.maand,
-        COALESCE(opm.omzet, 0)::float8 AS omzet,
-        COALESCE(opm.dagen, 0)        AS dagen
-      FROM maanden m
-      LEFT JOIN omzet_per_maand opm USING (maand)
-      ORDER BY m.maand;
-      `,
-      [jaar]
+      SELECT jaar, maand_start, totaal
+      FROM bron
+      ORDER BY maand_start, jaar;
+    `);
+
+    const maxRes = await pool.query<{ max_datum: string }>(
+      `SELECT MAX(datum)::date AS max_datum FROM rapportage.omzet`
     );
 
-    // Zorg voor consistente shape
-    const maanden = rows.map((r) => ({
-      maand: r.maand,
-      omzet: Number(r.omzet) || 0,
-      dagen: Number(r.dagen) || 0,
-    }));
-
-    return NextResponse.json({ jaar, maanden });
+    return NextResponse.json({
+      rows: rows.map(r => ({
+        jaar: Number(r.jaar),
+        maand_start: r.maand_start,
+        totaal: Number(r.totaal),
+      })),
+      max_datum: maxRes.rows[0]?.max_datum ?? null,
+    });
   } catch (err) {
     console.error("[/api/rapportage/maandomzet] error:", err);
     return NextResponse.json(
