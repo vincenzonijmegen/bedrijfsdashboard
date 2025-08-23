@@ -43,7 +43,7 @@ interface LoonkostenItem {
 }
 
 const thisYear = new Date().getFullYear();
-const years = Array.from({ length: 6 }, (_, i) => thisYear - i); // bijv. 2025..2020
+const years = Array.from({ length: thisYear - 2022 + 1 }, (_, i) => thisYear - i);
 
 export default function PrognosePage() {
   const [selectedYear, setSelectedYear] = useState<number>(thisYear);
