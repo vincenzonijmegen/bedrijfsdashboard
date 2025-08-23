@@ -8,12 +8,12 @@ export async function POST() {
     },
   });
 
-  res.cookies.set("sessie_token", "", {
+  res.cookies.set("v_app", "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: "lax",
     path: "/",
-    maxAge: 0, // onmiddellijke verwijdering
+    maxAge: 0, // directe verwijdering
   });
 
   return res;
