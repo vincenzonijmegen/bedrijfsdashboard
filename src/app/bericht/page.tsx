@@ -1,7 +1,8 @@
-// 📄 Bestand: src/app/admin/vragen/page.tsx
+// ✅ Bestand: src/app/bericht/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
@@ -10,79 +11,63 @@ interface Vraag {
   vraag: string;
   antwoord?: string;
   aangemaakt_op: string;
-  naam: string;
-  email: string;
 }
-
-export default function AdminVragenPagina() {
-  const [vragen, setVragen] = useState<Vraag[] | null>(null);
-  const [antwoorden, setAntwoorden] = useState<Record<number, string>>({});
+ 
+export default function BerichtPagina() {
+  const router = useRouter();
+  const [vraag, setVraag] = useState("");
+  
+  const [vragen, setVragen] = useState<Vraag[]>([]);
 
   useEffect(() => {
-    fetch("/api/admin/vragen", { credentials: "include" })
-      .then((res) => {
-        if (!res.ok) throw new Error("Unauthorized");
-        return res.json();
-      })
-      .then(setVragen)
-      .catch(() => setVragen(null));
+    fetch("/api/vragen")
+      .then((res) => res.json())
+      .then(setVragen);
   }, []);
 
-  const handleBeantwoord = async (id: number) => {
-    const antwoord = antwoorden[id]?.trim();
-    if (!antwoord) return;
-
-    const res = await fetch(`/api/admin/vragen/${id}`, {
-      method: "PATCH",
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const res = await fetch("/api/vragen", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ antwoord }),
-      credentials: "include",
+      body: JSON.stringify({ vraag }),
     });
-
     if (res.ok) {
-      const updated = await res.json();
-      setVragen((prev) =>
-        Array.isArray(prev) ? prev.map((v) => (v.id === id ? updated : v)) : prev
-      );
+      setVraag("");
+      const nieuwe = await res.json();
+      setVragen((prev) => [nieuwe, ...prev]);
     }
   };
 
   return (
-    <main className="max-w-3xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold">📥 Binnengekomen vragen</h1>
+    <main className="max-w-2xl mx-auto p-6 space-y-6">
+      <h1 className="text-2xl font-bold">📩 Vraag aan de leiding</h1>
 
-      {!Array.isArray(vragen) && (
-        <p className="text-sm text-red-600">❌ Fout bij laden of je hebt geen toegang.</p>
-      )}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Textarea
+          value={vraag}
+          onChange={(e) => setVraag(e.target.value)}
+          required
+          placeholder="Typ hier je vraag, bijvoorbeeld: 'Mag ik morgen eerder weg?'"
+        />
+        <Button type="submit">Verstuur vraag</Button>
+      </form>
 
-      {Array.isArray(vragen) && vragen.length === 0 && (
-        <p className="text-sm text-gray-500">Er zijn nog geen vragen gesteld.</p>
-      )}
-
-      {Array.isArray(vragen) && (
-        <ul className="space-y-4">
+      <section className="space-y-2">
+        <h2 className="text-lg font-semibold mt-6">Eerdere vragen</h2>
+        {vragen.length === 0 && <p className="text-sm text-gray-500">Nog geen vragen gesteld.</p>}
+        <ul className="divide-y divide-gray-200">
           {vragen.map((v) => (
-            <li key={v.id} className="border rounded p-4 shadow bg-white">
-              <p className="text-sm text-gray-500">🗓️ {new Date(v.aangemaakt_op).toLocaleString()}</p>
-              <p className="text-sm text-gray-600">👤 {v.naam} ({v.email})</p>
-              <p className="text-base font-medium mt-2">{v.vraag}</p>
-              {v.antwoord ? (
-                <p className="mt-2 text-green-700">💬 Antwoord: {v.antwoord}</p>
-              ) : (
-                <div className="mt-3 space-y-2">
-                  <Textarea
-                    value={antwoorden[v.id] || ""}
-                    onChange={(e) => setAntwoorden({ ...antwoorden, [v.id]: e.target.value })}
-                    placeholder="Typ hier je antwoord..."
-                    rows={3}
-                  />
-                  <Button onClick={() => handleBeantwoord(v.id)}>Verzend antwoord</Button>
-                </div>
+            <li key={v.id} className="py-2">
+              <p className="text-sm text-gray-500">🗓️ {new Date(v.aangemaakt_op).toLocaleDateString()}</p>
+              <p className="text-base">{v.vraag}</p>
+              {v.antwoord && (
+                <p className="text-green-700 mt-1">💬 Antwoord: {v.antwoord}</p>
               )}
             </li>
           ))}
         </ul>
-      )}
+      </section>
     </main>
   );
 }

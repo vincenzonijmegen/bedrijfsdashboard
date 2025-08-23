@@ -10,6 +10,8 @@ interface Vraag {
   vraag: string;
   antwoord?: string;
   aangemaakt_op: string;
+  naam: string;
+  email: string;
 }
 
 export default function AdminVragenPagina() {
@@ -34,6 +36,7 @@ export default function AdminVragenPagina() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ antwoord }),
+      credentials: "include",
     });
 
     if (res.ok) {
@@ -61,7 +64,8 @@ export default function AdminVragenPagina() {
           {vragen.map((v) => (
             <li key={v.id} className="border rounded p-4 shadow bg-white">
               <p className="text-sm text-gray-500">🗓️ {new Date(v.aangemaakt_op).toLocaleString()}</p>
-              <p className="text-base font-medium">{v.vraag}</p>
+              <p className="text-sm text-gray-600">👤 {v.naam} ({v.email})</p>
+              <p className="text-base font-medium mt-2">{v.vraag}</p>
               {v.antwoord ? (
                 <p className="mt-2 text-green-700">💬 Antwoord: {v.antwoord}</p>
               ) : (
