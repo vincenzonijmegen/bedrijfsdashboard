@@ -4,9 +4,15 @@ import type { ReactNode } from "react";
 import Providers from "@/app/providers"; // ⬅️ SWR provider
 import { SnackbarProvider } from "@/lib/useSnackbar";
 
-export const metadata: Metadata = {
-  title: "Bedrijfsdashboard Vincenzo",
-  description: "Bedrijfsdashboard IJssalon Vincenzo",
+export const metadata = {
+  title: "Vincenzo App",
+  description: "Personeelsapp van IJssalon Vincenzo",
+  manifest: "/manifest.json",
+  themeColor: "#008080",
+  icons: {
+    icon: "/icons/icon-192x192.png",
+    apple: "/icons/icon-512x512.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -27,3 +33,4 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     </html>
   );
 }
+

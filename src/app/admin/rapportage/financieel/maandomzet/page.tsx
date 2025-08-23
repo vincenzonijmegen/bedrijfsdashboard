@@ -1,5 +1,7 @@
-// Bestand: src/app/admin/rapportage/maandomzet/page.tsx
-'use client';
+// ===========================
+// File: src/app/admin/rapportage/maandomzet/page.tsx
+// ===========================
+"use client";
 
 import Link from 'next/link';
 import { useEffect } from 'react';
