@@ -138,16 +138,22 @@ export async function GET(req: Request) {
     }
 
     // 4) Prognose-dagen (tabel) → fallback kalenderdagen
-    const progDays = new Map<number, number>();
-    {
-      const q = await db.query(
-        `SELECT maand, COALESCE(dagen,0) AS d
-         FROM rapportage.omzetdagen
-         WHERE jaar=$1 AND maand BETWEEN 3 AND 9`,
-        [jaar]
-      );
-      for (const r of q.rows ?? []) progDays.set(Number(r.maand), Number(r.d) || 0);
-    }
+const progDays = new Map<number, number>();
+try {
+  const q = await db.query(
+    `SELECT o.maand::int AS m, COALESCE(o.dagen,0)::int AS d
+     FROM rapportage.omzetdagen o
+     WHERE o.jaar = $1 AND o.maand BETWEEN 3 AND 9
+     ORDER BY o.maand`,
+    [jaar]
+  );
+  for (const r of q.rows ?? []) progDays.set(Number(r.m), Number(r.d) || 0);
+} catch (e) {
+  // Als de kolom anders heet of de tabel (tijdelijk) ontbreekt,
+  // voorkom 500 en val terug op kalenderdagen.
+  for (const m of MAANDEN) progDays.set(m, daysInMonth(jaar, m));
+}
+
 
     // 5) Bouw maanddata
     const data: MaandData[] = MAANDEN.map((m) => {
