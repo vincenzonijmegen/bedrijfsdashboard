@@ -124,7 +124,8 @@ export default function DashboardPagina() {
             ➤ Bekijk skills
           </Link>
         </div>
-      </section>
-    </main>
+                </section>
+            </main>
+            
   );
 }
