@@ -4,6 +4,11 @@ import { Card, CardContent } from '@/components/ui/card';
 
 const rapportages = [
   {
+    titel: 'Omzetprognose',
+    beschrijving: 'Toon omzetprognose o.b.v. historie en groei',
+    link: '/admin/omzet/prognose',
+  },
+  {
     titel: 'Maandomzet per jaar',
     beschrijving: 'Toon de totale omzet per maand en per jaar',
     link: '/admin/rapportage/financieel/maandomzet',
@@ -17,11 +22,6 @@ const rapportages = [
     titel: 'Omzet Feestdagen',
     beschrijving: 'Toon omzet op feestdagen (tooltip toont uuromzet)',
     link: '/admin/rapportage/financieel/feestdagomzet',
-  },
-  {
-    titel: 'Omzetprognose',
-    beschrijving: 'Toon omzetprognose o.b.v. historie en groei',
-    link: '/admin/omzet/prognose',
   },
   {
     titel: 'JP MyPos',

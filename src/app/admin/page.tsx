@@ -256,10 +256,10 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} />
         <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} />
-        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ShoppingCart} />
         <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} />
         <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} />
         <LinkCard href="/admin/dossier" label="Dossiers" color="orange" Icon={Folder} />
+        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ShoppingCart} />
         <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} />
         <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} />
       </Section>
