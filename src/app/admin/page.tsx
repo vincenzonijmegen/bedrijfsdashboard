@@ -253,15 +253,15 @@ export default function AdminDashboard() {
 
 
       <Section id="meest" title="👥 Meest gebruikte onderdelen" color="slate" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/acties" label="Actielijsten" color="slate" Icon={CheckSquare} />
-        <LinkCard href="/admin/notities" label="Notities" color="slate" Icon={FileText} />
-        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="slate" Icon={ShoppingCart} />
-        <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="slate" Icon={CalendarDays} />
-        <LinkCard href="/open-diensten" label="Open Shifts" color="slate" Icon={CalendarDays} />
-        <LinkCard href="/admin/dossier" label="Dossiers" color="slate" Icon={Folder} />
-        <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="slate" Icon={Wrench} />
-        <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="slate" Icon={Wrench} />
-        <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="slate" Icon={BarChart2} />
+        <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} />
+        <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} />
+        <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} />
+        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ShoppingCart} />
+        <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} />
+        <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} />
+        <LinkCard href="/admin/dossier" label="Dossiers" color="orange" Icon={Folder} />
+        <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} />
+        <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} />
       </Section>
 
       <Section id="management" title="📘 Management" color="blue" activeSection={activeSection} setActiveSection={setActiveSection}>
@@ -328,8 +328,8 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/omzet/omzetdagen" label="Omzetdagen aanpassen" color="teal" Icon={Wrench} />
       </Section>
             
-      <Section id="prognosetools" title="📊 Prognosetools" color="teal" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/planning/forecast" label="Forecast planning" color="teal" Icon={Wrench} />
+      <Section id="prognosetools" title="📊 Prognosetools" color="indigo" activeSection={activeSection} setActiveSection={setActiveSection}>
+        <LinkCard href="/admin/planning/forecast" label="Forecast planning" color="indigo" Icon={Wrench} />
       </Section>
     </main>
   );
