@@ -1,11 +1,11 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { ROUTES } from "../page";
+import { matchRoute } from "./routeRegistry";
 
 export default function Breadcrumbs() {
   const pathname = usePathname();
-  const match = ROUTES.find(r => pathname.startsWith(r.href));
+  const match = matchRoute(pathname);
 
   if (!match) return null;
 
