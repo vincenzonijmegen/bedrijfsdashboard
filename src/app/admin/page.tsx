@@ -55,7 +55,11 @@ type LinkCardProps = {
   label: string;
   color: string;
   Icon: React.FC<React.SVGProps<SVGSVGElement>>;
+  breadcrumb?: string; // 👈 toegevoegd
 };
+
+// 👇 Exporteerbare lijst die automatisch gevuld wordt door LinkCard
+export const ROUTES: { href: string; breadcrumb: string }[] = [];
 
 function useVragenTeller(intervalMs = 10000) {
   const [teller, setTeller] = React.useState<number | null>(null);
@@ -81,17 +85,24 @@ function useVragenTeller(intervalMs = 10000) {
   return teller;
 }
 
-const LinkCard = ({ href, label, color, Icon }: LinkCardProps) => (
-  <Link
-    href={href}
-    className={`flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium shadow transition ${
-      bgColorMap[color] || 'bg-gray-200 text-gray-900'
-    }`}
-  >
-    <Icon className="mr-2 h-5 w-5" />
-    {label}
-  </Link>
-);
+const LinkCard = ({ href, label, color, Icon, breadcrumb }: LinkCardProps) => {
+  // bouw automatisch de breadcrumb mapping op
+  if (breadcrumb && !ROUTES.find(r => r.href === href)) {
+    ROUTES.push({ href, breadcrumb });
+  }
+
+  return (
+    <Link
+      href={href}
+      className={`flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium shadow transition ${
+        bgColorMap[color] || 'bg-gray-200 text-gray-900'
+      }`}
+    >
+      <Icon className="mr-2 h-5 w-5" />
+      {label}
+    </Link>
+  );
+};
 
 type SectionProps = {
   id: string;
@@ -223,113 +234,120 @@ export default function AdminDashboard() {
 
   return (
     <main className="max-w-6xl mx-auto p-6">
-<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-  <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+        <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
 
-  {/* Rechts: omzet + verbergknop */}
-  <div className="mt-2 sm:mt-0 flex items-center gap-2">
-    <Link href="/admin/dashboard" className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200">
-      <DailyTotalDisplay mask={hideOmzet} />
-    </Link>
-    <button
-      type="button"
-      onClick={() => setHideOmzet(v => !v)}
-      className="p-2 rounded bg-gray-100 hover:bg-gray-200"
-      title={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
-      aria-label={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
-    >
-      {hideOmzet ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
-    </button>
-  </div>
-</div>
+        {/* Rechts: omzet + verbergknop */}
+        <div className="mt-2 sm:mt-0 flex items-center gap-2">
+          <Link href="/admin/dashboard" className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200">
+            <DailyTotalDisplay mask={hideOmzet} />
+          </Link>
+          <button
+            type="button"
+            onClick={() => setHideOmzet(v => !v)}
+            className="p-2 rounded bg-gray-100 hover:bg-gray-200"
+            title={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
+            aria-label={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
+          >
+            {hideOmzet ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+          </button>
+        </div>
+      </div>
 
-{/* Melding over vragen onder dashboardtitel, altijd apart */}
-{openVragenTeller !== null && openVragenTeller > 0 && (
-  <div className="mb-6 text-sm text-red-700 font-semibold">
-    📬 {openVragenTeller} onbeantwoorde vragen{openVragenTeller > 1 ? "en" : ""}.
-    <Link href="/admin/vragen" className="ml-2 underline text-blue-600">Bekijk nu</Link>
-  </div>
-)}
+      {/* Melding over vragen onder dashboardtitel, altijd apart */}
+      {openVragenTeller !== null && openVragenTeller > 0 && (
+        <div className="mb-6 text-sm text-red-700 font-semibold">
+          📬 {openVragenTeller} onbeantwoorde vragen{openVragenTeller > 1 ? "en" : ""}.
+          <Link href="/admin/vragen" className="ml-2 underline text-blue-600">Bekijk nu</Link>
+        </div>
+      )}
 
-
+      {/* 👇 Meest gebruikte onderdelen */}
       <Section id="meest" title="👥 Meest gebruikte onderdelen" color="slate" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} />
-        <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} />
-        <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} />
-        <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} />
-        <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} />
-        <LinkCard href="/admin/dossier" label="Dossiers" color="orange" Icon={Folder} />
-        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ShoppingCart} />
-        <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} />
-        <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} />
+        <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} breadcrumb="Management – Actielijsten" />
+        <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} breadcrumb="Management – Notities" />
+        <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} breadcrumb="Management – Schoonmaakroutines" />
+        <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} breadcrumb="Planning – Rooster" />
+        <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} breadcrumb="Planning – Open Shifts" />
+        <LinkCard href="/admin/dossier" label="Dossiers" color="orange" Icon={Folder} breadcrumb="Medewerkers – Dossiers" />
+        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ShoppingCart} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Bestel-app" />
+        <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} breadcrumb="Import / Invoer – Kasstaat invullen" />
+        <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Kasboek bijwerken" />
       </Section>
 
+      {/* 👇 Management */}
       <Section id="management" title="📘 Management" color="blue" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} />
-        <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} />
-        <LinkCard href="/admin/vragen" label="Vragen" color="blue" Icon={CheckSquare} />
-        <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} />
-        <LinkCard href="/admin/contacten" label="Relaties" color="blue" Icon={Folder} />
+        <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} breadcrumb="Management – Actielijsten" />
+        <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} breadcrumb="Management – Notities" />
+        <LinkCard href="/admin/vragen" label="Vragen" color="blue" Icon={CheckSquare} breadcrumb="Management – Vragen" />
+        <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} breadcrumb="Management – Schoonmaakroutines" />
+        <LinkCard href="/admin/contacten" label="Relaties" color="blue" Icon={Folder} breadcrumb="Management – Relaties" />
       </Section>
 
+      {/* 👇 Planning */}
       <Section id="planning" title="📅 Planning" color="orange" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} />
-        <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} />
-        <LinkCard href="/admin/rapportages/timesheets" label="Klokuren" color="orange" Icon={Clock} />
-        <LinkCard href="/shift-acties" label="Shiftacties & Statistieken" color="orange" Icon={Activity} />
-        <LinkCard href="/admin/beschikbaarheid/nieuw" label="Beschikbaarheid ingeven" color="orange" Icon={Activity} />
-        <LinkCard href="/admin/beschikbaarheid" label="Beschikbaarheid per medewerker" color="orange" Icon={Activity} />
-        <LinkCard href="/admin/beschikbaarheid/periode" label="Beschikbaarheid per periode" color="orange" Icon={Activity} />
+        <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} breadcrumb="Planning – Rooster" />
+        <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} breadcrumb="Planning – Open Shifts" />
+        <LinkCard href="/admin/rapportages/timesheets" label="Klokuren" color="orange" Icon={Clock} breadcrumb="Planning – Klokuren" />
+        <LinkCard href="/shift-acties" label="Shiftacties & Statistieken" color="orange" Icon={Activity} breadcrumb="Planning – Shiftacties & Statistieken" />
+        <LinkCard href="/admin/beschikbaarheid/nieuw" label="Beschikbaarheid ingeven" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid ingeven" />
+        <LinkCard href="/admin/beschikbaarheid" label="Beschikbaarheid per medewerker" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid per medewerker" />
+        <LinkCard href="/admin/beschikbaarheid/periode" label="Beschikbaarheid per periode" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid per periode" />
       </Section>
 
+      {/* 👇 Rapportages */}
       <Section id="rapportages" title="📊 Rapportages" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="purple" Icon={BarChart2} />
-        <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers Rapporten" color="purple" Icon={BarChart2} />
-        <LinkCard href="/admin/aftekenlijsten" label="Overzicht hygiëne-formulieren/-rapporten" color="purple" Icon={BarChart2} />
+        <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages – Financiële Rapporten" />
+        <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers Rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages – Medewerkers Rapporten" />
+        <LinkCard href="/admin/aftekenlijsten" label="Overzicht hygiëne-formulieren/-rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages – Hygiëne-formulieren/-rapporten" />
       </Section>
 
+      {/* 👇 Medewerkers */}
       <Section id="medewerkers" title="👥 Medewerkers" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} />
-        <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="green" Icon={Users} />
-        <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="green" Icon={FileText} />
-        <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} />
-        <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} />
+        <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} breadcrumb="Medewerkers – Medewerkers beheren" />
+        <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="green" Icon={Users} breadcrumb="Medewerkers – Gegevens medewerkers" />
+        <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="green" Icon={FileText} breadcrumb="Medewerkers – Sollicitatiemails" />
+        <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} breadcrumb="Medewerkers – Functies" />
+        <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} breadcrumb="Medewerkers – Dossiers" />
 
         <SubSection title="📘 Instructies" color="blue">
-          <LinkCard href="/admin/instructies" label="Instructies beheren" color="blue" Icon={FileText} />
-          <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" Icon={Eye} />
+          <LinkCard href="/admin/instructies" label="Instructies beheren" color="blue" Icon={FileText} breadcrumb="Medewerkers – Instructies beheren" />
+          <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" Icon={Eye} breadcrumb="Medewerkers – Instructies medewerkers" />
         </SubSection>
 
         <SubSection title="🧠 Skills" color="amber">
-          <LinkCard href="/admin/skills/categorieen" label="Beheer categorieën" color="amber" Icon={Tag} />
-          <LinkCard href="/admin/skills" label="Skills beheer" color="amber" Icon={Layers} />
-          <LinkCard href="/admin/skills/toewijzen" label="Skills toewijzen" color="amber" Icon={Activity} />
-          <LinkCard href="/skills" label="Skills medewerkers" color="amber" Icon={Layers} />
+          <LinkCard href="/admin/skills/categorieen" label="Beheer categorieën" color="amber" Icon={Tag} breadcrumb="Medewerkers – Beheer categorieën" />
+          <LinkCard href="/admin/skills" label="Skills beheer" color="amber" Icon={Layers} breadcrumb="Medewerkers – Skills beheer" />
+          <LinkCard href="/admin/skills/toewijzen" label="Skills toewijzen" color="amber" Icon={Activity} breadcrumb="Medewerkers – Skills toewijzen" />
+          <LinkCard href="/skills" label="Skills medewerkers" color="amber" Icon={Layers} breadcrumb="Medewerkers – Skills medewerkers" />
         </SubSection>
       </Section>
 
+      {/* 👇 Voorraadbeheer, Recepturen & Allergenen */}
       <Section id="voorraad" title="📦 Voorraadbeheer, Recepturen & Allergenen" color="pink" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/leveranciers" label="Leveranciers beheren" color="pink" Icon={CreditCard} />
-        <LinkCard href="/admin/suikervrij" label="Suikervrij productie" color="pink" Icon={IceCream} />
-        <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="pink" Icon={Box} />
-        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ClipboardList} />
-        <LinkCard href="/admin/recepten" label="Receptprijs" color="pink" Icon={Truck} />
-        <LinkCard href="/admin/producten/allergenen" label="Allergenenregistratie" color="pink" Icon={List} />
-        <LinkCard href="/admin/recepten/allergenen" label="Allergenenkaart" color="pink" Icon={List} />
+        <LinkCard href="/admin/leveranciers" label="Leveranciers beheren" color="pink" Icon={CreditCard} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Leveranciers beheren" />
+        <LinkCard href="/admin/suikervrij" label="Suikervrij productie" color="pink" Icon={IceCream} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Suikervrij productie" />
+        <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="pink" Icon={Box} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Artikelen beheren" />
+        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ClipboardList} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Bestel-app" />
+        <LinkCard href="/admin/recepten" label="Receptprijs" color="pink" Icon={Truck} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Receptprijs" />
+        <LinkCard href="/admin/producten/allergenen" label="Allergenenregistratie" color="pink" Icon={List} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Allergenenregistratie" />
+        <LinkCard href="/admin/recepten/allergenen" label="Allergenenkaart" color="pink" Icon={List} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Allergenenkaart" />
       </Section>
 
+      {/* 👇 Import / Invoer */}
       <Section id="import_invoer" title="📊 Import / Invoer" color="teal" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="teal" Icon={Wrench} />
-        <LinkCard href="/admin/mypos" label="Inlezen myPOS (maand)" color="teal" Icon={Archive} />
-        <LinkCard href="/admin/omzet/loonkosten" label="Invoeren loonkosten" color="teal" Icon={Archive} />
-        <LinkCard href="/admin/aftekenlijsten/upload" label="Upload hygiëne-formulieren" color="teal" Icon={Archive} />
-        <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} />
-        <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} />
-        <LinkCard href="/admin/omzet/omzetdagen" label="Omzetdagen aanpassen" color="teal" Icon={Wrench} />
+        <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Omzet inlezen" />
+        <LinkCard href="/admin/mypos" label="Inlezen myPOS (maand)" color="teal" Icon={Archive} breadcrumb="Import / Invoer – Inlezen myPOS (maand)" />
+        <LinkCard href="/admin/omzet/loonkosten" label="Invoeren loonkosten" color="teal" Icon={Archive} breadcrumb="Import / Invoer – Invoeren loonkosten" />
+        <LinkCard href="/admin/aftekenlijsten/upload" label="Upload hygiëne-formulieren" color="teal" Icon={Archive} breadcrumb="Import / Invoer – Upload hygiëne-formulieren" />
+        <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} breadcrumb="Import / Invoer – Kasstaat invullen" />
+        <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Kasboek bijwerken" />
+        <LinkCard href="/admin/omzet/omzetdagen" label="Omzetdagen aanpassen" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Omzetdagen aanpassen" />
       </Section>
-            
+
+      {/* 👇 Prognosetools */}
       <Section id="prognosetools" title="📊 Prognosetools" color="indigo" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/planning/forecast" label="Forecast planning" color="indigo" Icon={Wrench} />
+        <LinkCard href="/admin/planning/forecast" label="Forecast planning" color="indigo" Icon={Wrench} breadcrumb="Prognosetools – Forecast planning" />
       </Section>
     </main>
   );
