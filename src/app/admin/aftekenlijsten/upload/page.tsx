@@ -43,100 +43,96 @@ export default function UploadAftekenlijst() {
   }, []);
 
   const handleUpload = async () => {
-    // Validatie
-    if (!categorie) {
-      alert("Kies een categorie.");
+  // Validatie
+  if (!categorie) {
+    alert("Kies een categorie.");
+    return;
+  }
+  if (soort === "ingevuld") {
+    if (!week || !jaar) {
+      alert("Vul de week en het jaar in.");
       return;
     }
-    if (soort === "ingevuld") {
-      if (!week || !jaar) {
-        alert("Vul de week en het jaar in.");
-        return;
-      }
-    }
-    if (!bestand) {
-      alert("Kies een bestand om te uploaden.");
-      return;
-    }
+  }
+  if (!bestand) {
+    alert("Kies een bestand om te uploaden.");
+    return;
+  }
 
-    // Extensie bepalen + accept check (client-side guard)
-    const rawName = (bestand as any).name || "bestand";
-    const ext = (rawName.split(".").pop() || "").toLowerCase();
+  // Extensie en eenvoudige check
+  const rawName = (bestand as any).name || "bestand";
+  const ext = (rawName.split(".").pop() || "").toLowerCase();
+  const allowedTemplateExt = ["pdf", "doc", "docx", "xls", "xlsx"];
+  if (soort === "template" && !allowedTemplateExt.includes(ext)) {
+    alert("Alleen PDF, DOC, DOCX, XLS of XLSX toegestaan voor lege formulieren.");
+    return;
+  }
 
-    const allowedTemplateExt = ["pdf", "doc", "docx", "xls", "xlsx"];
-    if (soort === "template" && !allowedTemplateExt.includes(ext)) {
-      alert("Alleen PDF, DOC, DOCX, XLS of XLSX toegestaan voor lege formulieren.");
-      return;
-    }
+  setUploading(true);
 
-    setUploading(true);
-
-    // Pad opbouwen
+  try {
+    // Pad
     let path = "";
     if (soort === "ingevuld") {
-      // bestaand gedrag behouden; ext kan image/* zijn op mobiel of pdf op desktop
-      const e = ext || "pdf";
+      const e = ext || "pdf"; // desktop = pdf, mobiel = image/*
       path = `aftekenlijsten/${jaar}/week-${week}-${categorie}.${e}`;
     } else {
-      // templates opslaan onder /aftekenlijsten/templates/<categorie>/
-      const base =
-        templateNaam.trim() ||
-        rawName.replace(/\.[^.]+$/, ""); // naam zonder extensie
+      const base = templateNaam.trim() || rawName.replace(/\.[^.]+$/, "");
       const safeBase = slug(base) || "formulier";
       path = `aftekenlijsten/templates/${categorie}/${safeBase}-${Date.now()}.${ext}`;
     }
 
-    try {
-      // 1) upload naar storage
-      const fd = new FormData();
-      fd.append("file", bestand);
-      fd.append("path", path);
+    // 1) upload naar storage
+    const fd = new FormData();
+    fd.append("file", bestand);
+    fd.append("path", path);
 
-      const uploadRes = await fetch("/api/upload", {
-        method: "POST",
-        body: fd,
-      });
-
-      if (!uploadRes.ok) {
-        const t = await uploadRes.text();
-        throw new Error(t || "Upload mislukt");
-      }
-
-      const { url } = await uploadRes.json();
-
-      // 2) opslaan in DB via bestaande endpoint
-      const payload: any = {
-        categorie,
-        week: soort === "ingevuld" ? week : null,
-        jaar: soort === "ingevuld" ? jaar : null,
-        bestand_url: url,
-        opmerking,
-      };
-
-      if (soort === "template") {
-        payload.is_template = true;
-        payload.template_naam = templateNaam.trim() || rawName;
-        payload.ext = ext;
-      }
-
-      const saveRes = await fetch("/api/aftekenlijsten", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!saveRes.ok) {
-        const t = await saveRes.text();
-        throw new Error(t || "Opslaan mislukt");
-      }
-
-      router.push("/admin/aftekenlijsten");
-    } catch (err: any) {
-      alert(err?.message || "Er ging iets mis bij uploaden.");
-    } finally {
-      setUploading(false);
+    const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
+    if (!uploadRes.ok) {
+      const t = await uploadRes.text();
+      throw new Error(t || "Upload mislukt");
     }
-  };
+    const { url } = await uploadRes.json();
+
+    // ✅ Belangrijk: week/jaar altijd meesturen voor de server
+    const effectiveWeek = soort === "template" ? 0 : week;
+    const effectiveJaar = jaar; // huidig jaar of ingevuld
+
+    // 2) opslaan in DB via bestaande endpoint
+    const payload: any = {
+      categorie,
+      week: effectiveWeek,
+      jaar: effectiveJaar,
+      bestand_url: url,
+      opmerking,
+    };
+
+    // Extra metainfo (server mag negeren)
+    if (soort === "template") {
+      payload.is_template = true;
+      payload.template_naam = templateNaam.trim() || rawName;
+      payload.ext = ext;
+    }
+
+    const saveRes = await fetch("/api/aftekenlijsten", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!saveRes.ok) {
+      const t = await saveRes.text();
+      throw new Error(t || "Opslaan mislukt");
+    }
+
+    // Klaar
+    router.push("/admin/aftekenlijsten");
+  } catch (err: any) {
+    alert(err?.message || "Er ging iets mis bij uploaden.");
+  } finally {
+    setUploading(false);
+  }
+};
 
   // Accept-strings per modus
   const acceptTemplate =
