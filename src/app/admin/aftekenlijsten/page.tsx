@@ -1,3 +1,4 @@
+// src/app/admin/aftekenlijsten/page.tsx
 "use client";
 
 import Link from "next/link";
@@ -5,7 +6,6 @@ import useSWR from "swr";
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Plus } from "lucide-react";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
-
 
 type Categorie =
   | "winkel-begin"
@@ -15,30 +15,32 @@ type Categorie =
   | "inspectierapporten"
   | "incidenteel";
 
+// API-row (ingevuld + template)
 type Row = {
   id: number;
-  categorie: Categorie;
-  week: number;
-  jaar: number;
+  categorie: Categorie | string;
+  week: number | null;     // 👈 kan null zijn bij templates
+  jaar: number | null;     // 👈 kan null zijn bij templates
   opmerking?: string | null;
   bestand_url?: string | null;
+  is_template?: boolean;   // 👈 nieuw
+  template_naam?: string | null; // 👈 nieuw
+  ext?: string | null;           // 👈 nieuw
 };
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
-
-// Backend-pad
-const API_PATH = "/api/aftekenlijsten";
+const API_PATH = "/api/aftekenlijsten?type=all"; // 👈 alles ophalen
 
 const categorieNamen: Record<string, string> = {
   "winkel-begin": "Winkel – begin",
   "winkel-eind": "Winkel – eind",
   "keuken-begin": "Keuken – begin",
   "keuken-eind": "Keuken – eind",
-  "inspectierapporten": "Inspectierapporten",
-  "incidenteel": "Incidenteel",
+  inspectierapporten: "Inspectierapporten",
+  incidenteel: "Incidenteel",
 };
 
-const HACCP_CAT_ORDER: Categorie[] = [
+const HACCP_CAT_ORDER: string[] = [
   "keuken-begin",
   "keuken-eind",
   "winkel-begin",
@@ -53,6 +55,7 @@ export default function Pagina() {
   const [openHaccp, setOpenHaccp] = useState(false);
   const [openInspectie, setOpenInspectie] = useState(false);
   const [openIncidenteel, setOpenIncidenteel] = useState(false);
+  const [openTemplates, setOpenTemplates] = useState(true); // templates standaard open
 
   const currentYear = useMemo(() => new Date().getFullYear(), []);
 
@@ -65,21 +68,27 @@ export default function Pagina() {
     );
   }
 
-  // Split naar secties
-  const inspectierapporten = data.filter((d) => d.categorie === "inspectierapporten");
-  const incidenteel = data.filter((d) => d.categorie === "incidenteel");
-  const haccp = data.filter(
+  // Split naar ingevuld vs templates
+  const ingevuld = data.filter((d) => !d.is_template);
+  const templates = data.filter((d) => !!d.is_template);
+
+  // Bestaande secties (alleen ingevuld)
+  const inspectierapporten = ingevuld.filter((d) => d.categorie === "inspectierapporten");
+  const incidenteel = ingevuld.filter((d) => d.categorie === "incidenteel");
+  const haccp = ingevuld.filter(
     (d) => d.categorie !== "incidenteel" && d.categorie !== "inspectierapporten"
   );
 
-  // HACCP sortering: datum nieuw→oud, daarna categorievolgorde, daarna id nieuw→oud
+  // HACCP sortering: nieuw→oud op jaar/week, daarna categorievolgorde, daarna id nieuw→oud
   const haccpSorted = haccp
     .slice()
     .sort((a, b) => {
-      if (b.jaar !== a.jaar) return b.jaar - a.jaar;
-      if (b.week !== a.week) return b.week - a.week;
-      const pa = HACCP_CAT_ORDER.indexOf(a.categorie);
-      const pb = HACCP_CAT_ORDER.indexOf(b.categorie);
+      const bj = (b.jaar ?? 0) - (a.jaar ?? 0);
+      if (bj !== 0) return bj;
+      const bw = (b.week ?? 0) - (a.week ?? 0);
+      if (bw !== 0) return bw;
+      const pa = HACCP_CAT_ORDER.indexOf(String(a.categorie));
+      const pb = HACCP_CAT_ORDER.indexOf(String(b.categorie));
       if (pa !== pb) return pa - pb;
       return b.id - a.id;
     });
@@ -88,7 +97,7 @@ export default function Pagina() {
     if (!confirm("Weet je zeker dat je dit item wilt verwijderen?")) return;
     setDeletingId(id);
     try {
-      const res = await fetch(API_PATH, {
+      const res = await fetch("/api/aftekenlijsten", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
@@ -107,7 +116,24 @@ export default function Pagina() {
     <main className="p-6 space-y-8">
       <Header currentYear={currentYear} />
 
-      {/* HACCP */}
+      {/* Lege formulieren (templates) */}
+      <Section
+        title="Lege formulieren (templates)"
+        open={openTemplates}
+        onToggle={() => setOpenTemplates((v) => !v)}
+      >
+        {templates.length > 0 ? (
+          <TabelTemplates
+            rows={templates}
+            onDelete={handleDelete}
+            deletingId={deletingId}
+          />
+        ) : (
+          <LegeState />
+        )}
+      </Section>
+
+      {/* HACCP (ingevuld) */}
       <Section
         title="HACCP-lijsten"
         open={openHaccp}
@@ -116,7 +142,7 @@ export default function Pagina() {
         {haccpSorted.length === 0 ? (
           <LegeState />
         ) : (
-          <Tabel
+          <TabelIngevuld
             rows={haccpSorted}
             onDelete={handleDelete}
             deletingId={deletingId}
@@ -125,14 +151,14 @@ export default function Pagina() {
         )}
       </Section>
 
-      {/* Inspectierapporten */}
+      {/* Inspectierapporten (ingevuld) */}
       <Section
         title="Inspectierapporten"
         open={openInspectie}
         onToggle={() => setOpenInspectie((v) => !v)}
       >
         {inspectierapporten.length > 0 ? (
-          <Tabel
+          <TabelIngevuld
             rows={inspectierapporten}
             onDelete={handleDelete}
             deletingId={deletingId}
@@ -143,14 +169,14 @@ export default function Pagina() {
         )}
       </Section>
 
-      {/* Incidenteel */}
+      {/* Incidenteel (ingevuld) */}
       <Section
         title="Incidentele lijsten"
         open={openIncidenteel}
         onToggle={() => setOpenIncidenteel((v) => !v)}
       >
         {incidenteel.length > 0 ? (
-          <Tabel
+          <TabelIngevuld
             rows={incidenteel}
             onDelete={handleDelete}
             deletingId={deletingId}
@@ -162,7 +188,7 @@ export default function Pagina() {
       </Section>
 
       {/* Niets? */}
-      {haccp.length === 0 && inspectierapporten.length === 0 && incidenteel.length === 0 && (
+      {haccp.length === 0 && inspectierapporten.length === 0 && incidenteel.length === 0 && templates.length === 0 && (
         <div className="text-gray-500">Geen registraties gevonden.</div>
       )}
     </main>
@@ -213,7 +239,9 @@ function Section({
   );
 }
 
-function Tabel({
+/* -------------------- Tabellen -------------------- */
+
+function TabelIngevuld({
   rows,
   onDelete,
   deletingId,
@@ -238,16 +266,17 @@ function Tabel({
         </thead>
         <tbody>
           {rows.map((r) => {
-            const link = r.bestand_url && r.bestand_url.trim().length > 0 ? r.bestand_url : null;
+            const link =
+              r.bestand_url && r.bestand_url.trim().length > 0 ? r.bestand_url : null;
             return (
               <tr key={r.id} className="bg-white">
                 <td className="border px-3 py-2">
-                  {r.week}
+                  {r.week ?? "—"}
                   <span className="ml-2 text-gray-400">
-                    • {categorieNamen[r.categorie] ?? r.categorie}
+                    • {categorieNamen[String(r.categorie)] ?? String(r.categorie)}
                   </span>
                 </td>
-                <td className="border px-3 py-2">{r.jaar}</td>
+                <td className="border px-3 py-2">{r.jaar ?? "—"}</td>
                 {showBestandKolom && (
                   <td className="border px-3 py-2">
                     {link ? (
@@ -296,7 +325,97 @@ function Tabel({
 
           {rows.length === 0 && (
             <tr>
-              <td className="border px-3 py-4 text-gray-500" colSpan={showBestandKolom ? 5 : 4}>
+              <td
+                className="border px-3 py-4 text-gray-500"
+                colSpan={showBestandKolom ? 5 : 4}
+              >
+                Geen items.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      <ScrollToTopButton />
+    </div>
+  );
+}
+
+function TabelTemplates({
+  rows,
+  onDelete,
+  deletingId,
+}: {
+  rows: Row[];
+  onDelete: (id: number) => void;
+  deletingId: number | null;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border text-sm">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="border px-3 py-2 text-left">Categorie</th>
+            <th className="border px-3 py-2 text-left">Bestand</th>
+            <th className="border px-3 py-2 text-left">Actie</th>
+            <th className="border px-3 py-2 text-left">Opmerking / Naam</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const link =
+              r.bestand_url && r.bestand_url.trim().length > 0 ? r.bestand_url : null;
+
+            // label opmerking/naam
+            const naam =
+              (r.opmerking ?? "").trim() ||
+              (r.template_naam ?? "").trim() ||
+              (() => {
+                const url = (r.bestand_url ?? "").trim();
+                if (!url) return "";
+                try {
+                  const u = new URL(url);
+                  return u.pathname.split("/").filter(Boolean).pop() ?? "";
+                } catch {
+                  return url.split("/").filter(Boolean).pop() ?? "";
+                }
+              })();
+
+            return (
+              <tr key={r.id} className="bg-white">
+                <td className="border px-3 py-2">
+                  {categorieNamen[String(r.categorie)] ?? String(r.categorie)}
+                </td>
+                <td className="border px-3 py-2">
+                  {link ? (
+                    <a
+                      href={link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 underline"
+                    >
+                      Download
+                    </a>
+                  ) : (
+                    <span className="text-gray-400">-</span>
+                  )}
+                </td>
+                <td className="border px-3 py-2">
+                  <button
+                    onClick={() => onDelete(r.id)}
+                    disabled={deletingId === r.id}
+                    className="text-red-600 hover:underline disabled:opacity-50"
+                  >
+                    {deletingId === r.id ? "Verwijderen…" : "Verwijderen"}
+                  </button>
+                </td>
+                <td className="border px-3 py-2">{naam || "-"}</td>
+              </tr>
+            );
+          })}
+
+          {rows.length === 0 && (
+            <tr>
+              <td className="border px-3 py-4 text-gray-500" colSpan={4}>
                 Geen items.
               </td>
             </tr>
@@ -310,5 +429,4 @@ function Tabel({
 
 function LegeState() {
   return <div className="text-gray-500 px-1 py-2">Geen items.</div>;
-  
 }
