@@ -1,11 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { matchRoute } from "./routeRegistry";
-import {
-  ChevronRight,
-  FolderTree,
-} from "lucide-react";
+import { ChevronRight, FolderTree } from "lucide-react";
 
 // mapping sectie → kleur
 const sectionColors: Record<string, string> = {
@@ -24,20 +22,22 @@ export default function Breadcrumbs() {
 
   if (!match) return null;
 
-  // split breadcrumb "Management – Actielijsten"
-  const parts = match.breadcrumb.split(" – ");
-  const section = parts[0];
-  const current = parts[1];
+  // breadcrumb altijd "Sectie – Subpagina"
+  const [section, current] = match.breadcrumb.split(" – ");
   const color = sectionColors[section] || "text-slate-700";
+
+  // route terug naar admin/sectie (optioneel: zelf mappen)
+  const sectionHref = `/admin/${section.toLowerCase().replace(/[^a-z0-9]+/g, "")}`;
 
   return (
     <div className="mb-4 flex items-center text-sm">
-      {/* Icoon in sectiekleur */}
       <FolderTree className={`w-5 h-5 mr-2 ${color}`} />
 
-      {/* Tekst met chevrons */}
       <span className="font-semibold flex items-center gap-1">
-        <span className={color}>{section}</span>
+        {/* Sectie klikbaar */}
+        <Link href={sectionHref} className={`${color} hover:underline`}>
+          {section}
+        </Link>
         <ChevronRight className="inline-block w-4 h-4 mx-1 text-slate-400" />
         <span className="text-slate-900">{current}</span>
       </span>
