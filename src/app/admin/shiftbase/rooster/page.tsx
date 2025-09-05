@@ -85,6 +85,7 @@ function hoursBetween(a: string, b: string) {
   if (m < 0) m += 1440;
   return m / 60;
 }
+const maskDigits = (s: string) => s.replace(/[\d.,]/g, "•"); // sterk mask: cijfers, punten, komma's
 
 const EUR0 = new Intl.NumberFormat("nl-NL", {
   style: "currency",
@@ -205,12 +206,7 @@ export default function RoosterPage() {
         const prev = byRoster.get(rosterId);
         const sPrev = score(prev);
         const sCur = score(ts);
-        if (
-          !prev ||
-          sCur > sPrev ||
-          (sCur === sPrev &&
-            String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))
-        ) {
+        if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
           byRoster.set(rosterId, ts);
         }
       }
@@ -219,12 +215,7 @@ export default function RoosterPage() {
         const prev = byUser.get(uid);
         const sPrev = score(prev);
         const sCur = score(ts);
-        if (
-          !prev ||
-          sCur > sPrev ||
-          (sCur === sPrev &&
-            String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))
-        ) {
+        if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
           byUser.set(uid, ts);
         }
       }
@@ -250,12 +241,7 @@ export default function RoosterPage() {
         const prev = byRoster.get(rosterId);
         const sPrev = score(prev);
         const sCur = score(ts);
-        if (
-          !prev ||
-          sCur > sPrev ||
-          (sCur === sPrev &&
-            String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))
-        ) {
+        if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
           byRoster.set(rosterId, ts);
         }
       }
@@ -264,12 +250,7 @@ export default function RoosterPage() {
         const prev = byUser.get(uid);
         const sPrev = score(prev);
         const sCur = score(ts);
-        if (
-          !prev ||
-          sCur > sPrev ||
-          (sCur === sPrev &&
-            String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))
-        ) {
+        if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
           byUser.set(uid, ts);
         }
       }
@@ -293,9 +274,7 @@ export default function RoosterPage() {
     async () => {
       if (!weekDates.length) return {};
       const res = await Promise.all(
-        weekDates.map((d) =>
-          fetch(`/api/shiftbase/rooster?datum=${d}`).then((r) => r.json())
-        )
+        weekDates.map((d) => fetch(`/api/shiftbase/rooster?datum=${d}`).then((r) => r.json()))
       );
       const out: Record<string, ShiftItem[]> = {};
       weekDates.forEach((d, i) => {
@@ -383,9 +362,7 @@ export default function RoosterPage() {
     async () => {
       if (!monthDates.length) return {};
       const res = await Promise.all(
-        monthDates.map((d) =>
-          fetch(`/api/shiftbase/rooster?datum=${d}`).then((r) => r.json())
-        )
+        monthDates.map((d) => fetch(`/api/shiftbase/rooster?datum=${d}`).then((r) => r.json()))
       );
       const out: Record<string, ShiftItem[]> = {};
       monthDates.forEach((d, i) => {
@@ -450,6 +427,14 @@ export default function RoosterPage() {
     }
     return { hours, cost };
   }, [monthRooster, monthDates, wageByDateUserMonth]);
+
+  // Tekst voor masker (één plek regelen)
+  const costNum = monthRooster ? Math.round(monthTotals.cost) : null;
+  const costTxt = costNum != null ? EUR0.format(costNum) : "—";
+  const hoursNum = monthRooster ? Math.round(monthTotals.hours * 100) / 100 : 0;
+  const hoursTxt = hoursNum.toLocaleString("nl-NL");
+  const showCost = mask ? maskDigits(costTxt) : costTxt;
+  const showHours = mask ? maskDigits(hoursTxt) : hoursTxt;
 
   const changeDay = (off: number) =>
     setSelectedDate((prev) => addDays(prev, view === "day" ? off : off * 7));
@@ -531,54 +516,40 @@ export default function RoosterPage() {
       {/* DAGVIEW */}
       {view === "day" ? (
         <>
-{/* Maandkosten (planning) – compact one-liner */}
-<div className="mb-3 border rounded-lg bg-gray-50 px-3 py-2">
-  <div className="flex items-center gap-3 whitespace-nowrap">
-    {/* Titel + maand */}
-    <div className="flex items-baseline gap-2 min-w-0">
-      <span className="font-semibold">Loonkosten (planning, maand)</span>
-      <span className="text-xs text-gray-600">
-        {new Intl.DateTimeFormat("nl-NL", { month: "long", year: "numeric" })
-          .format(new Date(selectedDate + "T12:00:00"))}
-      </span>
-    </div>
+          {/* Maandkosten (planning) – compacte one-liner met sterk masker */}
+          <div className="mb-3 border rounded-lg bg-gray-50 px-3 py-2">
+            <div className="flex items-center gap-3 whitespace-nowrap">
+              {/* Titel + maand */}
+              <div className="flex items-baseline gap-2 min-w-0">
+                <span className="font-semibold">Loonkosten (planning, maand)</span>
+                <span className="text-xs text-gray-600">
+                  {new Intl.DateTimeFormat("nl-NL", { month: "long", year: "numeric" })
+                    .format(new Date(selectedDate + "T12:00:00"))}
+                </span>
+              </div>
 
-    {/* Masker-toggle */}
-    <button
-      type="button"
-      onClick={toggleMask}
-      className="ml-2 inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
-      title={mask ? "Toon bedragen" : "Maskeer bedragen"}
-    >
-      {mask ? <EyeOff size={16} /> : <Eye size={16} />}
-      <span className="text-xs hidden sm:inline">{mask ? "Verborgen" : "Zichtbaar"}</span>
-    </button>
+              {/* Masker-toggle */}
+              <button
+                type="button"
+                onClick={toggleMask}
+                className="ml-2 inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
+                title={mask ? "Toon bedragen" : "Maskeer bedragen"}
+              >
+                {mask ? <EyeOff size={16} /> : <Eye size={16} />}
+                <span className="text-xs hidden sm:inline">{mask ? "Verborgen" : "Zichtbaar"}</span>
+              </button>
 
-    {/* Totaal + uren (rechts) */}
-    <div className="ml-auto flex items-baseline gap-3">
-      <span
-        className={`text-xl md:text-2xl font-bold tabular-nums ${
-          mask ? "blur-sm select-none" : ""
-        }`}
-      >
-        {monthRooster ? EUR0.format(Math.round(monthTotals.cost)) : "—"}
-      </span>
-      <span
-        className={`text-xs text-gray-600 ${
-          mask ? "blur-[2px] select-none" : ""
-        }`}
-      >
-        · Uren:{" "}
-        <strong>
-          {monthRooster
-            ? (Math.round(monthTotals.hours * 100) / 100).toLocaleString("nl-NL")
-            : 0}
-        </strong>
-      </span>
-    </div>
-  </div>
-</div>
-
+              {/* Totaal + uren rechts */}
+              <div className="ml-auto flex items-baseline gap-3">
+                <span className={`text-xl md:text-2xl font-bold tabular-nums ${mask ? "blur-[8px] select-none" : ""}`}>
+                  {showCost}
+                </span>
+                <span className={`text-xs text-gray-600 ${mask ? "blur-[6px] select-none" : ""}`}>
+                  · Uren: <strong>{showHours}</strong>
+                </span>
+              </div>
+            </div>
+          </div>
 
           {dayError && (
             <p className="p-4 text-red-600">
@@ -618,18 +589,12 @@ export default function RoosterPage() {
                       const schedIn = it.Roster.starttime.slice(0, 5);
                       const schedOut = it.Roster.endtime.slice(0, 5);
 
-                      const inTime = ts?.clocked_in
-                        ? String(ts.clocked_in).substring(11, 16)
-                        : "--";
-                      const outTime = ts?.clocked_out
-                        ? String(ts.clocked_out).substring(11, 16)
-                        : "--";
+                      const inTime = ts?.clocked_in ? String(ts.clocked_in).substring(11, 16) : "--";
+                      const outTime = ts?.clocked_out ? String(ts.clocked_out).substring(11, 16) : "--";
 
                       let badgeClass = "bg-gray-100 text-gray-800";
-                      if (ts?.clocked_in && ts?.clocked_out)
-                        badgeClass = "bg-green-100 text-green-800";
-                      else if (ts?.clocked_in || ts?.clocked_out)
-                        badgeClass = "bg-orange-100 text-orange-800";
+                      if (ts?.clocked_in && ts?.clocked_out) badgeClass = "bg-green-100 text-green-800";
+                      else if (ts?.clocked_in || ts?.clocked_out) badgeClass = "bg-orange-100 text-orange-800";
 
                       return (
                         <li key={it.id} className="mb-1">
@@ -815,16 +780,16 @@ export default function RoosterPage() {
                           Totaal uren: <strong>{Math.round(totalHours * 100) / 100}</strong>
                         </div>
                         {dayCost > 0 && (
-                          <div className="mt-0.5 text-[10px] text-gray-600 text-right">
-                            Omzet voor LK &lt; 25%:{" "}
-                            <strong>{EUR0.format(requiredRevenue25)}</strong>
-                          </div>
-                        )}
-                        {dayCost > 0 && (
-                          <div className="mt-0.5 text-[10px] text-gray-600 text-right">
-                            Omzet voor LK &lt; 23%:{" "}
-                            <strong>{EUR0.format(requiredRevenue23)}</strong>
-                          </div>
+                          <>
+                            <div className="mt-0.5 text-[10px] text-gray-600 text-right">
+                              Omzet voor LK &lt; 25%:{" "}
+                              <strong>{EUR0.format(requiredRevenue25)}</strong>
+                            </div>
+                            <div className="mt-0.5 text-[10px] text-gray-600 text-right">
+                              Omzet voor LK &lt; 23%:{" "}
+                              <strong>{EUR0.format(requiredRevenue23)}</strong>
+                            </div>
+                          </>
                         )}
                       </div>
                     </div>
