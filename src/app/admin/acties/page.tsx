@@ -71,65 +71,67 @@ function SorteerbareActie({
     ? "flex items-center justify-between border p-3 rounded bg-gray-50 text-gray-500"
     : "flex items-center justify-between border p-3 rounded bg-white shadow-sm";
 
-  return (
-    <div {...dragProps} style={dragStyle} className={containerClass}>
-      <div className="flex items-center gap-3 flex-1 select-none">
-        {!actie.is_weekly ? (
-          <>
-            <input
-              type="checkbox"
-              checked={actie.voltooid}
-              onPointerDown={(e) => e.stopPropagation()}
-              onChange={() => toggleActie(actie.id, actie.voltooid)}
-            />
-            <span className={isAfgehandeld ? "line-through" : ""}>{actie.tekst}</span>
-          </>
-        ) : (
-          <>
-            <span className={isAfgehandeld ? "line-through" : ""}>{actie.tekst}</span>
-            {!isAfgehandeld && !actie.done_this_week && (
-              <button
-                type="button"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => markWeeklyDone(actie.id)}
-                className="ml-2 px-3 py-1 rounded bg-emerald-600 text-white text-sm"
-                title="Markeer als klaar voor deze week"
-              >
-                Klaar voor deze week
-              </button>
-            )}
-            {actie.done_this_week && (
-              <div className="ml-2 flex items-center gap-2">
-                <span className="text-green-700 text-sm">✓ Deze week gedaan</span>
-                <button
-                  type="button"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => undoWeeklyDone(actie.id)}
-                  className="text-xs underline"
-                  title="Zet terug naar open acties"
-                >
-                  Toch terugzetten
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+
+    return (
+  <div {...dragProps} style={dragStyle} className={containerClass}>
+    {/* Links: tekst (of checkbox + tekst) */}
+    <div className="flex items-center gap-3 flex-1 select-none">
+      {!actie.is_weekly ? (
+        <>
+          <input
+            type="checkbox"
+            checked={actie.voltooid}
+            onPointerDown={(e) => e.stopPropagation()}
+            onChange={() => toggleActie(actie.id, actie.voltooid)}
+          />
+          <span className={isAfgehandeld ? "line-through" : ""}>{actie.tekst}</span>
+        </>
+      ) : (
+        <span className={isAfgehandeld ? "line-through" : ""}>{actie.tekst}</span>
+      )}
+    </div>
+
+    {/* Rechts: acties (knop rechts uitgelijnd) */}
+    <div className="ml-auto flex items-center gap-2">
+      {actie.is_weekly && !isAfgehandeld && !actie.done_this_week && (
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => markWeeklyDone(actie.id)}
+          className="px-3 py-1 rounded bg-emerald-600 text-white text-sm"
+          title="Markeer als klaar voor deze week"
+        >
+          Klaar voor deze week
+        </button>
+      )}
+
+      {actie.is_weekly && actie.done_this_week && (
+        <div className="flex items-center gap-2">
+          <span className="text-green-700 text-sm">✓ Deze week gedaan</span>
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => undoWeeklyDone(actie.id)}
+            className="text-xs underline"
+          >
+            Toch terugzetten
+          </button>
+        </div>
+      )}
 
       <button
         type="button"
         title="Bewerken"
-        className="ml-2 p-1 rounded hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition"
+        className="p-1 rounded hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition"
         onPointerDown={(e) => e.stopPropagation()}
-        onClick={() =>
-          setActieEdit({ id: actie.id, tekst: actie.tekst, is_weekly: !!actie.is_weekly })
-        }
-        tabIndex={0}
+        onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst, is_weekly: !!actie.is_weekly })}
       >
         <Pencil size={18} />
       </button>
     </div>
-  );
+  </div>
+);
+
 }
 
 export default function ActieLijstPagina() {
