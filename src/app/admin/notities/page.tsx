@@ -4,7 +4,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import useSWR from 'swr';
-import Link from 'next/link';
 
 const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(res => res.json());
 
@@ -17,6 +16,84 @@ const stripHTML = (html: string) => {
   tmp.innerHTML = html;
   return tmp.textContent || tmp.innerText || '';
 };
+
+function Toolbar({ onExec }: { onExec: (cmd: string) => void }) {
+  return (
+    <div className="bg-gray-100 p-1 flex gap-2">
+      <button onMouseDown={e => { e.preventDefault(); onExec('bold'); }} className="font-bold">B</button>
+      <button onMouseDown={e => { e.preventDefault(); onExec('italic'); }} className="italic">I</button>
+    </div>
+  );
+}
+
+function NotitieRow({ n, onSaved, onDelete }: {
+  n: Notitie;
+  onSaved: () => void;
+  onDelete: (id: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [html, setHtml] = useState<string>(n.tekst);
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Als serverdata verandert (mutate), sync lokale weergave wanneer NIET aan het editen
+    if (!editing) setHtml(n.tekst);
+  }, [n.tekst, editing]);
+
+  const execCommand = (cmd: string) => {
+    if (!editing) return;
+    document.execCommand(cmd, false, '');
+    editorRef.current?.focus();
+  };
+
+  const handleSave = async () => {
+    await fetch('/api/notities', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: n.id, tekst: html, type: 'notitie' })
+    });
+    setEditing(false);
+    onSaved();
+  };
+
+  const handleCancel = () => {
+    setHtml(n.tekst);
+    setEditing(false);
+  };
+
+  return (
+    <div className="relative border rounded">
+      <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 border-b">
+        <Toolbar onExec={execCommand} />
+        <div className="ml-auto flex gap-2">
+          {!editing && (
+            <button onClick={() => setEditing(true)} className="px-2 py-1 rounded border">Bewerken</button>
+          )}
+          {editing && (
+            <>
+              <button onClick={handleSave} className="px-2 py-1 rounded bg-blue-600 text-white">Opslaan</button>
+              <button onClick={handleCancel} className="px-2 py-1 rounded border">Annuleren</button>
+            </>
+          )}
+          <button onClick={() => onDelete(n.id)} className="px-2 py-1 rounded text-red-600">🗑️</button>
+        </div>
+      </div>
+
+      <div
+        ref={editorRef}
+        className={`p-3 w-full min-h-[8rem] resize-y overflow-auto ${editing ? 'outline outline-1 outline-blue-200' : ''}`}
+        style={{ resize: 'vertical' }}
+        title={stripHTML(html)}
+        contentEditable={editing}
+        suppressContentEditableWarning
+        // Render de huidige HTML
+        dangerouslySetInnerHTML={{ __html: html }}
+        // Houd lokale state bij tijdens editen
+        onInput={e => setHtml((e.currentTarget as HTMLDivElement).innerHTML)}
+      />
+    </div>
+  );
+}
 
 export default function NotitieblokPagina() {
   // Rubrieken ophalen en sorteren
@@ -88,21 +165,11 @@ export default function NotitieblokPagina() {
     mutateNotities();
   };
 
-  const updateNotitie = async (id: number, html: string) => {
-    await fetch('/api/notities', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, tekst: html, type: 'notitie' })
-    });
-  };
-
   const deleteNotitie = async (id: number) => {
     if (!confirm('Notitie verwijderen?')) return;
     await fetch('/api/notities', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, type: 'notitie' }) });
     mutateNotities();
   };
-
-  const execCommand = (cmd: string) => { document.execCommand(cmd, false, ''); newRef.current?.focus(); };
 
   return (
     <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -134,30 +201,14 @@ export default function NotitieblokPagina() {
         <h2 className="text-lg font-semibold mb-2">Notities voor “{selRubriek?.naam}”</h2>
         <div className="space-y-4">
           {notities.map(n => (
-            <div key={n.id} className="relative border rounded">
-              <div className="bg-gray-100 p-1 flex gap-2">
-                <button onMouseDown={e => { e.preventDefault(); execCommand('bold'); }} className="font-bold">B</button>
-                <button onMouseDown={e => { e.preventDefault(); execCommand('italic'); }} className="italic">I</button>
-                <button onClick={() => deleteNotitie(n.id)} className="ml-auto text-red-500">🗑️</button>
-              </div>
-              <div
-                className="p-3 w-full min-h-[8rem] resize-y overflow-auto"
-                style={{ resize: 'vertical' }}
-                title={stripHTML(n.tekst)}
-                contentEditable
-                suppressContentEditableWarning
-                defaultValue={n.tekst}
-                onBlur={async e => { await updateNotitie(n.id, e.currentTarget.innerHTML); mutateNotities(); }}
-                dangerouslySetInnerHTML={{ __html: n.tekst }}
-              />
-            </div>
+            <NotitieRow key={n.id} n={n} onSaved={mutateNotities} onDelete={deleteNotitie} />
           ))}
         </div>
 
         <div className="mt-4">
           <div className="bg-gray-100 p-1 flex gap-2">
-            <button onClick={() => execCommand('bold')} className="font-bold">B</button>
-            <button onClick={() => execCommand('italic')} className="italic">I</button>
+            <button onMouseDown={e => { e.preventDefault(); document.execCommand('bold', false); newRef.current?.focus(); }} className="font-bold">B</button>
+            <button onMouseDown={e => { e.preventDefault(); document.execCommand('italic', false); newRef.current?.focus(); }} className="italic">I</button>
             <button onClick={addNotitie} className="bg-green-600 text-white px-4 py-1 rounded ml-auto">+ Notitie</button>
           </div>
           <div
