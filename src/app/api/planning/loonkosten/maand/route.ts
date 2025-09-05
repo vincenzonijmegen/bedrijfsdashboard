@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     const monthEnd = endOfMonth(day);
 
     // Itereer over ISO-weken die deze maand raken (clip naar maandgrenzen)
-    let cursor = startOfISOWeek(monthStart);
+    const cursor = startOfISOWeek(monthStart);
     const origin = url.origin;
 
     let totaal = 0;
