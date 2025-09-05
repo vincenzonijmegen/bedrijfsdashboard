@@ -1,38 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { pool } from '@/lib/db';
+import { db } from '@/lib/db';
 export const runtime = 'nodejs';
 
-// Bepaalt ISO-jaar/week in Europe/Amsterdam, en maakt '2025W36'
+// Bepaalt ISO-jaar/week in Europe/Amsterdam, bv. '2025W36'
 const PERIOD_SQL = `to_char((now() at time zone 'Europe/Amsterdam')::date, 'IYYY"W"IW')`;
 
 export async function POST(req: NextRequest) {
-  const { id, action } = await req.json(); // action: 'done' | 'undone'
+  const { id, action } = await req.json();
   if (!id) return NextResponse.json({ error: 'id is verplicht' }, { status: 400 });
 
   try {
     if (action === 'undone') {
-      const { rows } = await pool.query(
+      const { rows } = await db.query(
         `UPDATE acties
-           SET last_done_period = NULL,
-               updated_at = now()
+           SET last_done_period = NULL
          WHERE id = $1
          RETURNING *`,
         [id]
       );
+      if (rows.length === 0) return NextResponse.json({ error: 'Actie niet gevonden' }, { status: 404 });
       return NextResponse.json(rows[0]);
     }
 
-    // default: done
-    const { rows } = await pool.query(
+    // Default/explicit: 'done'
+    const { rows } = await db.query(
       `UPDATE acties
-         SET last_done_period = ${PERIOD_SQL},
-             updated_at = now()
+         SET last_done_period = ${PERIOD_SQL}
        WHERE id = $1
        RETURNING *`,
       [id]
     );
+    if (rows.length === 0) return NextResponse.json({ error: 'Actie niet gevonden' }, { status: 404 });
     return NextResponse.json(rows[0]);
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('Fout in POST /api/acties/wekelijks:', err);
+    return NextResponse.json({ error: 'Interne serverfout' }, { status: 500 });
   }
 }

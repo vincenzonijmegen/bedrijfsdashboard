@@ -1,5 +1,6 @@
-import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { db } from '@/lib/db';
+export const runtime = 'nodejs';
 
 // GET: lijst acties per lijst_id, met weekly-done logica en sortering
 export async function GET(req: NextRequest) {
@@ -26,10 +27,9 @@ export async function GET(req: NextRequest) {
       WHERE a.lijst_id = $1
       ORDER BY
         CASE
-          -- behandeld als onderaan: echt voltooid of weekly al gedaan in huidige week
-          WHEN a.voltooid = TRUE THEN 1
-          WHEN (COALESCE(a.recurring, 'none') = 'weekly' AND a.last_done_period = params.period) THEN 1
-          ELSE 0
+          WHEN (COALESCE(a.recurring,'none')='weekly' AND a.last_done_period = params.period) THEN 1  -- weekly: deze week gedaan
+          WHEN a.voltooid = TRUE THEN 2                                                                -- definitief voltooid
+          ELSE 0                                                                                       -- open
         END,
         a.volgorde,
         a.aangemaakt_op
@@ -44,8 +44,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-
-// POST: nieuwe actie krijgt automatisch de hoogste volgorde binnen de lijst
+// POST: nieuwe actie krijgt hoogste volgorde binnen de lijst + recurring
 export async function POST(req: NextRequest) {
   try {
     const { lijst_id, tekst, deadline, verantwoordelijke, recurring } = await req.json();
@@ -53,14 +52,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'lijst_id en tekst zijn verplicht' }, { status: 400 });
     }
 
-    // Bepaal hoogste volgorde binnen deze lijst
     const { rows } = await db.query(
       'SELECT COALESCE(MAX(volgorde), -1) AS max_volgorde FROM acties WHERE lijst_id = $1',
       [lijst_id]
     );
     const nieuweVolgorde = Number(rows[0].max_volgorde) + 1;
-
-    // Recurring normaliseren (DB-check verwacht 'none' of 'weekly')
     const rec: 'none' | 'weekly' = recurring === 'weekly' ? 'weekly' : 'none';
 
     const resultaat = await db.query(
@@ -107,7 +103,7 @@ export async function PATCH(req: NextRequest) {
       }
       sets.push(`recurring = $${paramIdx++}`);
       params.push(recurring);
-      // NB: last_done_period laten we ongemoeid; bij 'none' wordt het toch genegeerd.
+      // NB: last_done_period blijft staan; wordt genegeerd als recurring='none'
     }
 
     if (!sets.length) {
@@ -127,21 +123,20 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
-// DELETE: verwijder actie
+// DELETE: verwijder een actie
 export async function DELETE(req: NextRequest) {
   try {
     const { id } = await req.json();
     if (!id) {
       return NextResponse.json({ error: 'id ontbreekt' }, { status: 400 });
     }
-    const controle = await db.query('SELECT id FROM acties WHERE id = $1', [id]);
-    if (controle.rowCount === 0) {
+    const res = await db.query(`DELETE FROM acties WHERE id = $1 RETURNING id`, [id]);
+    if (res.rowCount === 0) {
       return NextResponse.json({ error: 'Actie niet gevonden' }, { status: 404 });
     }
-    await db.query('DELETE FROM acties WHERE id = $1', [id]);
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ ok: true, id });
   } catch (err) {
-    console.error('Fout bij verwijderen actie:', err);
+    console.error('Fout in DELETE /api/acties:', err);
     return NextResponse.json({ error: 'Interne serverfout' }, { status: 500 });
   }
 }

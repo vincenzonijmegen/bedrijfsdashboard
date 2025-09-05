@@ -492,7 +492,7 @@ export default function ActieLijstPagina() {
         {/* Deze week gedaan (wekelijks) */}
         {weeklyDoneThisWeek.length > 0 && (
           <details className="mt-8">
-            <summary className="cursor-pointer text-sm text-gray-600">
+            <summary className="cursor-pointer text-sm font-semibold text-emerald-700">
               Deze week gedaan ({weeklyDoneThisWeek.length})
             </summary>
             <div className="mt-2 space-y-2">
