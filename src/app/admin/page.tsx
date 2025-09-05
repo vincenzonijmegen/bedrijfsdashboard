@@ -314,10 +314,10 @@ export default function AdminDashboard() {
         />
         <LinkCard
           href="/admin/aftekenlijsten"
-          label="Overzicht hygiëne-formulieren/-rapporten"
+          label="Overzicht formulieren/-rapporten"
           color="purple"
           Icon={BarChart2}
-          breadcrumb="Rapportages – Hygiëne-formulieren/-rapporten"
+          breadcrumb="Rapportages – Formulieren/-rapporten"
         />
       </Section>
 
@@ -390,10 +390,10 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/omzet/loonkosten" label="Invoeren loonkosten" color="teal" Icon={Archive} breadcrumb="Import / Invoer – Invoeren loonkosten" />
         <LinkCard
           href="/admin/aftekenlijsten/upload"
-          label="Upload hygiëne-formulieren"
+          label="Upload formulieren"
           color="teal"
           Icon={Archive}
-          breadcrumb="Import / Invoer – Upload hygiëne-formulieren"
+          breadcrumb="Import / Invoer – Upload formulieren"
         />
         <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} breadcrumb="Import / Invoer – Kasstaat invullen" />
         <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Kasboek bijwerken" />
