@@ -23,7 +23,7 @@ const registry: RouteEntry[] = [
   // Rapportages
   { href: "/admin/rapportage/financieel", breadcrumb: "Rapportages – Financiële Rapporten" },
   { href: "/admin/rapportage/medewerkers", breadcrumb: "Rapportages – Medewerkers Rapporten" },
-  { href: "/admin/aftekenlijsten", breadcrumb: "Rapportages – Hygiëne-formulieren/-rapporten" },
+  { href: "/admin/aftekenlijsten", breadcrumb: "Rapportages – formulieren/rapporten" },
 
   // Medewerkers
   { href: "/admin/medewerkers", breadcrumb: "Medewerkers – Medewerkers beheren" },
@@ -51,7 +51,7 @@ const registry: RouteEntry[] = [
   { href: "/admin/kassa-omzet", breadcrumb: "Import / Invoer – Omzet inlezen" },
   { href: "/admin/mypos", breadcrumb: "Import / Invoer – Inlezen myPOS (maand)" },
   { href: "/admin/omzet/loonkosten", breadcrumb: "Import / Invoer – Invoeren loonkosten" },
-  { href: "/admin/aftekenlijsten/upload", breadcrumb: "Import / Invoer – Upload hygiëne-formulieren" },
+  { href: "/admin/aftekenlijsten/upload", breadcrumb: "Import / Invoer – Upload formulieren" },
   { href: "/admin/kasstaten", breadcrumb: "Import / Invoer – Kasstaat invullen" },
   { href: "/admin/kasboek", breadcrumb: "Import / Invoer – Kasboek bijwerken" },
   { href: "/admin/omzet/omzetdagen", breadcrumb: "Import / Invoer – Omzetdagen aanpassen" },

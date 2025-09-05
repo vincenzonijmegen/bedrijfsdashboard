@@ -314,7 +314,7 @@ export default function AdminDashboard() {
         />
         <LinkCard
           href="/admin/aftekenlijsten"
-          label="Overzicht formulieren/-rapporten"
+          label="Overzicht formulieren/rapporten"
           color="purple"
           Icon={BarChart2}
           breadcrumb="Rapportages – Formulieren/-rapporten"
