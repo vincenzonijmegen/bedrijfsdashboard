@@ -531,40 +531,54 @@ export default function RoosterPage() {
       {/* DAGVIEW */}
       {view === "day" ? (
         <>
-          {/* Maandkosten (planning) met masker-toggle */}
-          <div className="mb-4 border rounded-lg p-3 bg-gray-50">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-semibold">Loonkosten (planning, maand)</div>
-                <div className="text-xs text-gray-600">
-                  {new Intl.DateTimeFormat("nl-NL", {
-                    month: "long",
-                    year: "numeric",
-                  }).format(new Date(selectedDate + "T12:00:00"))}
-                </div>
-              </div>
+{/* Maandkosten (planning) – compact one-liner */}
+<div className="mb-3 border rounded-lg bg-gray-50 px-3 py-2">
+  <div className="flex items-center gap-3 whitespace-nowrap">
+    {/* Titel + maand */}
+    <div className="flex items-baseline gap-2 min-w-0">
+      <span className="font-semibold">Loonkosten (planning, maand)</span>
+      <span className="text-xs text-gray-600">
+        {new Intl.DateTimeFormat("nl-NL", { month: "long", year: "numeric" })
+          .format(new Date(selectedDate + "T12:00:00"))}
+      </span>
+    </div>
 
-              <button
-                type="button"
-                onClick={toggleMask}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
-                title={mask ? "Toon bedragen" : "Maskeer bedragen"}
-              >
-                {mask ? <EyeOff size={16} /> : <Eye size={16} />}
-                <span className="text-xs">{mask ? "Verborgen" : "Zichtbaar"}</span>
-              </button>
-            </div>
+    {/* Masker-toggle */}
+    <button
+      type="button"
+      onClick={toggleMask}
+      className="ml-2 inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
+      title={mask ? "Toon bedragen" : "Maskeer bedragen"}
+    >
+      {mask ? <EyeOff size={16} /> : <Eye size={16} />}
+      <span className="text-xs hidden sm:inline">{mask ? "Verborgen" : "Zichtbaar"}</span>
+    </button>
 
-            <div className="mt-2 text-right">
-              <div className={`text-2xl font-bold ${mask ? "blur-sm select-none" : ""}`}>
-                {monthRooster ? EUR0.format(Math.round(monthTotals.cost)) : "—"}
-              </div>
-              <div className={`text-xs text-gray-600 ${mask ? "blur-[2px] select-none" : ""}`}>
-                Totaal uren:{" "}
-                <strong>{monthRooster ? Math.round(monthTotals.hours * 100) / 100 : 0}</strong>
-              </div>
-            </div>
-          </div>
+    {/* Totaal + uren (rechts) */}
+    <div className="ml-auto flex items-baseline gap-3">
+      <span
+        className={`text-xl md:text-2xl font-bold tabular-nums ${
+          mask ? "blur-sm select-none" : ""
+        }`}
+      >
+        {monthRooster ? EUR0.format(Math.round(monthTotals.cost)) : "—"}
+      </span>
+      <span
+        className={`text-xs text-gray-600 ${
+          mask ? "blur-[2px] select-none" : ""
+        }`}
+      >
+        · Uren:{" "}
+        <strong>
+          {monthRooster
+            ? (Math.round(monthTotals.hours * 100) / 100).toLocaleString("nl-NL")
+            : 0}
+        </strong>
+      </span>
+    </div>
+  </div>
+</div>
+
 
           {dayError && (
             <p className="p-4 text-red-600">
