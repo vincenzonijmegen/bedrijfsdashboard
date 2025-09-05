@@ -1,7 +1,7 @@
 // src/components/NotitieEditor.tsx
 'use client';
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -55,10 +55,9 @@ function escapeText(text: string) {
   return div.innerHTML.replace(/\n/g, '<br>');
 }
 
-// ---- component ----
 export interface NotitieEditorProps {
-  value: string;
-  onChange: (html: string) => void;
+  value: string;                      // externe html
+  onChange: (html: string) => void;   // naar parent
   editable?: boolean;
   placeholder?: string;
 }
@@ -69,6 +68,8 @@ export default function NotitieEditor({
   editable = true,
   placeholder = 'Schrijf je notitie…',
 }: NotitieEditorProps) {
+  const lastFromEditorRef = useRef<string>(''); // laatst geëmiteerde html uit editor zelf
+
   const editor = useEditor(
     {
       extensions: [
@@ -76,20 +77,29 @@ export default function NotitieEditor({
         Underline,
         Link.configure({ openOnClick: false, autolink: true, protocols: ['http', 'https'] }),
         TextAlign.configure({ types: ['heading', 'paragraph'] }),
-        PlaceholderExt.configure({ placeholder }), // <-- gebruikt de prop
+        PlaceholderExt.configure({ placeholder }),
       ],
       content: value || '<p></p>',
       editable,
       onUpdate: ({ editor }) => {
-        onChange(editor.getHTML());
+        const html = editor.getHTML();
+        lastFromEditorRef.current = html; // markeer: deze update kwam van de editor
+        onChange(html);
       },
     },
-    [value, editable, placeholder]
+    [editable, placeholder] // NIET op 'value' subscriben hier
   );
 
-  // Sync externe waarde (bij annuleren of server refresh)
+  // Sync externe waarde ALLEEN als die anders is dan wat we net uit de editor stuurden,
+  // en anders dan de huidige editorcontent (voorkomt caret jump).
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
+    if (!editor) return;
+    const current = editor.getHTML();
+    if (value === lastFromEditorRef.current) {
+      // verandering kwam van de editor zelf -> niet terugzetten
+      return;
+    }
+    if (value !== current) {
       editor.commands.setContent(value || '<p></p>', false);
     }
   }, [value, editor]);
@@ -115,7 +125,6 @@ export default function NotitieEditor({
     return () => dom.removeEventListener('paste', handler);
   }, [editor]);
 
-  // Toolbar
   const toolbar = useMemo(
     () => (
       <div className="flex flex-wrap gap-1 p-1 border-b bg-gray-50">
@@ -129,10 +138,6 @@ export default function NotitieEditor({
         <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={() => editor?.chain().focus().setParagraph().run()}>¶</button>
         <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>H2</button>
         <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}>H3</button>
-        <span className="mx-1" />
-        <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={() => editor?.chain().focus().setTextAlign('left').run()}>⟸</button>
-        <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={() => editor?.chain().focus().setTextAlign('center').run()}>≡</button>
-        <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={() => editor?.chain().focus().setTextAlign('right').run()}>⟹</button>
         <span className="mx-1" />
         <button
           className="px-2 py-1 border rounded"
