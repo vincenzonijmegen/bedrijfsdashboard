@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
+import dynamic from "next/dynamic";
 import {
   DndContext,
   closestCenter,
@@ -20,16 +21,21 @@ import { Pencil, CheckCircle2, GripVertical } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+// Rijke editor uit Notities hergebruiken (client-only)
+const NotitieEditor = dynamic(() => import("@/components/NotitieEditor"), {
+  ssr: false,
+});
+
 interface Actie {
   id: number;
-  tekst: string;
+  tekst: string;               // nu HTML uit Tiptap
   voltooid: boolean;
   deadline?: string;
   verantwoordelijke?: string;
   volgorde: number;
-  // afgeleid in GET /api/acties
-  is_weekly?: boolean;       // recurring == 'weekly'
-  done_this_week?: boolean;  // deze ISO-week afgehandeld
+  // afgeleid via GET /api/acties:
+  is_weekly?: boolean;         // recurring == 'weekly'
+  done_this_week?: boolean;    // deze ISO-week afgehandeld
 }
 
 interface ActieLijst {
@@ -40,7 +46,9 @@ interface ActieLijst {
 
 type EditState = { id: number; tekst: string; is_weekly: boolean };
 
-/* ----------------------------- ROW: SHARED UI ----------------------------- */
+// helpers
+const isHtmlEmpty = (html: string) =>
+  !html || !html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
 
 type RowCommonProps = {
   actie: Actie;
@@ -49,7 +57,7 @@ type RowCommonProps = {
   onEdit: (state: EditState) => void;
   onWeeklyDone: (id: number) => void;
   onWeeklyUndo: (id: number) => void;
-  rightExtras?: React.ReactNode; // plek voor drag-handle etc.
+  rightExtras?: React.ReactNode;
 };
 
 function RowInner({
@@ -71,29 +79,30 @@ function RowInner({
 
   return (
     <div className={containerClass}>
-      {/* Links: tekst (of checkbox + tekst) */}
-      <div className="flex items-center gap-3 flex-1 select-none">
-        {!actie.is_weekly ? (
-          <>
-            <input
-              type="checkbox"
-              checked={actie.voltooid}
-              onClick={(e) => e.stopPropagation()}
-              onPointerDown={(e) => e.stopPropagation()}
-              onChange={(e) => {
-                e.stopPropagation();
-                onToggleCheck(actie.id, actie.voltooid);
-              }}
-            />
-            <span className={isAfgehandeld ? "line-through" : ""}>{actie.tekst}</span>
-          </>
-        ) : (
-          <span className={isAfgehandeld ? "line-through" : ""}>{actie.tekst}</span>
+      {/* Links: checkbox (indien niet-weeklijks) + geformatteerde tekst */}
+      <div className="flex items-start gap-3 flex-1 select-none">
+        {!actie.is_weekly && (
+          <input
+            type="checkbox"
+            checked={actie.voltooid}
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onChange={(e) => {
+              e.stopPropagation();
+              onToggleCheck(actie.id, actie.voltooid);
+            }}
+            className="mt-1"
+          />
         )}
+        <div
+          className={`prose max-w-none text-base ${isAfgehandeld ? "line-through" : ""}`}
+          // veilige HTML: komt uit NotitieEditor met plak-sanitizer
+          dangerouslySetInnerHTML={{ __html: actie.tekst || "" }}
+        />
       </div>
 
       {/* Rechts: acties / knoppen */}
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-3 flex items-center gap-2">
         {actie.is_weekly && !isAfgehandeld && !actie.done_this_week && (
           <button
             type="button"
@@ -124,7 +133,6 @@ function RowInner({
           </div>
         )}
 
-        {/* extra controls rechts (bv. drag-handle) */}
         {rightExtras}
 
         <button
@@ -132,7 +140,9 @@ function RowInner({
           title="Bewerken"
           className="p-1 rounded hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onEdit({ id: actie.id, tekst: actie.tekst, is_weekly: !!actie.is_weekly })}
+          onClick={() =>
+            onEdit({ id: actie.id, tekst: actie.tekst || "<p></p>", is_weekly: !!actie.is_weekly })
+          }
         >
           <Pencil size={18} />
         </button>
@@ -141,7 +151,7 @@ function RowInner({
   );
 }
 
-/* ------------------------- ROW: SORTABLE (OPEN LIJST) ------------------------- */
+/* --------------------------- Sortable Row (open) --------------------------- */
 
 type SortableRowProps = RowCommonProps & { id: number };
 
@@ -179,13 +189,13 @@ function SortableActieRow(props: SortableRowProps) {
   );
 }
 
-/* ----------------------------- ROW: STATIC (OVERIG) ----------------------------- */
+/* ------------------------------ Static Row ------------------------------ */
 
 function StaticActieRow(props: RowCommonProps) {
   return <RowInner {...props} />;
 }
 
-/* ----------------------------------- PAGE ----------------------------------- */
+/* ---------------------------------- Page ---------------------------------- */
 
 export default function ActieLijstPagina() {
   // Lijsten
@@ -208,15 +218,15 @@ export default function ActieLijstPagina() {
     { revalidateOnFocus: false, revalidateOnReconnect: false, dedupingInterval: 30000 }
   );
 
-  // DnD
+  // DnD setup
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }) // pas slepen na 8px
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
   const [dndVolgorde, setDndVolgorde] = useState<number[]>([]);
 
   // Form state
   const [nieuweLijstNaam, setNieuweLijstNaam] = useState("");
-  const [nieuweActieTekst, setNieuweActieTekst] = useState("");
+  const [nieuweActieHtml, setNieuweActieHtml] = useState<string>("");
   const [nieuweActieWeekly, setNieuweActieWeekly] = useState(false);
   const [lijstEdit, setLijstEdit] =
     useState<{ id: number; naam: string; icoon: string } | null>(null);
@@ -229,7 +239,7 @@ export default function ActieLijstPagina() {
     }
   }, [lijsten, geselecteerdeLijst]);
 
-  // DnD volgorde syncen met server-data (alleen open & niet weekly-done)
+  // DnD volgorde sync met server-data (alleen open & niet weekly-done)
   useEffect(() => {
     const openActies = actiesRaw
       .filter((a) => !a.voltooid && !(a.is_weekly && a.done_this_week))
@@ -274,11 +284,11 @@ export default function ActieLijstPagina() {
     mutate();
   };
 
-  const updateActie = async (id: number, tekst: string, is_weekly: boolean) => {
+  const updateActie = async (id: number, tekstHtml: string, is_weekly: boolean) => {
     await fetch("/api/acties", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, tekst, recurring: is_weekly ? "weekly" : "none" }),
+      body: JSON.stringify({ id, tekst: tekstHtml, recurring: is_weekly ? "weekly" : "none" }),
     });
     mutate();
   };
@@ -317,22 +327,24 @@ export default function ActieLijstPagina() {
   };
 
   const nieuweActieToevoegen = async () => {
-    if (!nieuweActieTekst.trim() || !geselecteerdeLijst) return;
+    if (!geselecteerdeLijst) return;
+    if (isHtmlEmpty(nieuweActieHtml)) return;
+
     await fetch("/api/acties", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         lijst_id: geselecteerdeLijst.id,
-        tekst: nieuweActieTekst.trim(),
+        tekst: nieuweActieHtml,
         recurring: nieuweActieWeekly ? "weekly" : "none",
       }),
     });
-    setNieuweActieTekst("");
+    setNieuweActieHtml("");
     setNieuweActieWeekly(false);
     mutate();
   };
 
-  // Afgeleide sets (hooks altijd bovenin)
+  // Afgeleide sets
   const openActiesSorted = useMemo(() => {
     const open = actiesRaw.filter((a) => !a.voltooid && !(a.is_weekly && a.done_this_week));
     return open.sort((a, b) => dndVolgorde.indexOf(a.id) - dndVolgorde.indexOf(b.id));
@@ -428,7 +440,7 @@ export default function ActieLijstPagina() {
       <div className="col-span-2">
         <h2 className="text-lg font-semibold mb-4">{geselecteerdeLijst?.naam ?? "—"}</h2>
 
-        {/* DRAG & DROP voor OPEN acties */}
+        {/* OPEN acties (DnD + toggles) */}
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -465,41 +477,49 @@ export default function ActieLijstPagina() {
           </SortableContext>
         </DndContext>
 
-        {/* Nieuwe actie */}
-        <div className="flex flex-wrap items-center gap-2 pt-2">
-          <input
-            className="flex-1 border rounded px-2 py-1"
-            placeholder="Nieuwe actie"
-            value={nieuweActieTekst}
-            onChange={(e) => setNieuweActieTekst(e.target.value)}
+        {/* Nieuwe actie: Tiptap editor */}
+        <div className="mt-4 border rounded">
+          <div className="flex items-center gap-2 bg-gray-50 border-b px-2 py-1 rounded-t">
+            <span className="text-sm text-gray-600">Nieuwe actie</span>
+            <label className="flex items-center gap-2 text-sm ml-auto">
+              <input
+                type="checkbox"
+                checked={nieuweActieWeekly}
+                onChange={(e) => setNieuweActieWeekly(e.target.checked)}
+              />
+              Wekelijks
+            </label>
+            <button
+              onClick={nieuweActieToevoegen}
+              className="ml-2 bg-blue-600 text-white px-3 py-1 rounded"
+            >
+              Toevoegen
+            </button>
+          </div>
+          <NotitieEditor
+            value={nieuweActieHtml}
+            onChange={setNieuweActieHtml}
+            editable
+            placeholder="Beschrijf de actie…"
           />
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={nieuweActieWeekly}
-              onChange={(e) => setNieuweActieWeekly(e.target.checked)}
-            />
-            Wekelijks
-          </label>
-          <button
-            onClick={nieuweActieToevoegen}
-            className="bg-blue-500 px-3 py-1 rounded text-xl font-bold text-white"
-          >
-            +
-          </button>
         </div>
 
-        {/* Modaal: bewerk actie */}
+        {/* Modaal: bewerk actie (Tiptap) */}
         {actieEdit && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded shadow-lg w-full max-w-2xl">
-              <h3 className="text-lg font-semibold mb-2">Bewerk actie</h3>
-              <input
-                className="w-full border px-4 py-3 text-lg rounded mb-4"
-                value={actieEdit.tekst}
-                onChange={(e) => setActieEdit({ ...actieEdit, tekst: e.target.value })}
-              />
-              <label className="flex items-center gap-2 mb-6">
+            <div className="bg-white p-6 rounded shadow-lg w-full max-w-3xl">
+              <h3 className="text-lg font-semibold mb-3">Bewerk actie</h3>
+
+              <div className="mb-3">
+                <NotitieEditor
+                  value={actieEdit.tekst}
+                  onChange={(html) => setActieEdit((prev) => (prev ? { ...prev, tekst: html } : prev))}
+                  editable
+                  placeholder="Wijzig de actie…"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 mb-4">
                 <input
                   type="checkbox"
                   checked={actieEdit.is_weekly}
@@ -507,6 +527,7 @@ export default function ActieLijstPagina() {
                 />
                 Wekelijks
               </label>
+
               <div className="flex justify-between items-center gap-2">
                 <button
                   type="button"
@@ -526,11 +547,13 @@ export default function ActieLijstPagina() {
                   🗑️ Verwijderen
                 </button>
                 <button type="button" onClick={() => setActieEdit(null)} className="text-gray-600">
-                  Annuleer
+                  Annuleren
                 </button>
                 <button
                   type="button"
                   onClick={async () => {
+                    if (!actieEdit) return;
+                    if (isHtmlEmpty(actieEdit.tekst)) return;
                     await updateActie(actieEdit.id, actieEdit.tekst, actieEdit.is_weekly);
                     setActieEdit(null);
                   }}
@@ -554,7 +577,7 @@ export default function ActieLijstPagina() {
                 <StaticActieRow
                   key={actie.id}
                   actie={actie}
-                  isAfgehandeld={true} // zorgt voor groene container styling
+                  isAfgehandeld={true}
                   onToggleCheck={toggleActie}
                   onEdit={(s) => setActieEdit(s)}
                   onWeeklyDone={markWeeklyDone}
