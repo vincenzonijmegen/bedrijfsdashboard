@@ -48,21 +48,28 @@ export async function GET(req: NextRequest) {
 // POST: nieuwe actie krijgt automatisch de hoogste volgorde binnen de lijst
 export async function POST(req: NextRequest) {
   try {
-    const { lijst_id, tekst, deadline, verantwoordelijke } = await req.json();
+    const { lijst_id, tekst, deadline, verantwoordelijke, recurring } = await req.json();
     if (!lijst_id || !tekst) {
       return NextResponse.json({ error: 'lijst_id en tekst zijn verplicht' }, { status: 400 });
     }
+
     // Bepaal hoogste volgorde binnen deze lijst
     const { rows } = await db.query(
       'SELECT COALESCE(MAX(volgorde), -1) AS max_volgorde FROM acties WHERE lijst_id = $1',
       [lijst_id]
     );
     const nieuweVolgorde = Number(rows[0].max_volgorde) + 1;
+
+    // Recurring normaliseren (DB-check verwacht 'none' of 'weekly')
+    const rec: 'none' | 'weekly' = recurring === 'weekly' ? 'weekly' : 'none';
+
     const resultaat = await db.query(
-      `INSERT INTO acties (lijst_id, tekst, deadline, verantwoordelijke, volgorde)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [lijst_id, tekst, deadline ?? null, verantwoordelijke ?? null, nieuweVolgorde]
+      `INSERT INTO acties (lijst_id, tekst, deadline, verantwoordelijke, volgorde, recurring)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [lijst_id, tekst, deadline ?? null, verantwoordelijke ?? null, nieuweVolgorde, rec]
     );
+
     return NextResponse.json(resultaat.rows[0]);
   } catch (err) {
     console.error('Fout bij toevoegen actie:', err);
@@ -70,30 +77,39 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PATCH: update actie (tekst, voltooid, volgorde)
+// PATCH: update actie (tekst, voltooid, volgorde, recurring)
 export async function PATCH(req: NextRequest) {
   try {
-    const { id, tekst, voltooid, volgorde } = await req.json();
+    const { id, tekst, voltooid, volgorde, recurring } = await req.json();
     if (!id) {
       return NextResponse.json({ error: 'id ontbreekt' }, { status: 400 });
     }
-    // Bouw dynamisch je SET clause
-    const sets = [];
-    const params = [id];
+
+    const sets: string[] = [];
+    const params: any[] = [id];
     let paramIdx = 2;
 
-    if (typeof tekst !== "undefined") {
+    if (typeof tekst !== 'undefined') {
       sets.push(`tekst = $${paramIdx++}`);
       params.push(tekst);
     }
-    if (typeof voltooid !== "undefined") {
+    if (typeof voltooid !== 'undefined') {
       sets.push(`voltooid = $${paramIdx++}`);
       params.push(voltooid);
     }
-    if (typeof volgorde !== "undefined") {
+    if (typeof volgorde !== 'undefined') {
       sets.push(`volgorde = $${paramIdx++}`);
       params.push(volgorde);
     }
+    if (typeof recurring !== 'undefined') {
+      if (recurring !== 'weekly' && recurring !== 'none') {
+        return NextResponse.json({ error: "recurring moet 'weekly' of 'none' zijn" }, { status: 400 });
+      }
+      sets.push(`recurring = $${paramIdx++}`);
+      params.push(recurring);
+      // NB: last_done_period laten we ongemoeid; bij 'none' wordt het toch genegeerd.
+    }
+
     if (!sets.length) {
       return NextResponse.json({ error: 'Geen velden om bij te werken' }, { status: 400 });
     }
