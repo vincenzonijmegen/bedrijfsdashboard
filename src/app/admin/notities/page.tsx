@@ -4,6 +4,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import useSWR from 'swr';
+import dynamic from 'next/dynamic';
+
+// Tiptap editor component (client-only)
+const NotitieEditor = dynamic(() => import('@/components/NotitieEditor'), { ssr: false });
 
 const fetcher = (url: string) => fetch(url, { cache: 'no-store' }).then(res => res.json());
 
@@ -17,6 +21,7 @@ const stripHTML = (html: string) => {
   return tmp.textContent || tmp.innerText || '';
 };
 
+// (Alleen nog gebruikt bij het "nieuwe notitie" blok)
 function Toolbar({ onExec }: { onExec: (cmd: string) => void }) {
   return (
     <div className="bg-gray-100 p-1 flex gap-2">
@@ -33,44 +38,17 @@ function NotitieRow({ n, onSaved, onDelete }: {
 }) {
   const [editing, setEditing] = useState(false);
   const [html, setHtml] = useState<string>(n.tekst);
-  const editorRef = useRef<HTMLDivElement>(null);
 
-  // Als serverdata verandert (mutate), sync lokale buffer wanneer NIET aan het editen
+  // Sync serverdata naar lokale state wanneer NIET aan het editen
   useEffect(() => {
     if (!editing) setHtml(n.tekst);
   }, [n.tekst, editing]);
 
-  // Seed de editor-HTML alléén wanneer we de editmodus in gaan
-  useEffect(() => {
-    if (editing && editorRef.current) {
-      editorRef.current.innerHTML = html || '';
-      // Cursor naar einde
-      const range = document.createRange();
-      range.selectNodeContents(editorRef.current);
-      range.collapse(false);
-      const sel = window.getSelection();
-      sel?.removeAllRanges();
-      sel?.addRange(range);
-    }
-  }, [editing]);
-
-  const execCommand = (cmd: string) => {
-    if (!editing) return;
-    editorRef.current?.focus();
-    document.execCommand(cmd, false);
-  };
-
-  const handleInput = () => {
-    // Niet via dangerouslySetInnerHTML renderen → caret blijft staan
-    setHtml(editorRef.current?.innerHTML || '');
-  };
-
   const handleSave = async () => {
-    const payload = editorRef.current?.innerHTML ?? html;
     await fetch('/api/notities', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: n.id, tekst: payload, type: 'notitie' })
+      body: JSON.stringify({ id: n.id, tekst: html, type: 'notitie' })
     });
     setEditing(false);
     onSaved();
@@ -84,7 +62,6 @@ function NotitieRow({ n, onSaved, onDelete }: {
   return (
     <div className="relative border rounded">
       <div className="flex items-center gap-2 px-2 py-1 bg-gray-50 border-b">
-        <Toolbar onExec={execCommand} />
         <div className="ml-auto flex gap-2">
           {!editing && (
             <button onClick={() => setEditing(true)} className="px-2 py-1 rounded border">Bewerken</button>
@@ -100,21 +77,18 @@ function NotitieRow({ n, onSaved, onDelete }: {
       </div>
 
       {editing ? (
-        <div
-          ref={editorRef}
-          className="p-3 w-full min-h-[8rem] resize-y overflow-auto outline outline-1 outline-blue-200"
-          style={{ resize: 'vertical' }}
-          title={stripHTML(html)}
-          contentEditable
-          suppressContentEditableWarning
-          onInput={handleInput}
+        <NotitieEditor
+          value={html}
+          onChange={setHtml}
+          editable
+          placeholder="Schrijf je notitie…"
         />
       ) : (
         <div
-          className="p-3 w-full min-h-[8rem] resize-y overflow-auto"
+          className="p-3 w-full min-h-[8rem] resize-y overflow-auto prose max-w-none text-base"
           style={{ resize: 'vertical' }}
           title={stripHTML(html)}
-          dangerouslySetInnerHTML={{ __html: n.tekst }}
+          dangerouslySetInnerHTML={{ __html: html }}
         />
       )}
     </div>
@@ -123,7 +97,8 @@ function NotitieRow({ n, onSaved, onDelete }: {
 
 export default function NotitieblokPagina() {
   // Rubrieken ophalen en sorteren
-  const { data: rubrieken = [], mutate: mutateRubrieken } = useSWR<Rubriek[]>('/api/notities', fetcher, { revalidateOnMount: true });
+  const { data: rubrieken = [], mutate: mutateRubrieken } =
+    useSWR<Rubriek[]>('/api/notities', fetcher, { revalidateOnMount: true });
   const sortedRubrieken = [...rubrieken].sort((a, b) => a.naam.localeCompare(b.naam));
 
   const [selRubriek, setSelRubriek] = useState<Rubriek | null>(null);
@@ -171,7 +146,7 @@ export default function NotitieblokPagina() {
     }
   };
 
-  // Nieuwe notitie HTML
+  // Nieuwe notitie (laat ik nog even bij de oude input)
   const [newNotitieHtml, setNewNotitieHtml] = useState('');
   const newRef = useRef<HTMLDivElement>(null);
 
@@ -193,7 +168,11 @@ export default function NotitieblokPagina() {
 
   const deleteNotitie = async (id: number) => {
     if (!confirm('Notitie verwijderen?')) return;
-    await fetch('/api/notities', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, type: 'notitie' }) });
+    await fetch('/api/notities', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, type: 'notitie' })
+    });
     mutateNotities();
   };
 
@@ -231,10 +210,21 @@ export default function NotitieblokPagina() {
           ))}
         </div>
 
+        {/* Nieuwe notitie (oude input; desgewenst zetten we hier ook Tiptap op) */}
         <div className="mt-4">
           <div className="bg-gray-100 p-1 flex gap-2">
-            <button onMouseDown={e => { e.preventDefault(); document.execCommand('bold', false); newRef.current?.focus(); }} className="font-bold">B</button>
-            <button onMouseDown={e => { e.preventDefault(); document.execCommand('italic', false); newRef.current?.focus(); }} className="italic">I</button>
+            <button
+              onMouseDown={e => { e.preventDefault(); document.execCommand('bold', false); newRef.current?.focus(); }}
+              className="font-bold"
+            >
+              B
+            </button>
+            <button
+              onMouseDown={e => { e.preventDefault(); document.execCommand('italic', false); newRef.current?.focus(); }}
+              className="italic"
+            >
+              I
+            </button>
             <button onClick={addNotitie} className="bg-green-600 text-white px-4 py-1 rounded ml-auto">+ Notitie</button>
           </div>
           <div
