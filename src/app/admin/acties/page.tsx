@@ -16,8 +16,8 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-  import { CSS } from "@dnd-kit/utilities";
-import { Pencil } from "lucide-react";
+import { CSS } from "@dnd-kit/utilities";
+import { Pencil, CheckCircle2 } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -28,8 +28,9 @@ interface Actie {
   deadline?: string;
   verantwoordelijke?: string;
   volgorde: number;
-  is_weekly?: boolean;       // afgeleid in API (recurring='weekly')
-  done_this_week?: boolean;  // afgeleid in API
+  // afgeleid door de API (zie aangepaste GET):
+  is_weekly?: boolean;       // recurring == 'weekly'
+  done_this_week?: boolean;  // deze ISO-week afgehandeld
 }
 
 interface ActieLijst {
@@ -67,71 +68,79 @@ function SorteerbareActie({
     ? { transform: CSS.Transform.toString(transform), transition, cursor: "grab", zIndex: isDragging ? 50 : 1 }
     : {};
 
-  const containerClass = isAfgehandeld
+  const isWeeklyDone = !!(actie.is_weekly && actie.done_this_week);
+
+  const containerClass = isWeeklyDone
+    ? "flex items-center justify-between border border-emerald-200 bg-emerald-50 text-emerald-900 p-3 rounded"
+    : isAfgehandeld
     ? "flex items-center justify-between border p-3 rounded bg-gray-50 text-gray-500"
     : "flex items-center justify-between border p-3 rounded bg-white shadow-sm";
 
-
-    return (
-  <div {...dragProps} style={dragStyle} className={containerClass}>
-    {/* Links: tekst (of checkbox + tekst) */}
-    <div className="flex items-center gap-3 flex-1 select-none">
-      {!actie.is_weekly ? (
-        <>
-          <input
-            type="checkbox"
-            checked={actie.voltooid}
-            onPointerDown={(e) => e.stopPropagation()}
-            onChange={() => toggleActie(actie.id, actie.voltooid)}
-          />
+  return (
+    <div {...dragProps} style={dragStyle} className={containerClass}>
+      {/* Links: tekst (of checkbox + tekst) */}
+      <div className="flex items-center gap-3 flex-1 select-none">
+        {!actie.is_weekly ? (
+          <>
+            <input
+              type="checkbox"
+              checked={actie.voltooid}
+              onPointerDown={(e) => e.stopPropagation()}
+              onChange={() => toggleActie(actie.id, actie.voltooid)}
+            />
+            <span className={isAfgehandeld ? "line-through" : ""}>{actie.tekst}</span>
+          </>
+        ) : (
           <span className={isAfgehandeld ? "line-through" : ""}>{actie.tekst}</span>
-        </>
-      ) : (
-        <span className={isAfgehandeld ? "line-through" : ""}>{actie.tekst}</span>
-      )}
-    </div>
+        )}
+      </div>
 
-    {/* Rechts: acties (knop rechts uitgelijnd) */}
-    <div className="ml-auto flex items-center gap-2">
-      {actie.is_weekly && !isAfgehandeld && !actie.done_this_week && (
-        <button
-          type="button"
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => markWeeklyDone(actie.id)}
-          className="px-3 py-1 rounded bg-emerald-600 text-white text-sm"
-          title="Markeer als klaar voor deze week"
-        >
-          Klaar voor deze week
-        </button>
-      )}
-
-      {actie.is_weekly && actie.done_this_week && (
-        <div className="flex items-center gap-2">
-          <span className="text-green-700 text-sm">✓ Deze week gedaan</span>
+      {/* Rechts: acties / knoppen */}
+      <div className="ml-auto flex items-center gap-2">
+        {actie.is_weekly && !isAfgehandeld && !actie.done_this_week && (
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => undoWeeklyDone(actie.id)}
-            className="text-xs underline"
+            onClick={() => markWeeklyDone(actie.id)}
+            className="px-3 py-1 rounded bg-emerald-600 text-white text-sm"
+            title="Markeer als klaar voor deze week"
           >
-            Toch terugzetten
+            Klaar voor deze week
           </button>
-        </div>
-      )}
+        )}
 
-      <button
-        type="button"
-        title="Bewerken"
-        className="p-1 rounded hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition"
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst, is_weekly: !!actie.is_weekly })}
-      >
-        <Pencil size={18} />
-      </button>
+        {actie.is_weekly && actie.done_this_week && (
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-medium">
+              <CheckCircle2 className="w-3 h-3" />
+              Deze week gedaan
+            </span>
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => undoWeeklyDone(actie.id)}
+              className="text-xs text-emerald-700 underline hover:text-emerald-800"
+              title="Zet terug naar open acties"
+            >
+              Toch terugzetten
+            </button>
+          </div>
+        )}
+
+        <button
+          type="button"
+          title="Bewerken"
+          className="p-1 rounded hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() =>
+            setActieEdit({ id: actie.id, tekst: actie.tekst, is_weekly: !!actie.is_weekly })
+          }
+        >
+          <Pencil size={18} />
+        </button>
+      </div>
     </div>
-  </div>
-);
-
+  );
 }
 
 export default function ActieLijstPagina() {
@@ -270,7 +279,7 @@ export default function ActieLijstPagina() {
     mutate();
   };
 
-  // Afgeleide sets
+  // Afgeleide sets (hooks altijd bovenin → geen rules-of-hooks error)
   const openActiesSorted = useMemo(() => {
     const open = actiesRaw.filter((a) => !a.voltooid && !(a.is_weekly && a.done_this_week));
     return open.sort((a, b) => dndVolgorde.indexOf(a.id) - dndVolgorde.indexOf(b.id));
@@ -495,7 +504,7 @@ export default function ActieLijstPagina() {
                   setActieEdit={setActieEdit}
                   markWeeklyDone={markWeeklyDone}
                   undoWeeklyDone={undoWeeklyDone}
-                  isAfgehandeld={true}
+                  isAfgehandeld={true}  // containerClass pakt groen variant i.p.v. grijs
                   dnd={false}
                 />
               ))}
