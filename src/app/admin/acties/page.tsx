@@ -1,3 +1,4 @@
+// Bestand: src/app/admin/acties/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -15,7 +16,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+  import { CSS } from "@dnd-kit/utilities";
 import { Pencil } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -27,7 +28,7 @@ interface Actie {
   deadline?: string;
   verantwoordelijke?: string;
   volgorde: number;
-  is_weekly?: boolean;       // afgeleid in API
+  is_weekly?: boolean;       // afgeleid in API (recurring='weekly')
   done_this_week?: boolean;  // afgeleid in API
 }
 
@@ -37,10 +38,12 @@ interface ActieLijst {
   icoon: string;
 }
 
+type EditState = { id: number; tekst: string; is_weekly: boolean };
+
 type SorteerbareActieProps = {
   actie: Actie;
   toggleActie: (id: number, voltooid: boolean) => void;
-  setActieEdit: (value: { id: number; tekst: string } | null) => void;
+  setActieEdit: (value: EditState | null) => void;
   markWeeklyDone: (id: number) => void;
   undoWeeklyDone: (id: number) => void;
   isAfgehandeld?: boolean;
@@ -118,7 +121,9 @@ function SorteerbareActie({
         title="Bewerken"
         className="ml-2 p-1 rounded hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition"
         onPointerDown={(e) => e.stopPropagation()}
-        onClick={() => setActieEdit({ id: actie.id, tekst: actie.tekst })}
+        onClick={() =>
+          setActieEdit({ id: actie.id, tekst: actie.tekst, is_weekly: !!actie.is_weekly })
+        }
         tabIndex={0}
       >
         <Pencil size={18} />
@@ -155,8 +160,11 @@ export default function ActieLijstPagina() {
   // Form state
   const [nieuweLijstNaam, setNieuweLijstNaam] = useState("");
   const [nieuweActieTekst, setNieuweActieTekst] = useState("");
-  const [lijstEdit, setLijstEdit] = useState<{ id: number; naam: string; icoon: string } | null>(null);
-  const [actieEdit, setActieEdit] = useState<{ id: number; tekst: string } | null>(null);
+  const [nieuweActieWeekly, setNieuweActieWeekly] = useState(false);
+
+  const [lijstEdit, setLijstEdit] =
+    useState<{ id: number; naam: string; icoon: string } | null>(null);
+  const [actieEdit, setActieEdit] = useState<EditState | null>(null);
 
   // Init: selecteer eerste lijst
   useEffect(() => {
@@ -202,11 +210,11 @@ export default function ActieLijstPagina() {
     await mutate();
   };
 
-  const updateActieTekst = async (id: number, tekst: string) => {
+  const updateActie = async (id: number, tekst: string, is_weekly: boolean) => {
     await fetch("/api/acties", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, tekst }),
+      body: JSON.stringify({ id, tekst, recurring: is_weekly ? "weekly" : "none" }),
     });
     mutate();
   };
@@ -249,13 +257,18 @@ export default function ActieLijstPagina() {
     await fetch("/api/acties", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lijst_id: geselecteerdeLijst.id, tekst: nieuweActieTekst.trim() }),
+      body: JSON.stringify({
+        lijst_id: geselecteerdeLijst.id,
+        tekst: nieuweActieTekst.trim(),
+        recurring: nieuweActieWeekly ? "weekly" : "none",
+      }),
     });
     setNieuweActieTekst("");
+    setNieuweActieWeekly(false);
     mutate();
   };
 
-  // Afgeleide sets (hooks onvoorwaardelijk -> geen rule-of-hooks error)
+  // Afgeleide sets
   const openActiesSorted = useMemo(() => {
     const open = actiesRaw.filter((a) => !a.voltooid && !(a.is_weekly && a.done_this_week));
     return open.sort((a, b) => dndVolgorde.indexOf(a.id) - dndVolgorde.indexOf(b.id));
@@ -271,13 +284,10 @@ export default function ActieLijstPagina() {
 
   const afgehandeldSorted = useMemo(
     () =>
-      actiesRaw
-        .filter((a) => a.voltooid)
-        .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0)),
+      actiesRaw.filter((a) => a.voltooid).sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0)),
     [actiesRaw]
   );
 
-  // UI flags (geen vroege returns meer)
   const isEmptyLists = !lijsten || lijsten.length === 0;
 
   return (
@@ -391,14 +401,25 @@ export default function ActieLijstPagina() {
         </DndContext>
 
         {/* Nieuwe actie */}
-        <div className="flex gap-2 pt-2">
+        <div className="flex flex-wrap items-center gap-2 pt-2">
           <input
             className="flex-1 border rounded px-2 py-1"
             placeholder="Nieuwe actie"
             value={nieuweActieTekst}
             onChange={(e) => setNieuweActieTekst(e.target.value)}
           />
-          <button onClick={nieuweActieToevoegen} className="bg-blue-500 px-3 py-1 rounded text-xl font-bold text-white">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={nieuweActieWeekly}
+              onChange={(e) => setNieuweActieWeekly(e.target.checked)}
+            />
+            Wekelijks
+          </label>
+          <button
+            onClick={nieuweActieToevoegen}
+            className="bg-blue-500 px-3 py-1 rounded text-xl font-bold text-white"
+          >
             +
           </button>
         </div>
@@ -409,10 +430,18 @@ export default function ActieLijstPagina() {
             <div className="bg-white p-8 rounded shadow-lg w-full max-w-2xl">
               <h3 className="text-lg font-semibold mb-2">Bewerk actie</h3>
               <input
-                className="w-full border px-4 py-3 text-lg rounded mb-6"
+                className="w-full border px-4 py-3 text-lg rounded mb-4"
                 value={actieEdit.tekst}
                 onChange={(e) => setActieEdit({ ...actieEdit, tekst: e.target.value })}
               />
+              <label className="flex items-center gap-2 mb-6">
+                <input
+                  type="checkbox"
+                  checked={actieEdit.is_weekly}
+                  onChange={(e) => setActieEdit({ ...actieEdit, is_weekly: e.target.checked })}
+                />
+                Wekelijks
+              </label>
               <div className="flex justify-between items-center gap-2">
                 <button
                   type="button"
@@ -437,7 +466,7 @@ export default function ActieLijstPagina() {
                 <button
                   type="button"
                   onClick={async () => {
-                    await updateActieTekst(actieEdit.id, actieEdit.tekst);
+                    await updateActie(actieEdit.id, actieEdit.tekst, actieEdit.is_weekly);
                     setActieEdit(null);
                   }}
                   className="bg-blue-600 text-white px-4 py-1 rounded"
