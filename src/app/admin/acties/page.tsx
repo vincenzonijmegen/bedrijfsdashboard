@@ -1,4 +1,3 @@
-// Bestand: src/app/admin/acties/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -17,7 +16,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Pencil, CheckCircle2 } from "lucide-react";
+import { Pencil, CheckCircle2, GripVertical } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -28,7 +27,7 @@ interface Actie {
   deadline?: string;
   verantwoordelijke?: string;
   volgorde: number;
-  // afgeleid door de API (zie aangepaste GET):
+  // afgeleid in GET /api/acties
   is_weekly?: boolean;       // recurring == 'weekly'
   done_this_week?: boolean;  // deze ISO-week afgehandeld
 }
@@ -41,33 +40,27 @@ interface ActieLijst {
 
 type EditState = { id: number; tekst: string; is_weekly: boolean };
 
-type SorteerbareActieProps = {
+/* ----------------------------- ROW: SHARED UI ----------------------------- */
+
+type RowCommonProps = {
   actie: Actie;
-  toggleActie: (id: number, voltooid: boolean) => void;
-  setActieEdit: (value: EditState | null) => void;
-  markWeeklyDone: (id: number) => void;
-  undoWeeklyDone: (id: number) => void;
   isAfgehandeld?: boolean;
-  dnd?: boolean;
+  onToggleCheck: (id: number, voltooid: boolean) => void;
+  onEdit: (state: EditState) => void;
+  onWeeklyDone: (id: number) => void;
+  onWeeklyUndo: (id: number) => void;
+  rightExtras?: React.ReactNode; // plek voor drag-handle etc.
 };
 
-function SorteerbareActie({
+function RowInner({
   actie,
-  toggleActie,
-  setActieEdit,
-  markWeeklyDone,
-  undoWeeklyDone,
   isAfgehandeld,
-  dnd = true,
-}: SorteerbareActieProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: actie.id });
-
-  const dragProps = dnd ? { ref: setNodeRef, ...attributes, ...listeners } : {};
-  const dragStyle: React.CSSProperties = dnd
-    ? { transform: CSS.Transform.toString(transform), transition, cursor: "grab", zIndex: isDragging ? 50 : 1 }
-    : {};
-
+  onToggleCheck,
+  onEdit,
+  onWeeklyDone,
+  onWeeklyUndo,
+  rightExtras,
+}: RowCommonProps) {
   const isWeeklyDone = !!(actie.is_weekly && actie.done_this_week);
 
   const containerClass = isWeeklyDone
@@ -77,7 +70,7 @@ function SorteerbareActie({
     : "flex items-center justify-between border p-3 rounded bg-white shadow-sm";
 
   return (
-    <div {...dragProps} style={dragStyle} className={containerClass}>
+    <div className={containerClass}>
       {/* Links: tekst (of checkbox + tekst) */}
       <div className="flex items-center gap-3 flex-1 select-none">
         {!actie.is_weekly ? (
@@ -85,8 +78,12 @@ function SorteerbareActie({
             <input
               type="checkbox"
               checked={actie.voltooid}
+              onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
-              onChange={() => toggleActie(actie.id, actie.voltooid)}
+              onChange={(e) => {
+                e.stopPropagation();
+                onToggleCheck(actie.id, actie.voltooid);
+              }}
             />
             <span className={isAfgehandeld ? "line-through" : ""}>{actie.tekst}</span>
           </>
@@ -101,7 +98,7 @@ function SorteerbareActie({
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => markWeeklyDone(actie.id)}
+            onClick={() => onWeeklyDone(actie.id)}
             className="px-3 py-1 rounded bg-emerald-600 text-white text-sm"
             title="Markeer als klaar voor deze week"
           >
@@ -118,7 +115,7 @@ function SorteerbareActie({
             <button
               type="button"
               onPointerDown={(e) => e.stopPropagation()}
-              onClick={() => undoWeeklyDone(actie.id)}
+              onClick={() => onWeeklyUndo(actie.id)}
               className="text-xs text-emerald-700 underline hover:text-emerald-800"
               title="Zet terug naar open acties"
             >
@@ -127,14 +124,15 @@ function SorteerbareActie({
           </div>
         )}
 
+        {/* extra controls rechts (bv. drag-handle) */}
+        {rightExtras}
+
         <button
           type="button"
           title="Bewerken"
           className="p-1 rounded hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition"
           onPointerDown={(e) => e.stopPropagation()}
-          onClick={() =>
-            setActieEdit({ id: actie.id, tekst: actie.tekst, is_weekly: !!actie.is_weekly })
-          }
+          onClick={() => onEdit({ id: actie.id, tekst: actie.tekst, is_weekly: !!actie.is_weekly })}
         >
           <Pencil size={18} />
         </button>
@@ -143,8 +141,54 @@ function SorteerbareActie({
   );
 }
 
+/* ------------------------- ROW: SORTABLE (OPEN LIJST) ------------------------- */
+
+type SortableRowProps = RowCommonProps & { id: number };
+
+function SortableActieRow(props: SortableRowProps) {
+  const { id } = props;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 1,
+    background: "transparent",
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <RowInner
+        {...props}
+        rightExtras={
+          <button
+            aria-label="Sleep om te sorteren"
+            title="Sleep om te sorteren"
+            className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 cursor-grab active:cursor-grabbing"
+            onPointerDown={(e) => e.stopPropagation()}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical size={18} />
+          </button>
+        }
+      />
+    </div>
+  );
+}
+
+/* ----------------------------- ROW: STATIC (OVERIG) ----------------------------- */
+
+function StaticActieRow(props: RowCommonProps) {
+  return <RowInner {...props} />;
+}
+
+/* ----------------------------------- PAGE ----------------------------------- */
+
 export default function ActieLijstPagina() {
-  // Lijsten ophalen
+  // Lijsten
   const {
     data: lijsten,
     error: lijstError,
@@ -157,7 +201,7 @@ export default function ActieLijstPagina() {
 
   const [geselecteerdeLijst, setGeselecteerdeLijst] = useState<ActieLijst | null>(null);
 
-  // Acties ophalen (default = [])
+  // Acties
   const { data: actiesRaw = [], mutate } = useSWR<Actie[]>(
     geselecteerdeLijst ? `/api/acties?lijst_id=${geselecteerdeLijst.id}` : null,
     fetcher,
@@ -165,26 +209,27 @@ export default function ActieLijstPagina() {
   );
 
   // DnD
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }) // pas slepen na 8px
+  );
   const [dndVolgorde, setDndVolgorde] = useState<number[]>([]);
-  const sensors = useSensors(useSensor(PointerSensor));
 
   // Form state
   const [nieuweLijstNaam, setNieuweLijstNaam] = useState("");
   const [nieuweActieTekst, setNieuweActieTekst] = useState("");
   const [nieuweActieWeekly, setNieuweActieWeekly] = useState(false);
-
   const [lijstEdit, setLijstEdit] =
     useState<{ id: number; naam: string; icoon: string } | null>(null);
   const [actieEdit, setActieEdit] = useState<EditState | null>(null);
 
-  // Init: selecteer eerste lijst
+  // Init: kies eerste lijst
   useEffect(() => {
     if (lijsten && lijsten.length > 0 && !geselecteerdeLijst) {
       setGeselecteerdeLijst(lijsten[0]);
     }
   }, [lijsten, geselecteerdeLijst]);
 
-  // Reset DnD-volgorde na fetch (alleen open & niet done_this_week)
+  // DnD volgorde syncen met server-data (alleen open & niet weekly-done)
   useEffect(() => {
     const openActies = actiesRaw
       .filter((a) => !a.voltooid && !(a.is_weekly && a.done_this_week))
@@ -192,15 +237,23 @@ export default function ActieLijstPagina() {
     setDndVolgorde(openActies.map((a) => a.id));
   }, [actiesRaw]);
 
-  // Actie handlers
+  // Handlers
   const toggleActie = async (id: number, voltooid: boolean) => {
-    const res = await fetch("/api/acties", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, voltooid: !voltooid }),
-    });
-    await res.json();
-    await mutate();
+    // Optimistisch wisselen
+    mutate(
+      (huidig) =>
+        (huidig || []).map((a: Actie) => (a.id === id ? { ...a, voltooid: !voltooid } : a)),
+      { revalidate: false }
+    );
+    try {
+      await fetch("/api/acties", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, voltooid: !voltooid }),
+      });
+    } finally {
+      mutate();
+    }
   };
 
   const markWeeklyDone = async (id: number) => {
@@ -209,7 +262,7 @@ export default function ActieLijstPagina() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, action: "done" }),
     });
-    await mutate();
+    mutate();
   };
 
   const undoWeeklyDone = async (id: number) => {
@@ -218,7 +271,7 @@ export default function ActieLijstPagina() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, action: "undone" }),
     });
-    await mutate();
+    mutate();
   };
 
   const updateActie = async (id: number, tekst: string, is_weekly: boolean) => {
@@ -279,7 +332,7 @@ export default function ActieLijstPagina() {
     mutate();
   };
 
-  // Afgeleide sets (hooks altijd bovenin → geen rules-of-hooks error)
+  // Afgeleide sets (hooks altijd bovenin)
   const openActiesSorted = useMemo(() => {
     const open = actiesRaw.filter((a) => !a.voltooid && !(a.is_weekly && a.done_this_week));
     return open.sort((a, b) => dndVolgorde.indexOf(a.id) - dndVolgorde.indexOf(b.id));
@@ -375,7 +428,7 @@ export default function ActieLijstPagina() {
       <div className="col-span-2">
         <h2 className="text-lg font-semibold mb-4">{geselecteerdeLijst?.naam ?? "—"}</h2>
 
-        {/* DRAG & DROP + AFVINKEN VOOR OPEN ACTIES */}
+        {/* DRAG & DROP voor OPEN acties */}
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -398,14 +451,15 @@ export default function ActieLijstPagina() {
         >
           <SortableContext items={dndVolgorde} strategy={verticalListSortingStrategy}>
             {openActiesSorted.map((actie) => (
-              <SorteerbareActie
+              <SortableActieRow
                 key={actie.id}
+                id={actie.id}
                 actie={actie}
-                toggleActie={toggleActie}
-                setActieEdit={setActieEdit}
-                markWeeklyDone={markWeeklyDone}
-                undoWeeklyDone={undoWeeklyDone}
-                dnd={true}
+                isAfgehandeld={false}
+                onToggleCheck={toggleActie}
+                onEdit={(s) => setActieEdit(s)}
+                onWeeklyDone={markWeeklyDone}
+                onWeeklyUndo={undoWeeklyDone}
               />
             ))}
           </SortableContext>
@@ -497,15 +551,14 @@ export default function ActieLijstPagina() {
             </summary>
             <div className="mt-2 space-y-2">
               {weeklyDoneThisWeek.map((actie) => (
-                <SorteerbareActie
+                <StaticActieRow
                   key={actie.id}
                   actie={actie}
-                  toggleActie={toggleActie}
-                  setActieEdit={setActieEdit}
-                  markWeeklyDone={markWeeklyDone}
-                  undoWeeklyDone={undoWeeklyDone}
-                  isAfgehandeld={true}  // containerClass pakt groen variant i.p.v. grijs
-                  dnd={false}
+                  isAfgehandeld={true} // zorgt voor groene container styling
+                  onToggleCheck={toggleActie}
+                  onEdit={(s) => setActieEdit(s)}
+                  onWeeklyDone={markWeeklyDone}
+                  onWeeklyUndo={undoWeeklyDone}
                 />
               ))}
             </div>
@@ -518,15 +571,14 @@ export default function ActieLijstPagina() {
             <h3 className="text-sm font-semibold text-gray-600 mb-2">Afgehandeld</h3>
             <div className="space-y-2">
               {afgehandeldSorted.map((actie) => (
-                <SorteerbareActie
+                <StaticActieRow
                   key={actie.id}
                   actie={actie}
-                  toggleActie={toggleActie}
-                  setActieEdit={setActieEdit}
-                  markWeeklyDone={markWeeklyDone}
-                  undoWeeklyDone={undoWeeklyDone}
                   isAfgehandeld={true}
-                  dnd={false}
+                  onToggleCheck={toggleActie}
+                  onEdit={(s) => setActieEdit(s)}
+                  onWeeklyDone={markWeeklyDone}
+                  onWeeklyUndo={undoWeeklyDone}
                 />
               ))}
             </div>
