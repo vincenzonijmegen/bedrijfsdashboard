@@ -35,22 +35,42 @@ function NotitieRow({ n, onSaved, onDelete }: {
   const [html, setHtml] = useState<string>(n.tekst);
   const editorRef = useRef<HTMLDivElement>(null);
 
+  // Als serverdata verandert (mutate), sync lokale buffer wanneer NIET aan het editen
   useEffect(() => {
-    // Als serverdata verandert (mutate), sync lokale weergave wanneer NIET aan het editen
     if (!editing) setHtml(n.tekst);
   }, [n.tekst, editing]);
 
+  // Seed de editor-HTML alléén wanneer we de editmodus in gaan
+  useEffect(() => {
+    if (editing && editorRef.current) {
+      editorRef.current.innerHTML = html || '';
+      // Cursor naar einde
+      const range = document.createRange();
+      range.selectNodeContents(editorRef.current);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    }
+  }, [editing]);
+
   const execCommand = (cmd: string) => {
     if (!editing) return;
-    document.execCommand(cmd, false, '');
     editorRef.current?.focus();
+    document.execCommand(cmd, false);
+  };
+
+  const handleInput = () => {
+    // Niet via dangerouslySetInnerHTML renderen → caret blijft staan
+    setHtml(editorRef.current?.innerHTML || '');
   };
 
   const handleSave = async () => {
+    const payload = editorRef.current?.innerHTML ?? html;
     await fetch('/api/notities', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: n.id, tekst: html, type: 'notitie' })
+      body: JSON.stringify({ id: n.id, tekst: payload, type: 'notitie' })
     });
     setEditing(false);
     onSaved();
@@ -79,18 +99,24 @@ function NotitieRow({ n, onSaved, onDelete }: {
         </div>
       </div>
 
-      <div
-        ref={editorRef}
-        className={`p-3 w-full min-h-[8rem] resize-y overflow-auto ${editing ? 'outline outline-1 outline-blue-200' : ''}`}
-        style={{ resize: 'vertical' }}
-        title={stripHTML(html)}
-        contentEditable={editing}
-        suppressContentEditableWarning
-        // Render de huidige HTML
-        dangerouslySetInnerHTML={{ __html: html }}
-        // Houd lokale state bij tijdens editen
-        onInput={e => setHtml((e.currentTarget as HTMLDivElement).innerHTML)}
-      />
+      {editing ? (
+        <div
+          ref={editorRef}
+          className="p-3 w-full min-h-[8rem] resize-y overflow-auto outline outline-1 outline-blue-200"
+          style={{ resize: 'vertical' }}
+          title={stripHTML(html)}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={handleInput}
+        />
+      ) : (
+        <div
+          className="p-3 w-full min-h-[8rem] resize-y overflow-auto"
+          style={{ resize: 'vertical' }}
+          title={stripHTML(html)}
+          dangerouslySetInnerHTML={{ __html: n.tekst }}
+        />
+      )}
     </div>
   );
 }
