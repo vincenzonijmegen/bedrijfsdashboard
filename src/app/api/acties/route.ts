@@ -1,23 +1,49 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
-// GET: lijst acties per lijst_id, gesorteerd op voltooid + volgorde
+// GET: lijst acties per lijst_id, met weekly-done logica en sortering
 export async function GET(req: NextRequest) {
   const lijst_id = req.nextUrl.searchParams.get('lijst_id');
   if (!lijst_id) {
     return NextResponse.json({ error: 'lijst_id ontbreekt' }, { status: 400 });
   }
+
   try {
-    const acties = await db.query(
-      'SELECT * FROM acties WHERE lijst_id = $1 ORDER BY voltooid, volgorde, aangemaakt_op',
+    const { rows } = await db.query(
+      `
+      WITH params AS (
+        -- ISO-jaar/week in NL-tijd, bv. 2025W36
+        SELECT to_char((now() AT TIME ZONE 'Europe/Amsterdam')::date, 'IYYY"W"IW') AS period
+      )
+      SELECT
+        a.*,
+        (COALESCE(a.recurring, 'none') = 'weekly') AS is_weekly,
+        (
+          COALESCE(a.recurring, 'none') = 'weekly'
+          AND a.last_done_period = params.period
+        ) AS done_this_week
+      FROM acties a, params
+      WHERE a.lijst_id = $1
+      ORDER BY
+        CASE
+          -- behandeld als onderaan: echt voltooid of weekly al gedaan in huidige week
+          WHEN a.voltooid = TRUE THEN 1
+          WHEN (COALESCE(a.recurring, 'none') = 'weekly' AND a.last_done_period = params.period) THEN 1
+          ELSE 0
+        END,
+        a.volgorde,
+        a.aangemaakt_op
+      `,
       [lijst_id]
     );
-    return NextResponse.json(acties.rows);
+
+    return NextResponse.json(rows);
   } catch (err) {
     console.error('Fout bij ophalen acties:', err);
     return NextResponse.json({ error: 'Interne serverfout' }, { status: 500 });
   }
 }
+
 
 // POST: nieuwe actie krijgt automatisch de hoogste volgorde binnen de lijst
 export async function POST(req: NextRequest) {
