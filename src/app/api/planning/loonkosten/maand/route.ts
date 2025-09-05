@@ -1,14 +1,13 @@
+// src/app/api/planning/loonkosten/maand/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
-// 👉 Pas dit aan als jouw week-endpoint anders heet:
+// Pas dit aan als jouw week-endpoint anders heet:
 const WEEK_ENDPOINT = '/api/planning/loonkosten/week';
 
 type WeekResponse = {
   totaal: number;
-  // optioneel: je kunt hier ook jouw breakdown meenemen, bv:
-  // bruto?: number; opslag?: number; pensioen?: number; etc.
 };
 
 function toIsoDate(d: Date) {
@@ -19,7 +18,7 @@ function toIsoDate(d: Date) {
 // Maandag als weekstart (ISO) in lokale tijd
 function startOfISOWeek(d: Date) {
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const day = (x.getDay() + 6) % 7; // 0=ma
+  const day = (x.getDay() + 6) % 7; // 0 = ma
   x.setDate(x.getDate() - day);
   x.setHours(0, 0, 0, 0);
   return x;
@@ -34,14 +33,14 @@ function endOfMonth(d: Date) {
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url);
-    const datumParam = url.searchParams.get('datum'); // verwacht YYYY-MM-DD
+    const datumParam = url.searchParams.get('datum'); // YYYY-MM-DD
     if (!datumParam) {
       return NextResponse.json({ error: "query param 'datum' ontbreekt" }, { status: 400 });
     }
 
     const [y, m, dd] = datumParam.split('-').map(Number);
     if (!y || !m || !dd) {
-      return NextResponse.json({ error: "ongeldige datum (verwacht YYYY-MM-DD)" }, { status: 400 });
+      return NextResponse.json({ error: 'ongeldige datum (verwacht YYYY-MM-DD)' }, { status: 400 });
     }
 
     // Maandgrenzen
@@ -50,7 +49,7 @@ export async function GET(req: NextRequest) {
     const monthEnd = endOfMonth(day);
 
     // Itereer over ISO-weken die deze maand raken (clip naar maandgrenzen)
-    const cursor = startOfISOWeek(monthStart);
+    const cursor = startOfISOWeek(monthStart); // <— const i.p.v. let
     const origin = url.origin;
 
     let totaal = 0;
@@ -71,11 +70,8 @@ export async function GET(req: NextRequest) {
         end: toIsoDate(rangeEnd),
       });
 
-      // ❗ Als jouw week-endpoint andere paramnamen heeft (bijv. ?jaar= & week=),
-      // pas het hier aan.
       const res = await fetch(`${origin}${WEEK_ENDPOINT}?${qs.toString()}`, {
         method: 'GET',
-        // Zorg dat we altijd “verse” planning rekenen (geen route-cache)
         cache: 'no-store',
       });
       if (!res.ok) {
@@ -91,7 +87,7 @@ export async function GET(req: NextRequest) {
       totaal += wtot;
       weeks.push({ start: toIsoDate(rangeStart), end: toIsoDate(rangeEnd), totaal: wtot });
 
-      // Volgende week
+      // Volgende week (we muteren het Date-object; const is oké)
       cursor.setDate(cursor.getDate() + 7);
     }
 

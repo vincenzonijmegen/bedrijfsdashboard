@@ -3,8 +3,9 @@
 // ===========================
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
+import { Eye, EyeOff } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -46,7 +47,7 @@ type TimesheetRow = {
   };
 };
 
-// Let op: uitgebreid met optionele factor/opslag (server mag dit leveren)
+// Leeftijdsloon + factor/opslag
 type WageByAgeRow = {
   date: string;
   user_id: string | number;
@@ -54,18 +55,7 @@ type WageByAgeRow = {
   factor?: number;
   opslag?: number;
 };
-type WageByAgeMeta = {
-  users_total: number;
-  users_without_dob: string[];
-  rules_total?: number;
-  rules_date_coverage?: Record<string, boolean>;
-  no_rule_match_per_date?: Record<string, string[]>;
-  users_with_wage_per_date?: Record<string, string[]>;
-  min_date?: string;
-  max_date?: string;
-  filtered_to_user_ids?: boolean;
-};
-type WageByAgeResp = { data?: WageByAgeRow[]; meta?: WageByAgeMeta } | null;
+type WageByAgeResp = { data?: WageByAgeRow[] } | null;
 
 function ymdLocal(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
@@ -79,7 +69,7 @@ function addDays(iso: string, offset: number) {
 }
 function startOfISOWeekMonday(d: Date) {
   const t = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const day = (t.getDay() + 6) % 7;
+  const day = (t.getDay() + 6) % 7; // 0 = ma
   t.setDate(t.getDate() - day);
   return t;
 }
@@ -104,14 +94,8 @@ const EUR0 = new Intl.NumberFormat("nl-NL", {
 });
 
 const GEWENSTE = ["S1K","S1KV","S1","S1Z","S1L","S1S","S2K","S2","S2L","S2S","SPS","SLW1","SLW2"];
-
-// helper key voor include/exclude per dag+user
 const keyDU = (date: string, userId: string | number) => `${date}:${String(userId)}`;
-
-// Fallback factor als de server (nog) geen factor/opslag terugstuurt:
 const DEFAULT_FACTOR = 1;
-
-// Haal de effectieve factor uit een WageByAgeRow (factor > opslag > default)
 function getEffectiveFactor(row?: { factor?: number; opslag?: number }) {
   if (!row) return DEFAULT_FACTOR;
   if (typeof row.factor === "number" && isFinite(row.factor) && row.factor > 0) return row.factor;
@@ -123,23 +107,45 @@ export default function RoosterPage() {
   const today = ymdLocal(new Date());
   const [selectedDate, setSelectedDate] = useState(today);
   const [view, setView] = useState<"day" | "week">("day");
-  const [showChecks, setShowChecks] = useState(false);
 
-  // include/exclude selectie
+  // Exclude-knoppen voor weekview (in-/uitvinken medewerkers)
   const [excluded, setExcluded] = useState<Set<string>>(new Set());
   const toggleExcluded = (date: string, userId: string | number) => {
-    setExcluded(prev => {
+    setExcluded((prev) => {
       const n = new Set(prev);
       const k = keyDU(date, userId);
-      if (n.has(k)) n.delete(k); else n.add(k);
+      if (n.has(k)) n.delete(k);
+      else n.add(k);
       return n;
     });
   };
   const clearExcludedForDay = (date: string) => {
-    setExcluded(prev => {
+    setExcluded((prev) => {
       const n = new Set<string>();
       for (const k of prev) if (!k.startsWith(date + ":")) n.add(k);
       return n;
+    });
+  };
+
+  // ==== MASK bedragen (zoals omzet) ====
+  const [mask, setMask] = useState(false);
+  useEffect(() => {
+    try {
+      const v =
+        localStorage.getItem("mask-bedragen") ??
+        localStorage.getItem("mask-omzet") ??
+        localStorage.getItem("maskOmzet");
+      setMask(v === "1" || v === "true");
+    } catch {}
+  }, []);
+  const toggleMask = () => {
+    setMask((prev) => {
+      const nv = !prev;
+      try {
+        localStorage.setItem("mask-bedragen", nv ? "1" : "0");
+        localStorage.setItem("mask-omzet", nv ? "1" : "0");
+      } catch {}
+      return nv;
     });
   };
 
@@ -151,35 +157,39 @@ export default function RoosterPage() {
 
   const { perShiftDay, orderDay } = useMemo(() => {
     const acc: Record<string, ShiftItem[]> = {};
-    (dayRooster ?? []).forEach(it => (acc[it.Roster.name] ||= []).push(it));
-    Object.values(acc).forEach(arr => arr.sort((a,b) => a.Roster.starttime.localeCompare(b.Roster.starttime)));
+    (dayRooster ?? []).forEach((it) => (acc[it.Roster.name] ||= []).push(it));
+    Object.values(acc).forEach((arr) =>
+      arr.sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime))
+    );
     const present = Object.keys(acc);
     return {
       perShiftDay: acc,
-      orderDay: [...GEWENSTE.filter(n => n in acc), ...present.filter(n => !GEWENSTE.includes(n))],
+      orderDay: [
+        ...GEWENSTE.filter((n) => n in acc),
+        ...present.filter((n) => !GEWENSTE.includes(n)),
+      ],
     };
   }, [dayRooster]);
 
-  // kloktijden & timesheets (alleen op vandaag, net als je oude gedrag)
+  // Alleen vandaag klok/timesheets tonen
   const loadToday = view === "day" && selectedDate === today;
 
   const { data: clocksResp } = useSWR<{ data?: ClockRow[] }>(
     loadToday ? `/api/shiftbase/clock?date=${selectedDate}` : null,
     fetcher
   );
-
   const { data: timesheetsResp } = useSWR<{ data?: TimesheetRow[] }>(
     loadToday ? `/api/shiftbase/timesheets?date=${selectedDate}` : null,
     fetcher
   );
 
-  // CLOCK: beste timesheet per ROSTER (fallback: per user_id)
+  // CLOCK beste timesheet per roster & per user
   const clockBy = useMemo(() => {
     const score = (t?: ClockRow["Timesheet"]) =>
       (t?.clocked_in ? 1 : 0) + (t?.clocked_out ? 1 : 0);
 
     const byRoster = new Map<string, ClockRow["Timesheet"]>();
-    const byUser   = new Map<string, ClockRow["Timesheet"]>();
+    const byUser = new Map<string, ClockRow["Timesheet"]>();
 
     for (const row of (clocksResp?.data ?? [])) {
       const ts = row.Timesheet;
@@ -187,16 +197,20 @@ export default function RoosterPage() {
         ts?.roster_id != null && ts.roster_id !== ""
           ? String(ts.roster_id)
           : row?.Roster?.id != null
-            ? String(row.Roster.id)
-            : "";
-
+          ? String(row.Roster.id)
+          : "";
       const uid = String(ts.user_id);
 
       if (rosterId) {
         const prev = byRoster.get(rosterId);
         const sPrev = score(prev);
-        const sCur  = score(ts);
-        if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
+        const sCur = score(ts);
+        if (
+          !prev ||
+          sCur > sPrev ||
+          (sCur === sPrev &&
+            String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))
+        ) {
           byRoster.set(rosterId, ts);
         }
       }
@@ -204,8 +218,13 @@ export default function RoosterPage() {
       {
         const prev = byUser.get(uid);
         const sPrev = score(prev);
-        const sCur  = score(ts);
-        if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
+        const sCur = score(ts);
+        if (
+          !prev ||
+          sCur > sPrev ||
+          (sCur === sPrev &&
+            String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))
+        ) {
           byUser.set(uid, ts);
         }
       }
@@ -214,13 +233,13 @@ export default function RoosterPage() {
     return { byRoster, byUser };
   }, [clocksResp]);
 
-  // TIMESHEETS (oude stijl): idem per ROSTER en per USER
+  // TIMESHEETS (oude stijl) idem per roster/user
   const plainBy = useMemo(() => {
     const score = (t?: TimesheetRow["Timesheet"]) =>
       (t?.clocked_in ? 1 : 0) + (t?.clocked_out ? 1 : 0);
 
     const byRoster = new Map<string, TimesheetRow["Timesheet"]>();
-    const byUser   = new Map<string, TimesheetRow["Timesheet"]>();
+    const byUser = new Map<string, TimesheetRow["Timesheet"]>();
 
     for (const row of (timesheetsResp?.data ?? [])) {
       const ts = row.Timesheet;
@@ -230,8 +249,13 @@ export default function RoosterPage() {
       if (rosterId) {
         const prev = byRoster.get(rosterId);
         const sPrev = score(prev);
-        const sCur  = score(ts);
-        if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
+        const sCur = score(ts);
+        if (
+          !prev ||
+          sCur > sPrev ||
+          (sCur === sPrev &&
+            String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))
+        ) {
           byRoster.set(rosterId, ts);
         }
       }
@@ -239,8 +263,13 @@ export default function RoosterPage() {
       {
         const prev = byUser.get(uid);
         const sPrev = score(prev);
-        const sCur  = score(ts);
-        if (!prev || sCur > sPrev || (sCur === sPrev && String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))) {
+        const sCur = score(ts);
+        if (
+          !prev ||
+          sCur > sPrev ||
+          (sCur === sPrev &&
+            String(ts.clocked_in ?? "") > String(prev?.clocked_in ?? ""))
+        ) {
           byUser.set(uid, ts);
         }
       }
@@ -264,10 +293,14 @@ export default function RoosterPage() {
     async () => {
       if (!weekDates.length) return {};
       const res = await Promise.all(
-        weekDates.map(d => fetch(`/api/shiftbase/rooster?datum=${d}`).then(r => r.json()))
+        weekDates.map((d) =>
+          fetch(`/api/shiftbase/rooster?datum=${d}`).then((r) => r.json())
+        )
       );
       const out: Record<string, ShiftItem[]> = {};
-      weekDates.forEach((d, i) => { out[d] = Array.isArray(res[i]) ? res[i] : []; });
+      weekDates.forEach((d, i) => {
+        out[d] = Array.isArray(res[i]) ? res[i] : [];
+      });
       return out;
     }
   );
@@ -275,8 +308,8 @@ export default function RoosterPage() {
   const weekUserIds = useMemo(() => {
     const s = new Set<string>();
     if (weekRooster) {
-      Object.values(weekRooster).forEach(items =>
-        (items ?? []).forEach(it => s.add(String(it.Roster.user_id)))
+      Object.values(weekRooster).forEach((items) =>
+        (items ?? []).forEach((it) => s.add(String(it.Roster.user_id)))
       );
     }
     return Array.from(s);
@@ -291,7 +324,6 @@ export default function RoosterPage() {
 
   const { data: wagesByAge, error: wagesError } = useSWR<WageByAgeResp>(wagesUrl, fetcher);
 
-  // Map: date -> (userId -> { wage, factor })
   const wageByDateUser = useMemo(() => {
     const out = new Map<string, Map<string, { wage: number; factor: number }>>();
     for (const row of wagesByAge?.data ?? []) {
@@ -313,8 +345,8 @@ export default function RoosterPage() {
       const roster = weekRooster[d] || [];
       const perShift: Record<string, ShiftItem[]> = {};
       for (const item of roster) (perShift[item.Roster.name] ||= []).push(item);
-      Object.values(perShift).forEach(arr =>
-        arr.sort((a,b) => a.Roster.starttime.localeCompare(b.Roster.starttime))
+      Object.values(perShift).forEach((arr) =>
+        arr.sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime))
       );
       const wageMap = wageByDateUser.get(d);
       for (const items of Object.values(perShift)) {
@@ -338,12 +370,9 @@ export default function RoosterPage() {
     const base = new Date(selectedDate + "T12:00:00");
     const y = base.getFullYear();
     const m = base.getMonth();
-    const start = new Date(y, m, 1);
     const end = new Date(y, m + 1, 0);
     const list: string[] = [];
-    for (let d = 1; d <= end.getDate(); d++) {
-      list.push(ymdLocal(new Date(y, m, d)));
-    }
+    for (let d = 1; d <= end.getDate(); d++) list.push(ymdLocal(new Date(y, m, d)));
     return list;
   }, [selectedDate]);
 
@@ -354,10 +383,14 @@ export default function RoosterPage() {
     async () => {
       if (!monthDates.length) return {};
       const res = await Promise.all(
-        monthDates.map(d => fetch(`/api/shiftbase/rooster?datum=${d}`).then(r => r.json()))
+        monthDates.map((d) =>
+          fetch(`/api/shiftbase/rooster?datum=${d}`).then((r) => r.json())
+        )
       );
       const out: Record<string, ShiftItem[]> = {};
-      monthDates.forEach((d, i) => { out[d] = Array.isArray(res[i]) ? res[i] : []; });
+      monthDates.forEach((d, i) => {
+        out[d] = Array.isArray(res[i]) ? res[i] : [];
+      });
       return out;
     }
   );
@@ -365,8 +398,8 @@ export default function RoosterPage() {
   const monthUserIds = useMemo(() => {
     const s = new Set<string>();
     if (monthRooster) {
-      Object.values(monthRooster).forEach(items =>
-        (items ?? []).forEach(it => s.add(String(it.Roster.user_id)))
+      Object.values(monthRooster).forEach((items) =>
+        (items ?? []).forEach((it) => s.add(String(it.Roster.user_id)))
       );
     }
     return Array.from(s);
@@ -399,8 +432,8 @@ export default function RoosterPage() {
       const roster = monthRooster[d] || [];
       const perShift: Record<string, ShiftItem[]> = {};
       for (const item of roster) (perShift[item.Roster.name] ||= []).push(item);
-      Object.values(perShift).forEach(arr =>
-        arr.sort((a,b) => a.Roster.starttime.localeCompare(b.Roster.starttime))
+      Object.values(perShift).forEach((arr) =>
+        arr.sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime))
       );
       const wageMap = wageByDateUserMonth.get(d);
       for (const items of Object.values(perShift)) {
@@ -419,14 +452,16 @@ export default function RoosterPage() {
   }, [monthRooster, monthDates, wageByDateUserMonth]);
 
   const changeDay = (off: number) =>
-    setSelectedDate(prev => addDays(prev, view === "day" ? off : off * 7));
+    setSelectedDate((prev) => addDays(prev, view === "day" ? off : off * 7));
   const goToday = () => setSelectedDate(today);
 
   return (
     <div className="p-4">
       {/* Nav */}
       <div className="flex flex-wrap items-center mb-4 gap-2">
-        <button onClick={() => changeDay(-1)} className="px-2 py-1 bg-gray-200 rounded">←</button>
+        <button onClick={() => changeDay(-1)} className="px-2 py-1 bg-gray-200 rounded">
+          ←
+        </button>
         <input
           type="date"
           min="2024-01-01"
@@ -435,18 +470,29 @@ export default function RoosterPage() {
           onChange={(e) => setSelectedDate(e.target.value)}
           className="border px-2 py-1 rounded"
         />
-        <button onClick={() => changeDay(1)} className="px-2 py-1 bg-gray-200 rounded">→</button>
-        <button onClick={goToday} className="ml-2 px-2 py-1 rounded border border-gray-300 hover:bg-gray-100">Vandaag</button>
+        <button onClick={() => changeDay(1)} className="px-2 py-1 bg-gray-200 rounded">
+          →
+        </button>
+        <button
+          onClick={goToday}
+          className="ml-2 px-2 py-1 rounded border border-gray-300 hover:bg-gray-100"
+        >
+          Vandaag
+        </button>
         <div className="ml-auto flex gap-1">
           <button
             onClick={() => setView("day")}
-            className={`px-3 py-1 rounded border ${view === "day" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-100"}`}
+            className={`px-3 py-1 rounded border ${
+              view === "day" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-100"
+            }`}
           >
             Dag
           </button>
           <button
             onClick={() => setView("week")}
-            className={`px-3 py-1 rounded border ${view === "week" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-100"}`}
+            className={`px-3 py-1 rounded border ${
+              view === "week" ? "bg-gray-900 text-white border-gray-900" : "bg-white hover:bg-gray-100"
+            }`}
           >
             Week
           </button>
@@ -458,16 +504,26 @@ export default function RoosterPage() {
         <h1 className="text-xl font-bold mb-2">
           Rooster voor{" "}
           {new Date(selectedDate + "T12:00:00").toLocaleDateString("nl-NL", {
-            weekday: "long", day: "2-digit", month: "2-digit", year: "numeric",
+            weekday: "long",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
           })}
         </h1>
       ) : (
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-xl font-bold">
             Rooster week{" "}
-            {new Date(weekDates[0] + "T12:00:00").toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit" })}{" "}
+            {new Date(weekDates[0] + "T12:00:00").toLocaleDateString("nl-NL", {
+              day: "2-digit",
+              month: "2-digit",
+            })}{" "}
             –{" "}
-            {new Date(weekDates[6] + "T12:00:00").toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit", year: "numeric" })}
+            {new Date(weekDates[6] + "T12:00:00").toLocaleDateString("nl-NL", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })}
           </h1>
         </div>
       )}
@@ -475,22 +531,37 @@ export default function RoosterPage() {
       {/* DAGVIEW */}
       {view === "day" ? (
         <>
-          {/* Maandkosten (planning) kaart */}
+          {/* Maandkosten (planning) met masker-toggle */}
           <div className="mb-4 border rounded-lg p-3 bg-gray-50">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm font-semibold">Loonkosten (planning, maand)</div>
                 <div className="text-xs text-gray-600">
-                  {new Intl.DateTimeFormat("nl-NL", { month: "long", year: "numeric" }).format(new Date(selectedDate + "T12:00:00"))}
+                  {new Intl.DateTimeFormat("nl-NL", {
+                    month: "long",
+                    year: "numeric",
+                  }).format(new Date(selectedDate + "T12:00:00"))}
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold">
-                  {monthRooster ? EUR0.format(Math.round(monthTotals.cost)) : "—"}
-                </div>
-                <div className="text-xs text-gray-600">
-                  Totaal uren: <strong>{monthRooster ? Math.round(monthTotals.hours * 100) / 100 : 0}</strong>
-                </div>
+
+              <button
+                type="button"
+                onClick={toggleMask}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
+                title={mask ? "Toon bedragen" : "Maskeer bedragen"}
+              >
+                {mask ? <EyeOff size={16} /> : <Eye size={16} />}
+                <span className="text-xs">{mask ? "Verborgen" : "Zichtbaar"}</span>
+              </button>
+            </div>
+
+            <div className="mt-2 text-right">
+              <div className={`text-2xl font-bold ${mask ? "blur-sm select-none" : ""}`}>
+                {monthRooster ? EUR0.format(Math.round(monthTotals.cost)) : "—"}
+              </div>
+              <div className={`text-xs text-gray-600 ${mask ? "blur-[2px] select-none" : ""}`}>
+                Totaal uren:{" "}
+                <strong>{monthRooster ? Math.round(monthTotals.hours * 100) / 100 : 0}</strong>
               </div>
             </div>
           </div>
@@ -511,7 +582,10 @@ export default function RoosterPage() {
               const headerText = groep?.[0]?.Shift?.long_name || shiftName;
               return (
                 <section key={shiftName} className="mb-6">
-                  <h2 className="text-lg font-semibold mb-1 px-2 py-1 rounded text-white" style={{ backgroundColor: headerColor }}>
+                  <h2
+                    className="text-lg font-semibold mb-1 px-2 py-1 rounded text-white"
+                    style={{ backgroundColor: headerColor }}
+                  >
                     {headerText}
                   </h2>
                   <ul className="pl-4 list-disc">
@@ -530,12 +604,18 @@ export default function RoosterPage() {
                       const schedIn = it.Roster.starttime.slice(0, 5);
                       const schedOut = it.Roster.endtime.slice(0, 5);
 
-                      const inTime  = ts?.clocked_in  ? String(ts.clocked_in).substring(11, 16)  : "--";
-                      const outTime = ts?.clocked_out ? String(ts.clocked_out).substring(11, 16) : "--";
+                      const inTime = ts?.clocked_in
+                        ? String(ts.clocked_in).substring(11, 16)
+                        : "--";
+                      const outTime = ts?.clocked_out
+                        ? String(ts.clocked_out).substring(11, 16)
+                        : "--";
 
                       let badgeClass = "bg-gray-100 text-gray-800";
-                      if (ts?.clocked_in && ts?.clocked_out) badgeClass = "bg-green-100 text-green-800";
-                      else if (ts?.clocked_in || ts?.clocked_out) badgeClass = "bg-orange-100 text-orange-800";
+                      if (ts?.clocked_in && ts?.clocked_out)
+                        badgeClass = "bg-green-100 text-green-800";
+                      else if (ts?.clocked_in || ts?.clocked_out)
+                        badgeClass = "bg-orange-100 text-orange-800";
 
                       return (
                         <li key={it.id} className="mb-1">
@@ -587,12 +667,12 @@ export default function RoosterPage() {
                   // per shift groeperen
                   const perShift: Record<string, ShiftItem[]> = {};
                   for (const item of roster) (perShift[item.Roster.name] ||= []).push(item);
-                  Object.values(perShift).forEach(arr =>
-                    arr.sort((a,b) => a.Roster.starttime.localeCompare(b.Roster.starttime))
+                  Object.values(perShift).forEach((arr) =>
+                    arr.sort((a, b) => a.Roster.starttime.localeCompare(b.Roster.starttime))
                   );
                   const order = [
-                    ...GEWENSTE.filter(n => n in perShift),
-                    ...Object.keys(perShift).filter(n => !GEWENSTE.includes(n)),
+                    ...GEWENSTE.filter((n) => n in perShift),
+                    ...Object.keys(perShift).filter((n) => !GEWENSTE.includes(n)),
                   ];
 
                   const wageMap = wageByDateUser.get(d);
@@ -636,7 +716,9 @@ export default function RoosterPage() {
                       <div className="flex items-baseline justify-between mb-2">
                         <h3 className="font-semibold">
                           {new Date(d + "T12:00:00").toLocaleDateString("nl-NL", {
-                            weekday: "short", day: "2-digit", month: "2-digit"
+                            weekday: "short",
+                            day: "2-digit",
+                            month: "2-digit",
                           })}
                         </h3>
                         <div className="flex items-center gap-1">
@@ -699,7 +781,9 @@ export default function RoosterPage() {
                         <div className="flex items-center justify-between">
                           <div className="text-[11px] text-gray-700">
                             Personeelskosten incl. lasten{" "}
-                            <span className="opacity-60">({withWage}/{planned - excludedCount} met tarief)</span>
+                            <span className="opacity-60">
+                              ({withWage}/{planned - excludedCount} met tarief)
+                            </span>
                           </div>
                           <button
                             type="button"
@@ -718,12 +802,14 @@ export default function RoosterPage() {
                         </div>
                         {dayCost > 0 && (
                           <div className="mt-0.5 text-[10px] text-gray-600 text-right">
-                            Omzet voor LK &lt; 25%: <strong>{EUR0.format(requiredRevenue25)}</strong>
+                            Omzet voor LK &lt; 25%:{" "}
+                            <strong>{EUR0.format(requiredRevenue25)}</strong>
                           </div>
                         )}
                         {dayCost > 0 && (
                           <div className="mt-0.5 text-[10px] text-gray-600 text-right">
-                            Omzet voor LK &lt; 23%: <strong>{EUR0.format(requiredRevenue23)}</strong>
+                            Omzet voor LK &lt; 23%:{" "}
+                            <strong>{EUR0.format(requiredRevenue23)}</strong>
                           </div>
                         )}
                       </div>
@@ -739,10 +825,15 @@ export default function RoosterPage() {
                     <div className="text-sm font-semibold">Weektotaal (incl. leeftijdsopslag)</div>
                     <div className="text-xs text-gray-600">
                       Periode:{" "}
-                      {new Date(weekDates[0] + "T12:00:00").toLocaleDateString("nl-NL", { day: "2-digit", month: "2-digit" })}{" "}
+                      {new Date(weekDates[0] + "T12:00:00").toLocaleDateString("nl-NL", {
+                        day: "2-digit",
+                        month: "2-digit",
+                      })}{" "}
                       –{" "}
                       {new Date(weekDates[6] + "T12:00:00").toLocaleDateString("nl-NL", {
-                        day: "2-digit", month: "2-digit", year: "numeric",
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
                       })}
                     </div>
                   </div>
@@ -753,7 +844,7 @@ export default function RoosterPage() {
                       <strong>{EUR0.format(Math.round(weekTotals.cost / 0.25 || 0))}</strong>
                     </div>
                     <div className="text-xs text-gray-600">
-                      Omzet voor loonkosten&lt; 23%:{" "}
+                      Omzet voor loonkosten &lt; 23%:{" "}
                       <strong>{EUR0.format(Math.round(weekTotals.cost / 0.23 || 0))}</strong>
                     </div>
                     <div className="text-xs text-gray-600">
