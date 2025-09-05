@@ -14,9 +14,7 @@ function sanitizeHtmlBasic(html: string) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
   const allowed = new Set([
-    'P', 'BR', 'STRONG', 'EM', 'U', 'A',
-    'UL', 'OL', 'LI', 'H1', 'H2', 'H3',
-    'BLOCKQUOTE', 'CODE', 'PRE',
+    'P','BR','STRONG','EM','U','A','UL','OL','LI','H1','H2','H3','BLOCKQUOTE','CODE','PRE',
   ]);
 
   const walk = (node: Node) => {
@@ -38,8 +36,8 @@ function sanitizeHtmlBasic(html: string) {
       if (node.tagName === 'A') {
         const href = node.getAttribute('href') || '';
         if (!/^https?:\/\//i.test(href)) node.removeAttribute('href');
-        node.setAttribute('rel', 'noopener noreferrer');
-        node.setAttribute('target', '_blank');
+        node.setAttribute('rel','noopener noreferrer');
+        node.setAttribute('target','_blank');
       }
     }
     Array.from(node.childNodes).forEach(walk);
@@ -56,8 +54,8 @@ function escapeText(text: string) {
 }
 
 export interface NotitieEditorProps {
-  value: string;                      // externe html
-  onChange: (html: string) => void;   // naar parent
+  value: string;
+  onChange: (html: string) => void;
   editable?: boolean;
   placeholder?: string;
 }
@@ -68,40 +66,42 @@ export default function NotitieEditor({
   editable = true,
   placeholder = 'Schrijf je notitie…',
 }: NotitieEditorProps) {
-  const lastFromEditorRef = useRef<string>(''); // laatst geëmiteerde html uit editor zelf
+  const lastFromEditorRef = useRef<string>('');
 
   const editor = useEditor(
     {
       extensions: [
         StarterKit,
         Underline,
-        Link.configure({ openOnClick: false, autolink: true, protocols: ['http', 'https'] }),
-        TextAlign.configure({ types: ['heading', 'paragraph'] }),
+        Link.configure({ openOnClick: false, autolink: true, protocols: ['http','https'] }),
+        TextAlign.configure({ types: ['heading','paragraph'] }),
         PlaceholderExt.configure({ placeholder }),
       ],
       content: value || '<p></p>',
       editable,
+      editorProps: {
+        // Klassen rechtstreeks op de ProseMirror-root (waar de focus op komt)
+        attributes: {
+          class:
+            // geen dikke zwarte outline; duidelijke cursor; nette typografie
+            'prose max-w-none text-base min-h-[8rem] p-3 outline-none focus:outline-none caret-slate-800',
+        },
+      },
       onUpdate: ({ editor }) => {
         const html = editor.getHTML();
-        lastFromEditorRef.current = html; // markeer: deze update kwam van de editor
+        lastFromEditorRef.current = html;
         onChange(html);
       },
     },
-    [editable, placeholder] // NIET op 'value' subscriben hier
+    [editable, placeholder] // niet subscriben op value hier
   );
 
-  // Sync externe waarde ALLEEN als die anders is dan wat we net uit de editor stuurden,
-  // en anders dan de huidige editorcontent (voorkomt caret jump).
+  // Externe waarde syncen, maar caret niet kapotmaken
   useEffect(() => {
     if (!editor) return;
     const current = editor.getHTML();
-    if (value === lastFromEditorRef.current) {
-      // verandering kwam van de editor zelf -> niet terugzetten
-      return;
-    }
-    if (value !== current) {
-      editor.commands.setContent(value || '<p></p>', false);
-    }
+    if (value === lastFromEditorRef.current) return; // kwam net uit de editor zelf
+    if (value !== current) editor.commands.setContent(value || '<p></p>', false);
   }, [value, editor]);
 
   // Toggle editmodus
@@ -109,7 +109,7 @@ export default function NotitieEditor({
     editor?.setEditable(!!editable);
   }, [editable, editor]);
 
-  // Plak-normalisatie
+  // Plak-normalisatie (strip styles/klassen)
   useEffect(() => {
     if (!editor) return;
     const dom = editor.view.dom;
@@ -125,39 +125,30 @@ export default function NotitieEditor({
     return () => dom.removeEventListener('paste', handler);
   }, [editor]);
 
-  const toolbar = useMemo(
-    () => (
-      <div className="flex flex-wrap gap-1 p-1 border-b bg-gray-50">
-        <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={() => editor?.chain().focus().toggleBold().run()}>B</button>
-        <button className="px-2 py-1 border rounded italic" onMouseDown={e=>e.preventDefault()} onClick={() => editor?.chain().focus().toggleItalic().run()}>I</button>
-        <button className="px-2 py-1 border rounded underline" onMouseDown={e=>e.preventDefault()} onClick={() => editor?.chain().focus().toggleUnderline().run()}>U</button>
-        <span className="mx-1" />
-        <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={() => editor?.chain().focus().toggleBulletList().run()}>• List</button>
-        <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={() => editor?.chain().focus().toggleOrderedList().run()}>1. List</button>
-        <span className="mx-1" />
-        <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={() => editor?.chain().focus().setParagraph().run()}>¶</button>
-        <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}>H2</button>
-        <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={() => editor?.chain().focus().toggleHeading({ level: 3 }).run()}>H3</button>
-        <span className="mx-1" />
-        <button
-          className="px-2 py-1 border rounded"
-          title="Opmaak wissen"
-          onMouseDown={e=>e.preventDefault()}
-          onClick={() => editor?.chain().focus().unsetAllMarks().clearNodes().run()}
-        >
-          ⌫ Opmaak
-        </button>
-      </div>
-    ),
-    [editor]
-  );
+  const toolbar = useMemo(() => (
+    <div className="flex flex-wrap gap-1 p-1 border-b bg-gray-50 rounded-t-lg">
+      <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={()=>editor?.chain().focus().toggleBold().run()}>B</button>
+      <button className="px-2 py-1 border rounded italic" onMouseDown={e=>e.preventDefault()} onClick={()=>editor?.chain().focus().toggleItalic().run()}>I</button>
+      <button className="px-2 py-1 border rounded underline" onMouseDown={e=>e.preventDefault()} onClick={()=>editor?.chain().focus().toggleUnderline().run()}>U</button>
+      <span className="mx-1" />
+      <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={()=>editor?.chain().focus().toggleBulletList().run()}>• List</button>
+      <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={()=>editor?.chain().focus().toggleOrderedList().run()}>1. List</button>
+      <span className="mx-1" />
+      <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={()=>editor?.chain().focus().setParagraph().run()}>¶</button>
+      <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={()=>editor?.chain().focus().toggleHeading({ level: 2 }).run()}>H2</button>
+      <button className="px-2 py-1 border rounded" onMouseDown={e=>e.preventDefault()} onClick={()=>editor?.chain().focus().toggleHeading({ level: 3 }).run()}>H3</button>
+      <span className="mx-1" />
+      <button className="px-2 py-1 border rounded" title="Opmaak wissen" onMouseDown={e=>e.preventDefault()} onClick={()=>editor?.chain().focus().unsetAllMarks().clearNodes().run()}>
+        ⌫ Opmaak
+      </button>
+    </div>
+  ), [editor]);
 
   return (
-    <div className="border rounded">
+    <div className="rounded-lg border border-slate-200 bg-white focus-within:ring-1 focus-within:ring-sky-300 focus-within:border-sky-300">
       {editable && toolbar}
-      <div className="p-3 prose max-w-none text-base">
-        <EditorContent editor={editor} />
-      </div>
+      {/* ProseMirror (EditorContent) krijgt de classes via editorProps.attributes.class */}
+      <EditorContent editor={editor} />
     </div>
   );
 }
