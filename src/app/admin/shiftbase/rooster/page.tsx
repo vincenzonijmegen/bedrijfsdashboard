@@ -47,8 +47,6 @@ type TimesheetRow = {
 };
 
 // Let op: uitgebreid met optionele factor/opslag (server mag dit leveren)
-// - factor: bv. 1.08 of 1.17
-// - opslag: bv. 0.08 of 0.17 (dan doen we 1 + opslag)
 type WageByAgeRow = {
   date: string;
   user_id: string | number;
@@ -335,6 +333,91 @@ export default function RoosterPage() {
     return { hours, cost };
   }, [weekRooster, weekDates, wageByDateUser, excluded]);
 
+  // ==== MAAND (PLANNING) voor DAGVIEW ====
+  const monthDates = useMemo(() => {
+    const base = new Date(selectedDate + "T12:00:00");
+    const y = base.getFullYear();
+    const m = base.getMonth();
+    const start = new Date(y, m, 1);
+    const end = new Date(y, m + 1, 0);
+    const list: string[] = [];
+    for (let d = 1; d <= end.getDate(); d++) {
+      list.push(ymdLocal(new Date(y, m, d)));
+    }
+    return list;
+  }, [selectedDate]);
+
+  const monthKey = view === "day" ? `month:${monthDates.join("|")}` : null;
+
+  const { data: monthRooster } = useSWR<Record<string, ShiftItem[]>>(
+    monthKey,
+    async () => {
+      if (!monthDates.length) return {};
+      const res = await Promise.all(
+        monthDates.map(d => fetch(`/api/shiftbase/rooster?datum=${d}`).then(r => r.json()))
+      );
+      const out: Record<string, ShiftItem[]> = {};
+      monthDates.forEach((d, i) => { out[d] = Array.isArray(res[i]) ? res[i] : []; });
+      return out;
+    }
+  );
+
+  const monthUserIds = useMemo(() => {
+    const s = new Set<string>();
+    if (monthRooster) {
+      Object.values(monthRooster).forEach(items =>
+        (items ?? []).forEach(it => s.add(String(it.Roster.user_id)))
+      );
+    }
+    return Array.from(s);
+  }, [monthRooster]);
+
+  const wagesUrlMonth =
+    view === "day" && monthRooster && monthUserIds.length
+      ? `/api/shiftbase/wages-by-age?min_date=${monthDates[0]}&max_date=${monthDates[monthDates.length - 1]}&user_ids=${encodeURIComponent(
+          monthUserIds.join(",")
+        )}`
+      : null;
+
+  const { data: wagesByAgeMonth } = useSWR<WageByAgeResp>(wagesUrlMonth, fetcher);
+
+  const wageByDateUserMonth = useMemo(() => {
+    const out = new Map<string, Map<string, { wage: number; factor: number }>>();
+    for (const row of wagesByAgeMonth?.data ?? []) {
+      const uid = String(row.user_id);
+      if (!out.has(row.date)) out.set(row.date, new Map());
+      out.get(row.date)!.set(uid, { wage: row.wage, factor: getEffectiveFactor(row) });
+    }
+    return out;
+  }, [wagesByAgeMonth]);
+
+  const monthTotals = useMemo(() => {
+    if (!monthRooster) return { hours: 0, cost: 0 };
+    let hours = 0;
+    let cost = 0;
+    for (const d of monthDates) {
+      const roster = monthRooster[d] || [];
+      const perShift: Record<string, ShiftItem[]> = {};
+      for (const item of roster) (perShift[item.Roster.name] ||= []).push(item);
+      Object.values(perShift).forEach(arr =>
+        arr.sort((a,b) => a.Roster.starttime.localeCompare(b.Roster.starttime))
+      );
+      const wageMap = wageByDateUserMonth.get(d);
+      for (const items of Object.values(perShift)) {
+        for (const it of items) {
+          const uid = String(it.Roster.user_id);
+          const h = hoursBetween(it.Roster.starttime, it.Roster.endtime);
+          hours += h;
+          const entry = wageMap?.get(uid);
+          const wage = entry?.wage ?? 0;
+          const factor = entry?.factor ?? DEFAULT_FACTOR;
+          if (wage > 0 && h > 0) cost += h * wage * factor;
+        }
+      }
+    }
+    return { hours, cost };
+  }, [monthRooster, monthDates, wageByDateUserMonth]);
+
   const changeDay = (off: number) =>
     setSelectedDate(prev => addDays(prev, view === "day" ? off : off * 7));
   const goToday = () => setSelectedDate(today);
@@ -392,6 +475,26 @@ export default function RoosterPage() {
       {/* DAGVIEW */}
       {view === "day" ? (
         <>
+          {/* Maandkosten (planning) kaart */}
+          <div className="mb-4 border rounded-lg p-3 bg-gray-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold">Loonkosten (planning, maand)</div>
+                <div className="text-xs text-gray-600">
+                  {new Intl.DateTimeFormat("nl-NL", { month: "long", year: "numeric" }).format(new Date(selectedDate + "T12:00:00"))}
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold">
+                  {monthRooster ? EUR0.format(Math.round(monthTotals.cost)) : "—"}
+                </div>
+                <div className="text-xs text-gray-600">
+                  Totaal uren: <strong>{monthRooster ? Math.round(monthTotals.hours * 100) / 100 : 0}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {dayError && (
             <p className="p-4 text-red-600">
               Fout bij laden rooster: {String(dayError?.message ?? dayError)}
