@@ -1,4 +1,3 @@
-// Bestand: src/app/admin/acties/page.tsx  (pas het pad aan als nodig)
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -28,10 +27,8 @@ interface Actie {
   deadline?: string;
   verantwoordelijke?: string;
   volgorde: number;
-
-  // velden die de API nu meelevert (zie aangepaste GET)
-  is_weekly?: boolean;        // afgeleid van recurring='weekly'
-  done_this_week?: boolean;   // true als deze week afgehandeld
+  is_weekly?: boolean;       // afgeleid in API
+  done_this_week?: boolean;  // afgeleid in API
 }
 
 interface ActieLijst {
@@ -46,7 +43,7 @@ type SorteerbareActieProps = {
   setActieEdit: (value: { id: number; tekst: string } | null) => void;
   markWeeklyDone: (id: number) => void;
   undoWeeklyDone: (id: number) => void;
-  isAfgehandeld?: boolean; // voor styling in “Afgehandeld” en “Deze week gedaan”
+  isAfgehandeld?: boolean;
   dnd?: boolean;
 };
 
@@ -63,14 +60,8 @@ function SorteerbareActie({
     useSortable({ id: actie.id });
 
   const dragProps = dnd ? { ref: setNodeRef, ...attributes, ...listeners } : {};
-
   const dragStyle: React.CSSProperties = dnd
-    ? {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        cursor: "grab",
-        zIndex: isDragging ? 50 : 1,
-      }
+    ? { transform: CSS.Transform.toString(transform), transition, cursor: "grab", zIndex: isDragging ? 50 : 1 }
     : {};
 
   const containerClass = isAfgehandeld
@@ -80,7 +71,6 @@ function SorteerbareActie({
   return (
     <div {...dragProps} style={dragStyle} className={containerClass}>
       <div className="flex items-center gap-3 flex-1 select-none">
-        {/* Niet-weeklijks: toon de checkbox; wekelijks: speciale knoppen */}
         {!actie.is_weekly ? (
           <>
             <input
@@ -138,6 +128,7 @@ function SorteerbareActie({
 }
 
 export default function ActieLijstPagina() {
+  // Lijsten ophalen
   const {
     data: lijsten,
     error: lijstError,
@@ -150,51 +141,49 @@ export default function ActieLijstPagina() {
 
   const [geselecteerdeLijst, setGeselecteerdeLijst] = useState<ActieLijst | null>(null);
 
+  // Acties ophalen (default = [])
   const { data: actiesRaw = [], mutate } = useSWR<Actie[]>(
     geselecteerdeLijst ? `/api/acties?lijst_id=${geselecteerdeLijst.id}` : null,
     fetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      dedupingInterval: 30000,
-    }
+    { revalidateOnFocus: false, revalidateOnReconnect: false, dedupingInterval: 30000 }
   );
 
+  // DnD
   const [dndVolgorde, setDndVolgorde] = useState<number[]>([]);
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  // Form state
   const [nieuweLijstNaam, setNieuweLijstNaam] = useState("");
   const [nieuweActieTekst, setNieuweActieTekst] = useState("");
   const [lijstEdit, setLijstEdit] = useState<{ id: number; naam: string; icoon: string } | null>(null);
   const [actieEdit, setActieEdit] = useState<{ id: number; tekst: string } | null>(null);
 
-  // Kies de eerste lijst na ophalen (initialisatie)
+  // Init: selecteer eerste lijst
   useEffect(() => {
     if (lijsten && lijsten.length > 0 && !geselecteerdeLijst) {
       setGeselecteerdeLijst(lijsten[0]);
     }
   }, [lijsten, geselecteerdeLijst]);
 
-  // Reset DnD-volgorde naar server na elke fetch (alleen open acties)
+  // Reset DnD-volgorde na fetch (alleen open & niet done_this_week)
   useEffect(() => {
-    if (!actiesRaw) return;
     const openActies = actiesRaw
-      .filter((a) => !a.voltooid && !(a.is_weekly && a.done_this_week)) // wekelijks klaar deze week niet slepen
+      .filter((a) => !a.voltooid && !(a.is_weekly && a.done_this_week))
       .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
     setDndVolgorde(openActies.map((a) => a.id));
   }, [actiesRaw]);
 
-  // Toggle reguliere actie (niet-weeklijks)
+  // Actie handlers
   const toggleActie = async (id: number, voltooid: boolean) => {
-    const nieuwVoltooid = !voltooid;
     const res = await fetch("/api/acties", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, voltooid: nieuwVoltooid }),
+      body: JSON.stringify({ id, voltooid: !voltooid }),
     });
     await res.json();
     await mutate();
   };
 
-  // Wekelijks markeren / terugzetten
   const markWeeklyDone = async (id: number) => {
     await fetch("/api/acties/wekelijks", {
       method: "POST",
@@ -203,6 +192,7 @@ export default function ActieLijstPagina() {
     });
     await mutate();
   };
+
   const undoWeeklyDone = async (id: number) => {
     await fetch("/api/acties/wekelijks", {
       method: "POST",
@@ -265,99 +255,111 @@ export default function ActieLijstPagina() {
     mutate();
   };
 
-  // DnD-kit sensors
-  const sensors = useSensors(useSensor(PointerSensor));
+  // Afgeleide sets (hooks onvoorwaardelijk -> geen rule-of-hooks error)
+  const openActiesSorted = useMemo(() => {
+    const open = actiesRaw.filter((a) => !a.voltooid && !(a.is_weekly && a.done_this_week));
+    return open.sort((a, b) => dndVolgorde.indexOf(a.id) - dndVolgorde.indexOf(b.id));
+  }, [actiesRaw, dndVolgorde]);
 
-  if (lijstLoading) return <div className="p-6">Bezig met laden...</div>;
-  if (lijstError) return <div className="p-6 text-red-600">Fout bij laden actielijsten.</div>;
-  if (!lijsten || lijsten.length === 0) return <div className="p-6">Geen actielijsten gevonden.</div>;
-
-  // Gesplitste lijsten
-  const openActies = (actiesRaw || []).filter((a) => !a.voltooid && !(a.is_weekly && a.done_this_week));
-  const openActiesSorted = useMemo(
-    () => openActies.sort((a, b) => dndVolgorde.indexOf(a.id) - dndVolgorde.indexOf(b.id)),
-    [openActies, dndVolgorde]
+  const weeklyDoneThisWeek = useMemo(
+    () =>
+      actiesRaw
+        .filter((a) => a.is_weekly && a.done_this_week)
+        .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0)),
+    [actiesRaw]
   );
 
-  const weeklyDoneThisWeek = (actiesRaw || [])
-    .filter((a) => a.is_weekly && a.done_this_week)
-    .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
+  const afgehandeldSorted = useMemo(
+    () =>
+      actiesRaw
+        .filter((a) => a.voltooid)
+        .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0)),
+    [actiesRaw]
+  );
 
-  const afgehandeldSorted = (actiesRaw || [])
-    .filter((a) => a.voltooid)
-    .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
+  // UI flags (geen vroege returns meer)
+  const isEmptyLists = !lijsten || lijsten.length === 0;
 
   return (
     <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-      {/* Lijsten */}
+      {/* Lijstenkolom */}
       <div className="col-span-1 space-y-2">
         <h2 className="text-lg font-semibold">Actielijst</h2>
-        {lijsten
-          .slice()
-          .sort((a, b) => a.naam.localeCompare(b.naam))
-          .map((lijst) => (
-            <div key={lijst.id} className="flex items-center gap-2">
-              <button
-                className={`flex-1 flex items-center gap-2 px-4 py-2 border rounded ${
-                  lijst.id === geselecteerdeLijst?.id ? "bg-gray-100 font-semibold" : "hover:bg-gray-50"
-                }`}
-                onClick={() => setGeselecteerdeLijst(lijst)}
-              >
-                <span>{lijst.icoon}</span> {lijst.naam}
-              </button>
-              <button onClick={() => setLijstEdit({ ...lijst })} className="text-sm text-blue-600">
-                ✏️
-              </button>
-              <button onClick={() => lijstVerwijderen(lijst.id)} className="text-sm text-red-500">
-                🗑️
+
+        {lijstLoading && <div className="text-gray-600">Bezig met laden...</div>}
+        {lijstError && <div className="text-red-600">Fout bij laden actielijsten.</div>}
+        {!lijstLoading && !lijstError && isEmptyLists && (
+          <div className="text-gray-600">Geen actielijsten gevonden.</div>
+        )}
+
+        {!lijstLoading && !lijstError && !isEmptyLists && (
+          <>
+            {lijsten!
+              .slice()
+              .sort((a, b) => a.naam.localeCompare(b.naam))
+              .map((lijst) => (
+                <div key={lijst.id} className="flex items-center gap-2">
+                  <button
+                    className={`flex-1 flex items-center gap-2 px-4 py-2 border rounded ${
+                      lijst.id === geselecteerdeLijst?.id ? "bg-gray-100 font-semibold" : "hover:bg-gray-50"
+                    }`}
+                    onClick={() => setGeselecteerdeLijst(lijst)}
+                  >
+                    <span>{lijst.icoon}</span> {lijst.naam}
+                  </button>
+                  <button onClick={() => setLijstEdit({ ...lijst })} className="text-sm text-blue-600">
+                    ✏️
+                  </button>
+                  <button onClick={() => lijstVerwijderen(lijst.id)} className="text-sm text-red-500">
+                    🗑️
+                  </button>
+                </div>
+              ))}
+
+            <div className="pt-4 space-y-2">
+              <input
+                className="w-full border rounded px-2 py-1"
+                value={nieuweLijstNaam}
+                onChange={(e) => setNieuweLijstNaam(e.target.value)}
+                placeholder="Nieuwe lijstnaam"
+              />
+              <button onClick={nieuweLijstToevoegen} className="w-full bg-blue-500 text-white py-1 rounded">
+                + Nieuwe lijst
               </button>
             </div>
-          ))}
 
-        <div className="pt-4 space-y-2">
-          <input
-            className="w-full border rounded px-2 py-1"
-            value={nieuweLijstNaam}
-            onChange={(e) => setNieuweLijstNaam(e.target.value)}
-            placeholder="Nieuwe lijstnaam"
-          />
-          <button onClick={nieuweLijstToevoegen} className="w-full bg-blue-500 text-white py-1 rounded">
-            + Nieuwe lijst
-          </button>
-        </div>
-
-        {lijstEdit && (
-          <div className="pt-4 space-y-2 border-t mt-4">
-            <h3 className="text-sm font-semibold">Bewerk lijst</h3>
-            <input
-              className="w-full border rounded px-2 py-1"
-              value={lijstEdit.naam}
-              onChange={(e) => setLijstEdit({ ...lijstEdit, naam: e.target.value })}
-            />
-            <input
-              className="w-full border rounded px-2 py-1"
-              value={lijstEdit.icoon}
-              onChange={(e) => setLijstEdit({ ...lijstEdit, icoon: e.target.value })}
-            />
-            <button onClick={lijstBijwerken} className="w-full bg-green-600 text-white py-1 rounded">
-              Opslaan
-            </button>
-          </div>
+            {lijstEdit && (
+              <div className="pt-4 space-y-2 border-t mt-4">
+                <h3 className="text-sm font-semibold">Bewerk lijst</h3>
+                <input
+                  className="w-full border rounded px-2 py-1"
+                  value={lijstEdit.naam}
+                  onChange={(e) => setLijstEdit({ ...lijstEdit, naam: e.target.value })}
+                />
+                <input
+                  className="w-full border rounded px-2 py-1"
+                  value={lijstEdit.icoon}
+                  onChange={(e) => setLijstEdit({ ...lijstEdit, icoon: e.target.value })}
+                />
+                <button onClick={lijstBijwerken} className="w-full bg-green-600 text-white py-1 rounded">
+                  Opslaan
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      {/* Acties */}
+      {/* Rechterkolom */}
       <div className="col-span-2">
-        <h2 className="text-lg font-semibold mb-4">{geselecteerdeLijst?.naam}</h2>
+        <h2 className="text-lg font-semibold mb-4">{geselecteerdeLijst?.naam ?? "—"}</h2>
 
         {/* DRAG & DROP + AFVINKEN VOOR OPEN ACTIES */}
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
-          onDragEnd={async (event) => {
-            const { active, over } = event;
+          onDragEnd={async ({ active, over }) => {
             if (!over || active.id === over.id) return;
-
             const oudeIndex = dndVolgorde.indexOf(active.id as number);
             const nieuweIndex = dndVolgorde.indexOf(over.id as number);
             if (oudeIndex === -1 || nieuweIndex === -1) return;
@@ -365,13 +367,10 @@ export default function ActieLijstPagina() {
             const nieuweVolgorde = arrayMove(dndVolgorde, oudeIndex, nieuweIndex);
             setDndVolgorde(nieuweVolgorde);
 
-            // Update volgorde in backend
             await fetch("/api/acties/volgorde", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                ids: nieuweVolgorde.map((id, i) => ({ id, volgorde: i })),
-              }),
+              body: JSON.stringify({ ids: nieuweVolgorde.map((id, i) => ({ id, volgorde: i })) }),
             });
             mutate();
           }}
@@ -399,10 +398,7 @@ export default function ActieLijstPagina() {
             value={nieuweActieTekst}
             onChange={(e) => setNieuweActieTekst(e.target.value)}
           />
-          <button
-            onClick={nieuweActieToevoegen}
-            className="bg-blue-500 px-3 py-1 rounded text-xl font-bold text-white"
-          >
+          <button onClick={nieuweActieToevoegen} className="bg-blue-500 px-3 py-1 rounded text-xl font-bold text-white">
             +
           </button>
         </div>
@@ -476,7 +472,7 @@ export default function ActieLijstPagina() {
           </details>
         )}
 
-        {/* Afgehandeld (definitief voltooid) */}
+        {/* Afgehandeld (definitief) */}
         {afgehandeldSorted.length > 0 && (
           <div className="mt-8">
             <h3 className="text-sm font-semibold text-gray-600 mb-2">Afgehandeld</h3>
