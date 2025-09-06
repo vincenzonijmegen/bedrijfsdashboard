@@ -521,7 +521,7 @@ export default function RoosterPage() {
   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 sm:whitespace-nowrap leading-none">
     {/* Links: titel + maand */}
     <div className="flex items-baseline gap-2 min-w-0">
-      <span className="font-semibold truncate">Loonkosten (planning, maand)</span>
+      <span className="font-semibold truncate">Loonkosten</span>
       <span className="text-xs text-gray-600 flex-shrink-0 truncate">
         {new Intl.DateTimeFormat("nl-NL", { month: "long", year: "numeric" })
           .format(new Date(selectedDate + "T12:00:00"))}
