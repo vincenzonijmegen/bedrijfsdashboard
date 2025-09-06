@@ -516,40 +516,51 @@ export default function RoosterPage() {
       {/* DAGVIEW */}
       {view === "day" ? (
         <>
-          {/* Maandkosten (planning) – compacte one-liner met sterk masker */}
-          <div className="mb-3 border rounded-lg bg-gray-50 px-3 py-2">
-            <div className="flex items-center gap-3 whitespace-nowrap">
-              {/* Titel + maand */}
-              <div className="flex items-baseline gap-2 min-w-0">
-                <span className="font-semibold">Loonkosten (planning, maand)</span>
-                <span className="text-xs text-gray-600">
-                  {new Intl.DateTimeFormat("nl-NL", { month: "long", year: "numeric" })
-                    .format(new Date(selectedDate + "T12:00:00"))}
-                </span>
-              </div>
+          {/* Maandkosten (planning) – responsive compact */}
+<div className="mb-3 border rounded-lg bg-gray-50 px-3 py-2">
+  <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 sm:whitespace-nowrap leading-none">
+    {/* Links: titel + maand */}
+    <div className="flex items-baseline gap-2 min-w-0">
+      <span className="font-semibold truncate">Loonkosten (planning, maand)</span>
+      <span className="text-xs text-gray-600 flex-shrink-0 truncate">
+        {new Intl.DateTimeFormat("nl-NL", { month: "long", year: "numeric" })
+          .format(new Date(selectedDate + "T12:00:00"))}
+      </span>
+    </div>
 
-              {/* Masker-toggle */}
-              <button
-                type="button"
-                onClick={toggleMask}
-                className="ml-2 inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
-                title={mask ? "Toon bedragen" : "Maskeer bedragen"}
-              >
-                {mask ? <EyeOff size={16} /> : <Eye size={16} />}
-                <span className="text-xs hidden sm:inline">{mask ? "Verborgen" : "Zichtbaar"}</span>
-              </button>
+    {/* Bedrag + uren (op mobiel komt dit onder de titel; desktop rechts) */}
+    <div className="order-2 sm:order-none sm:ml-auto flex items-baseline gap-3">
+      <span
+        className={`text-lg sm:text-2xl font-bold tabular-nums ${
+          mask ? "blur-[8px] select-none" : ""
+        }`}
+      >
+        {showCost}
+      </span>
+      <span
+        className={`text-xs text-gray-600 ${
+          mask ? "blur-[6px] select-none" : ""
+        }`}
+      >
+        · Uren: <strong>{showHours}</strong>
+      </span>
+    </div>
 
-              {/* Totaal + uren rechts */}
-              <div className="ml-auto flex items-baseline gap-3">
-                <span className={`text-xl md:text-2xl font-bold tabular-nums ${mask ? "blur-[8px] select-none" : ""}`}>
-                  {showCost}
-                </span>
-                <span className={`text-xs text-gray-600 ${mask ? "blur-[6px] select-none" : ""}`}>
-                  · Uren: <strong>{showHours}</strong>
-                </span>
-              </div>
-            </div>
-          </div>
+    {/* Masker-knop (op mobiel naast titel; desktop gewoon mee op de regel) */}
+    <button
+      type="button"
+      onClick={toggleMask}
+      className="order-1 sm:order-none ml-auto sm:ml-0 inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-100"
+      title={mask ? "Toon bedragen" : "Maskeer bedragen"}
+    >
+      {mask ? <EyeOff size={16} /> : <Eye size={16} />}
+      <span className="text-xs hidden sm:inline">
+        {mask ? "Verborgen" : "Zichtbaar"}
+      </span>
+    </button>
+  </div>
+</div>
+
 
           {dayError && (
             <p className="p-4 text-red-600">
