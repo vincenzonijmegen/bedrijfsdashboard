@@ -590,7 +590,7 @@ export default function RoosterPage() {
           )}
 
           {/* Maandkosten (planning) – responsive compact */}
-          <div className="mb-3 border rounded-lg bg-gray-50 px-3 py-2">
+          <div className="mt-4 border rounded-lg bg-gray-50 px-3 py-2">
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 sm:whitespace-nowrap leading-none">
               {/* Links: titel + maand */}
               <div className="flex items-baseline gap-2 min-w-0">
