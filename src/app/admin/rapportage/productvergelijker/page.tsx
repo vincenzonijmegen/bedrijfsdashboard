@@ -78,13 +78,12 @@ export default function ProductVergelijkingPage() {
     return pairs;
   }, [selections]);
 
-  const hasRows = rows && rows.length > 0;
+  const hasRows = Array.isArray(rows) && rows.length > 0;
 
-  // Render van de resultaatstabel als variabele (voorkomt "unused-expressions")
-  const ResultTable = useMemo(() => {
-    if (!hasRows) return null;
-
-    return (
+  // Resultaat sectie vooraf opbouwen (geen conditionele expressies in JSX)
+  let resultSection: JSX.Element | null = null;
+  if (hasRows) {
+    resultSection = (
       <div className="overflow-auto">
         <table className="min-w-[760px] border-collapse">
           <thead>
@@ -130,7 +129,7 @@ export default function ProductVergelijkingPage() {
         </table>
       </div>
     );
-  }, [hasRows, rows, selections, ratioPairs]);
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -247,7 +246,7 @@ export default function ProductVergelijkingPage() {
       </div>
 
       {/* Resultaat */}
-      {ResultTable}
+      {resultSection}
     </div>
   );
 }
