@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 
-type Selection = { label: string; productIds: number[] };
+type Selection = { label: string; productNames: string[] }; // ⟵ namen uit omzet
 type Payload = {
   dateFrom: string;
   dateTo: string;
@@ -22,24 +22,24 @@ export async function POST(req: NextRequest) {
     }
     if (
       body.selections.some(
-        (s) => !s.label || !Array.isArray(s.productIds) || s.productIds.length === 0
+        (s) => !s.label || !Array.isArray(s.productNames) || s.productNames.length === 0
       )
     ) {
       return NextResponse.json(
-        { error: "Elke selectie moet een label en ≥1 productId hebben" },
+        { error: "Elke selectie moet een label en ≥1 productNaam hebben" },
         { status: 400 }
       );
     }
 
-    // Dynamisch SELECT-gedeelte opbouwen
+    // Dynamische kolommen per selectie
     const selectCols: string[] = [];
     const params: any[] = [body.dateFrom, body.dateTo];
     let p = 3;
 
     for (let i = 0; i < body.selections.length; i++) {
-      params.push(body.selections[i].productIds);
+      params.push(body.selections[i].productNames);
       selectCols.push(
-        `SUM(j.stuks) FILTER (WHERE j.product_id = ANY($${p}::int[])) AS sel_${i + 1}`
+        `SUM(j.stuks) FILTER (WHERE j.product_naam = ANY($${p}::text[])) AS sel_${i + 1}`
       );
       p++;
     }
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       WITH j AS (
         SELECT
           EXTRACT(YEAR FROM odp.datum)::int AS jaar,
-          odp.product_id,
+          COALESCE(odp.product_naam, odp.product)::text AS product_naam,
           SUM(odp.aantal)::numeric AS stuks
         FROM rapportage.omzet_dag_product odp
         WHERE odp.datum BETWEEN $1::date AND $2::date
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       ORDER BY j.jaar;
     `;
 
-    const { rows } = await pool.query(query, params); // ← fix
+    const { rows } = await pool.query(query, params);
 
     // Herlabelen voor frontend
     const labeled = rows.map((r: any) => {

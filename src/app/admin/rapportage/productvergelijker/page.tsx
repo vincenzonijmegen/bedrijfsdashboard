@@ -1,9 +1,10 @@
-"use client";
 /* eslint-disable @typescript-eslint/no-unused-expressions */
+"use client";
+
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-type Product = { id: number; naam: string; categorie?: string | null };
-type Selection = { label: string; productIds: number[] };
+type Product = { id: string; naam: string }; // uit rapportage.omzet_dag_product (distinct namen)
+type Selection = { label: string; productNames: string[] };
 
 async function fetchJSON<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, init);
@@ -16,26 +17,29 @@ export default function ProductVergelijkingPage() {
   const [dateFrom, setDateFrom] = useState("2022-01-01");
   const [dateTo, setDateTo] = useState("2025-12-31");
 
+  // Opties komen uit omzet (niet uit bestel-artikelen)
   const [producten, setProducten] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
 
   // Start met 2 selecties als voorbeeld
   const [selections, setSelections] = useState<Selection[]>([
-    { label: "1 bol", productIds: [] },
-    { label: "2 bollen", productIds: [] },
+    { label: "1 bol", productNames: [] },
+    { label: "2 bollen", productNames: [] },
   ]);
 
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const canQuery =
-    selections.length > 0 && selections.every((s) => s.productIds.length > 0);
+    selections.length > 0 && selections.every((s) => s.productNames.length > 0);
 
-  // Haal producten
+  // Haal beschikbare productnamen uit de OMZET-tabel (distinct)
   useEffect(() => {
     (async () => {
       try {
-        const data = await fetchJSON<Product[]>("/api/producten?actief=1");
+        const data = await fetchJSON<Product[]>(
+          `/api/rapportage/omzet-producten?dateFrom=${dateFrom}&dateTo=${dateTo}`
+        );
         setProducten(data);
       } catch (e) {
         console.error(e);
@@ -44,7 +48,8 @@ export default function ProductVergelijkingPage() {
         setLoadingProducts(false);
       }
     })();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // initieel laden; als je op datum wilt refetchen, zet dateFrom/dateTo in deps
 
   async function runQuery() {
     if (!canQuery) return;
@@ -55,7 +60,11 @@ export default function ProductVergelijkingPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ dateFrom, dateTo, selections }),
+          body: JSON.stringify({
+            dateFrom,
+            dateTo,
+            selections, // {label, productNames[]}
+          }),
         }
       );
       setRows(data.rows);
@@ -162,7 +171,7 @@ export default function ProductVergelijkingPage() {
             onClick={() =>
               setSelections((s) => [
                 ...s,
-                { label: `Selectie ${s.length + 1}`, productIds: [] },
+                { label: `Selectie ${s.length + 1}`, productNames: [] },
               ])
             }
           >
@@ -198,13 +207,13 @@ export default function ProductVergelijkingPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm">Kies producten</label>
+              <label className="text-sm">Kies productnamen (uit omzet)</label>
               <div className="h-44 overflow-auto border rounded p-2 space-y-1">
                 {loadingProducts ? (
                   <div className="text-sm text-gray-500">Producten laden…</div>
                 ) : (
                   producten.map((p) => {
-                    const checked = sel.productIds.includes(p.id);
+                    const checked = sel.productNames.includes(p.naam);
                     return (
                       <label key={p.id} className="flex items-center gap-2 text-sm">
                         <input
@@ -214,17 +223,14 @@ export default function ProductVergelijkingPage() {
                             setSelections((s) =>
                               s.map((x, i) => {
                                 if (i !== idx) return x;
-                                const set = new Set(x.productIds);
-                                checked ? set.delete(p.id) : set.add(p.id);
-                                return { ...x, productIds: Array.from(set) };
+                                const set = new Set(x.productNames);
+                                checked ? set.delete(p.naam) : set.add(p.naam);
+                                return { ...x, productNames: Array.from(set) };
                               })
                             );
                           }}
                         />
-                        <span>
-                          {p.naam}
-                          {p.categorie ? ` — ${p.categorie}` : ""}
-                        </span>
+                        <span>{p.naam}</span>
                       </label>
                     );
                   })
