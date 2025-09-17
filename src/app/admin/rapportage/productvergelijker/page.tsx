@@ -28,13 +28,13 @@ export default function ProductVergelijkingPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const canQuery = selections.length > 0 && selections.every(s => s.productIds.length > 0);
+  const canQuery =
+    selections.length > 0 && selections.every((s) => s.productIds.length > 0);
 
   // Haal producten (pas endpoint aan naar jouw bestaande route)
   useEffect(() => {
     (async () => {
       try {
-        // Voorbeeld: je hebt vaak /api/producten (met optioneel ?actief=1)
         const data = await fetchJSON<Product[]>("/api/producten?actief=1");
         setProducten(data);
       } catch (e) {
@@ -86,21 +86,32 @@ export default function ProductVergelijkingPage() {
       <div className="grid md:grid-cols-3 gap-4">
         <div className="space-y-2">
           <label className="block text-sm font-medium">Van</label>
-          <input type="date" value={dateFrom}
-                 onChange={e => setDateFrom(e.target.value)}
-                 className="border rounded p-2 w-full"/>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="border rounded p-2 w-full"
+          />
         </div>
         <div className="space-y-2">
           <label className="block text-sm font-medium">Tot en met</label>
-          <input type="date" value={dateTo}
-                 onChange={e => setDateTo(e.target.value)}
-                 className="border rounded p-2 w-full"/>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="border rounded p-2 w-full"
+          />
         </div>
         <div className="space-y-2">
           <label className="block text-sm font-medium">Selecties</label>
           <button
             className="border rounded px-3 py-2 w-full"
-            onClick={() => setSelections(s => [...s, { label: `Selectie ${s.length + 1}`, productIds: [] }])}
+            onClick={() =>
+              setSelections((s) => [
+                ...s,
+                { label: `Selectie ${s.length + 1}`, productIds: [] },
+              ])
+            }
           >
             + selectie toevoegen
           </button>
@@ -115,14 +126,18 @@ export default function ProductVergelijkingPage() {
               <input
                 className="border rounded p-2 flex-1"
                 value={sel.label}
-                onChange={e => {
+                onChange={(e) => {
                   const v = e.target.value;
-                  setSelections(s => s.map((x,i)=> i===idx ? {...x, label: v} : x));
+                  setSelections((s) =>
+                    s.map((x, i) => (i === idx ? { ...x, label: v } : x))
+                  );
                 }}
               />
               <button
                 className="text-red-600"
-                onClick={() => setSelections(s => s.filter((_,i)=> i!==idx))}
+                onClick={() =>
+                  setSelections((s) => s.filter((_, i) => i !== idx))
+                }
                 title="Verwijderen"
               >
                 ✕
@@ -135,7 +150,7 @@ export default function ProductVergelijkingPage() {
                 {loadingProducts ? (
                   <div className="text-sm text-gray-500">Producten laden…</div>
                 ) : (
-                  producten.map(p => {
+                  producten.map((p) => {
                     const checked = sel.productIds.includes(p.id);
                     return (
                       <label key={p.id} className="flex items-center gap-2 text-sm">
@@ -143,15 +158,20 @@ export default function ProductVergelijkingPage() {
                           type="checkbox"
                           checked={checked}
                           onChange={() => {
-                            setSelections(s => s.map((x,i)=>{
-                              if (i!==idx) return x;
-                              const set = new Set(x.productIds);
-                              checked ? set.delete(p.id) : set.add(p.id);
-                              return { ...x, productIds: Array.from(set) };
-                            }));
+                            setSelections((s) =>
+                              s.map((x, i) => {
+                                if (i !== idx) return x;
+                                const set = new Set(x.productIds);
+                                checked ? set.delete(p.id) : set.add(p.id);
+                                return { ...x, productIds: Array.from(set) };
+                              })
+                            );
                           }}
                         />
-                        <span>{p.naam}{p.categorie ? ` — ${p.categorie}` : ""}</span>
+                        <span>
+                          {p.naam}
+                          {p.categorie ? ` — ${p.categorie}` : ""}
+                        </span>
                       </label>
                     );
                   })
@@ -173,16 +193,18 @@ export default function ProductVergelijkingPage() {
       </div>
 
       {/* Resultaat */}
-      {rows.length > 0 && (
+      {rows.length > 0 ? (
         <div className="overflow-auto">
           <table className="min-w-[760px] border-collapse">
             <thead>
               <tr>
                 <th className="border p-2 text-left">Jaar</th>
                 {selections.map((s, i) => (
-                  <th key={i} className="border p-2 text-right">{s.label}</th>
+                  <th key={i} className="border p-2 text-right">
+                    {s.label}
+                  </th>
                 ))}
-                {ratioPairs.map(([a,b], i) => (
+                {ratioPairs.map(([a, b], i) => (
                   <th key={`r${i}`} className="border p-2 text-right">
                     {selections[a].label} ÷ {selections[b].label}
                   </th>
@@ -192,18 +214,20 @@ export default function ProductVergelijkingPage() {
             <tbody>
               {rows.map((r, idx) => {
                 const jaar = r.jaar;
-                const values = selections.map(s => Number(r[s.label] ?? 0));
-                const ratios = ratioPairs.map(([a,b]) => {
+                const values = selections.map((s) => Number(r[s.label] ?? 0));
+                const ratios = ratioPairs.map(([a, b]) => {
                   const denom = values[b] || 0;
-                  return denom === 0 ? null : (values[a] / denom);
+                  return denom === 0 ? null : values[a] / denom;
                 });
                 return (
                   <tr key={idx}>
                     <td className="border p-2">{jaar}</td>
-                    {values.map((v,i)=>(
-                      <td key={i} className="border p-2 text-right">{v.toLocaleString()}</td>
+                    {values.map((v, i) => (
+                      <td key={i} className="border p-2 text-right">
+                        {v.toLocaleString()}
+                      </td>
                     ))}
-                    {ratios.map((rv,i)=>(
+                    {ratios.map((rv, i) => (
                       <td key={i} className="border p-2 text-right">
                         {rv == null ? "—" : rv.toFixed(2)}
                       </td>
@@ -214,7 +238,7 @@ export default function ProductVergelijkingPage() {
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
