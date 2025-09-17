@@ -1,6 +1,6 @@
 "use client";
-
-import { useEffect, useMemo, useState } from "react";
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 type Product = { id: number; naam: string; categorie?: string | null };
 type Selection = { label: string; productIds: number[] };
@@ -81,7 +81,7 @@ export default function ProductVergelijkingPage() {
   const hasRows = Array.isArray(rows) && rows.length > 0;
 
   // Resultaat sectie vooraf opbouwen (geen conditionele expressies in JSX)
-  let resultSection: JSX.Element | null = null;
+  let resultSection: ReactNode = null;
   if (hasRows) {
     resultSection = (
       <div className="overflow-auto">
