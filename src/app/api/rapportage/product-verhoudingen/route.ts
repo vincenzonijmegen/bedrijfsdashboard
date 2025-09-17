@@ -1,22 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sql } from "@/lib/db"; // <- jouw PG helper
+import { pool } from "@/lib/db";
 
 type Selection = { label: string; productIds: number[] };
 type Payload = {
-  dateFrom: string;   // "2022-01-01"
-  dateTo: string;     // "2025-12-31"
-  selections: Selection[]; // [{label:"1 bol", productIds:[...]} , ...]
+  dateFrom: string;
+  dateTo: string;
+  selections: Selection[];
 };
 
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as Payload;
 
-    if (!body?.dateFrom || !body?.dateTo || !Array.isArray(body.selections) || body.selections.length === 0) {
+    if (
+      !body?.dateFrom ||
+      !body?.dateTo ||
+      !Array.isArray(body.selections) ||
+      body.selections.length === 0
+    ) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
-    if (body.selections.some(s => !s.label || !Array.isArray(s.productIds) || s.productIds.length === 0)) {
-      return NextResponse.json({ error: "Elke selectie moet een label en ≥1 productId hebben" }, { status: 400 });
+    if (
+      body.selections.some(
+        (s) => !s.label || !Array.isArray(s.productIds) || s.productIds.length === 0
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Elke selectie moet een label en ≥1 productId hebben" },
+        { status: 400 }
+      );
     }
 
     // Dynamisch SELECT-gedeelte opbouwen
@@ -48,7 +60,7 @@ export async function POST(req: NextRequest) {
       ORDER BY j.jaar;
     `;
 
-    const rows = await sql<any>(query, params);
+    const { rows } = await pool.query(query, params); // ← fix
 
     // Herlabelen voor frontend
     const labeled = rows.map((r: any) => {
@@ -61,9 +73,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       rows: labeled,
-      selections: body.selections.map(s => s.label),
+      selections: body.selections.map((s) => s.label),
     });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: e?.message ?? "Server error" },
+      { status: 500 }
+    );
   }
 }

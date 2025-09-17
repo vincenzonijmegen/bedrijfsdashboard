@@ -51,7 +51,7 @@ export default function ProductVergelijkingPage() {
     setLoading(true);
     try {
       const data = await fetchJSON<{ rows: any[]; selections: string[] }>(
-        "/api/rapportage/product-vergelijking",
+        "/api/rapportage/product-verhoudingen",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
