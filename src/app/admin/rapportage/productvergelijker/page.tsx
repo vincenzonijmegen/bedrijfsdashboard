@@ -31,7 +31,7 @@ export default function ProductVergelijkingPage() {
   const canQuery =
     selections.length > 0 && selections.every((s) => s.productIds.length > 0);
 
-  // Haal producten (pas endpoint aan naar jouw bestaande route)
+  // Haal producten
   useEffect(() => {
     (async () => {
       try {
@@ -77,6 +77,60 @@ export default function ProductVergelijkingPage() {
     }
     return pairs;
   }, [selections]);
+
+  const hasRows = rows && rows.length > 0;
+
+  // Render van de resultaatstabel als variabele (voorkomt "unused-expressions")
+  const ResultTable = useMemo(() => {
+    if (!hasRows) return null;
+
+    return (
+      <div className="overflow-auto">
+        <table className="min-w-[760px] border-collapse">
+          <thead>
+            <tr>
+              <th className="border p-2 text-left">Jaar</th>
+              {selections.map((s, i) => (
+                <th key={i} className="border p-2 text-right">
+                  {s.label}
+                </th>
+              ))}
+              {ratioPairs.map(([a, b], i) => (
+                <th key={`r${i}`} className="border p-2 text-right">
+                  {selections[a].label} ÷ {selections[b].label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, idx) => {
+              const jaar = r.jaar;
+              const values = selections.map((s) => Number(r[s.label] ?? 0));
+              const ratios = ratioPairs.map(([a, b]) => {
+                const denom = values[b] || 0;
+                return denom === 0 ? null : values[a] / denom;
+              });
+              return (
+                <tr key={idx}>
+                  <td className="border p-2">{jaar}</td>
+                  {values.map((v, i) => (
+                    <td key={i} className="border p-2 text-right">
+                      {v.toLocaleString()}
+                    </td>
+                  ))}
+                  {ratios.map((rv, i) => (
+                    <td key={i} className="border p-2 text-right">
+                      {rv == null ? "—" : rv.toFixed(2)}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }, [hasRows, rows, selections, ratioPairs]);
 
   return (
     <div className="p-6 space-y-6">
@@ -193,52 +247,7 @@ export default function ProductVergelijkingPage() {
       </div>
 
       {/* Resultaat */}
-      {rows.length > 0 ? (
-        <div className="overflow-auto">
-          <table className="min-w-[760px] border-collapse">
-            <thead>
-              <tr>
-                <th className="border p-2 text-left">Jaar</th>
-                {selections.map((s, i) => (
-                  <th key={i} className="border p-2 text-right">
-                    {s.label}
-                  </th>
-                ))}
-                {ratioPairs.map(([a, b], i) => (
-                  <th key={`r${i}`} className="border p-2 text-right">
-                    {selections[a].label} ÷ {selections[b].label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, idx) => {
-                const jaar = r.jaar;
-                const values = selections.map((s) => Number(r[s.label] ?? 0));
-                const ratios = ratioPairs.map(([a, b]) => {
-                  const denom = values[b] || 0;
-                  return denom === 0 ? null : values[a] / denom;
-                });
-                return (
-                  <tr key={idx}>
-                    <td className="border p-2">{jaar}</td>
-                    {values.map((v, i) => (
-                      <td key={i} className="border p-2 text-right">
-                        {v.toLocaleString()}
-                      </td>
-                    ))}
-                    {ratios.map((rv, i) => (
-                      <td key={i} className="border p-2 text-right">
-                        {rv == null ? "—" : rv.toFixed(2)}
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+      {ResultTable}
     </div>
   );
 }
