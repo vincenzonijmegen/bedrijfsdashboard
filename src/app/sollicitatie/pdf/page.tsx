@@ -10,85 +10,79 @@ function parseMail(txt: string): Record<string, string> {
   const obj: Record<string, string> = {};
   const lines = txt.split(/\r?\n/);
 
+  const bulletShifts: string[] = [];
+
   for (const raw of lines) {
     const line = raw.trim();
-    const match = line.match(/^([^:]+):\s*(.*)$/);
-    if (!match) continue;
 
-    const label = match[1].toLowerCase();
-    const value = match[2].trim();
-
-    if (label === "naam") {
-      const [voornaam, ...rest] = value.split(" ");
-      obj["Voornaam"] = voornaam;
-      obj["Achternaam"] = rest.join(" ");
+    // 🔹 bullets met beschikbare shifts
+    if (line.startsWith("•")) {
+      bulletShifts.push(line.replace("•", "").trim().toLowerCase());
       continue;
     }
 
-    if (label === "e-mail") {
-      obj["E-mailadres"] = value;
-      continue;
-    }
+    // 🔹 normale key: value regels
+    if (!line.includes(":")) continue;
 
-    if (label === "telefoon") {
-      obj["Telefoonnummer"] = value;
-      continue;
-    }
+    const [labelRaw, ...rest] = line.split(":");
+    const value = rest.join(":").trim();
+    const label = labelRaw.trim().toLowerCase();
 
-    if (label === "vanaf") {
-      obj["Startdatum"] = value;
-      continue;
+    switch (label) {
+      case "naam": {
+        const [voornaam, ...achternaam] = value.split(" ");
+        obj["Voornaam"] = voornaam;
+        obj["Achternaam"] = achternaam.join(" ");
+        break;
+      }
+      case "e-mail":
+        obj["E-mailadres"] = value;
+        break;
+      case "telefoon":
+        obj["Telefoonnummer"] = value;
+        break;
+      case "vanaf":
+        obj["Startdatum"] = value;
+        break;
+      case "tot":
+        obj["Einddatum"] = value;
+        break;
+      default:
+        obj[labelRaw.trim()] = value;
     }
-
-    if (label === "tot") {
-      obj["Einddatum"] = value;
-      continue;
-    }
-
-    // alles wat al klopt gewoon doorlaten
-    obj[match[1]] = value;
   }
 
-
-// na de for-loop, vóór return obj;
-
-if (obj["Beschikbare shifts"]) {
-  const regels = obj["Beschikbare shifts"]
-    .split(",")
-    .map(s => s.toLowerCase());
-
+  // 🔹 bullets → dagen werken
   const dagenWerken: string[] = [];
 
-  regels.forEach(r => {
-    if (r.includes("maandag") && r.includes("11:30")) dagenWerken.push("maandag shift 1");
-    if (r.includes("maandag") && r.includes("17:30")) dagenWerken.push("maandag shift 2");
+  bulletShifts.forEach(s => {
+    if (s.includes("maandag") && s.includes("11:30")) dagenWerken.push("maandag shift 1");
+    if (s.includes("maandag") && s.includes("17:30")) dagenWerken.push("maandag shift 2");
 
-    if (r.includes("dinsdag") && r.includes("11:30")) dagenWerken.push("dinsdag shift 1");
-    if (r.includes("dinsdag") && r.includes("17:30")) dagenWerken.push("dinsdag shift 2");
+    if (s.includes("dinsdag") && s.includes("11:30")) dagenWerken.push("dinsdag shift 1");
+    if (s.includes("dinsdag") && s.includes("17:30")) dagenWerken.push("dinsdag shift 2");
 
-    if (r.includes("woensdag") && r.includes("11:30")) dagenWerken.push("woensdag shift 1");
-    if (r.includes("woensdag") && r.includes("17:30")) dagenWerken.push("woensdag shift 2");
+    if (s.includes("woensdag") && s.includes("11:30")) dagenWerken.push("woensdag shift 1");
+    if (s.includes("woensdag") && s.includes("17:30")) dagenWerken.push("woensdag shift 2");
 
-    if (r.includes("donderdag") && r.includes("11:30")) dagenWerken.push("donderdag shift 1");
-    if (r.includes("donderdag") && r.includes("17:30")) dagenWerken.push("donderdag shift 2");
+    if (s.includes("donderdag") && s.includes("11:30")) dagenWerken.push("donderdag shift 1");
+    if (s.includes("donderdag") && s.includes("17:30")) dagenWerken.push("donderdag shift 2");
 
-    if (r.includes("vrijdag") && r.includes("11:30")) dagenWerken.push("vrijdag shift 1");
-    if (r.includes("vrijdag") && r.includes("17:30")) dagenWerken.push("vrijdag shift 2");
+    if (s.includes("vrijdag") && s.includes("11:30")) dagenWerken.push("vrijdag shift 1");
+    if (s.includes("vrijdag") && s.includes("17:30")) dagenWerken.push("vrijdag shift 2");
 
-    if (r.includes("zaterdag") && r.includes("11:30")) dagenWerken.push("zaterdag shift 1");
-    if (r.includes("zaterdag") && r.includes("17:30")) dagenWerken.push("zaterdag shift 2");
+    if (s.includes("zaterdag") && s.includes("11:30")) dagenWerken.push("zaterdag shift 1");
+    if (s.includes("zaterdag") && s.includes("17:30")) dagenWerken.push("zaterdag shift 2");
 
-    if (r.includes("zondag") && r.includes("11:30")) dagenWerken.push("zondag shift 1");
-    if (r.includes("zondag") && r.includes("17:30")) dagenWerken.push("zondag shift 2");
+    if (s.includes("zondag") && s.includes("11:30")) dagenWerken.push("zondag shift 1");
+    if (s.includes("zondag") && s.includes("17:30")) dagenWerken.push("zondag shift 2");
   });
 
   obj["Dagen werken"] = dagenWerken.join(", ");
-}
-
-
 
   return obj;
 }
+
 
 
 function getLeeftijd(dob: string): number | string {
