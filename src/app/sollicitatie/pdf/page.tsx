@@ -140,7 +140,11 @@ export default function SollicitatiePDF() {
       headStyles: { cellPadding: 2, fontStyle: 'bold', halign: 'left', minCellHeight: 8 }
     });
 
-    const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
+const dagen =
+  parsed["Dagen werken"]
+    ?.toLowerCase()
+    .split(",")
+    .map(d => d.trim()) || [];
     console.log("RAW parsed:", parsed);
     console.log("DAGEN ARRAY:", dagen);
     const dagrijen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"].map((dag) => [
