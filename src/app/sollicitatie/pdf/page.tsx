@@ -7,6 +7,9 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 function parseMail(txt: string): Record<string, string> {
+
+  let inMotivatie = false;
+  const motivatieRegels: string[] = [];
   const obj: Record<string, string> = {};
   const lines = txt.split(/\r?\n/);
 
@@ -14,6 +17,18 @@ function parseMail(txt: string): Record<string, string> {
 
   for (const raw of lines) {
     const line = raw.trim();
+
+    // start motivatieblok
+if (line.toLowerCase().startsWith("opmerking")) {
+  inMotivatie = true;
+  continue;
+}
+
+// verzamel motivatie-tekst
+if (inMotivatie) {
+  if (line !== "") motivatieRegels.push(raw);
+  continue;
+}
 
     // 🔹 bullets met beschikbare shifts
     if (line.startsWith("•")) {
@@ -66,6 +81,10 @@ bulletShifts.forEach(s => {
   const match = s.match(
     /(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag).*?(\d{1,2}:\d{2})/
   );
+
+if (motivatieRegels.length) {
+  obj["Opmerking / Motivatie"] = motivatieRegels.join("\n").trim();
+}
 
   if (!match) return;
 
@@ -183,7 +202,10 @@ const dagen =
       ["Duits", parsed["Duits"] || ""],
       ["Vakantie", parsed["Vakantie"] || ""],
       ["Extra", parsed["Extra"] || ""],
-      ["Overige zaken", parsed["Overige zaken"] || ""]
+ [
+  "Opmerking / Motivatie",
+  parsed["Opmerking / Motivatie"] || parsed["Overige zaken"] || ""
+]
     ];
     const extraStartY = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || y;
 
