@@ -9,15 +9,71 @@ import autoTable from "jspdf-autotable";
 function parseMail(txt: string): Record<string, string> {
   const obj: Record<string, string> = {};
   const lines = txt.split(/\r?\n/);
-  lines.forEach((line) => {
-    const match = line.match(/^([^:]+):\s*(.*)$/);
-    if (match) {
-      const [, key, val] = match;
-      obj[key.trim()] = val.trim();
+
+  let inShifts = false;
+  const shifts: string[] = [];
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    // bullets met beschikbare shifts
+    if (line.startsWith("•")) {
+      shifts.push(line.replace("•", "").trim());
+      continue;
     }
-  });
+
+    // start van shift-blok
+    if (line.toLowerCase().startsWith("beschikbare shifts")) {
+      inShifts = true;
+      continue;
+    }
+
+    // lege regel → einde shift-blok
+    if (inShifts && line === "") {
+      inShifts = false;
+    }
+
+    const match = line.match(/^([^:]+):\s*(.*)$/);
+    if (!match) continue;
+
+    const [, keyRaw, value] = match;
+    const key = keyRaw.trim().toLowerCase();
+
+    switch (key) {
+      case "naam": {
+        const [voornaam, ...rest] = value.split(" ");
+        obj["Voornaam"] = voornaam;
+        obj["Achternaam"] = rest.join(" ");
+        break;
+      }
+      case "e-mail":
+        obj["E-mailadres"] = value;
+        break;
+      case "telefoon":
+        obj["Telefoonnummer"] = value;
+        break;
+      case "vanaf":
+        obj["Startdatum"] = value;
+        break;
+      case "tot":
+        obj["Einddatum"] = value;
+        break;
+      case "beschikbare shifts":
+        // wordt later gevuld
+        break;
+      default:
+        // hoofdletterversie bewaren
+        obj[keyRaw.trim()] = value.trim();
+    }
+  }
+
+  if (shifts.length) {
+    obj["Beschikbare shifts"] = shifts.join(", ");
+  }
+
   return obj;
 }
+
 
 function getLeeftijd(dob: string): number | string {
   const [dag, maand, jaar] = dob.split("-").map(Number);
