@@ -312,7 +312,7 @@ export default function SollicitatiePDF() {
       extra: parsed["Extra"],
       overige_zaken: parsed["Overige zaken"],
       ...Object.fromEntries(
-        ["ma","di","wo","do","vr","za","zo"].flatMap((dag) => [
+        ["maandag","dinsdag","woensdag","donderdag","vrijdag","zaterdag","zondag"].flatMap((dag) => [
           [`beschikbaar_${dag}_1`, dagen.includes(`${dag} shift 1`)],
           [`beschikbaar_${dag}_2`, dagen.includes(`${dag} shift 2`)]
         ])
