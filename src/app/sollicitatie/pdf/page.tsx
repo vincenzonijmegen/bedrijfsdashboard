@@ -10,65 +10,43 @@ function parseMail(txt: string): Record<string, string> {
   const obj: Record<string, string> = {};
   const lines = txt.split(/\r?\n/);
 
-  let inShifts = false;
-  const shifts: string[] = [];
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim();
-
-    // bullets met beschikbare shifts
-    if (line.startsWith("•")) {
-      shifts.push(line.replace("•", "").trim());
-      continue;
-    }
-
-    // start van shift-blok
-    if (line.toLowerCase().startsWith("beschikbare shifts")) {
-      inShifts = true;
-      continue;
-    }
-
-    // lege regel → einde shift-blok
-    if (inShifts && line === "") {
-      inShifts = false;
-    }
-
+  for (const raw of lines) {
+    const line = raw.trim();
     const match = line.match(/^([^:]+):\s*(.*)$/);
     if (!match) continue;
 
-    const [, keyRaw, value] = match;
-    const key = keyRaw.trim().toLowerCase();
+    const label = match[1].toLowerCase();
+    const value = match[2].trim();
 
-    switch (key) {
-      case "naam": {
-        const [voornaam, ...rest] = value.split(" ");
-        obj["Voornaam"] = voornaam;
-        obj["Achternaam"] = rest.join(" ");
-        break;
-      }
-      case "e-mail":
-        obj["E-mailadres"] = value;
-        break;
-      case "telefoon":
-        obj["Telefoonnummer"] = value;
-        break;
-      case "vanaf":
-        obj["Startdatum"] = value;
-        break;
-      case "tot":
-        obj["Einddatum"] = value;
-        break;
-      case "beschikbare shifts":
-        // wordt later gevuld
-        break;
-      default:
-        // hoofdletterversie bewaren
-        obj[keyRaw.trim()] = value.trim();
+    if (label === "naam") {
+      const [voornaam, ...rest] = value.split(" ");
+      obj["Voornaam"] = voornaam;
+      obj["Achternaam"] = rest.join(" ");
+      continue;
     }
-  }
 
-  if (shifts.length) {
-    obj["Beschikbare shifts"] = shifts.join(", ");
+    if (label === "e-mail") {
+      obj["E-mailadres"] = value;
+      continue;
+    }
+
+    if (label === "telefoon") {
+      obj["Telefoonnummer"] = value;
+      continue;
+    }
+
+    if (label === "vanaf") {
+      obj["Startdatum"] = value;
+      continue;
+    }
+
+    if (label === "tot") {
+      obj["Einddatum"] = value;
+      continue;
+    }
+
+    // alles wat al klopt gewoon doorlaten
+    obj[match[1]] = value;
   }
 
   return obj;
