@@ -59,32 +59,27 @@ function parseMail(txt: string): Record<string, string> {
   }
 
   // 🔹 bullets → dagen werken
-  const dagenWerken: string[] = [];
+const dagenWerken: string[] = [];
 
-  bulletShifts.forEach(s => {
-    if (s.includes("maandag") && s.includes("11:30")) dagenWerken.push("maandag shift 1");
-    if (s.includes("maandag") && s.includes("17:30")) dagenWerken.push("maandag shift 2");
+bulletShifts.forEach(s => {
+  // voorbeeld: "donderdag 17:30 - 23:00"
+  const match = s.match(
+    /(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag).*?(\d{1,2}:\d{2})/
+  );
 
-    if (s.includes("dinsdag") && s.includes("11:30")) dagenWerken.push("dinsdag shift 1");
-    if (s.includes("dinsdag") && s.includes("17:30")) dagenWerken.push("dinsdag shift 2");
+  if (!match) return;
 
-    if (s.includes("woensdag") && s.includes("11:30")) dagenWerken.push("woensdag shift 1");
-    if (s.includes("woensdag") && s.includes("17:30")) dagenWerken.push("woensdag shift 2");
+  const dag = match[1];
+  const starttijd = match[2];
 
-    if (s.includes("donderdag") && s.includes("11:30")) dagenWerken.push("donderdag shift 1");
-    if (s.includes("donderdag") && s.includes("17:30")) dagenWerken.push("donderdag shift 2");
+  const [uur] = starttijd.split(":").map(Number);
+  const shift = uur < 16 ? "shift 1" : "shift 2";
 
-    if (s.includes("vrijdag") && s.includes("11:30")) dagenWerken.push("vrijdag shift 1");
-    if (s.includes("vrijdag") && s.includes("17:30")) dagenWerken.push("vrijdag shift 2");
+  dagenWerken.push(`${dag} ${shift}`);
+});
 
-    if (s.includes("zaterdag") && s.includes("11:30")) dagenWerken.push("zaterdag shift 1");
-    if (s.includes("zaterdag") && s.includes("17:30")) dagenWerken.push("zaterdag shift 2");
+obj["Dagen werken"] = dagenWerken.join(", ");
 
-    if (s.includes("zondag") && s.includes("11:30")) dagenWerken.push("zondag shift 1");
-    if (s.includes("zondag") && s.includes("17:30")) dagenWerken.push("zondag shift 2");
-  });
-
-  obj["Dagen werken"] = dagenWerken.join(", ");
 
   return obj;
 }
