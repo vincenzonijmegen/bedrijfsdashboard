@@ -141,6 +141,8 @@ export default function SollicitatiePDF() {
     });
 
     const dagen = parsed["Dagen werken"]?.toLowerCase().split(",") || [];
+    console.log("RAW parsed:", parsed);
+    console.log("DAGEN ARRAY:", dagen);
     const dagrijen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"].map((dag) => [
       dag,
       dagen.includes(`${dag} shift 1`) ? "JA" : "",
@@ -159,9 +161,14 @@ export default function SollicitatiePDF() {
       styles: { halign: "center" },
       headStyles: { fillColor: [0, 51, 102], textColor: 255 },
       didParseCell(data) {
-        if (data.column.index === 0) data.cell.styles.fontStyle = 'bold';
-        if (data.cell.raw === "JA") data.cell.styles.fillColor = [200, 255, 200];
-      }
+  if (data.column.index === 0) {
+    console.log("RIJ:", data.cell.raw);
+  }
+  if (data.cell.raw === "JA") {
+    console.log("JA gezet bij:", data.row.index, data.column.index);
+    data.cell.styles.fillColor = [200, 255, 200];
+  }
+}
     });
 
     const extra = [
