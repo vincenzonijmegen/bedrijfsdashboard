@@ -17,7 +17,13 @@ function parseMail(txt: string): Record<string, string> {
 
     // 🔹 bullets met beschikbare shifts
     if (line.startsWith("•")) {
-      bulletShifts.push(line.replace("•", "").trim().toLowerCase());
+      bulletShifts.push(
+  line
+    .replace("•", "")
+    .replace(/–|—/g, "-") // normaliseer dash
+    .toLowerCase()
+    .trim()
+);
       continue;
     }
 
