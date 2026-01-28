@@ -49,6 +49,44 @@ function parseMail(txt: string): Record<string, string> {
     obj[match[1]] = value;
   }
 
+
+// na de for-loop, vóór return obj;
+
+if (obj["Beschikbare shifts"]) {
+  const regels = obj["Beschikbare shifts"]
+    .split(",")
+    .map(s => s.toLowerCase());
+
+  const dagenWerken: string[] = [];
+
+  regels.forEach(r => {
+    if (r.includes("maandag") && r.includes("11:30")) dagenWerken.push("maandag shift 1");
+    if (r.includes("maandag") && r.includes("17:30")) dagenWerken.push("maandag shift 2");
+
+    if (r.includes("dinsdag") && r.includes("11:30")) dagenWerken.push("dinsdag shift 1");
+    if (r.includes("dinsdag") && r.includes("17:30")) dagenWerken.push("dinsdag shift 2");
+
+    if (r.includes("woensdag") && r.includes("11:30")) dagenWerken.push("woensdag shift 1");
+    if (r.includes("woensdag") && r.includes("17:30")) dagenWerken.push("woensdag shift 2");
+
+    if (r.includes("donderdag") && r.includes("11:30")) dagenWerken.push("donderdag shift 1");
+    if (r.includes("donderdag") && r.includes("17:30")) dagenWerken.push("donderdag shift 2");
+
+    if (r.includes("vrijdag") && r.includes("11:30")) dagenWerken.push("vrijdag shift 1");
+    if (r.includes("vrijdag") && r.includes("17:30")) dagenWerken.push("vrijdag shift 2");
+
+    if (r.includes("zaterdag") && r.includes("11:30")) dagenWerken.push("zaterdag shift 1");
+    if (r.includes("zaterdag") && r.includes("17:30")) dagenWerken.push("zaterdag shift 2");
+
+    if (r.includes("zondag") && r.includes("11:30")) dagenWerken.push("zondag shift 1");
+    if (r.includes("zondag") && r.includes("17:30")) dagenWerken.push("zondag shift 2");
+  });
+
+  obj["Dagen werken"] = dagenWerken.join(", ");
+}
+
+
+
   return obj;
 }
 
