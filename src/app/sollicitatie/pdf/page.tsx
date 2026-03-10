@@ -260,7 +260,7 @@ const dagen =
     while (vaderdag.getDay() !== 0) vaderdag.setDate(vaderdag.getDate() + 1);
     vaderdag.setDate(vaderdag.getDate() + 14);
 
-    function getZomerfeesten(year: number): [Date, Date] {
+function getZomerfeesten(year: number): [Date, Date] {
   // zoek de derde dinsdag van juli
   const derdeDinsdag = new Date(year, 6, 1); // 1 juli
   let aantalDinsdagen = 0;
@@ -281,6 +281,7 @@ const dagen =
   eind.setDate(start.getDate() + 6);
 
   return [start, eind];
+
 }
 
     const feestdagen: [string, string][] = [
