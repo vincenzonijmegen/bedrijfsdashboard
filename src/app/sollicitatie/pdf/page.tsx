@@ -261,28 +261,36 @@ const dagen =
     vaderdag.setDate(vaderdag.getDate() + 14);
 
 function getZomerfeesten(year: number): [Date, Date] {
-  // zoek de derde dinsdag van juli
-  const derdeDinsdag = new Date(year, 6, 1); // 1 juli
-  let aantalDinsdagen = 0;
+  const july = new Date(year, 6, 1); // 1 juli
+  let tuesdayCount = 0;
+  let thirdTuesday: Date | null = null;
 
-  while (true) {
-    if (derdeDinsdag.getDay() === 2) { // dinsdag
-      aantalDinsdagen++;
-      if (aantalDinsdagen === 3) break;
+  for (let day = 1; day <= 31; day++) {
+    const d = new Date(year, 6, day);
+    if (d.getDay() === 2) {
+      tuesdayCount++;
+      if (tuesdayCount === 3) {
+        thirdTuesday = d;
+        break;
+      }
     }
-    derdeDinsdag.setDate(derdeDinsdag.getDate() + 1);
   }
 
-  // Zomerfeesten = zaterdag vóór die dinsdag t/m vrijdag erna
-  const start = new Date(derdeDinsdag);
-  start.setDate(derdeDinsdag.getDate() - 3);
+  if (!thirdTuesday) {
+    throw new Error(`Kon derde dinsdag van juli niet bepalen voor ${year}`);
+  }
 
-  const eind = new Date(start);
-  eind.setDate(start.getDate() + 6);
+  const start = new Date(thirdTuesday);
+  start.setDate(thirdTuesday.getDate() - 3); // zaterdag ervoor
 
-  return [start, eind];
+  const end = new Date(thirdTuesday);
+  end.setDate(thirdTuesday.getDate() + 3); // vrijdag erna
 
+  return [start, end];
 }
+
+const [zfStart, zfEnd] = getZomerfeesten(2026);
+console.log("ZF 2026:", format(zfStart), format(zfEnd));
 
     const feestdagen: [string, string][] = [
       ["Pasen", `${format(eerstePasen)} en ${format(tweedePasen)}`],
