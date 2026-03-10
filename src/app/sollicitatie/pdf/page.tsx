@@ -261,13 +261,27 @@ const dagen =
     vaderdag.setDate(vaderdag.getDate() + 14);
 
     function getZomerfeesten(year: number): [Date, Date] {
-      const eersteDag = new Date(year, 6, 1);
-      while (eersteDag.getDay() !== 6) eersteDag.setDate(eersteDag.getDate() + 1);
-      eersteDag.setDate(eersteDag.getDate() + 7);
-      const laatsteDag = new Date(eersteDag);
-      laatsteDag.setDate(eersteDag.getDate() + 6);
-      return [eersteDag, laatsteDag];
+  // zoek de derde dinsdag van juli
+  const derdeDinsdag = new Date(year, 6, 1); // 1 juli
+  let aantalDinsdagen = 0;
+
+  while (true) {
+    if (derdeDinsdag.getDay() === 2) { // dinsdag
+      aantalDinsdagen++;
+      if (aantalDinsdagen === 3) break;
     }
+    derdeDinsdag.setDate(derdeDinsdag.getDate() + 1);
+  }
+
+  // Zomerfeesten = zaterdag vóór die dinsdag t/m vrijdag erna
+  const start = new Date(derdeDinsdag);
+  start.setDate(derdeDinsdag.getDate() - 3);
+
+  const eind = new Date(start);
+  eind.setDate(start.getDate() + 6);
+
+  return [start, eind];
+}
 
     const feestdagen: [string, string][] = [
       ["Pasen", `${format(eerstePasen)} en ${format(tweedePasen)}`],
