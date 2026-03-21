@@ -43,19 +43,19 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
       );
       const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
 
-      fetch("/api/instructielog", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        keepalive: true,
-        body: JSON.stringify({
-          email: gebruiker.email,
-          naam: gebruiker.naam,
-          functie: gebruiker.functie,
-          titel,
-          instructie_id,
-          duur_seconden: duurSec,
-        }),
-      });
+fetch("/api/instructielog", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  keepalive: true,
+  body: JSON.stringify({
+    email: gebruiker.email,
+    naam: gebruiker.naam,
+    functie: gebruiker.functie,
+    titel,
+    instructie_id,
+    duur_seconden: duurSec,
+  }),
+});
     };
   }, [instructie_id, titel]);
 
