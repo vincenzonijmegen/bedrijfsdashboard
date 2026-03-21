@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { decode } from 'html-entities';
-
+import { decode } from "html-entities";
 
 interface Props {
   html: string;
@@ -31,16 +30,23 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
   const [fouten, setFouten] = useState<
     { vraag: string; gegeven: string; gekozenTekst: string }[]
   >([]);
+  const beantwoordeVragen = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     startTijd.current = Date.now();
+
     return () => {
       const eindTijd = Date.now();
-      const duurSec = Math.round((eindTijd - (startTijd.current || eindTijd)) / 1000);
+      const duurSec = Math.max(
+        1,
+        Math.floor((eindTijd - (startTijd.current || eindTijd)) / 1000)
+      );
       const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
+
       fetch("/api/instructielog", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        keepalive: true,
         body: JSON.stringify({
           email: gebruiker.email,
           naam: gebruiker.naam,
@@ -53,74 +59,121 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
     };
   }, [instructie_id, titel]);
 
-useEffect(() => {
-  const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
-  if (!gebruiker?.email || !instructie_id) return;
-  fetch("/api/instructiestatus", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email: gebruiker.email, instructie_id }),
-  });
+  useEffect(() => {
+    const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
+    if (!gebruiker?.email || !instructie_id) return;
 
-  const parts = html.split(/\[end\]/gi);
+    fetch("/api/instructiestatus", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: gebruiker.email, instructie_id }),
+    });
 
-  const fixImgTags = (html: string) =>
-    html.replace(/<img([^>]+?)style="[^"]*?">/gi, '<img$1 style="max-width: 100%; display: block; margin: 1em auto;" />');
+    const parts = html.split(/\[end\]/gi);
 
-  const stepSegments = parts
-    .slice(0, -1)
-    .map((s) => fixImgTags(typeof s === "string" ? s.trim() : ""))
-    .filter(Boolean);
+    const fixImgTags = (html: string) =>
+      html.replace(
+        /<img([^>]+?)style="[^"]*?">/gi,
+        '<img$1 style="max-width: 100%; display: block; margin: 1em auto;" />'
+      );
 
-  const vraagDeel = parts.slice(-1)[0] || "";
-  const vragenHTML = vraagDeel.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
-  const questionPattern = /Vraag[:.]\s*([\s\S]*?)\s*A\.\s*([\s\S]*?)\s*B\.\s*([\s\S]*?)\s*C\.\s*([\s\S]*?)\s*Antwoord:\s*([ABC])/gi;
-  const vraagMatches = Array.from(vragenHTML.matchAll(questionPattern)).map((m) => ({
-    vraag: m[1]?.trim() ?? "",
-    opties: [m[2]?.trim() ?? "", m[3]?.trim() ?? "", m[4]?.trim() ?? ""],
-    antwoord: m[5]?.trim()?.toUpperCase() ?? "",
-  }));
+    const stepSegments = parts
+      .slice(0, -1)
+      .map((s) => fixImgTags(typeof s === "string" ? s.trim() : ""))
+      .filter(Boolean);
 
-  setStappen(stepSegments);
-  setVragen(vraagMatches);
-  setHeeftToets(vraagMatches.length > 0);
-}, [instructie_id, html]);
+    const vraagDeel = parts.slice(-1)[0] || "";
+    const vragenHTML = vraagDeel.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
+    const questionPattern =
+      /Vraag[:.]\s*([\s\S]*?)\s*A\.\s*([\s\S]*?)\s*B\.\s*([\s\S]*?)\s*C\.\s*([\s\S]*?)\s*Antwoord:\s*([ABC])/gi;
 
+    const vraagMatches = Array.from(vragenHTML.matchAll(questionPattern)).map((m) => ({
+      vraag: m[1]?.trim() ?? "",
+      opties: [m[2]?.trim() ?? "", m[3]?.trim() ?? "", m[4]?.trim() ?? ""],
+      antwoord: m[5]?.trim()?.toUpperCase() ?? "",
+    }));
+
+    setStappen(stepSegments);
+    setVragen(vraagMatches);
+    setHeeftToets(vraagMatches.length > 0);
+
+    setIndex(0);
+    setFase("stappen");
+    setFeedback(null);
+    setScore(0);
+    setAantalJuist(0);
+    setFouten([]);
+    beantwoordeVragen.current = new Set();
+  }, [instructie_id, html]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Enter") {
-        if (fase === "vragen" && feedback && heeftToets) {
-          setIndex((i) => Math.min(i + 1, vragen.length - 1));
-        } else {
-          setIndex((i) => Math.min(i + 1, stappen.length - 1));
+      if (e.key !== "Enter") return;
+
+      if (fase === "vragen") {
+        if (feedback && heeftToets) {
+          e.preventDefault();
+          naarVolgende();
         }
+        return;
+      }
+
+      if (fase === "stappen") {
+        e.preventDefault();
+        naarVolgende();
       }
     };
+
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [fase, feedback, heeftToets, stappen.length, vragen.length]);
+  }, [fase, feedback, heeftToets, stappen.length, vragen.length, index]);
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
+
     let startX = 0;
-    const onTouchStart = (e: TouchEvent) => { startX = e.touches[0].clientX; };
+
+    const onTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+    };
+
     const onTouchEnd = (e: TouchEvent) => {
       const delta = e.changedTouches[0].clientX - startX;
-      if (delta < -40) setIndex((i) => Math.min(i + 1, fase === "vragen" ? vragen.length - 1 : stappen.length - 1));
-      if (delta > 40) setIndex((i) => Math.max(i - 1, 0));
+
+      if (delta < -40) {
+        if (fase === "vragen") {
+          if (feedback) {
+            setIndex((i) => Math.min(i + 1, vragen.length - 1));
+          }
+        } else {
+          setIndex((i) => Math.min(i + 1, stappen.length - 1));
+        }
+      }
+
+      if (delta > 40) {
+        setIndex((i) => Math.max(i - 1, 0));
+      }
     };
+
     el.addEventListener("touchstart", onTouchStart);
     el.addEventListener("touchend", onTouchEnd);
+
     return () => {
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchend", onTouchEnd);
     };
-  }, [fase, stappen.length, vragen.length]);
+  }, [fase, feedback, stappen.length, vragen.length]);
 
   const selectAntwoord = (letter: "A" | "B" | "C") => {
+    if (feedback != null) return;
+    if (!vragen[index]) return;
+    if (beantwoordeVragen.current.has(index)) return;
+
+    beantwoordeVragen.current.add(index);
+
     const juist = letter === vragen[index].antwoord;
+
     if (juist) {
       setAantalJuist((n) => n + 1);
     } else {
@@ -129,22 +182,34 @@ useEffect(() => {
         {
           vraag: vragen[index].vraag,
           gegeven: letter,
-          gekozenTekst: vragen[index].opties[["A","B","C"].indexOf(letter)],
+          gekozenTekst: vragen[index].opties[["A", "B", "C"].indexOf(letter)],
         },
       ]);
     }
-    setFeedback(juist ? "✅ Goed!" : `❌ Fout. Juiste antwoord: ${vragen[index].antwoord}`);
+
+    setFeedback(
+      juist ? "✅ Goed!" : `❌ Fout. Juiste antwoord: ${vragen[index].antwoord}`
+    );
   };
 
   const naarVolgende = () => {
     setFeedback(null);
     const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
+
     if (fase === "stappen" && index === stappen.length - 1 && heeftToets) {
-      setFase("vragen"); setIndex(0); return;
+      setFase("vragen");
+      setIndex(0);
+      return;
     }
+
     if (fase === "vragen" && index === vragen.length - 1 && heeftToets) {
-      const percentage = Math.round((aantalJuist / vragen.length) * 100);
-      setScore(percentage); setFase("klaar");
+      const veiligAantalJuist = Math.min(aantalJuist, vragen.length);
+      const percentage =
+        vragen.length > 0 ? Math.round((veiligAantalJuist / vragen.length) * 100) : 0;
+
+      setScore(percentage);
+      setFase("klaar");
+
       fetch("/api/resultaten", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -155,47 +220,54 @@ useEffect(() => {
           titel,
           instructie_id,
           score: percentage,
-          juist: aantalJuist,
+          juist: veiligAantalJuist,
           totaal: vragen.length,
           fouten,
         }),
       });
       return;
     }
+
     if (!heeftToets && index === stappen.length - 1) {
-      setFase("klaar"); return;
+      setFase("klaar");
+      return;
     }
+
+    if (fase === "vragen" && feedback == null) {
+      return;
+    }
+
     setIndex((i) => i + 1);
   };
 
   return (
     <div ref={containerRef} className="max-w-4xl mx-auto p-4 space-y-4">
       <h1 className="text-2xl font-bold">{titel}</h1>
+
       {fase === "stappen" && (
         <>
-<div
-  className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none"
-  dangerouslySetInnerHTML={{
-    __html: decode(
-      (stappen[index] || '')
-        .replace(
-          /<a[^>]*href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^"']+)["'][^>]*>[\s\S]*?<\/a>/gi,
-          (_match, url) => {
-            const rawId = url.includes('watch?v=')
-              ? url.split('watch?v=')[1].split('&')[0]
-              : url.split('/').pop()?.split('?')[0] || '';
-            return `<iframe
+          <div
+            className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none"
+            dangerouslySetInnerHTML={{
+              __html: decode(
+                (stappen[index] || "").replace(
+                  /<a[^>]*href=["'](https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[^"']+)["'][^>]*>[\s\S]*?<\/a>/gi,
+                  (_match, url) => {
+                    const rawId = url.includes("watch?v=")
+                      ? url.split("watch?v=")[1].split("&")[0]
+                      : url.split("/").pop()?.split("?")[0] || "";
+                    return `<iframe
               class="w-full aspect-video rounded mb-4"
               src="https://www.youtube.com/embed/${rawId}"
               frameborder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowfullscreen
             ></iframe>`;
-          }
-        )
-    )
-  }}
-/>
+                  }
+                )
+              ),
+            }}
+          />
 
           <div className="flex justify-between">
             <button
@@ -205,7 +277,10 @@ useEffect(() => {
             >
               Vorige
             </button>
-            <button onClick={naarVolgende} className="bg-blue-600 text-white px-4 py-2 rounded">
+            <button
+              onClick={naarVolgende}
+              className="bg-blue-600 text-white px-4 py-2 rounded"
+            >
               {index === stappen.length - 1 && heeftToets
                 ? "Start toets (↵)"
                 : "Volgende stap (↵)"}
@@ -213,17 +288,18 @@ useEffect(() => {
           </div>
         </>
       )}
+
       {fase === "vragen" && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Vraag {index + 1}</h2>
           <p>{vragen[index].vraag}</p>
           <div className="space-y-2">
-            {['A','B','C'].map((letter, i) => (
+            {["A", "B", "C"].map((letter, i) => (
               <button
                 key={letter}
-                onClick={() => selectAntwoord(letter as 'A'|'B'|'C')}
+                onClick={() => selectAntwoord(letter as "A" | "B" | "C")}
                 className="block w-full border rounded px-4 py-2 text-left bg-white hover:bg-blue-50"
-                disabled={feedback!=null}
+                disabled={feedback != null}
               >
                 {letter}. {vragen[index].opties[i]}
               </button>
@@ -233,24 +309,33 @@ useEffect(() => {
             <div className="text-sm mt-2">
               {feedback}
               <div className="mt-2">
-                <button onClick={naarVolgende} className="bg-blue-600 text-white px-4 py-2 rounded">
-                  {index===vragen.length-1?'Bekijk resultaat':'Volgende vraag (↵)'}
+                <button
+                  onClick={naarVolgende}
+                  className="bg-blue-600 text-white px-4 py-2 rounded"
+                >
+                  {index === vragen.length - 1 ? "Bekijk resultaat" : "Volgende vraag (↵)"}
                 </button>
               </div>
             </div>
           )}
         </div>
       )}
+
       {fase === "klaar" && (
         <div className="text-center text-xl font-semibold space-y-4">
           {heeftToets ? (
-            <p className={score>=80?'text-green-700':'text-red-700'}>
-              {score>=80?'✅ Geslaagd!':'❌ Niet geslaagd.'} Je score: {score}%<br/>{aantalJuist} van {vragen.length} goed beantwoord
+            <p className={score >= 80 ? "text-green-700" : "text-red-700"}>
+              {score >= 80 ? "✅ Geslaagd!" : "❌ Niet geslaagd."} Je score: {score}%
+              <br />
+              {Math.min(aantalJuist, vragen.length)} van {vragen.length} goed beantwoord
             </p>
           ) : (
             <p className="text-green-700">✅ Instructie gelezen</p>
           )}
-          <Link href="/instructies" className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+          <Link
+            href="/instructies"
+            className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+          >
             Terug naar instructies
           </Link>
         </div>
