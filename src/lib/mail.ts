@@ -88,6 +88,13 @@ export async function sendVraagMeldingAanLeiding(naam: string, email: string, vr
   console.log("📧 Vraagmelding verzonden:", result);
 }
 
+console.log("SMTP DEBUG", {
+  user: "bestelling@ijssalonvincenzo.nl",
+  hasPassword: !!process.env.EMAIL_PASSWORD,
+  passwordLength: process.env.EMAIL_PASSWORD?.length ?? 0,
+});
+
+
 const infomaniakTransporter = nodemailer.createTransport({
   host: "mail.infomaniak.com",
   port: 465,
