@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     const html = tekstNaarHtml(String(tekst));
 
     const result = await resend.emails.send({
-      from: "IJssalon Vincenzo <bestelling@ijssalonvincenzo.nl>",
+      from: "IJssalon Vincenzo <bestelling@send.ijssalonvincenzo.nl>",
       to: Array.isArray(naar) ? naar : [naar],
       replyTo: "herman@ijssalonvincenzo.nl",
       subject: String(onderwerp),
