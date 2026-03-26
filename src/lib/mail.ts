@@ -88,3 +88,30 @@ export async function sendVraagMeldingAanLeiding(naam: string, email: string, vr
 
   console.log("📧 Vraagmelding verzonden:", result);
 }
+
+import nodemailer from "nodemailer";
+
+const infomaniakTransporter = nodemailer.createTransport({
+  host: "mail.infomaniak.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: "bestelling@ijssalonvincenzo.nl",
+    pass: process.env.EMAIL_PASSWORD!,
+  },
+});
+
+export async function sendBestellingMail(
+  naar: string,
+  onderwerp: string,
+  tekst: string
+) {
+  const result = await infomaniakTransporter.sendMail({
+    from: "IJssalon Vincenzo <bestelling@ijssalonvincenzo.nl>",
+    to: naar,
+    subject: onderwerp,
+    text: tekst,
+  });
+
+  console.log("✅ Bestelmail verzonden via Infomaniak:", result);
+}
