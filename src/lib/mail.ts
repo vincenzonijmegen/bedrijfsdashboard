@@ -1,8 +1,7 @@
 import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 export async function sendUitnodiging(email: string, naam: string, wachtwoord: string) {
-  console.log("📧 Verstuur uitnodiging naar:", email, "met wachtwoord:", wachtwoord);
-
   const subject = "Je werkinstructie-account bij IJssalon Vincenzo";
   const body = `
     <p>Hallo ${naam},</p>
@@ -89,8 +88,6 @@ export async function sendVraagMeldingAanLeiding(naam: string, email: string, vr
   console.log("📧 Vraagmelding verzonden:", result);
 }
 
-import nodemailer from "nodemailer";
-
 const infomaniakTransporter = nodemailer.createTransport({
   host: "mail.infomaniak.com",
   port: 465,
@@ -106,11 +103,24 @@ export async function sendBestellingMail(
   onderwerp: string,
   tekst: string
 ) {
+  const html = tekst
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br>");
+
   const result = await infomaniakTransporter.sendMail({
     from: "IJssalon Vincenzo <bestelling@ijssalonvincenzo.nl>",
     to: naar,
+    replyTo: "herman@ijssalonvincenzo.nl",
     subject: onderwerp,
     text: tekst,
+    html: `<div style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111827;">
+      <p>Beste,</p>
+      <p>Hierbij onze bestelling.</p>
+      <p>${html}</p>
+      <p>Met vriendelijke groet,<br><strong>IJssalon Vincenzo</strong></p>
+    </div>`,
   });
 
   console.log("✅ Bestelmail verzonden via Infomaniak:", result);

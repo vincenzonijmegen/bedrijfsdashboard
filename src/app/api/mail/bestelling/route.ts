@@ -1,39 +1,30 @@
-import nodemailer from "nodemailer";
+// app/api/mail/bestelling/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { sendBestellingMail } from "@/lib/mail";
 
-const infomaniakTransporter = nodemailer.createTransport({
-  host: "mail.infomaniak.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: "bestelling@ijssalonvincenzo.nl",
-    pass: process.env.EMAIL_PASSWORD!,
-  },
-});
+export async function POST(req: NextRequest) {
+  try {
+    const { naar, onderwerp, tekst } = await req.json();
 
-export async function sendBestellingMail(
-  naar: string,
-  onderwerp: string,
-  tekst: string
-) {
-  const html = tekst
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\n/g, "<br>");
+    if (!naar || !onderwerp || !tekst) {
+      return NextResponse.json(
+        { error: "Ontbrekende gegevens" },
+        { status: 400 }
+      );
+    }
 
-  const result = await infomaniakTransporter.sendMail({
-    from: "IJssalon Vincenzo <bestelling@ijssalonvincenzo.nl>",
-    to: naar,
-    replyTo: "herman@ijssalonvincenzo.nl",
-    subject: onderwerp,
-    text: tekst,
-    html: `<div style="font-family:Arial,Helvetica,sans-serif;line-height:1.5;color:#111827;">
-      <p>Beste,</p>
-      <p>Hierbij onze bestelling.</p>
-      <p>${html}</p>
-      <p>Met vriendelijke groet,<br><strong>IJssalon Vincenzo</strong></p>
-    </div>`,
-  });
+    await sendBestellingMail(
+      Array.isArray(naar) ? naar.join(", ") : String(naar),
+      String(onderwerp),
+      String(tekst)
+    );
 
-  console.log("✅ Bestelmail verzonden via Infomaniak:", result);
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("❌ Mailfout bij /api/mail/bestelling:", err);
+    return NextResponse.json(
+      { success: false, error: err instanceof Error ? err.message : String(err) },
+      { status: 500 }
+    );
+  }
 }
