@@ -161,7 +161,7 @@ Opmerkingen: ${opmerking.trim()}`;
             <button
               className="bg-blue-600 text-white px-4 py-2 rounded"
               onClick={async () => {
-                const naar = prompt("Naar welk e-mailadres?", "info@ijssalonvincenzo.nl");
+                const naar = prompt("Naar welk e-mailadres?", "bestelling@ijssalonvincenzo.nl");
                 if (!naar) return;
 
                 await fetch("/api/mail/bestelling", {
