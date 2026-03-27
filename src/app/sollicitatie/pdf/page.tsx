@@ -106,15 +106,37 @@ obj["Dagen werken"] = dagenWerken.join(", ");
 
 
 function getLeeftijd(dob: string): number | string {
-  const [dag, maand, jaar] = dob.split("-").map(Number);
+  if (!dob) return "onbekend";
+
+  let dag: number, maand: number, jaar: number;
+
+  if (dob.includes("-")) {
+    const parts = dob.split("-").map(Number);
+
+    // detecteer formaat
+    if (parts[0] > 1000) {
+      // yyyy-mm-dd
+      [jaar, maand, dag] = parts;
+    } else {
+      // dd-mm-yyyy
+      [dag, maand, jaar] = parts;
+    }
+  } else {
+    return "onbekend";
+  }
+
   if (!dag || !maand || !jaar) return "onbekend";
+
   const geboortedatum = new Date(jaar, maand - 1, dag);
   const nu = new Date();
+
   let leeftijd = nu.getFullYear() - geboortedatum.getFullYear();
-  const maandVerschil = nu.getMonth() - geboortedatum.getMonth();
-  if (maandVerschil < 0 || (maandVerschil === 0 && nu.getDate() < geboortedatum.getDate())) {
+  const m = nu.getMonth() - geboortedatum.getMonth();
+
+  if (m < 0 || (m === 0 && nu.getDate() < geboortedatum.getDate())) {
     leeftijd--;
   }
+
   return leeftijd;
 }
 
