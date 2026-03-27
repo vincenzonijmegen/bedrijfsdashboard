@@ -88,13 +88,6 @@ export async function sendVraagMeldingAanLeiding(naam: string, email: string, vr
   console.log("📧 Vraagmelding verzonden:", result);
 }
 
-console.log("SMTP DEBUG", {
-  user: "bestelling@ijssalonvincenzo.nl",
-  hasPassword: !!process.env.EMAIL_PASSWORD,
-  passwordLength: process.env.EMAIL_PASSWORD?.length ?? 0,
-});
-
-
 const infomaniakTransporter = nodemailer.createTransport({
   host: "mail.infomaniak.com",
   port: 465,
@@ -131,4 +124,160 @@ export async function sendBestellingMail(
   });
 
   console.log("✅ Bestelmail verzonden via Infomaniak:", result);
+}
+
+function esc(v: string) {
+  return v
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export async function sendContactMail({
+  naam,
+  email,
+  bericht,
+}: {
+  naam: string;
+  email: string;
+  bericht: string;
+}) {
+  const subject = "Contactformulier – IJssalon Vincenzo";
+  const text =
+    `Nieuw bericht via het contactformulier\n` +
+    `====================================\n\n` +
+    `Naam: ${naam}\n` +
+    `E-mail: ${email}\n\n` +
+    `Bericht:\n${bericht}\n`;
+
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;line-height:1.5;">
+      <h2 style="margin:0 0 12px 0;">Nieuw bericht via het contactformulier</h2>
+      <p><strong>Naam:</strong> ${esc(naam)}<br>
+      <strong>E-mail:</strong> ${esc(email)}</p>
+      <h3 style="margin:16px 0 8px;">Bericht</h3>
+      <div style="border:1px solid #ccc;padding:10px;border-radius:6px;white-space:pre-wrap;">${esc(bericht)}</div>
+    </div>
+  `;
+
+  return infomaniakTransporter.sendMail({
+    from: "IJssalon Vincenzo <contact@ijssalonvincenzo.nl>",
+    to: "contact@ijssalonvincenzo.nl, herman@ijssalonvincenzo.nl",
+    replyTo: email,
+    subject,
+    text,
+    html,
+  });
+}
+
+export async function sendSollicitatieMail({
+  voornaam,
+  achternaam,
+  adres,
+  huisnummer,
+  postcode,
+  woonplaats,
+  geboortedatum,
+  geslacht,
+  email,
+  tel,
+  beschikbaar_vanaf,
+  beschikbaar_tot,
+  bijbaan,
+  voorkeur_functie,
+  shifts_per_week,
+  vakantie,
+  momenten,
+  motivatie,
+}: {
+  voornaam: string;
+  achternaam: string;
+  adres: string;
+  huisnummer: string;
+  postcode: string;
+  woonplaats: string;
+  geboortedatum: string;
+  geslacht: string;
+  email: string;
+  tel: string;
+  beschikbaar_vanaf: string;
+  beschikbaar_tot: string;
+  bijbaan: string;
+  voorkeur_functie: string;
+  shifts_per_week: string;
+  vakantie: string;
+  momenten: string[];
+  motivatie: string;
+}) {
+  const naam = `${voornaam} ${achternaam}`.trim();
+
+  const text =
+    `SOLLICITATIE\n===========\n\n` +
+    `Naam: ${naam}\n` +
+    `E-mail: ${email}\n` +
+    `Telefoon: ${tel}\n\n` +
+    `Adres: ${adres}\n` +
+    `Huisnummer: ${huisnummer}\n` +
+    `Postcode: ${postcode}\n` +
+    `Woonplaats: ${woonplaats}\n\n` +
+    `Geboortedatum: ${geboortedatum}\n` +
+    `Geslacht: ${geslacht}\n\n` +
+    `Vanaf: ${beschikbaar_vanaf}\n` +
+    `Tot: ${beschikbaar_tot}\n` +
+    `Andere bijbaan: ${bijbaan}\n` +
+    `Voorkeur functie: ${voorkeur_functie}\n` +
+    `Shifts per week: ${shifts_per_week}\n` +
+    `Vakantie: ${vakantie}\n` +
+    `Beschikbare shifts: ${momenten.join(", ")}\n\n` +
+    `Opmerking/Motivatie:\n${motivatie}\n`;
+
+  const momentenHtml = momenten.length
+    ? `<ul style="margin:4px 0 0 20px;padding:0;">${momenten
+        .map((m) => `<li>${esc(m)}</li>`)
+        .join("")}</ul>`
+    : "-";
+
+  const html = `
+    <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;line-height:1.5;">
+      <h2 style="margin:0 0 12px 0;">SOLLICITATIE</h2>
+
+      <h3>Gegevens</h3>
+      <p><strong>Naam:</strong> ${esc(naam)}<br>
+         <strong>E-mail:</strong> ${esc(email)}<br>
+         <strong>Telefoon:</strong> ${esc(tel)}</p>
+
+      <h3>Adres</h3>
+      <p><strong>Adres:</strong> ${esc(adres)}<br>
+         <strong>Huisnummer:</strong> ${esc(huisnummer)}<br>
+         <strong>Postcode:</strong> ${esc(postcode)}<br>
+         <strong>Woonplaats:</strong> ${esc(woonplaats)}</p>
+
+      <h3>Persoonlijk</h3>
+      <p><strong>Geboortedatum:</strong> ${esc(geboortedatum)}<br>
+         <strong>Geslacht:</strong> ${esc(geslacht)}</p>
+
+      <h3>Beschikbaarheid</h3>
+      <p><strong>Vanaf:</strong> ${esc(beschikbaar_vanaf)}<br>
+         <strong>Tot:</strong> ${esc(beschikbaar_tot)}<br>
+         <strong>Andere bijbaan:</strong> ${esc(bijbaan)}<br>
+         <strong>Voorkeur functie:</strong> ${esc(voorkeur_functie)}<br>
+         <strong>Shifts per week:</strong> ${esc(shifts_per_week)}<br>
+         <strong>Vakantie:</strong> ${esc(vakantie)}</p>
+
+      <p><strong>Beschikbare shifts:</strong> ${momentenHtml}</p>
+
+      <h3>Opmerking / Motivatie</h3>
+      <div style="border:1px solid #ccc;padding:8px;border-radius:4px;white-space:pre-wrap;">${esc(motivatie || "-")}</div>
+    </div>
+  `;
+
+  return infomaniakTransporter.sendMail({
+    from: "IJssalon Vincenzo <jobs@ijssalonvincenzo.nl>",
+    to: "jobs@ijssalonvincenzo.nl, herman@ijssalonvincenzo.nl",
+    replyTo: email,
+    subject: "Nieuwe sollicitatie via website",
+    text,
+    html,
+  });
 }
