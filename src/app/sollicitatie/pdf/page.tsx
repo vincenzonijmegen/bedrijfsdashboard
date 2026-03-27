@@ -158,6 +158,26 @@ function toISODate(d: string | undefined) {
   return `${jaar}-${maand.padStart(2, "0")}-${dag.padStart(2, "0")}`;
 }
 
+function formatDateNL(d?: string) {
+  if (!d) return "";
+
+  const parts = d.split("-").map(Number);
+
+  // yyyy-mm-dd
+  if (parts[0] > 1000) {
+    const [jaar, maand, dag] = parts;
+    return `${String(dag).padStart(2, "0")}-${String(maand).padStart(2, "0")}-${jaar}`;
+  }
+
+  // dd-mm-yyyy (fallback)
+  if (parts.length === 3) {
+    const [dag, maand, jaar] = parts;
+    return `${String(dag).padStart(2, "0")}-${String(maand).padStart(2, "0")}-${jaar}`;
+  }
+
+  return d;
+}
+
 
   const generatePDF = async () => {
     const parsed = parseMail(input);
@@ -172,11 +192,11 @@ function toISODate(d: string | undefined) {
       ["Achternaam", parsed["Achternaam"] || ""],
       ["Adres", `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`],
       ["PC/Woonplaats", `${parsed["Postcode"] || ""} ${parsed["Woonplaats"] || ""}`],
-      ["Geboortedatum", `${parsed["Geboortedatum"] || ""} (${parsed["Geboortedatum"] ? getLeeftijd(parsed["Geboortedatum"]) + ' jaar' : ''})`],
+      ["Geboortedatum", `${formatDateNL(parsed["Geboortedatum"]) || ""} (${parsed["Geboortedatum"] ? getLeeftijd(parsed["Geboortedatum"]) + ' jaar' : ''})`],
       ["E-mailadres", parsed["E-mailadres"] || ""],
       ["Telefoonnummer", parsed["Telefoonnummer"] || ""],
-      ["Startdatum", parsed["Startdatum"] || ""],
-      ["Einddatum", parsed["Einddatum"] || ""],
+      ["Startdatum", formatDateNL(parsed["Startdatum"]) || ""],
+      ["Einddatum", formatDateNL(parsed["Einddatum"]) || ""],
       ["Andere bijbaan", parsed["Andere bijbaan"] || ""]
     ];
 
