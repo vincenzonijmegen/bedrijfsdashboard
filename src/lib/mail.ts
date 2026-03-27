@@ -162,7 +162,7 @@ export async function sendContactMail({
   `;
 
   return infomaniakTransporter.sendMail({
-    from: "IJssalon Vincenzo <contact@ijssalonvincenzo.nl>",
+    from: "IJssalon Vincenzo <bestelling@ijssalonvincenzo.nl>",
     to: "contact@ijssalonvincenzo.nl, herman@ijssalonvincenzo.nl",
     replyTo: email,
     subject,
@@ -273,7 +273,7 @@ export async function sendSollicitatieMail({
   `;
 
   return infomaniakTransporter.sendMail({
-    from: "IJssalon Vincenzo <jobs@ijssalonvincenzo.nl>",
+    from: "IJssalon Vincenzo <bestelling@ijssalonvincenzo.nl>",
     to: "jobs@ijssalonvincenzo.nl, herman@ijssalonvincenzo.nl",
     replyTo: email,
     subject: "Nieuwe sollicitatie via website",
