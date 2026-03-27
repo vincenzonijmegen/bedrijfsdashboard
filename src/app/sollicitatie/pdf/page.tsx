@@ -358,7 +358,7 @@ console.log("ZF 2026:", format(zfStart), format(zfEnd));
       dagen,
       voornaam: parsed["Voornaam"],
       achternaam: parsed["Achternaam"],
-      geboortedatum: parsed["Geboortedatum"],
+      geboortedatum: toISODate(parsed["Geboortedatum"]),
       email: parsed["E-mailadres"],
       telefoon: parsed["Telefoonnummer"],
       adres: `${parsed["Adres"] || ""} ${parsed["Huisnummer"] || ""}`.trim(),
