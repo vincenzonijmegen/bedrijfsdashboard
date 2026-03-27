@@ -127,6 +127,16 @@ export default function SollicitatiePDF() {
     if (saved) setTo(saved);
   }, []);
 
+function toISODate(d: string | undefined) {
+  if (!d) return null;
+  const parts = d.split("-");
+  if (parts.length !== 3) return null;
+
+  const [dag, maand, jaar] = parts;
+  return `${jaar}-${maand.padStart(2, "0")}-${dag.padStart(2, "0")}`;
+}
+
+
   const generatePDF = async () => {
     const parsed = parseMail(input);
     const doc = new jsPDF();

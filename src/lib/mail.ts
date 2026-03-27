@@ -163,7 +163,7 @@ export async function sendContactMail({
 
   return infomaniakTransporter.sendMail({
     from: "IJssalon Vincenzo <bestelling@ijssalonvincenzo.nl>",
-    to: "contact@ijssalonvincenzo.nl, herman@ijssalonvincenzo.nl",
+    to: "contact@ijssalonvincenzo.nl",
     replyTo: email,
     subject,
     text,
@@ -274,7 +274,7 @@ export async function sendSollicitatieMail({
 
   return infomaniakTransporter.sendMail({
     from: "IJssalon Vincenzo <bestelling@ijssalonvincenzo.nl>",
-    to: "jobs@ijssalonvincenzo.nl, herman@ijssalonvincenzo.nl",
+    to: "jobs@ijssalonvincenzo.nl",
     replyTo: email,
     subject: "Nieuwe sollicitatie via website",
     text,
