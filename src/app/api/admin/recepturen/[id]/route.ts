@@ -124,27 +124,28 @@ export async function PUT(
     await client.query("BEGIN");
 
     const updateResult = await client.query(
-      `
-      UPDATE keuken_recepten
-SET
-  categorie = $1,
-  naam = $2,
-  hoeveelheid_mix = $3,
-  maakinstructie = $4,
-  actief = $5,
-  updated_at = now()
-WHERE id = $6
-      `,
-     [
-  categorie,
-  naam,
-  hoeveelheid_mix || null,
-  maakinstructie || null,
-  actief,
-  maakvolgorde,
-  id,
-]
-    );
+  `
+  UPDATE keuken_recepten
+  SET
+    categorie = $1,
+    naam = $2,
+    hoeveelheid_mix = $3,
+    maakinstructie = $4,
+    actief = $5,
+    maakvolgorde = $6,
+    updated_at = now()
+  WHERE id = $7
+  `,
+  [
+    categorie,
+    naam,
+    hoeveelheid_mix || null,
+    maakinstructie || null,
+    actief,
+    maakvolgorde,
+    id,
+  ]
+);
 
     if (updateResult.rowCount === 0) {
       await client.query("ROLLBACK");
