@@ -1,3 +1,5 @@
+export const revalidate = 300;
+
 import Link from "next/link";
 import { query } from "@/lib/db";
 
