@@ -133,7 +133,11 @@ async function markAsDone(item: MaaklijstEntry) {
   }
 }
 
-
+function isSelected(id: number) {
+  return maaklijst.some(
+    (item) => item.id === id && item.status === "open"
+  );
+}
 
   function openAddDialog(item: ReceptItem) {
     setActiveItem(item);
@@ -290,11 +294,15 @@ const doneItems = useMemo(() => {
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
                   {groep.items.map((item) => (
                     <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => openAddDialog(item)}
-                      className="flex h-[96px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center shadow-sm transition active:scale-95"
-                    >
+  key={item.id}
+  type="button"
+  onClick={() => openAddDialog(item)}
+  className={`flex h-[96px] items-center justify-center rounded-2xl border px-3 py-3 text-center shadow-sm transition active:scale-95 ${
+    isSelected(item.id)
+      ? "border-emerald-300 bg-emerald-100 text-emerald-900"
+      : "border-slate-200 bg-white text-slate-900"
+  }`}
+>
                       <span className="block max-w-[170px] text-lg font-semibold leading-snug text-slate-900">
                         {item.naam}
                       </span>
@@ -306,73 +314,108 @@ const doneItems = useMemo(() => {
           ))}
         </div>
 
-        <section className="mt-10 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-2xl font-bold text-slate-900">
-              Boodschappenlijst
-            </h2>
+<section className="mt-10 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+  <div className="mb-4 flex items-center justify-between gap-3">
+    <h2 className="text-2xl font-bold text-slate-900">Te maken</h2>
+    <div className="text-sm text-slate-500">{openItems.length} open</div>
+  </div>
+
+  {openItems.length === 0 ? (
+    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-slate-500">
+      Geen open items.
+    </div>
+  ) : (
+    <div className="grid gap-3 md:grid-cols-2">
+      {openItems.map((item) => (
+        <div
+          key={item.id}
+          className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+        >
+          <div>
+            <div className="text-lg font-semibold text-slate-900">
+              {item.naam}
+            </div>
             <div className="text-sm text-slate-500">
-              {sortedMaaklijst.length} items geselecteerd
+              {categorieTitels[item.categorie] || item.categorie}
+            </div>
+            <div className="mt-1 text-sm font-medium text-slate-700">
+              {item.aantal}x maken · volgorde {item.maakvolgorde}
             </div>
           </div>
 
-          {sortedMaaklijst.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-slate-500">
-              Nog niets toegevoegd.
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/keuken/recepturen/${item.categorie}/${item.id}?from=maaklijst`}
+              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+            >
+              Recept
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => markAsDone(item)}
+              className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
+            >
+              Afgehandeld
+            </button>
+
+            <button
+              type="button"
+              onClick={() => removeFromMaaklijst(item.id)}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+            >
+              Verwijder
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</section>
+
+<section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+  <div className="mb-4 flex items-center justify-between gap-3">
+    <h2 className="text-2xl font-bold text-slate-900">Afgehandeld</h2>
+    <div className="text-sm text-slate-500">{doneItems.length} klaar</div>
+  </div>
+
+  {doneItems.length === 0 ? (
+    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-slate-500">
+      Nog niets afgehandeld.
+    </div>
+  ) : (
+    <div className="grid gap-3 md:grid-cols-2">
+      {doneItems.map((item) => (
+        <div
+          key={item.id}
+          className="flex items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 opacity-75"
+        >
+          <div>
+            <div className="text-lg font-semibold text-slate-900">
+              {item.naam}
             </div>
-          ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              {sortedMaaklijst.map((item) => (
-                <div
-  key={item.id}
-  className={`flex items-center justify-between gap-4 rounded-2xl border px-4 py-4 ${
-    item.status === "afgehandeld"
-      ? "border-emerald-200 bg-emerald-50 opacity-70"
-      : "border-slate-200 bg-slate-50"
-  }`}
->
-                  <div>
-                    <div className="text-lg font-semibold text-slate-900">
-                      {item.naam}
-                    </div>
-                    <div className="text-sm text-slate-500">
-                      {categorieTitels[item.categorie] || item.categorie}
-                    </div>
-                    <div className="mt-1 text-sm font-medium text-slate-700">
-                      {item.aantal}x maken · volgorde {item.maakvolgorde}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-  <Link
-    href={`/keuken/recepturen/${item.categorie}/${item.id}?from=maaklijst`}
-    className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-  >
-    Recept
-  </Link>
-
-  <button
-    type="button"
-    onClick={() => markAsDone(item)}
-    disabled={item.status === "afgehandeld"}
-    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-  >
-    Afgehandeld
-  </button>
-
-  <button
-    type="button"
-    onClick={() => removeFromMaaklijst(item.id)}
-    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
-  >
-    Verwijder
-  </button>
-</div>
-                </div>
-              ))}
+            <div className="text-sm text-slate-500">
+              {categorieTitels[item.categorie] || item.categorie}
             </div>
-          )}
-        </section>
+            <div className="mt-1 text-sm font-medium text-slate-700">
+              {item.aantal}x gemaakt · volgorde {item.maakvolgorde}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => removeFromMaaklijst(item.id)}
+              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+            >
+              Verwijder
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</section>
       </div>
 
       {dialogOpen && activeItem ? (
