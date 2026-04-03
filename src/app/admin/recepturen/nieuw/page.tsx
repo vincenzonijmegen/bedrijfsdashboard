@@ -20,6 +20,7 @@ export default function NieuwReceptPage() {
   const router = useRouter();
 
   const [naam, setNaam] = useState("");
+  const [maakvolgorde, setMaakvolgorde] = useState(50);
   const [categorie, setCategorie] = useState("melksmaken");
   const [hoeveelheidMix, setHoeveelheidMix] = useState("");
   const [maakinstructie, setMaakinstructie] = useState("");
@@ -63,13 +64,14 @@ export default function NieuwReceptPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          naam,
-          categorie,
-          hoeveelheid_mix: hoeveelheidMix,
-          maakinstructie,
-          actief,
-          ingredienten,
-        }),
+  naam,
+  categorie,
+  hoeveelheid_mix: hoeveelheidMix,
+  maakinstructie,
+  actief,
+  maakvolgorde,
+  ingredienten,
+})
       });
 
       const data = await res.json();
@@ -156,7 +158,22 @@ export default function NieuwReceptPage() {
                 placeholder="Bijv. 5 liter"
               />
             </div>
+<div>
+  <label className="mb-2 block text-sm font-medium text-slate-700">
+    Maakvolgorde
+  </label>
 
+  <input
+    type="number"
+    value={maakvolgorde}
+    onChange={(e) => setMaakvolgorde(Number(e.target.value))}
+    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-pink-500"
+  />
+
+  <p className="mt-1 text-xs text-slate-500">
+    Lager = eerder maken (bijv. yoghurt 10, snickers 90)
+  </p>
+</div>
             <div className="flex items-end">
               <label className="inline-flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3">
                 <input
