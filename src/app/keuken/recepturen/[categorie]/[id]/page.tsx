@@ -26,15 +26,15 @@ export default async function ReceptDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string; categorie: string }>;
-  searchParams: Promise<{ from?: string }>;
+  searchParams: Promise<{ from?: string; cat?: string }>;
 }) {
   const { id, categorie } = await params;
-  const { from } = await searchParams;
+  const { from, cat } = await searchParams;
 
-  const terugHref =
-    from === "maaklijst"
-      ? "/keuken/maaklijst"
-      : `/keuken/recepturen/${categorie}`;
+const terugHref =
+  from === "maaklijst"
+    ? `/keuken/maaklijst?cat=${cat || categorie}`
+    : `/keuken/recepturen/${categorie}`;
 
   const terugLabel =
     from === "maaklijst"
