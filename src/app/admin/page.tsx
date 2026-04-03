@@ -373,6 +373,17 @@ export default function AdminDashboard() {
           breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Bestel-app"
         />
         <LinkCard href="/admin/recepten" label="Receptprijs" color="pink" Icon={Truck} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Receptprijs" />
+        
+<LinkCard
+  href="/admin/recepturen"
+  label="Recepturen keuken"
+  color="pink"
+  Icon={List}
+  breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Recepturen keuken"
+/>
+      
+        
+        
         <LinkCard
           href="/admin/producten/allergenen"
           label="Allergenenregistratie"
