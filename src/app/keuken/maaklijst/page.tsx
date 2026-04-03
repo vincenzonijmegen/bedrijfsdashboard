@@ -274,7 +274,7 @@ const doneItems = useMemo(() => {
 
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-slate-900 px-4 py-3 text-lg font-semibold text-white">
-              {sortedMaaklijst.length} items
+              {openItems.length} open
             </div>
 
             <button
@@ -420,16 +420,6 @@ const doneItems = useMemo(() => {
             <div className="mt-1 text-sm font-medium text-slate-700">
               {item.aantal}x gemaakt · volgorde {item.maakvolgorde}
             </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => removeFromMaaklijst(item.id)}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
-            >
-              Verwijder
-            </button>
           </div>
         </div>
       ))}
