@@ -23,10 +23,23 @@ function splitStappen(maakinstructie: string | null) {
 
 export default async function ReceptDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; categorie: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { id, categorie } = await params;
+  const { from } = await searchParams;
+
+  const terugHref =
+    from === "maaklijst"
+      ? "/keuken/maaklijst"
+      : `/keuken/recepturen/${categorie}`;
+
+  const terugLabel =
+    from === "maaklijst"
+      ? "← Terug naar maaklijst"
+      : `← Terug naar ${categorie.replace(/-/g, " ")}`;
 
   const receptResult = await query<Recept>(
     `
@@ -49,10 +62,10 @@ export default async function ReceptDetailPage({
       <main className="min-h-screen bg-slate-50 p-4 md:p-6">
         <div className="mx-auto max-w-4xl">
           <Link
-            href={`/keuken/recepturen/${categorie}`}
+            href={terugHref}
             className="mb-6 inline-flex items-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-700 shadow-sm"
           >
-            ← Terug
+            {terugLabel}
           </Link>
 
           <div className="mt-6 rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-lg text-slate-500">
@@ -80,10 +93,10 @@ export default async function ReceptDetailPage({
     <main className="min-h-screen bg-slate-50 p-4 md:p-6">
       <div className="mx-auto max-w-5xl">
         <Link
-          href={`/keuken/recepturen/${categorie}`}
+          href={terugHref}
           className="mb-6 inline-flex items-center rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-700 shadow-sm"
         >
-          ← Terug naar {categorie.replace(/-/g, " ")}
+          {terugLabel}
         </Link>
 
         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm md:p-8">
@@ -94,8 +107,6 @@ export default async function ReceptDetailPage({
             <h1 className="mt-2 text-4xl font-bold tracking-tight text-slate-900 md:text-5xl">
               {recept.naam}
             </h1>
-
-            
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.4fr]">
@@ -105,7 +116,7 @@ export default async function ReceptDetailPage({
               </h2>
 
               {ingredienten.length === 0 ? (
-                <p className="mt-4 text-lg text-slate-500">
+                <p className="mt-4 text-base italic text-slate-400">
                   Geen benodigdheden ingevuld.
                 </p>
               ) : (

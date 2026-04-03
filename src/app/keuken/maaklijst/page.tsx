@@ -275,11 +275,11 @@ export default function MaaklijstPage() {
 
                   <div className="flex items-center gap-2">
                     <Link
-                      href={`/keuken/recepturen/${item.categorie}/${item.id}`}
-                      className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-                    >
-                      Recept
-                    </Link>
+  href={`/keuken/recepturen/${item.categorie}/${item.id}?from=maaklijst`}
+  className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+>
+  Recept
+</Link>
                     <button
                       type="button"
                       onClick={() => removeFromMaaklijst(item.id)}
