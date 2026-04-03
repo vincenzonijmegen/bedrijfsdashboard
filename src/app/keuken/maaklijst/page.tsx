@@ -19,7 +19,14 @@ type MaaklijstEntry = {
   status: "open" | "afgehandeld";
 };
 
-const STORAGE_KEY = "keuken-maaklijst-v2";
+const todayKey = new Date().toISOString().slice(0, 10);
+const STORAGE_KEY = `keuken-maaklijst-${todayKey}`;
+
+
+
+
+
+
 
 const categorieTitels: Record<string, string> = {
   melksmaken: "Melksmaken",
@@ -181,6 +188,9 @@ return [
     setMaaklijst([]);
   }
 
+
+
+  
   const grouped = useMemo(() => {
     return categorieVolgorde.map((categorie) => ({
       categorie,
@@ -202,6 +212,14 @@ const sortedMaaklijst = useMemo(() => {
     return a.naam.localeCompare(b.naam, "nl");
   });
 }, [maaklijst]);
+
+const openItems = useMemo(() => {
+  return sortedMaaklijst.filter((item) => item.status === "open");
+}, [sortedMaaklijst]);
+
+const doneItems = useMemo(() => {
+  return sortedMaaklijst.filter((item) => item.status === "afgehandeld");
+}, [sortedMaaklijst]);
 
   if (loading) {
     return (
