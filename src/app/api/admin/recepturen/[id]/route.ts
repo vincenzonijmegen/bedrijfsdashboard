@@ -13,6 +13,7 @@ type ReceptRow = {
   hoeveelheid_mix: string | null;
   maakinstructie: string | null;
   actief: boolean;
+  maakvolgorde: number; // 👈 toevoegen
 };
 
 type IngredientRow = {
