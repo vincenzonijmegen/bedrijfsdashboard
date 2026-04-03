@@ -16,6 +16,7 @@ type MaaklijstEntry = {
   naam: string;
   maakvolgorde: number;
   aantal: number;
+  status: "open" | "afgehandeld";
 };
 
 const STORAGE_KEY = "keuken-maaklijst-v2";
@@ -91,6 +92,42 @@ export default function MaaklijstPage() {
     load();
   }, []);
 
+
+async function markAsDone(item: MaaklijstEntry) {
+  try {
+    const res = await fetch("/api/keuken/productie-log", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        recept_id: item.id,
+        recept_naam: item.naam,
+        categorie: item.categorie,
+        aantal: item.aantal,
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      alert(data.error || "Logging mislukt");
+      return;
+    }
+
+    setMaaklijst((prev) =>
+      prev.map((x) =>
+        x.id === item.id ? { ...x, status: "afgehandeld" } : x
+      )
+    );
+  } catch (error) {
+    console.error(error);
+    alert("Logging mislukt");
+  }
+}
+
+
+
   function openAddDialog(item: ReceptItem) {
     setActiveItem(item);
     setAantal(1);
@@ -109,22 +146,28 @@ export default function MaaklijstPage() {
     setMaaklijst((prev) => {
       const existing = prev.find((x) => x.id === activeItem.id);
 
-      if (existing) {
-        return prev.map((x) =>
-          x.id === activeItem.id ? { ...x, aantal: x.aantal + aantal } : x
-        );
-      }
-
-      return [
-        ...prev,
-        {
-          id: activeItem.id,
-          categorie: activeItem.categorie,
-          naam: activeItem.naam,
-          maakvolgorde: activeItem.maakvolgorde ?? 50,
-          aantal,
-        },
-      ];
+if (existing) {
+  return prev.map((x) =>
+    x.id === activeItem.id
+      ? {
+          ...x,
+          aantal: x.aantal + aantal,
+          status: "open",
+        }
+      : x
+  );
+}
+return [
+  ...prev,
+  {
+    id: activeItem.id,
+    categorie: activeItem.categorie,
+    naam: activeItem.naam,
+    maakvolgorde: activeItem.maakvolgorde ?? 50,
+    aantal,
+    status: "open",
+  },
+];
     });
 
     closeDialog();
@@ -146,14 +189,19 @@ export default function MaaklijstPage() {
     }));
   }, [items]);
 
-  const sortedMaaklijst = useMemo(() => {
-    return [...maaklijst].sort((a, b) => {
-      if (a.maakvolgorde !== b.maakvolgorde) {
-        return a.maakvolgorde - b.maakvolgorde;
-      }
-      return a.naam.localeCompare(b.naam, "nl");
-    });
-  }, [maaklijst]);
+const sortedMaaklijst = useMemo(() => {
+  return [...maaklijst].sort((a, b) => {
+    if (a.status !== b.status) {
+      return a.status === "open" ? -1 : 1;
+    }
+
+    if (a.maakvolgorde !== b.maakvolgorde) {
+      return a.maakvolgorde - b.maakvolgorde;
+    }
+
+    return a.naam.localeCompare(b.naam, "nl");
+  });
+}, [maaklijst]);
 
   if (loading) {
     return (
@@ -258,9 +306,13 @@ export default function MaaklijstPage() {
             <div className="grid gap-3 md:grid-cols-2">
               {sortedMaaklijst.map((item) => (
                 <div
-                  key={item.id}
-                  className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
-                >
+  key={item.id}
+  className={`flex items-center justify-between gap-4 rounded-2xl border px-4 py-4 ${
+    item.status === "afgehandeld"
+      ? "border-emerald-200 bg-emerald-50 opacity-70"
+      : "border-slate-200 bg-slate-50"
+  }`}
+>
                   <div>
                     <div className="text-lg font-semibold text-slate-900">
                       {item.naam}
@@ -274,20 +326,30 @@ export default function MaaklijstPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Link
-  href={`/keuken/recepturen/${item.categorie}/${item.id}?from=maaklijst`}
-  className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
->
-  Recept
-</Link>
-                    <button
-                      type="button"
-                      onClick={() => removeFromMaaklijst(item.id)}
-                      className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
-                    >
-                      Verwijder
-                    </button>
-                  </div>
+  <Link
+    href={`/keuken/recepturen/${item.categorie}/${item.id}?from=maaklijst`}
+    className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+  >
+    Recept
+  </Link>
+
+  <button
+    type="button"
+    onClick={() => markAsDone(item)}
+    disabled={item.status === "afgehandeld"}
+    className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+  >
+    Afgehandeld
+  </button>
+
+  <button
+    type="button"
+    onClick={() => removeFromMaaklijst(item.id)}
+    className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+  >
+    Verwijder
+  </button>
+</div>
                 </div>
               ))}
             </div>
