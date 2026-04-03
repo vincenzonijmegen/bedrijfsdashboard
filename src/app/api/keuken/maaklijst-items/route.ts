@@ -5,13 +5,14 @@ type MaaklijstItemRow = {
   id: number;
   categorie: string;
   naam: string;
+  maakvolgorde: number;
 };
 
 export async function GET() {
   try {
     const result = await query<MaaklijstItemRow>(
       `
-      SELECT id, categorie, naam
+      SELECT id, categorie, naam, maakvolgorde
       FROM keuken_recepten
       WHERE actief = true
       ORDER BY

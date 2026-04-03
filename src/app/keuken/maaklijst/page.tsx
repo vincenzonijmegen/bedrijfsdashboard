@@ -3,13 +3,22 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-type MaaklijstItem = {
+type ReceptItem = {
   id: number;
   categorie: string;
   naam: string;
+  maakvolgorde: number;
 };
 
-const STORAGE_KEY = "keuken-maaklijst-v1";
+type MaaklijstEntry = {
+  id: number;
+  categorie: string;
+  naam: string;
+  maakvolgorde: number;
+  aantal: number;
+};
+
+const STORAGE_KEY = "keuken-maaklijst-v2";
 
 const categorieTitels: Record<string, string> = {
   melksmaken: "Melksmaken",
@@ -26,10 +35,14 @@ const categorieVolgorde = [
 ];
 
 export default function MaaklijstPage() {
-  const [items, setItems] = useState<MaaklijstItem[]>([]);
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [items, setItems] = useState<ReceptItem[]>([]);
+  const [maaklijst, setMaaklijst] = useState<MaaklijstEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [activeItem, setActiveItem] = useState<ReceptItem | null>(null);
+  const [aantal, setAantal] = useState(1);
 
   useEffect(() => {
     try {
@@ -37,7 +50,7 @@ export default function MaaklijstPage() {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          setSelectedIds(parsed.filter((v) => typeof v === "number"));
+          setMaaklijst(parsed);
         }
       }
     } catch {
@@ -46,8 +59,8 @@ export default function MaaklijstPage() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedIds));
-  }, [selectedIds]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(maaklijst));
+  }, [maaklijst]);
 
   useEffect(() => {
     async function load() {
@@ -78,14 +91,51 @@ export default function MaaklijstPage() {
     load();
   }, []);
 
-  function toggleItem(id: number) {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+  function openAddDialog(item: ReceptItem) {
+    setActiveItem(item);
+    setAantal(1);
+    setDialogOpen(true);
+  }
+
+  function closeDialog() {
+    setDialogOpen(false);
+    setActiveItem(null);
+    setAantal(1);
+  }
+
+  function addToMaaklijst() {
+    if (!activeItem) return;
+
+    setMaaklijst((prev) => {
+      const existing = prev.find((x) => x.id === activeItem.id);
+
+      if (existing) {
+        return prev.map((x) =>
+          x.id === activeItem.id ? { ...x, aantal: x.aantal + aantal } : x
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          id: activeItem.id,
+          categorie: activeItem.categorie,
+          naam: activeItem.naam,
+          maakvolgorde: activeItem.maakvolgorde ?? 50,
+          aantal,
+        },
+      ];
+    });
+
+    closeDialog();
+  }
+
+  function removeFromMaaklijst(id: number) {
+    setMaaklijst((prev) => prev.filter((x) => x.id !== id));
   }
 
   function clearList() {
-    setSelectedIds([]);
+    setMaaklijst([]);
   }
 
   const grouped = useMemo(() => {
@@ -96,9 +146,14 @@ export default function MaaklijstPage() {
     }));
   }, [items]);
 
-  const selectedItems = useMemo(() => {
-    return items.filter((item) => selectedIds.includes(item.id));
-  }, [items, selectedIds]);
+  const sortedMaaklijst = useMemo(() => {
+    return [...maaklijst].sort((a, b) => {
+      if (a.maakvolgorde !== b.maakvolgorde) {
+        return a.maakvolgorde - b.maakvolgorde;
+      }
+      return a.naam.localeCompare(b.naam, "nl");
+    });
+  }, [maaklijst]);
 
   if (loading) {
     return (
@@ -128,19 +183,19 @@ export default function MaaklijstPage() {
               Maaklijst
             </h1>
             <p className="mt-2 text-slate-600">
-              Klik aan wat vandaag bijgemaakt moet worden.
+              Klik op een recept en kies hoeveel je wilt maken.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-slate-900 px-4 py-3 text-lg font-semibold text-white">
-              {selectedItems.length} te maken
+              {sortedMaaklijst.length} items
             </div>
 
             <button
               type="button"
               onClick={clearList}
-              disabled={selectedItems.length === 0}
+              disabled={sortedMaaklijst.length === 0}
               className="rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-40"
             >
               Wissen
@@ -167,26 +222,18 @@ export default function MaaklijstPage() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-                  {groep.items.map((item) => {
-                    const selected = selectedIds.includes(item.id);
-
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => toggleItem(item.id)}
-                        className={`flex h-[96px] items-center justify-center rounded-2xl border px-3 py-3 text-center shadow-sm transition active:scale-95 ${
-                          selected
-                            ? "border-emerald-300 bg-emerald-100 text-emerald-900"
-                            : "border-slate-200 bg-white text-slate-900"
-                        }`}
-                      >
-                        <span className="block max-w-[170px] text-lg font-semibold leading-snug">
-                          {item.naam}
-                        </span>
-                      </button>
-                    );
-                  })}
+                  {groep.items.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => openAddDialog(item)}
+                      className="flex h-[96px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center shadow-sm transition active:scale-95"
+                    >
+                      <span className="block max-w-[170px] text-lg font-semibold leading-snug text-slate-900">
+                        {item.naam}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               )}
             </section>
@@ -196,20 +243,20 @@ export default function MaaklijstPage() {
         <section className="mt-10 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-2xl font-bold text-slate-900">
-              Vandaag maken
+              Boodschappenlijst
             </h2>
             <div className="text-sm text-slate-500">
-              {selectedItems.length} geselecteerd
+              {sortedMaaklijst.length} items geselecteerd
             </div>
           </div>
 
-          {selectedItems.length === 0 ? (
+          {sortedMaaklijst.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-slate-500">
-              Nog niets geselecteerd.
+              Nog niets toegevoegd.
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
-              {selectedItems.map((item) => (
+              {sortedMaaklijst.map((item) => (
                 <div
                   key={item.id}
                   className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
@@ -220,6 +267,9 @@ export default function MaaklijstPage() {
                     </div>
                     <div className="text-sm text-slate-500">
                       {categorieTitels[item.categorie] || item.categorie}
+                    </div>
+                    <div className="mt-1 text-sm font-medium text-slate-700">
+                      {item.aantal}x maken · volgorde {item.maakvolgorde}
                     </div>
                   </div>
 
@@ -232,7 +282,7 @@ export default function MaaklijstPage() {
                     </Link>
                     <button
                       type="button"
-                      onClick={() => toggleItem(item.id)}
+                      onClick={() => removeFromMaaklijst(item.id)}
                       className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
                     >
                       Verwijder
@@ -244,6 +294,59 @@ export default function MaaklijstPage() {
           )}
         </section>
       </div>
+
+      {dialogOpen && activeItem ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+            <h2 className="text-2xl font-bold text-slate-900">
+              {activeItem.naam}
+            </h2>
+            <p className="mt-2 text-slate-600">
+              Hoeveel wil je maken?
+            </p>
+
+            <div className="mt-6 flex items-center justify-center gap-4">
+              <button
+                type="button"
+                onClick={() => setAantal((prev) => Math.max(1, prev - 1))}
+                className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-300 bg-white text-2xl font-bold text-slate-800"
+              >
+                −
+              </button>
+
+              <div className="min-w-[90px] rounded-2xl bg-slate-100 px-6 py-3 text-center text-2xl font-bold text-slate-900">
+                {aantal}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setAantal((prev) => prev + 1)}
+                className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-300 bg-white text-2xl font-bold text-slate-800"
+              >
+                +
+              </button>
+            </div>
+
+            <div className="mt-8 flex gap-3">
+              <button
+                type="button"
+                onClick={closeDialog}
+                className="flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-700"
+              >
+                Annuleren
+              </button>
+
+              <button
+                type="button"
+                onClick={addToMaaklijst}
+                className="flex-1 rounded-2xl bg-emerald-600 px-4 py-3 text-base font-semibold text-white"
+              >
+                Toevoegen
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
