@@ -1,12 +1,10 @@
 import Link from "next/link";
+import { query } from "@/lib/db";
 
 type Recept = {
   id: number;
   categorie: string;
   naam: string;
-  hoeveelheid_mix: string | null;
-  maakinstructie: string | null;
-  ingredienten?: { naam: string; gewicht: string }[];
 };
 
 const categorieTitels: Record<string, string> = {
@@ -17,21 +15,18 @@ const categorieTitels: Record<string, string> = {
 };
 
 async function getRecepten(categorie: string): Promise<Recept[]> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
-  const res = await fetch(
-    `${baseUrl}/api/keuken/recepturen?categorie=${categorie}`,
-    { cache: "no-store" }
+  const result = await query<Recept>(
+    `
+    SELECT id, categorie, naam
+    FROM keuken_recepten
+    WHERE actief = true
+      AND categorie = $1
+    ORDER BY naam ASC
+    `,
+    [categorie]
   );
 
-  const data = await res.json();
-
-  if (!res.ok || !data.success) {
-    throw new Error(data.error || "Fout bij ophalen recepten");
-  }
-
-  return data.recepten;
+  return result.rows;
 }
 
 export default async function ReceptCategoriePage({
@@ -61,19 +56,19 @@ export default async function ReceptCategoriePage({
             Nog geen recepten in deze categorie.
           </div>
         ) : (
-<div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-  {recepten.map((recept) => (
-    <Link
-      key={recept.id}
-      href={`/keuken/recepturen/${categorie}/${recept.id}`}
-      className="flex h-[96px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center shadow-sm transition active:scale-95"
-    >
-      <span className="block max-w-[170px] text-lg font-semibold leading-snug text-slate-900">
-        {recept.naam}
-      </span>
-    </Link>
-  ))}
-</div>
+          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+            {recepten.map((recept) => (
+              <Link
+                key={recept.id}
+                href={`/keuken/recepturen/${categorie}/${recept.id}`}
+                className="flex h-[96px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center shadow-sm transition active:scale-95"
+              >
+                <span className="block max-w-[170px] text-lg font-semibold leading-snug text-slate-900">
+                  {recept.naam}
+                </span>
+              </Link>
+            ))}
+          </div>
         )}
       </div>
     </main>
