@@ -66,6 +66,21 @@ export default function MaaklijstPage() {
     }
   }, []);
 
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
+  const cat = params.get("cat");
+
+  if (cat) {
+    const el = document.getElementById(`cat-${cat}`);
+    if (el) {
+      setTimeout(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }
+}, []);
+
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(maaklijst));
   }, [maaklijst]);
@@ -281,7 +296,7 @@ const doneItems = useMemo(() => {
 
         <div className="space-y-8">
           {grouped.map((groep) => (
-            <section key={groep.categorie}>
+            <section id={`cat-${groep.categorie}`} key={groep.categorie}>
               <h2 className="mb-3 text-2xl font-semibold text-slate-900">
                 {groep.titel}
               </h2>
@@ -293,19 +308,24 @@ const doneItems = useMemo(() => {
               ) : (
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
                   {groep.items.map((item) => (
-                    <button
-  key={item.id}
-  type="button"
-  onClick={() => openAddDialog(item)}
-  className={`flex h-[96px] items-center justify-center rounded-2xl border px-3 py-3 text-center shadow-sm transition active:scale-95 ${
-    isSelected(item.id)
-      ? "border-emerald-300 bg-emerald-100 text-emerald-900"
-      : "border-slate-200 bg-white text-slate-900"
-  }`}
->
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => openAddDialog(item)}
+                  className={`relative flex h-[96px] items-center justify-center rounded-2xl border px-3 py-3 text-center shadow-sm transition active:scale-95 ${
+                    isSelected(item.id)
+                      ? "border-emerald-300 bg-emerald-100 text-emerald-900"
+                      : "border-slate-200 bg-white text-slate-900"
+                  }`}
+                >
                       <span className="block max-w-[170px] text-lg font-semibold leading-snug text-slate-900">
                         {item.naam}
                       </span>
+                      {isSelected(item.id) && (
+                      <div className="absolute right-2 top-2 rounded-full bg-emerald-600 px-2 py-1 text-xs font-bold text-white">
+                        {maaklijst.find((x) => x.id === item.id)?.aantal}
+                      </div>
+                    )}
                     </button>
                   ))}
                 </div>
@@ -345,7 +365,7 @@ const doneItems = useMemo(() => {
 
           <div className="flex items-center gap-2">
             <Link
-              href={`/keuken/recepturen/${item.categorie}/${item.id}?from=maaklijst`}
+               href={`/keuken/recepturen/${item.categorie}/${item.id}?from=maaklijst&cat=${item.categorie}`}
               className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
             >
               Recept
