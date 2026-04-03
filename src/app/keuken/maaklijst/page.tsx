@@ -363,7 +363,7 @@ const doneItems = useMemo(() => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 justify-end">
             <Link
                href={`/keuken/recepturen/${item.categorie}/${item.id}?from=maaklijst&cat=${item.categorie}`}
               className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
