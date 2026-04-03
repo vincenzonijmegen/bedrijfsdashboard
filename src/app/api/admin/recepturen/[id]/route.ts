@@ -30,15 +30,16 @@ export async function GET(
     const receptResult = await query<ReceptRow>(
       `
       SELECT
-        id,
-        categorie,
-        naam,
-        hoeveelheid_mix,
-        maakinstructie,
-        actief
-      FROM keuken_recepten
-      WHERE id = $1
-      LIMIT 1
+  id,
+  categorie,
+  naam,
+  hoeveelheid_mix,
+  maakinstructie,
+  actief,
+  maakvolgorde
+FROM keuken_recepten
+WHERE id = $1
+LIMIT 1
       `,
       [id]
     );
@@ -89,6 +90,7 @@ export async function PUT(
     const body = await req.json();
 
     const naam = String(body?.naam || "").trim();
+    const maakvolgorde = Number(body?.maakvolgorde ?? 50);
     const categorie = String(body?.categorie || "").trim();
     const hoeveelheid_mix = String(body?.hoeveelheid_mix || "").trim();
     const maakinstructie = String(body?.maakinstructie || "").trim();
@@ -124,16 +126,24 @@ export async function PUT(
     const updateResult = await client.query(
       `
       UPDATE keuken_recepten
-      SET
-        categorie = $1,
-        naam = $2,
-        hoeveelheid_mix = $3,
-        maakinstructie = $4,
-        actief = $5,
-        updated_at = now()
-      WHERE id = $6
+SET
+  categorie = $1,
+  naam = $2,
+  hoeveelheid_mix = $3,
+  maakinstructie = $4,
+  actief = $5,
+  updated_at = now()
+WHERE id = $6
       `,
-      [categorie, naam, hoeveelheid_mix || null, maakinstructie || null, actief, id]
+     [
+  categorie,
+  naam,
+  hoeveelheid_mix || null,
+  maakinstructie || null,
+  actief,
+  maakvolgorde,
+  id,
+]
     );
 
     if (updateResult.rowCount === 0) {

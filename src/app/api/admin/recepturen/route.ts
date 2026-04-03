@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     const naam = String(body?.naam || "").trim();
+    const maakvolgorde = Number(body?.maakvolgorde ?? 50);
     const categorie = String(body?.categorie || "").trim();
     const hoeveelheid_mix = String(body?.hoeveelheid_mix || "").trim();
     const maakinstructie = String(body?.maakinstructie || "").trim();
@@ -49,17 +50,25 @@ export async function POST(req: NextRequest) {
       id: number;
     }>(
       `
-      INSERT INTO keuken_recepten (
-        categorie,
-        naam,
-        hoeveelheid_mix,
-        maakinstructie,
-        actief
-      )
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id
+INSERT INTO keuken_recepten (
+  categorie,
+  naam,
+  hoeveelheid_mix,
+  maakinstructie,
+  actief,
+  maakvolgorde
+)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id
       `,
-      [categorie, naam, hoeveelheid_mix || null, maakinstructie || null, actief]
+[
+  categorie,
+  naam,
+  hoeveelheid_mix || null,
+  maakinstructie || null,
+  actief,
+  maakvolgorde,
+]
     );
 
     const receptId = receptResult.rows[0].id;
