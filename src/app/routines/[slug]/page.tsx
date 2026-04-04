@@ -30,8 +30,9 @@ type RoutineResponse = {
   afgerond: number;
 };
 
-type IngeklokteResponse = {
-  data: Array<{ id: string; naam: string; clock_in?: string }>;
+type IngeklokteMedewerker = {
+  id: string;
+  name: string;
 };
 
 const fetcher = (url: string) => fetch(url).then((res) => {
@@ -71,11 +72,11 @@ export default function RoutinePagina({ params }: { params: Promise<{ slug: stri
   }, [params]);
 
   const { data, mutate, error } = useSWR<RoutineResponse>(slugState ? `/api/routines/today/${slugState}` : null, fetcher);
-  const { data: ingekloktData } = useSWR<IngeklokteResponse>("/api/shiftbase/ingeklokt", fetcher, {
-    refreshInterval: 30000,
-  });
+  const { data: ingekloktData } = useSWR<IngeklokteMedewerker[]>("/api/shiftbase/ingeklokt", fetcher, {
+  refreshInterval: 30000,
+});
 
-  const medewerkers = ingekloktData?.data || [];
+const medewerkers = ingekloktData || [];
   const selectedMedewerker = medewerkers.find((m) => m.id === medewerkerId) || null;
 
   async function tekenAf(taakId: number) {
@@ -94,7 +95,7 @@ export default function RoutinePagina({ params }: { params: Promise<{ slug: stri
         body: JSON.stringify({
           routineTaakId: taakId,
           medewerkerId: selectedMedewerker.id,
-          medewerkerNaam: selectedMedewerker.naam,
+          medewerkerNaam: selectedMedewerker.name,
         }),
       });
 
@@ -137,7 +138,7 @@ export default function RoutinePagina({ params }: { params: Promise<{ slug: stri
                 <option value="">Kies ingeklokte medewerker</option>
                 {medewerkers.map((medewerker) => (
                   <option key={medewerker.id} value={medewerker.id}>
-                    {medewerker.naam}
+                    {medewerker.name}
                   </option>
                 ))}
               </select>
@@ -228,7 +229,7 @@ export default function RoutinePagina({ params }: { params: Promise<{ slug: stri
                 {open ? (
                   <div className="border-t border-slate-200 bg-slate-50 px-4 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <p className="text-sm text-slate-600">
-                      Deze taak wordt afgetekend op naam van <strong>{selectedMedewerker?.naam || "..."}</strong>.
+                      Deze taak wordt afgetekend op naam van <strong>{selectedMedewerker?.name || "..."}</strong>.
                     </p>
                     <button
                       onClick={() => tekenAf(taak.id)}
