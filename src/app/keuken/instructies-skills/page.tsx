@@ -84,16 +84,24 @@ export default function KeukenInstructiesPage() {
     );
   }
 
-  const keukenInstructies = [...instructies]
-    .filter((i) => {
-      if (!i.functies || i.functies.length === 0) return false;
-      return i.functies.some((f) => f.toLowerCase() === "keukenmedewerkers");
-    })
-    .sort((a, b) => {
-      const na = a.nummer || "";
-      const nb = b.nummer || "";
-      return na.localeCompare(nb, "nl");
-    });
+ const toegestaneFuncties = ["keukenmedewerkers", "ijsvoorbereiders"];
+
+const keukenInstructies = [...instructies]
+  .filter((i) => {
+    if (!i.functies || i.functies.length === 0) return false;
+
+    const functies = i.functies.map((f) => f.toLowerCase().trim());
+
+    return (
+      functies.length > 0 &&
+      functies.every((f) => toegestaneFuncties.includes(f))
+    );
+  })
+  .sort((a, b) => {
+    const na = a.nummer || "";
+    const nb = b.nummer || "";
+    return na.localeCompare(nb, "nl");
+  });
 
   return (
     <main className="min-h-screen bg-slate-50 p-4 md:p-6">
