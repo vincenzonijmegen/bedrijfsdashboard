@@ -87,7 +87,7 @@ export default function KeukenInstructiesPage() {
   const keukenInstructies = [...instructies]
     .filter((i) => {
       if (!i.functies || i.functies.length === 0) return false;
-      return i.functies.some((f) => f.toLowerCase() === "keuken");
+      return i.functies.some((f) => f.toLowerCase() === "keukenmedewerkers");
     })
     .sort((a, b) => {
       const na = a.nummer || "";
