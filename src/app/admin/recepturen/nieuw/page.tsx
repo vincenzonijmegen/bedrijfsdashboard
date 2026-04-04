@@ -1,28 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+type CategorieItem = {
+  slug: string;
+  naam: string;
+  sortering: number;
+};
 
 type Ingredient = {
   naam: string;
   gewicht: string;
 };
 
-const categorieen = [
-  { value: "melksmaken", label: "Melksmaken" },
-  { value: "vruchtensmaken", label: "Vruchtensmaken" },
-  { value: "suikervrij", label: "Suikervrij" },
-  { value: "sauzen", label: "Sauzen" },
-  { value: "mixen", label: "Mixen" }
-];
-
 export default function NieuwReceptPage() {
   const router = useRouter();
 
   const [naam, setNaam] = useState("");
   const [maakvolgorde, setMaakvolgorde] = useState(50);
-  const [categorie, setCategorie] = useState("melksmaken");
+  const [categorie, setCategorie] = useState("");
+  const [categorieen, setCategorieen] = useState<CategorieItem[]>([]);
   const [hoeveelheidMix, setHoeveelheidMix] = useState("");
   const [maakinstructie, setMaakinstructie] = useState("");
   const [actief, setActief] = useState(true);
@@ -32,6 +31,30 @@ export default function NieuwReceptPage() {
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    async function loadCategorieen() {
+      try {
+        const res = await fetch("/api/keuken/categorieen", {
+          cache: "no-store",
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          const items: CategorieItem[] = data.items || [];
+          setCategorieen(items);
+
+          if (items.length > 0) {
+            setCategorie((prev) => prev || items[0].slug);
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    loadCategorieen();
+  }, []);
 
   function updateIngredient(
     index: number,
@@ -65,14 +88,14 @@ export default function NieuwReceptPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-  naam,
-  categorie,
-  hoeveelheid_mix: hoeveelheidMix,
-  maakinstructie,
-  actief,
-  maakvolgorde,
-  ingredienten,
-})
+          naam,
+          categorie,
+          hoeveelheid_mix: hoeveelheidMix,
+          maakinstructie,
+          actief,
+          maakvolgorde,
+          ingredienten,
+        }),
       });
 
       const data = await res.json();
@@ -141,8 +164,8 @@ export default function NieuwReceptPage() {
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-pink-500"
               >
                 {categorieen.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
+                  <option key={cat.slug} value={cat.slug}>
+                    {cat.naam}
                   </option>
                 ))}
               </select>
@@ -159,22 +182,24 @@ export default function NieuwReceptPage() {
                 placeholder="Bijv. 5 liter"
               />
             </div>
-<div>
-  <label className="mb-2 block text-sm font-medium text-slate-700">
-    Maakvolgorde
-  </label>
 
-  <input
-    type="number"
-    value={maakvolgorde}
-    onChange={(e) => setMaakvolgorde(Number(e.target.value))}
-    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-pink-500"
-  />
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Maakvolgorde
+              </label>
 
-  <p className="mt-1 text-xs text-slate-500">
-    Lager = eerder maken (bijv. yoghurt 10, snickers 90)
-  </p>
-</div>
+              <input
+                type="number"
+                value={maakvolgorde}
+                onChange={(e) => setMaakvolgorde(Number(e.target.value))}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-pink-500"
+              />
+
+              <p className="mt-1 text-xs text-slate-500">
+                Lager = eerder maken (bijv. yoghurt 10, snickers 90)
+              </p>
+            </div>
+
             <div className="flex items-end">
               <label className="inline-flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3">
                 <input
