@@ -61,14 +61,17 @@ export default function KeukenLoginPage() {
               htmlFor="password"
               className="mb-2 block text-sm font-medium text-slate-700"
             >
-              Wachtwoord
+              Toegangscode
             </label>
             <input
               id="password"
               type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="one-time-code"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Keukenwachtwoord"
+              onChange={(e) => setPassword(e.target.value.replace(/\D/g, ""))}
+              placeholder="Voer code in"
               autoFocus
               className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-lg outline-none focus:border-slate-500"
             />

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 
+export const dynamic = "force-dynamic";
+
 type Taak = {
   id: number;
   routine_id: number;
