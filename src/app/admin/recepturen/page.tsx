@@ -9,7 +9,7 @@ type ReceptRow = {
   actief: boolean;
 };
 
-const categorieVolgorde = ["melksmaken", "vruchtensmaken", "suikervrij", "sauzen"];
+const categorieVolgorde = ["melksmaken", "vruchtensmaken", "suikervrij", "sauzen", "mixen"];
 
 const categorieTitels: Record<string, string> = {
   melksmaken: "Melksmaken",
