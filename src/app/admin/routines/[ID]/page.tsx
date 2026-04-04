@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { query } from "@/lib/db";
 
 type Taak = {
@@ -14,10 +15,10 @@ type Taak = {
 export default async function RoutineDetailPage({
   params,
 }: {
-  params: Promise<{ ID: string }>;
+  params: Promise<{ id: string }>;
 }) {
-  const { ID } = await params;
-  const routineId = Number(ID);
+  const { id } = await params;
+  const routineId = Number(id);
 
   const { rows } = await query<Taak>(
     `
@@ -31,7 +32,15 @@ export default async function RoutineDetailPage({
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4">Taken</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Taken</h1>
+        <Link
+          href={`/admin/routines/${routineId}/edit`}
+          className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+        >
+          Bewerken
+        </Link>
+      </div>
 
       <div className="space-y-2">
         {rows.map((t) => (
