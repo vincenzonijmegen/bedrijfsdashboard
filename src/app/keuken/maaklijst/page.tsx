@@ -33,6 +33,7 @@ const categorieTitels: Record<string, string> = {
   vruchtensmaken: "Vruchtensmaken",
   suikervrij: "Suikervrij",
   sauzen: "Sauzen",
+  mixen: "Mixen"
 };
 
 const categorieVolgorde = [
@@ -40,6 +41,7 @@ const categorieVolgorde = [
   "vruchtensmaken",
   "suikervrij",
   "sauzen",
+  "mixen"
 ];
 
 export default function MaaklijstPage() {
