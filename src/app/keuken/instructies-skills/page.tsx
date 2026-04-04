@@ -127,7 +127,7 @@ const keukenInstructies = [...instructies]
             “keuken”.
           </div>
         ) : (
-          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 gap-4">
             {keukenInstructies.map((item) => (
               <Link
                 key={item.id}
