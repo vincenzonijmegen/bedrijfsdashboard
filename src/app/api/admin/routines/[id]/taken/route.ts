@@ -89,16 +89,16 @@ export async function POST(request: Request, context: { params: Params }) {
 
   const sortering = Number(sorteringResult.rows[0]?.next_sortering || 10);
 
-  const insert = await query(
-    `
-    INSERT INTO routine_taken
-      (routine_id, naam, kleurcode, reinigen, desinfecteren, frequentie, weekdagen, sortering, actief)
-    VALUES
-      ($1, $2, $3, $4, $5, $6, $7::text[], $8, true)
-    RETURNING *
-    `,
-    [routineId, naam, kleurcode, reinigen, desinfecteren, frequentie, weekdagen, sortering]
-  );
+const insert = await query(
+  `
+  INSERT INTO routine_taken
+    (routine_id, naam, kleurcode, reinigen, desinfecteren, frequentie, weekdagen, sortering, actief)
+  VALUES
+    ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, true)
+  RETURNING *
+  `,
+  [routineId, naam, kleurcode, reinigen, desinfecteren, frequentie, JSON.stringify(weekdagen), sortering]
+);
 
   return NextResponse.json(insert.rows[0]);
 }
@@ -154,23 +154,34 @@ export async function PATCH(request: Request, context: { params: Params }) {
   }
 
   const update = await query(
-    `
-    UPDATE routine_taken
-    SET
-      naam = $1,
-      kleurcode = $2,
-      reinigen = $3,
-      desinfecteren = $4,
-      frequentie = $5,
-      weekdagen = $6::text[],
-      sortering = $7,
-      actief = $8
-    WHERE id = $9
-      AND routine_id = $10
-    RETURNING *
-    `,
-    [naam, kleurcode, reinigen, desinfecteren, frequentie, weekdagen, sortering, actief, taakId, routineId]
-  );
+  `
+  UPDATE routine_taken
+  SET
+    naam = $1,
+    kleurcode = $2,
+    reinigen = $3,
+    desinfecteren = $4,
+    frequentie = $5,
+    weekdagen = $6::jsonb,
+    sortering = $7,
+    actief = $8
+  WHERE id = $9
+    AND routine_id = $10
+  RETURNING *
+  `,
+  [
+    naam,
+    kleurcode,
+    reinigen,
+    desinfecteren,
+    frequentie,
+    JSON.stringify(weekdagen),
+    sortering,
+    actief,
+    taakId,
+    routineId,
+  ]
+);
 
   console.log("PATCH update rows", update.rows);
 
