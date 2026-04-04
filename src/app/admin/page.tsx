@@ -319,6 +319,13 @@ export default function AdminDashboard() {
           Icon={BarChart2}
           breadcrumb="Rapportages – Formulieren/-rapporten"
         />
+        <LinkCard
+        href="/admin/keuken/productie-log"
+        label="Productie keuken"
+        color="pink"
+        Icon={BarChart2}
+        breadcrumb="Rapportages – Productie keuken"
+      />
       </Section>
 
       {/* 👇 Medewerkers */}
