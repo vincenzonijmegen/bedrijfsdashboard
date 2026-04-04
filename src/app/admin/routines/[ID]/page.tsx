@@ -14,16 +14,20 @@ type Taak = {
 export default async function RoutineDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ ID: string }>;
 }) {
-  const routineId = Number(params.id);
+  const { ID } = await params;
+  const routineId = Number(ID);
 
-  const { rows } = await query<Taak>(`
+  const { rows } = await query<Taak>(
+    `
     SELECT id, naam, kleurcode, reinigen, desinfecteren, frequentie, weekdagen, sortering
     FROM routine_taken
     WHERE routine_id = $1
     ORDER BY sortering ASC
-  `, [routineId]);
+    `,
+    [routineId]
+  );
 
   return (
     <div className="p-6">
