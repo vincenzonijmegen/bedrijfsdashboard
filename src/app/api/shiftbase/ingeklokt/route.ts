@@ -3,85 +3,92 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type ShiftbaseTimesheetRow = {
-  id?: string | number;
-  employee_id?: string | number;
-  user_id?: string | number;
-  employee?: {
+type RosterRow = {
+  Roster: {
+    user_id: string | number;
+  };
+  User?: {
     id?: string | number;
     name?: string;
-    first_name?: string;
-    last_name?: string;
   };
-  name?: string;
-  clock_in?: string | null;
-  clock_out?: string | null;
-  end?: string | null;
-  ended_at?: string | null;
-  date?: string;
-  start_date?: string;
 };
 
-function normaliseerNaam(item: ShiftbaseTimesheetRow) {
-  return (
-    item.employee?.name ||
-    [item.employee?.first_name, item.employee?.last_name].filter(Boolean).join(" ") ||
-    item.name ||
-    "Onbekend"
-  );
-}
+type ClockRow = {
+  Timesheet: {
+    user_id: string | number;
+    clocked_in?: string | null;
+    clocked_out?: string | null;
+  };
+};
 
-function normaliseerId(item: ShiftbaseTimesheetRow) {
-  return String(item.employee_id || item.user_id || item.employee?.id || item.id || "");
+type TimesheetRow = {
+  Timesheet: {
+    user_id: string | number;
+    clocked_in?: string | null;
+    clocked_out?: string | null;
+  };
+};
+
+function ymdLocal(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
 }
 
 export async function GET() {
-  const apiKey = process.env.SHIFTBASE_API_KEY?.trim();
-
-  if (!apiKey) {
-    return NextResponse.json({ error: "SHIFTBASE_API_KEY ontbreekt" }, { status: 500 });
-  }
-
-  const vandaag = new Date().toISOString().slice(0, 10);
-  const url = new URL("https://api.shiftbase.com/api/timesheets");
-  url.searchParams.set("date", vandaag);
-
   try {
-    const res = await fetch(url.toString(), {
-      headers: {
-        Authorization: `API ${apiKey}`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    });
+    const vandaag = ymdLocal(new Date());
+    const base =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.VERCEL_URL?.startsWith("http")
+        ? process.env.VERCEL_URL
+        : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:3000";
 
-    if (!res.ok) {
-      const details = await res.text();
-      return NextResponse.json({ error: "Shiftbase fout", details }, { status: res.status });
+    const [roosterRes, clockRes, timesheetsRes] = await Promise.all([
+      fetch(`${base}/api/shiftbase/rooster?datum=${vandaag}`, { cache: "no-store" }),
+      fetch(`${base}/api/shiftbase/clock?date=${vandaag}`, { cache: "no-store" }),
+      fetch(`${base}/api/shiftbase/timesheets?date=${vandaag}`, { cache: "no-store" }),
+    ]);
+
+    if (!roosterRes.ok) {
+      const details = await roosterRes.text();
+      return NextResponse.json({ error: "Rooster ophalen mislukt", details }, { status: 500 });
     }
 
-    const json = await res.json();
-    const rows: ShiftbaseTimesheetRow[] = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
+    const rooster: RosterRow[] = await roosterRes.json();
+    const clockJson: { data?: ClockRow[] } = clockRes.ok ? await clockRes.json() : { data: [] };
+    const timesheetsJson: { data?: TimesheetRow[] } = timesheetsRes.ok
+      ? await timesheetsRes.json()
+      : { data: [] };
 
-    const ingeklokt = rows
-  .filter((item) => {
-    const inTime = item.clock_in || (item as any).clocked_in;
-    const outTime = item.clock_out || (item as any).clocked_out;
+    const aanwezigeIds = new Set<string>();
 
-    return Boolean(inTime) && !outTime;
-  })
-  .map((item) => ({
-    id: normaliseerId(item),
-    name: normaliseerNaam(item),
-  }))
-  .filter((item) => item.id && item.name);
+    for (const row of clockJson.data ?? []) {
+      const ts = row.Timesheet;
+      if (ts?.clocked_in && !ts?.clocked_out) {
+        aanwezigeIds.add(String(ts.user_id));
+      }
+    }
 
-const uniek = Array.from(
-  new Map(ingeklokt.map((item) => [item.id, item])).values()
-);
+    for (const row of timesheetsJson.data ?? []) {
+      const ts = row.Timesheet;
+      if (ts?.clocked_in && !ts?.clocked_out) {
+        aanwezigeIds.add(String(ts.user_id));
+      }
+    }
 
-    return NextResponse.json({ data: uniek, datum: vandaag });
+    const medewerkers = rooster
+      .map((row) => ({
+        id: String(row.User?.id ?? row.Roster.user_id),
+        name: row.User?.name ?? "Onbekend",
+      }))
+      .filter((m) => aanwezigeIds.has(m.id));
+
+    const uniek = Array.from(new Map(medewerkers.map((m) => [m.id, m])).values());
+
+    return NextResponse.json(uniek);
   } catch (error) {
     return NextResponse.json(
       { error: "Interne fout bij ophalen ingeklokte medewerkers", details: String(error) },
