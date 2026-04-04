@@ -108,10 +108,13 @@ export async function PATCH(request: Request, context: { params: Params }) {
   const routineId = Number(id);
 
   if (!Number.isFinite(routineId)) {
-    return NextResponse.json({ error: "Ongeldig routine-id" }, { status: 400 });
+    return NextResponse.json({ error: "Ongeldig routine-id", rawId: id }, { status: 400 });
   }
 
   const body = await request.json();
+
+  console.log("PATCH routine taak body", body);
+  console.log("PATCH routine id param", id);
 
   const taakId = Number(body?.id);
   const naam = String(body?.naam || "").trim();
@@ -129,8 +132,21 @@ export async function PATCH(request: Request, context: { params: Params }) {
   const sortering = Number(body?.sortering || 0);
   const actief = body?.actief == null ? true : toBool(body?.actief);
 
+  console.log("PATCH parsed", {
+    routineId,
+    taakId,
+    naam,
+    kleurcode,
+    frequentie,
+    reinigen,
+    desinfecteren,
+    weekdagen,
+    sortering,
+    actief,
+  });
+
   if (!Number.isFinite(taakId)) {
-    return NextResponse.json({ error: "Ongeldig taak-id" }, { status: 400 });
+    return NextResponse.json({ error: "Ongeldig taak-id", rawTaakId: body?.id }, { status: 400 });
   }
 
   if (!naam) {
@@ -155,9 +171,14 @@ export async function PATCH(request: Request, context: { params: Params }) {
     `,
     [naam, kleurcode, reinigen, desinfecteren, frequentie, weekdagen, sortering, actief, taakId, routineId]
   );
-console.log("PATCH update rows", update.rows);
+
+  console.log("PATCH update rows", update.rows);
+
   if (!update.rows[0]) {
-    return NextResponse.json({ error: "Taak niet gevonden" }, { status: 404 });
+    return NextResponse.json(
+      { error: "Taak niet gevonden", taakId, routineId },
+      { status: 404 }
+    );
   }
 
   return NextResponse.json(update.rows[0]);
@@ -172,8 +193,6 @@ export async function DELETE(request: Request, context: { params: Params }) {
   }
 
   const body = await request.json();
-  console.log("PATCH routine taak body", body);
-console.log("PATCH routine id param", id);
   const taakId = Number(body?.id);
 
   if (!Number.isFinite(taakId)) {
