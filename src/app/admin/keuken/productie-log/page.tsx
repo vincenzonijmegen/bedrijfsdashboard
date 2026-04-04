@@ -19,26 +19,22 @@ type ApiResponse = {
   error?: string;
 };
 
-const fetcher = async (url: string): Promise<ApiResponse> => {
+type CategorieItem = {
+  slug: string;
+  naam: string;
+  sortering: number;
+};
+
+type CategorieApiResponse = {
+  success: boolean;
+  items: CategorieItem[];
+  error?: string;
+};
+
+const fetcher = async <T,>(url: string): Promise<T> => {
   const res = await fetch(url);
   return res.json();
 };
-
-const categorieTitels: Record<string, string> = {
-  melksmaken: "Melksmaken",
-  vruchtensmaken: "Vruchtensmaken",
-  suikervrij: "Suikervrij",
-  sauzen: "Sauzen",
-  mixen: "Mixen"
-};
-
-const categorieVolgorde = [
-  "melksmaken",
-  "vruchtensmaken",
-  "suikervrij",
-  "sauzen",
-  "mixen"
-];
 
 function vandaagAlsInput() {
   return new Date().toISOString().slice(0, 10);
@@ -95,8 +91,13 @@ export default function KeukenProductieLogPage() {
   }, [start, einde]);
 
   const { data, error, isLoading } = useSWR<ApiResponse>(url, fetcher);
+  const { data: categorieData } = useSWR<CategorieApiResponse>(
+    "/api/keuken/categorieen",
+    fetcher
+  );
 
   const rows = data?.rows || [];
+  const categorieen = categorieData?.items || [];
 
   const totaalBatches = rows.reduce(
     (sum, row) => sum + Number(row.keren_gemaakt || 0),
@@ -108,35 +109,42 @@ export default function KeukenProductieLogPage() {
     0
   );
 
-const batchCategorieen = ["melksmaken", "vruchtensmaken"];
+  // Alleen relevante batchcategorieën meenemen voor gemiddelde batchgrootte
+  const batchCategorieen = ["melksmaken", "vruchtensmaken"];
 
-const batchRows = rows.filter((row) =>
-  batchCategorieen.includes(row.categorie)
-);
+  const batchRows = rows.filter((row) =>
+    batchCategorieen.includes(row.categorie)
+  );
 
-const totaalBatchBatches = batchRows.reduce(
-  (sum, row) => sum + Number(row.keren_gemaakt || 0),
-  0
-);
+  const totaalBatchBatches = batchRows.reduce(
+    (sum, row) => sum + Number(row.keren_gemaakt || 0),
+    0
+  );
 
-const totaalBatchAantal = batchRows.reduce(
-  (sum, row) => sum + Number(row.totaal_aantal || 0),
-  0
-);
+  const totaalBatchAantal = batchRows.reduce(
+    (sum, row) => sum + Number(row.totaal_aantal || 0),
+    0
+  );
 
-const gemiddeldeBatchgrootteIJs =
-  totaalBatchBatches > 0
-    ? (totaalBatchAantal / totaalBatchBatches).toFixed(1)
-    : "0.0";
+  const gemiddeldeBatchgrootteIJs =
+    totaalBatchBatches > 0
+      ? (totaalBatchAantal / totaalBatchBatches).toFixed(1)
+      : "0.0";
+
   const groupedRows = useMemo(() => {
-    return categorieVolgorde
+    if (categorieen.length === 0) {
+      return [];
+    }
+
+    return categorieen
       .map((categorie) => ({
-        categorie,
-        titel: categorieTitels[categorie] || categorie,
-        items: rows.filter((row) => row.categorie === categorie),
+        categorie: categorie.slug,
+        titel: categorie.naam,
+        sortering: categorie.sortering,
+        items: rows.filter((row) => row.categorie === categorie.slug),
       }))
       .filter((groep) => groep.items.length > 0);
-  }, [rows]);
+  }, [rows, categorieen]);
 
   function setVandaag() {
     const vandaag = vandaagAlsInput();
@@ -248,15 +256,15 @@ const gemiddeldeBatchgrootteIJs =
           </div>
 
           <div className="rounded-xl bg-slate-100 px-4 py-3">
-<div className="text-xs uppercase tracking-wide text-slate-500">
-  Gem. batchgrootte ijs
-</div>
-<div className="mt-1 text-2xl font-bold text-slate-900">
-  {gemiddeldeBatchgrootteIJs}
-</div>
-<p className="mt-1 text-xs text-slate-500">
-  Alleen melksmaken en vruchtensmaken
-</p>
+            <div className="text-xs uppercase tracking-wide text-slate-500">
+              Gem. batchgrootte ijs
+            </div>
+            <div className="mt-1 text-2xl font-bold text-slate-900">
+              {gemiddeldeBatchgrootteIJs}
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Alleen melksmaken en vruchtensmaken
+            </p>
           </div>
         </div>
       </div>
