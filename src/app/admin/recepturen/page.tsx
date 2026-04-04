@@ -7,43 +7,60 @@ type ReceptRow = {
   naam: string;
   hoeveelheid_mix: string | null;
   actief: boolean;
+  categorie_slug: string;
+  categorie_naam: string;
+  categorie_sortering: number;
 };
 
-type CategorieRow = {
-  slug: string;
-  naam: string;
+type GegroepeerdeCategorie = {
+  categorie: string;
+  titel: string;
   sortering: number;
+  items: ReceptRow[];
 };
 
 export default async function AdminRecepturenPage() {
-  const [receptenResult, categorieenResult] = await Promise.all([
-    query<ReceptRow>(
-      `
-      SELECT id, categorie, naam, hoeveelheid_mix, actief
-      FROM keuken_recepten
-      ORDER BY naam ASC
-      `
-    ),
-    query<CategorieRow>(
-      `
-      SELECT slug, naam, sortering
-      FROM keuken_categorieen
-      WHERE actief = true
-      ORDER BY sortering ASC, naam ASC
-      `
-    ),
-  ]);
+  const result = await query<ReceptRow>(
+    `
+    SELECT
+      r.id,
+      r.categorie,
+      r.naam,
+      r.hoeveelheid_mix,
+      r.actief,
+      c.slug AS categorie_slug,
+      c.naam AS categorie_naam,
+      c.sortering AS categorie_sortering
+    FROM keuken_recepten r
+    JOIN keuken_categorieen c
+      ON lower(trim(r.categorie)) = c.slug
+    WHERE c.actief = true
+    ORDER BY
+      c.sortering ASC,
+      r.naam ASC
+    `
+  );
 
-  const recepten = receptenResult.rows;
-  const categorieen = categorieenResult.rows;
+  const recepten = result.rows;
 
-  const gegroepeerd = categorieen
-    .map((categorie) => ({
-      categorie: categorie.slug,
-      titel: categorie.naam,
-      items: recepten.filter((r) => r.categorie === categorie.slug),
-    }))
-    .filter((groep) => groep.items.length > 0);
+  const gegroepeerdMap = new Map<string, GegroepeerdeCategorie>();
+
+  for (const recept of recepten) {
+    if (!gegroepeerdMap.has(recept.categorie_slug)) {
+      gegroepeerdMap.set(recept.categorie_slug, {
+        categorie: recept.categorie_slug,
+        titel: recept.categorie_naam,
+        sortering: recept.categorie_sortering,
+        items: [],
+      });
+    }
+
+    gegroepeerdMap.get(recept.categorie_slug)!.items.push(recept);
+  }
+
+  const gegroepeerd = Array.from(gegroepeerdMap.values()).sort(
+    (a, b) => a.sortering - b.sortering
+  );
 
   return (
     <main className="max-w-6xl mx-auto p-6">
