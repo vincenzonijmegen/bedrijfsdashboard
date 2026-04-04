@@ -19,23 +19,18 @@ type MaaklijstEntry = {
   status: "open" | "afgehandeld";
 };
 
-const todayKey = new Date().toISOString().slice(0, 10);
-const STORAGE_KEY = `keuken-maaklijst-${todayKey}`;
-
-
-
-
-
-
-
 type CategorieItem = {
   slug: string;
   naam: string;
   sortering: number;
 };
 
+const todayKey = new Date().toISOString().slice(0, 10);
+const STORAGE_KEY = `keuken-maaklijst-${todayKey}`;
+
 export default function MaaklijstPage() {
   const [items, setItems] = useState<ReceptItem[]>([]);
+  const [categorieen, setCategorieen] = useState<CategorieItem[]>([]);
   const [maaklijst, setMaaklijst] = useState<MaaklijstEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -43,7 +38,6 @@ export default function MaaklijstPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeItem, setActiveItem] = useState<ReceptItem | null>(null);
   const [aantal, setAantal] = useState(1);
-  const [categorieen, setCategorieen] = useState<CategorieItem[]>([]);
 
   useEffect(() => {
     try {
@@ -59,27 +53,12 @@ export default function MaaklijstPage() {
     }
   }, []);
 
-useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
-  const cat = params.get("cat");
-
-  if (cat) {
-    const el = document.getElementById(`cat-${cat}`);
-    if (el) {
-      setTimeout(() => {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
-    }
-  }
-}, []);
-
-
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(maaklijst));
   }, [maaklijst]);
 
   useEffect(() => {
-    async function load() {
+    async function loadItems() {
       try {
         setLoading(true);
         setError("");
@@ -91,7 +70,6 @@ useEffect(() => {
 
         if (!res.ok || !data.success) {
           setError(data.error || "Fout bij ophalen");
-          setLoading(false);
           return;
         }
 
@@ -104,67 +82,70 @@ useEffect(() => {
       }
     }
 
-    load();
+    loadItems();
   }, []);
 
-useEffect(() => {
-  async function loadCategorieen() {
+  useEffect(() => {
+    async function loadCategorieen() {
+      try {
+        const res = await fetch("/api/keuken/categorieen", {
+          cache: "no-store",
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          setCategorieen(data.items || []);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    loadCategorieen();
+  }, []);
+
+  function getCategorieNaam(slug: string) {
+    return categorieen.find((c) => c.slug === slug)?.naam || slug;
+  }
+
+  async function markAsDone(item: MaaklijstEntry) {
     try {
-      const res = await fetch("/api/keuken/categorieen", {
-        cache: "no-store",
+      const res = await fetch("/api/keuken/productie-log", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          recept_id: item.id,
+          recept_naam: item.naam,
+          categorie: item.categorie,
+          aantal: item.aantal,
+        }),
       });
+
       const data = await res.json();
 
-      if (res.ok && data.success) {
-        setCategorieen(data.items || []);
+      if (!res.ok || !data.success) {
+        alert(data.error || "Logging mislukt");
+        return;
       }
+
+      setMaaklijst((prev) =>
+        prev.map((x) =>
+          x.id === item.id ? { ...x, status: "afgehandeld" } : x
+        )
+      );
     } catch (error) {
       console.error(error);
+      alert("Logging mislukt");
     }
   }
 
-  loadCategorieen();
-}, []);
-
-
-async function markAsDone(item: MaaklijstEntry) {
-  try {
-    const res = await fetch("/api/keuken/productie-log", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        recept_id: item.id,
-        recept_naam: item.naam,
-        categorie: item.categorie,
-        aantal: item.aantal,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok || !data.success) {
-      alert(data.error || "Logging mislukt");
-      return;
-    }
-
-    setMaaklijst((prev) =>
-      prev.map((x) =>
-        x.id === item.id ? { ...x, status: "afgehandeld" } : x
-      )
+  function isSelected(id: number) {
+    return maaklijst.some(
+      (item) => item.id === id && item.status === "open"
     );
-  } catch (error) {
-    console.error(error);
-    alert("Logging mislukt");
   }
-}
-
-function isSelected(id: number) {
-  return maaklijst.some(
-    (item) => item.id === id && item.status === "open"
-  );
-}
 
   function openAddDialog(item: ReceptItem) {
     setActiveItem(item);
@@ -184,28 +165,29 @@ function isSelected(id: number) {
     setMaaklijst((prev) => {
       const existing = prev.find((x) => x.id === activeItem.id);
 
-if (existing) {
-  return prev.map((x) =>
-    x.id === activeItem.id
-      ? {
-          ...x,
-          aantal: x.aantal + aantal,
+      if (existing) {
+        return prev.map((x) =>
+          x.id === activeItem.id
+            ? {
+                ...x,
+                aantal: x.aantal + aantal,
+                status: "open",
+              }
+            : x
+        );
+      }
+
+      return [
+        ...prev,
+        {
+          id: activeItem.id,
+          categorie: activeItem.categorie,
+          naam: activeItem.naam,
+          maakvolgorde: activeItem.maakvolgorde ?? 50,
+          aantal,
           status: "open",
-        }
-      : x
-  );
-}
-return [
-  ...prev,
-  {
-    id: activeItem.id,
-    categorie: activeItem.categorie,
-    naam: activeItem.naam,
-    maakvolgorde: activeItem.maakvolgorde ?? 50,
-    aantal,
-    status: "open",
-  },
-];
+        },
+      ];
     });
 
     closeDialog();
@@ -219,38 +201,52 @@ return [
     setMaaklijst([]);
   }
 
-
-
-  
   const grouped = useMemo(() => {
-  return categorieen.map((categorie) => ({
-    categorie: categorie.slug,
-    titel: categorie.naam,
-    items: items.filter((item) => item.categorie === categorie.slug),
-  }));
-}, [items, categorieen]);
+    return categorieen
+      .map((categorie) => ({
+        categorie: categorie.slug,
+        titel: categorie.naam,
+        items: items.filter((item) => item.categorie === categorie.slug),
+      }))
+      .filter((groep) => groep.items.length > 0);
+  }, [items, categorieen]);
 
-const sortedMaaklijst = useMemo(() => {
-  return [...maaklijst].sort((a, b) => {
-    if (a.status !== b.status) {
-      return a.status === "open" ? -1 : 1;
+  const sortedMaaklijst = useMemo(() => {
+    return [...maaklijst].sort((a, b) => {
+      if (a.status !== b.status) {
+        return a.status === "open" ? -1 : 1;
+      }
+
+      if (a.maakvolgorde !== b.maakvolgorde) {
+        return a.maakvolgorde - b.maakvolgorde;
+      }
+
+      return a.naam.localeCompare(b.naam, "nl");
+    });
+  }, [maaklijst]);
+
+  const openItems = useMemo(() => {
+    return sortedMaaklijst.filter((item) => item.status === "open");
+  }, [sortedMaaklijst]);
+
+  const doneItems = useMemo(() => {
+    return sortedMaaklijst.filter((item) => item.status === "afgehandeld");
+  }, [sortedMaaklijst]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cat = params.get("cat");
+
+    if (!cat) return;
+    if (grouped.length === 0) return;
+
+    const el = document.getElementById(`cat-${cat}`);
+    if (el) {
+      setTimeout(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
     }
-
-    if (a.maakvolgorde !== b.maakvolgorde) {
-      return a.maakvolgorde - b.maakvolgorde;
-    }
-
-    return a.naam.localeCompare(b.naam, "nl");
-  });
-}, [maaklijst]);
-
-const openItems = useMemo(() => {
-  return sortedMaaklijst.filter((item) => item.status === "open");
-}, [sortedMaaklijst]);
-
-const doneItems = useMemo(() => {
-  return sortedMaaklijst.filter((item) => item.status === "afgehandeld");
-}, [sortedMaaklijst]);
+  }, [grouped]);
 
   if (loading) {
     return (
@@ -313,131 +309,126 @@ const doneItems = useMemo(() => {
                 {groep.titel}
               </h2>
 
-              {groep.items.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-4 text-slate-500">
-                  Geen items in deze categorie.
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-                  {groep.items.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => openAddDialog(item)}
-                  className={`relative flex h-[96px] items-center justify-center rounded-2xl border px-3 py-3 text-center shadow-sm transition active:scale-95 ${
-                    isSelected(item.id)
-                      ? "border-emerald-300 bg-emerald-100 text-emerald-900"
-                      : "border-slate-200 bg-white text-slate-900"
-                  }`}
-                >
-                      <span className="block max-w-[170px] text-lg font-semibold leading-snug text-slate-900">
-                        {item.naam}
-                      </span>
-                      {isSelected(item.id) && (
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+                {groep.items.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => openAddDialog(item)}
+                    className={`relative flex h-[96px] items-center justify-center rounded-2xl border px-3 py-3 text-center shadow-sm transition active:scale-95 ${
+                      isSelected(item.id)
+                        ? "border-emerald-300 bg-emerald-100 text-emerald-900"
+                        : "border-slate-200 bg-white text-slate-900"
+                    }`}
+                  >
+                    <span className="block max-w-[170px] text-lg font-semibold leading-snug text-slate-900">
+                      {item.naam}
+                    </span>
+
+                    {isSelected(item.id) && (
                       <div className="absolute right-2 top-2 rounded-full bg-emerald-600 px-2 py-1 text-xs font-bold text-white">
                         {maaklijst.find((x) => x.id === item.id)?.aantal}
                       </div>
                     )}
-                    </button>
-                  ))}
-                </div>
-              )}
+                  </button>
+                ))}
+              </div>
             </section>
           ))}
         </div>
 
-<section className="mt-10 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-  <div className="mb-4 flex items-center justify-between gap-3">
-    <h2 className="text-2xl font-bold text-slate-900">Te maken</h2>
-    <div className="text-sm text-slate-500">{openItems.length} open</div>
-  </div>
-
-  {openItems.length === 0 ? (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-slate-500">
-      Geen open items.
-    </div>
-  ) : (
-    <div className="grid gap-3 md:grid-cols-2">
-      {openItems.map((item) => (
-        <div
-          key={item.id}
-          className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
-        >
-          <div>
-            <div className="text-lg font-semibold text-slate-900">
-              {item.naam}
-            </div>
-            <div className="text-sm text-slate-500">
-              {categorieen.find((c) => c.slug === item.categorie)?.naam || item.categorie}
-            </div>
-            <div className="mt-1 text-sm font-medium text-slate-700">
-              {item.aantal}x maken · volgorde {item.maakvolgorde}
-            </div>
+        <section className="mt-10 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-2xl font-bold text-slate-900">Te maken</h2>
+            <div className="text-sm text-slate-500">{openItems.length} open</div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 justify-end">
-            <Link
-               href={`/keuken/recepturen/${item.categorie}/${item.id}?from=maaklijst&cat=${item.categorie}`}
-              className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-            >
-              Recept
-            </Link>
+          {openItems.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-slate-500">
+              Geen open items.
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {openItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+                >
+                  <div>
+                    <div className="text-lg font-semibold text-slate-900">
+                      {item.naam}
+                    </div>
+                    <div className="text-sm text-slate-500">
+                      {getCategorieNaam(item.categorie)}
+                    </div>
+                    <div className="mt-1 text-sm font-medium text-slate-700">
+                      {item.aantal}x maken · volgorde {item.maakvolgorde}
+                    </div>
+                  </div>
 
-            <button
-              type="button"
-              onClick={() => markAsDone(item)}
-              className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
-            >
-              Afgehandeld
-            </button>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Link
+                      href={`/keuken/recepturen/${item.categorie}/${item.id}?from=maaklijst&cat=${item.categorie}`}
+                      className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+                    >
+                      Recept
+                    </Link>
 
-            <button
-              type="button"
-              onClick={() => removeFromMaaklijst(item.id)}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
-            >
-              Verwijder
-            </button>
+                    <button
+                      type="button"
+                      onClick={() => markAsDone(item)}
+                      className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
+                    >
+                      Afgehandeld
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => removeFromMaaklijst(item.id)}
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+                    >
+                      Verwijder
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-2xl font-bold text-slate-900">Afgehandeld</h2>
+            <div className="text-sm text-slate-500">{doneItems.length} klaar</div>
           </div>
-        </div>
-      ))}
-    </div>
-  )}
-</section>
 
-<section className="mt-6 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
-  <div className="mb-4 flex items-center justify-between gap-3">
-    <h2 className="text-2xl font-bold text-slate-900">Afgehandeld</h2>
-    <div className="text-sm text-slate-500">{doneItems.length} klaar</div>
-  </div>
-
-  {doneItems.length === 0 ? (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-slate-500">
-      Nog niets afgehandeld.
-    </div>
-  ) : (
-    <div className="grid gap-3 md:grid-cols-2">
-      {doneItems.map((item) => (
-        <div
-          key={item.id}
-          className="flex items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 opacity-75"
-        >
-          <div>
-            <div className="text-lg font-semibold text-slate-900">
-              {item.naam}
+          {doneItems.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-slate-500">
+              Nog niets afgehandeld.
             </div>
-            <div className="text-sm text-slate-500">
-              {categorieen.find((c) => c.slug === item.categorie)?.naam || item.categorie}
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2">
+              {doneItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 opacity-75"
+                >
+                  <div>
+                    <div className="text-lg font-semibold text-slate-900">
+                      {item.naam}
+                    </div>
+                    <div className="text-sm text-slate-500">
+                      {getCategorieNaam(item.categorie)}
+                    </div>
+                    <div className="mt-1 text-sm font-medium text-slate-700">
+                      {item.aantal}x gemaakt · volgorde {item.maakvolgorde}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="mt-1 text-sm font-medium text-slate-700">
-              {item.aantal}x gemaakt · volgorde {item.maakvolgorde}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
-</section>
+          )}
+        </section>
       </div>
 
       {dialogOpen && activeItem ? (
@@ -446,9 +437,7 @@ const doneItems = useMemo(() => {
             <h2 className="text-2xl font-bold text-slate-900">
               {activeItem.naam}
             </h2>
-            <p className="mt-2 text-slate-600">
-              Hoeveel wil je maken?
-            </p>
+            <p className="mt-2 text-slate-600">Hoeveel wil je maken?</p>
 
             <div className="mt-6 flex items-center justify-center gap-4">
               <button
