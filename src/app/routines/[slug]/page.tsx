@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 
@@ -35,10 +36,15 @@ type IngeklokteMedewerker = {
   name: string;
 };
 
-const fetcher = (url: string) => fetch(url).then((res) => {
-  if (!res.ok) throw new Error("Fout bij laden");
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    throw new Error("Fout bij laden");
+  }
+
   return res.json();
-});
+};
 
 const kleurStyleMap: Record<string, string> = {
   roze: "bg-pink-100 text-pink-900 border-pink-200",
@@ -54,30 +60,50 @@ const kleurUitlegMap: Record<string, string> = {
 
 function ActieBadge({ actief, label }: { actief: boolean; label: string }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium border ${actief ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-400 border-slate-200"}`}>
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium border ${
+        actief
+          ? "bg-slate-900 text-white border-slate-900"
+          : "bg-white text-slate-400 border-slate-200"
+      }`}
+    >
       {label}
     </span>
   );
 }
 
-export default function RoutinePagina({ params }: { params: Promise<{ slug: string }> }) {
+export default function RoutinePagina({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [medewerkerId, setMedewerkerId] = useState<string>("");
   const [savingTaskId, setSavingTaskId] = useState<number | null>(null);
   const [message, setMessage] = useState<string>("");
 
   const [slugState, setSlugState] = useState<string | null>(null);
+
   useMemo(() => {
     params.then((value) => setSlugState(value.slug));
   }, [params]);
 
-  const { data, mutate, error } = useSWR<RoutineResponse>(slugState ? `/api/routines/today/${slugState}` : null, fetcher);
-  const { data: ingekloktData } = useSWR<IngeklokteMedewerker[]>("/api/shiftbase/ingeklokt", fetcher, {
-  refreshInterval: 30000,
-});
+  const { data, mutate, error } = useSWR<RoutineResponse>(
+    slugState ? `/api/routines/today/${slugState}` : null,
+    fetcher
+  );
 
-const medewerkers = ingekloktData || [];
-  const selectedMedewerker = medewerkers.find((m) => m.id === medewerkerId) || null;
+  const { data: ingekloktData } = useSWR<IngeklokteMedewerker[]>(
+    "/api/shiftbase/ingeklokt",
+    fetcher,
+    {
+      refreshInterval: 30000,
+    }
+  );
+
+  const medewerkers = ingekloktData || [];
+  const selectedMedewerker =
+    medewerkers.find((m) => m.id === medewerkerId) || null;
 
   async function tekenAf(taakId: number) {
     if (!selectedMedewerker) {
@@ -100,7 +126,10 @@ const medewerkers = ingekloktData || [];
       });
 
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Opslaan mislukt");
+
+      if (!res.ok) {
+        throw new Error(json?.error || "Opslaan mislukt");
+      }
 
       await mutate();
       setSelectedTaskId(null);
@@ -112,24 +141,47 @@ const medewerkers = ingekloktData || [];
     }
   }
 
-  if (error) return <div className="p-6">Fout bij laden van routine.</div>;
-  if (!data) return <div className="p-6">Routine laden...</div>;
+  if (error) {
+    return <div className="p-6">Fout bij laden van routine.</div>;
+  }
 
-  const progress = data.totaal > 0 ? Math.round((data.afgerond / data.totaal) * 100) : 0;
+  if (!data) {
+    return <div className="p-6">Routine laden...</div>;
+  }
+
+  const progress =
+    data.totaal > 0 ? Math.round((data.afgerond / data.totaal) * 100) : 0;
 
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-5xl p-4 md:p-6 space-y-4">
-        <div className="rounded-2xl bg-white shadow-sm border border-slate-200 p-4 md:p-6">
+        <div className="sticky top-0 z-20 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur md:p-6">
+          <div className="mb-4">
+            <Link
+              href={data.routine.locatie === "winkel" ? "/winkel" : "/keuken"}
+              className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+            >
+              ← Terug
+            </Link>
+          </div>
+
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm text-slate-500 uppercase tracking-wide">{data.routine.locatie} · {data.routine.type}</p>
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">{data.routine.naam}</h1>
-              <p className="text-sm text-slate-500 mt-1">Datum: {new Date(data.datum).toLocaleDateString("nl-NL")}</p>
+              <p className="text-sm text-slate-500 uppercase tracking-wide">
+                {data.routine.locatie} · {data.routine.type}
+              </p>
+              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+                {data.routine.naam}
+              </h1>
+              <p className="text-sm text-slate-500 mt-1">
+                Datum: {new Date(data.datum).toLocaleDateString("nl-NL")}
+              </p>
             </div>
 
             <div className="w-full md:w-80 space-y-3">
-              <label className="block text-sm font-medium text-slate-700">Aftekenen als</label>
+              <label className="block text-sm font-medium text-slate-700">
+                Aftekenen als
+              </label>
               <select
                 value={medewerkerId}
                 onChange={(e) => setMedewerkerId(e.target.value)}
@@ -142,24 +194,35 @@ const medewerkers = ingekloktData || [];
                   </option>
                 ))}
               </select>
-              <div className="text-xs text-slate-500">Alleen medewerkers die nu ingeklokt zijn via Shiftbase zijn kiesbaar.</div>
+              <div className="text-xs text-slate-500">
+                Alleen medewerkers die nu ingeklokt zijn via Shiftbase zijn
+                kiesbaar.
+              </div>
             </div>
           </div>
 
           <div className="mt-5">
             <div className="mb-2 flex items-center justify-between text-sm text-slate-600">
               <span>Voortgang</span>
-              <span>{data.afgerond}/{data.totaal}</span>
+              <span>
+                {data.afgerond}/{data.totaal}
+              </span>
             </div>
             <div className="h-3 rounded-full bg-slate-200 overflow-hidden">
-              <div className="h-3 rounded-full bg-slate-900 transition-all" style={{ width: `${progress}%` }} />
+              <div
+                className="h-3 rounded-full bg-slate-900 transition-all"
+                style={{ width: `${progress}%` }}
+              />
             </div>
           </div>
         </div>
 
         <div className="grid gap-3 md:grid-cols-3">
           {Object.entries(kleurUitlegMap).map(([kleur, tekst]) => (
-            <div key={kleur} className={`rounded-2xl border p-3 text-sm ${kleurStyleMap[kleur]}`}>
+            <div
+              key={kleur}
+              className={`rounded-2xl border p-3 text-sm ${kleurStyleMap[kleur]}`}
+            >
               {tekst}
             </div>
           ))}
@@ -175,21 +238,35 @@ const medewerkers = ingekloktData || [];
           {data.taken.map((taak, index) => {
             const open = selectedTaskId === taak.id;
             const isDone = Boolean(taak.afgetekend_op);
-            const kleurClass = taak.kleurcode ? kleurStyleMap[taak.kleurcode] : "bg-white text-slate-700 border-slate-200";
+            const kleurClass = taak.kleurcode
+              ? kleurStyleMap[taak.kleurcode]
+              : "bg-white text-slate-700 border-slate-200";
 
             return (
-              <section key={taak.id} className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+              <section
+                key={taak.id}
+                className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden"
+              >
                 <div className="flex flex-col gap-3 p-4 md:flex-row md:items-start md:justify-between">
                   <div className="flex gap-4">
                     <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
                       {index + 1}
                     </div>
+
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h2 className="text-lg font-semibold text-slate-900">{taak.naam}</h2>
-                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${kleurClass}`}>
-                          {taak.kleurcode ? `${taak.kleurcode}e doek` : "geen doekcode"}
+                        <h2 className="text-lg font-semibold text-slate-900">
+                          {taak.naam}
+                        </h2>
+
+                        <span
+                          className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${kleurClass}`}
+                        >
+                          {taak.kleurcode
+                            ? `${taak.kleurcode}e doek`
+                            : "geen doekcode"}
                         </span>
+
                         <span className="inline-flex rounded-full border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600">
                           {taak.frequentie}
                         </span>
@@ -197,7 +274,10 @@ const medewerkers = ingekloktData || [];
 
                       <div className="flex flex-wrap gap-2">
                         <ActieBadge actief={taak.reinigen} label="Reinigen" />
-                        <ActieBadge actief={taak.desinfecteren} label="Desinfecteren" />
+                        <ActieBadge
+                          actief={taak.desinfecteren}
+                          label="Desinfecteren"
+                        />
                         {taak.weekdagen?.length ? (
                           <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium border bg-slate-100 text-slate-700 border-slate-200">
                             {taak.weekdagen.join(", ")}
@@ -207,11 +287,21 @@ const medewerkers = ingekloktData || [];
 
                       {isDone ? (
                         <p className="text-sm text-green-700">
-                          Afgetekend door <strong>{taak.afgetekend_door_naam}</strong>
-                          {taak.afgetekend_op ? ` om ${new Date(taak.afgetekend_op).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                          Afgetekend door{" "}
+                          <strong>{taak.afgetekend_door_naam}</strong>
+                          {taak.afgetekend_op
+                            ? ` om ${new Date(
+                                taak.afgetekend_op
+                              ).toLocaleTimeString("nl-NL", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}`
+                            : ""}
                         </p>
                       ) : (
-                        <p className="text-sm text-slate-500">Nog niet afgetekend.</p>
+                        <p className="text-sm text-slate-500">
+                          Nog niet afgetekend.
+                        </p>
                       )}
                     </div>
                   </div>
@@ -221,7 +311,11 @@ const medewerkers = ingekloktData || [];
                       onClick={() => setSelectedTaskId(open ? null : taak.id)}
                       className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 bg-white"
                     >
-                      {open ? "Sluiten" : isDone ? "Opnieuw aftekenen" : "Aftekenen"}
+                      {open
+                        ? "Sluiten"
+                        : isDone
+                        ? "Opnieuw aftekenen"
+                        : "Aftekenen"}
                     </button>
                   </div>
                 </div>
@@ -229,14 +323,20 @@ const medewerkers = ingekloktData || [];
                 {open ? (
                   <div className="border-t border-slate-200 bg-slate-50 px-4 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <p className="text-sm text-slate-600">
-                      Deze taak wordt afgetekend op naam van <strong>{selectedMedewerker?.name || "..."}</strong>.
+                      Deze taak wordt afgetekend op naam van{" "}
+                      <strong>{selectedMedewerker?.name || "..."}</strong>.
                     </p>
+
                     <button
                       onClick={() => tekenAf(taak.id)}
-                      disabled={!selectedMedewerker || savingTaskId === taak.id}
+                      disabled={
+                        !selectedMedewerker || savingTaskId === taak.id
+                      }
                       className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white disabled:opacity-50"
                     >
-                      {savingTaskId === taak.id ? "Opslaan..." : "Definitief aftekenen"}
+                      {savingTaskId === taak.id
+                        ? "Opslaan..."
+                        : "Definitief aftekenen"}
                     </button>
                   </div>
                 ) : null}
