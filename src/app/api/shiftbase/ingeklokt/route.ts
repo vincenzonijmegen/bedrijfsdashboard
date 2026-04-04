@@ -65,15 +65,21 @@ export async function GET() {
     const rows: ShiftbaseTimesheetRow[] = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
 
     const ingeklokt = rows
-      .filter((item) => Boolean(item.clock_in) && !item.clock_out && !item.end && !item.ended_at)
-      .map((item) => ({
-        id: normaliseerId(item),
-        naam: normaliseerNaam(item),
-        clock_in: item.clock_in,
-      }))
-      .filter((item) => item.id && item.naam);
+  .filter((item) => {
+    const inTime = item.clock_in || (item as any).clocked_in;
+    const outTime = item.clock_out || (item as any).clocked_out;
 
-    const uniek = Array.from(new Map(ingeklokt.map((item) => [item.id, item])).values());
+    return Boolean(inTime) && !outTime;
+  })
+  .map((item) => ({
+    id: normaliseerId(item),
+    name: normaliseerNaam(item),
+  }))
+  .filter((item) => item.id && item.name);
+
+const uniek = Array.from(
+  new Map(ingeklokt.map((item) => [item.id, item])).values()
+);
 
     return NextResponse.json({ data: uniek, datum: vandaag });
   } catch (error) {
