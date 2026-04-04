@@ -155,7 +155,7 @@ export async function PATCH(request: Request, context: { params: Params }) {
     `,
     [naam, kleurcode, reinigen, desinfecteren, frequentie, weekdagen, sortering, actief, taakId, routineId]
   );
-
+console.log("PATCH update rows", update.rows);
   if (!update.rows[0]) {
     return NextResponse.json({ error: "Taak niet gevonden" }, { status: 404 });
   }
@@ -172,6 +172,8 @@ export async function DELETE(request: Request, context: { params: Params }) {
   }
 
   const body = await request.json();
+  console.log("PATCH routine taak body", body);
+console.log("PATCH routine id param", id);
   const taakId = Number(body?.id);
 
   if (!Number.isFinite(taakId)) {
