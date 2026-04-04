@@ -9,41 +9,41 @@ type ReceptRow = {
   actief: boolean;
 };
 
-const categorieVolgorde = ["melksmaken", "vruchtensmaken", "suikervrij", "sauzen", "mixen"];
-
-const categorieTitels: Record<string, string> = {
-  melksmaken: "Melksmaken",
-  vruchtensmaken: "Vruchtensmaken",
-  suikervrij: "Suikervrij",
-  sauzen: "Sauzen",
-  mixen: "Mixen"
+type CategorieRow = {
+  slug: string;
+  naam: string;
+  sortering: number;
 };
 
 export default async function AdminRecepturenPage() {
-  const result = await query<ReceptRow>(
-    `
-    SELECT id, categorie, naam, hoeveelheid_mix, actief
-    FROM keuken_recepten
-    ORDER BY
-      CASE categorie
-        WHEN 'melksmaken' THEN 1
-        WHEN 'vruchtensmaken' THEN 2
-        WHEN 'suikervrij' THEN 3
-        WHEN 'sauzen' THEN 4
-        WHEN 'mixen' THEN 5
-        ELSE 99
-      END,
-      naam ASC
-    `
-  );
+  const [receptenResult, categorieenResult] = await Promise.all([
+    query<ReceptRow>(
+      `
+      SELECT id, categorie, naam, hoeveelheid_mix, actief
+      FROM keuken_recepten
+      ORDER BY naam ASC
+      `
+    ),
+    query<CategorieRow>(
+      `
+      SELECT slug, naam, sortering
+      FROM keuken_categorieen
+      WHERE actief = true
+      ORDER BY sortering ASC, naam ASC
+      `
+    ),
+  ]);
 
-  const recepten = result.rows;
+  const recepten = receptenResult.rows;
+  const categorieen = categorieenResult.rows;
 
-  const gegroepeerd = categorieVolgorde.map((categorie) => ({
-    categorie,
-    titel: categorieTitels[categorie] || categorie,
-    items: recepten.filter((r) => r.categorie === categorie),
-  }));
+  const gegroepeerd = categorieen
+    .map((categorie) => ({
+      categorie: categorie.slug,
+      titel: categorie.naam,
+      items: recepten.filter((r) => r.categorie === categorie.slug),
+    }))
+    .filter((groep) => groep.items.length > 0);
 
   return (
     <main className="max-w-6xl mx-auto p-6">
@@ -84,47 +84,41 @@ export default async function AdminRecepturenPage() {
               {groep.titel}
             </h2>
 
-            {groep.items.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-white p-4 text-slate-500">
-                Nog geen recepturen in deze categorie.
-              </div>
-            ) : (
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {groep.items.map((recept) => (
-                  <div
-                    key={recept.id}
-                    className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-lg font-semibold text-slate-900">
-                          {recept.naam}
-                        </h3>
-                      </div>
-
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-medium ${
-                          recept.actief
-                            ? "bg-green-100 text-green-800"
-                            : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {recept.actief ? "Actief" : "Inactief"}
-                      </span>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {groep.items.map((recept) => (
+                <div
+                  key={recept.id}
+                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-semibold text-slate-900">
+                        {recept.naam}
+                      </h3>
                     </div>
 
-                    <div className="mt-4">
-                      <Link
-                        href={`/admin/recepturen/${recept.id}/bewerken`}
-                        className="text-sm font-medium text-pink-700 hover:underline"
-                      >
-                        Bewerken →
-                      </Link>
-                    </div>
+                    <span
+                      className={`rounded-full px-2 py-1 text-xs font-medium ${
+                        recept.actief
+                          ? "bg-green-100 text-green-800"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {recept.actief ? "Actief" : "Inactief"}
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
+
+                  <div className="mt-4">
+                    <Link
+                      href={`/admin/recepturen/${recept.id}/bewerken`}
+                      className="text-sm font-medium text-pink-700 hover:underline"
+                    >
+                      Bewerken →
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
           </section>
         ))}
       </div>
