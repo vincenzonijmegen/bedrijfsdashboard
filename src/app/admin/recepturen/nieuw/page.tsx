@@ -14,6 +14,7 @@ const categorieen = [
   { value: "vruchtensmaken", label: "Vruchtensmaken" },
   { value: "suikervrij", label: "Suikervrij" },
   { value: "sauzen", label: "Sauzen" },
+  { value: "mixen", label: "Mixen" }
 ];
 
 export default function NieuwReceptPage() {
