@@ -283,6 +283,9 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/vragen" label="Vragen" color="blue" Icon={CheckSquare} breadcrumb="Management – Vragen" />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} breadcrumb="Management – Schoonmaakroutines" />
         <LinkCard href="/admin/contacten" label="Relaties" color="blue" Icon={Folder} breadcrumb="Management – Relaties" />
+        <LinkCard href="admin/keuken/categorieen" label="Categorie Keuken" color="blue" Icon={Folder} breadcrumb="Management – Categorieen" />
+
+       
       </Section>
 
       {/* 👇 Planning */}
@@ -322,7 +325,7 @@ export default function AdminDashboard() {
         <LinkCard
         href="/admin/keuken/productie-log"
         label="Productie keuken"
-        color="pink"
+        color="purple"
         Icon={BarChart2}
         breadcrumb="Rapportages – Productie keuken"
       />
