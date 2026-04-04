@@ -16,6 +16,7 @@ const categorieTitels: Record<string, string> = {
   vruchtensmaken: "Vruchtensmaken",
   suikervrij: "Suikervrij",
   sauzen: "Sauzen",
+  mixen: "Mixen"
 };
 
 export default async function AdminRecepturenPage() {
@@ -29,6 +30,7 @@ export default async function AdminRecepturenPage() {
         WHEN 'vruchtensmaken' THEN 2
         WHEN 'suikervrij' THEN 3
         WHEN 'sauzen' THEN 4
+        WHEN 'mixen' THEN 5
         ELSE 99
       END,
       naam ASC
