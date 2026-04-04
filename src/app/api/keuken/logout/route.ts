@@ -1,16 +1,12 @@
 import { NextResponse } from "next/server";
 
 export async function POST() {
-  const res = NextResponse.json({ success: true });
+  const res = NextResponse.json({ ok: true });
 
-  res.cookies.set({
-    name: "keuken_auth",
-    value: "",
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
+  // cookie verwijderen (zelfde naam als je login gebruikt!)
+  res.cookies.set("keuken_auth", "", {
     path: "/",
-    maxAge: 0,
+    expires: new Date(0),
   });
 
   return res;
