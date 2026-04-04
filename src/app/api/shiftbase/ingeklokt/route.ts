@@ -35,21 +35,16 @@ function ymdLocal(d: Date) {
   ).padStart(2, "0")}`;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const vandaag = ymdLocal(new Date());
-    const base =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.VERCEL_URL?.startsWith("http")
-        ? process.env.VERCEL_URL
-        : process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "http://localhost:3000";
+
+    const { origin } = new URL(request.url);
 
     const [roosterRes, clockRes, timesheetsRes] = await Promise.all([
-      fetch(`${base}/api/shiftbase/rooster?datum=${vandaag}`, { cache: "no-store" }),
-      fetch(`${base}/api/shiftbase/clock?date=${vandaag}`, { cache: "no-store" }),
-      fetch(`${base}/api/shiftbase/timesheets?date=${vandaag}`, { cache: "no-store" }),
+      fetch(`${origin}/api/shiftbase/rooster?datum=${vandaag}`, { cache: "no-store" }),
+      fetch(`${origin}/api/shiftbase/clock?date=${vandaag}`, { cache: "no-store" }),
+      fetch(`${origin}/api/shiftbase/timesheets?date=${vandaag}`, { cache: "no-store" }),
     ]);
 
     if (!roosterRes.ok) {
