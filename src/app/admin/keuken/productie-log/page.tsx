@@ -106,9 +106,26 @@ export default function KeukenProductieLogPage() {
     0
   );
 
-  const gemiddeldeBatchgrootte =
-    totaalBatches > 0 ? (totaalItems / totaalBatches).toFixed(1) : "0.0";
+const batchCategorieen = ["melksmaken", "vruchtensmaken"];
 
+const batchRows = rows.filter((row) =>
+  batchCategorieen.includes(row.categorie)
+);
+
+const totaalBatchBatches = batchRows.reduce(
+  (sum, row) => sum + Number(row.keren_gemaakt || 0),
+  0
+);
+
+const totaalBatchAantal = batchRows.reduce(
+  (sum, row) => sum + Number(row.totaal_aantal || 0),
+  0
+);
+
+const gemiddeldeBatchgrootteIJs =
+  totaalBatchBatches > 0
+    ? (totaalBatchAantal / totaalBatchBatches).toFixed(1)
+    : "0.0";
   const groupedRows = useMemo(() => {
     return categorieVolgorde
       .map((categorie) => ({
@@ -229,12 +246,15 @@ export default function KeukenProductieLogPage() {
           </div>
 
           <div className="rounded-xl bg-slate-100 px-4 py-3">
-            <div className="text-xs uppercase tracking-wide text-slate-500">
-              Gem. batchgrootte
-            </div>
-            <div className="mt-1 text-2xl font-bold text-slate-900">
-              {gemiddeldeBatchgrootte}
-            </div>
+<div className="text-xs uppercase tracking-wide text-slate-500">
+  Gem. batchgrootte ijs
+</div>
+<div className="mt-1 text-2xl font-bold text-slate-900">
+  {gemiddeldeBatchgrootteIJs}
+</div>
+<p className="mt-1 text-xs text-slate-500">
+  Alleen melksmaken en vruchtensmaken
+</p>
           </div>
         </div>
       </div>
