@@ -5,6 +5,7 @@ const categorieen = [
   { slug: "vruchtensmaken", titel: "Vruchtensmaken" },
   { slug: "suikervrij", titel: "Suikervrij" },
   { slug: "sauzen", titel: "Sauzen" },
+  { slug: "mixen", titel: "Mixen" }
 ];
 
 export default function RecepturenPage() {
