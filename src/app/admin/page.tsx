@@ -283,7 +283,7 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/vragen" label="Vragen" color="blue" Icon={CheckSquare} breadcrumb="Management – Vragen" />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} breadcrumb="Management – Schoonmaakroutines" />
         <LinkCard href="/admin/contacten" label="Relaties" color="blue" Icon={Folder} breadcrumb="Management – Relaties" />
-        <LinkCard href="admin/keuken/categorieen" label="Categorie Keuken" color="blue" Icon={Folder} breadcrumb="Management – Categorieen" />
+        <LinkCard href="admin/routines" label="Routines HACCP" color="blue" Icon={Folder} breadcrumb="Management – Routines HACCP" />
 
        
       </Section>
@@ -322,13 +322,7 @@ export default function AdminDashboard() {
           Icon={BarChart2}
           breadcrumb="Rapportages – Formulieren/-rapporten"
         />
-        <LinkCard
-        href="/admin/keuken/productie-log"
-        label="Productie keuken"
-        color="purple"
-        Icon={BarChart2}
-        breadcrumb="Rapportages – Productie keuken"
-      />
+       
       </Section>
 
       {/* 👇 Medewerkers */}
@@ -392,8 +386,17 @@ export default function AdminDashboard() {
   breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Recepturen keuken"
 />
       
+     <LinkCard
+        href="/admin/keuken/productie-log"
+        label="Productie keuken"
+        color="pink"
+        Icon={BarChart2}
+        breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Productie keuken"
+      />    
         
-        
+        <LinkCard href="admin/keuken/categorieen" label="Categorie Keuken" color="pink" Icon={Folder} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Categorieen" />
+
+
         <LinkCard
           href="/admin/producten/allergenen"
           label="Allergenenregistratie"

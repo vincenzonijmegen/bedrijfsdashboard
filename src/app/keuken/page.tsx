@@ -16,6 +16,11 @@ const tegels = [
     titel: "Maaklijst",
     omschrijving: "Klik aan wat bijgemaakt moet worden.",
   },
+  {
+    href: "/routines/keuken-afsluit",
+    titel: "Keuken - afsluitroutine",
+    omschrijving: "Werk de lijst af.",
+  },
 ];
 
 export default function KeukenHomePage() {
