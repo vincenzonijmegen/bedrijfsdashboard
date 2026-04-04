@@ -19,8 +19,13 @@ type Taak = {
 
 const fetcher = async (url: string) => {
   const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error("Fout bij laden");
-  return res.json();
+  const text = await res.text();
+
+  if (!res.ok) {
+    throw new Error(text || "Fout bij laden");
+  }
+
+  return text ? JSON.parse(text) : [];
 };
 
 const WEEKDAGEN = [
@@ -105,8 +110,10 @@ export default function AdminRoutineEditPage({
         }),
       });
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Opslaan mislukt");
+const text = await res.text();
+const json = text ? JSON.parse(text) : null;
+
+if (!res.ok) throw new Error(json?.error || text || "Opslaan mislukt");
 
       await mutate();
       setMessage("Taak opgeslagen.");
@@ -131,8 +138,10 @@ export default function AdminRoutineEditPage({
         }),
       });
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Toevoegen mislukt");
+const text = await res.text();
+const json = text ? JSON.parse(text) : null;
+
+if (!res.ok) throw new Error(json?.error || text || "Toevoegen mislukt");
 
       await mutate();
       setNieuw({
@@ -167,8 +176,10 @@ export default function AdminRoutineEditPage({
         body: JSON.stringify({ id }),
       });
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Verwijderen mislukt");
+const text = await res.text();
+const json = text ? JSON.parse(text) : null;
+
+if (!res.ok) throw new Error(json?.error || text || "Verwijderen mislukt");
 
       await mutate();
       setMessage("Taak verwijderd.");
@@ -202,8 +213,10 @@ export default function AdminRoutineEditPage({
         body: JSON.stringify({ items }),
       });
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Sortering opslaan mislukt");
+const text = await res.text();
+const json = text ? JSON.parse(text) : null;
+
+if (!res.ok) throw new Error(json?.error || text || "Sortering opslaan mislukt");
 
       await mutate();
       setMessage("Volgorde opgeslagen.");
