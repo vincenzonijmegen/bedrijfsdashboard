@@ -28,21 +28,11 @@ const STORAGE_KEY = `keuken-maaklijst-${todayKey}`;
 
 
 
-const categorieTitels: Record<string, string> = {
-  melksmaken: "Melksmaken",
-  vruchtensmaken: "Vruchtensmaken",
-  suikervrij: "Suikervrij",
-  sauzen: "Sauzen",
-  mixen: "Mixen"
+type CategorieItem = {
+  slug: string;
+  naam: string;
+  sortering: number;
 };
-
-const categorieVolgorde = [
-  "melksmaken",
-  "vruchtensmaken",
-  "suikervrij",
-  "sauzen",
-  "mixen"
-];
 
 export default function MaaklijstPage() {
   const [items, setItems] = useState<ReceptItem[]>([]);
@@ -53,6 +43,7 @@ export default function MaaklijstPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeItem, setActiveItem] = useState<ReceptItem | null>(null);
   const [aantal, setAantal] = useState(1);
+  const [categorieen, setCategorieen] = useState<CategorieItem[]>([]);
 
   useEffect(() => {
     try {
@@ -115,6 +106,25 @@ useEffect(() => {
 
     load();
   }, []);
+
+useEffect(() => {
+  async function loadCategorieen() {
+    try {
+      const res = await fetch("/api/keuken/categorieen", {
+        cache: "no-store",
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setCategorieen(data.items || []);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  loadCategorieen();
+}, []);
 
 
 async function markAsDone(item: MaaklijstEntry) {
@@ -213,12 +223,12 @@ return [
 
   
   const grouped = useMemo(() => {
-    return categorieVolgorde.map((categorie) => ({
-      categorie,
-      titel: categorieTitels[categorie] || categorie,
-      items: items.filter((item) => item.categorie === categorie),
-    }));
-  }, [items]);
+  return categorieen.map((categorie) => ({
+    categorie: categorie.slug,
+    titel: categorie.naam,
+    items: items.filter((item) => item.categorie === categorie.slug),
+  }));
+}, [items, categorieen]);
 
 const sortedMaaklijst = useMemo(() => {
   return [...maaklijst].sort((a, b) => {
@@ -358,7 +368,7 @@ const doneItems = useMemo(() => {
               {item.naam}
             </div>
             <div className="text-sm text-slate-500">
-              {categorieTitels[item.categorie] || item.categorie}
+              {categorieen.find((c) => c.slug === item.categorie)?.naam || item.categorie}
             </div>
             <div className="mt-1 text-sm font-medium text-slate-700">
               {item.aantal}x maken · volgorde {item.maakvolgorde}
@@ -417,7 +427,7 @@ const doneItems = useMemo(() => {
               {item.naam}
             </div>
             <div className="text-sm text-slate-500">
-              {categorieTitels[item.categorie] || item.categorie}
+              {categorieen.find((c) => c.slug === item.categorie)?.naam || item.categorie}
             </div>
             <div className="mt-1 text-sm font-medium text-slate-700">
               {item.aantal}x gemaakt · volgorde {item.maakvolgorde}
