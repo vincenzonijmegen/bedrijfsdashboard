@@ -16,7 +16,11 @@ type Vraag = {
   antwoord: string;
 };
 
-export default function StapVoorStapMetToets({ html, instructie_id, titel }: Props) {
+export default function StapVoorStapMetToets({
+  html,
+  instructie_id,
+  titel,
+}: Props) {
   const [stappen, setStappen] = useState<string[]>([]);
   const [vragen, setVragen] = useState<Vraag[]>([]);
   const [index, setIndex] = useState(0);
@@ -41,34 +45,48 @@ export default function StapVoorStapMetToets({ html, instructie_id, titel }: Pro
         1,
         Math.floor((eindTijd - (startTijd.current || eindTijd)) / 1000)
       );
-      const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
 
-fetch("/api/instructielog", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  keepalive: true,
-  body: JSON.stringify({
-    email: gebruiker.email,
-    naam: gebruiker.naam,
-    functie: gebruiker.functie,
-    titel,
-    instructie_id,
-    duur_seconden: duurSec,
-  }),
-});
+      let gebruiker: { email?: string; naam?: string; functie?: string } = {};
+      try {
+        gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
+      } catch {
+        gebruiker = {};
+      }
+
+      fetch("/api/instructielog", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        keepalive: true,
+        body: JSON.stringify({
+          email: gebruiker.email,
+          naam: gebruiker.naam,
+          functie: gebruiker.functie,
+          titel,
+          instructie_id,
+          duur_seconden: duurSec,
+        }),
+      });
     };
   }, [instructie_id, titel]);
 
   useEffect(() => {
-    const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
-    if (!gebruiker?.email || !instructie_id) return;
+    let gebruiker: { email?: string } = {};
+    try {
+      gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
+    } catch {
+      gebruiker = {};
+    }
 
-    fetch("/api/instructiestatus", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: gebruiker.email, instructie_id }),
-    });
+    // Status registreren alleen als er een gebruiker is
+    if (gebruiker?.email && instructie_id) {
+      fetch("/api/instructiestatus", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: gebruiker.email, instructie_id }),
+      });
+    }
 
+    // INHOUD ALTIJD OPBOUWEN — ook zonder gebruiker/email
     const parts = html.split(/\[end\]/gi);
 
     const fixImgTags = (html: string) =>
@@ -84,6 +102,7 @@ fetch("/api/instructielog", {
 
     const vraagDeel = parts.slice(-1)[0] || "";
     const vragenHTML = vraagDeel.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ");
+
     const questionPattern =
       /Vraag[:.]\s*([\s\S]*?)\s*A\.\s*([\s\S]*?)\s*B\.\s*([\s\S]*?)\s*C\.\s*([\s\S]*?)\s*Antwoord:\s*([ABC])/gi;
 
@@ -126,7 +145,7 @@ fetch("/api/instructielog", {
 
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [fase, feedback, heeftToets, stappen.length, vragen.length, index]);
+  }, [fase, feedback, heeftToets, index]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -194,7 +213,13 @@ fetch("/api/instructielog", {
 
   const naarVolgende = () => {
     setFeedback(null);
-    const gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
+
+    let gebruiker: { email?: string; naam?: string; functie?: string } = {};
+    try {
+      gebruiker = JSON.parse(localStorage.getItem("gebruiker") || "{}");
+    } catch {
+      gebruiker = {};
+    }
 
     if (fase === "stappen" && index === stappen.length - 1 && heeftToets) {
       setFase("vragen");
@@ -205,7 +230,9 @@ fetch("/api/instructielog", {
     if (fase === "vragen" && index === vragen.length - 1 && heeftToets) {
       const veiligAantalJuist = Math.min(aantalJuist, vragen.length);
       const percentage =
-        vragen.length > 0 ? Math.round((veiligAantalJuist / vragen.length) * 100) : 0;
+        vragen.length > 0
+          ? Math.round((veiligAantalJuist / vragen.length) * 100)
+          : 0;
 
       setScore(percentage);
       setFase("klaar");
@@ -256,13 +283,14 @@ fetch("/api/instructielog", {
                     const rawId = url.includes("watch?v=")
                       ? url.split("watch?v=")[1].split("&")[0]
                       : url.split("/").pop()?.split("?")[0] || "";
+
                     return `<iframe
-              class="w-full aspect-video rounded mb-4"
-              src="https://www.youtube.com/embed/${rawId}"
-              frameborder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-            ></iframe>`;
+                      class="w-full aspect-video rounded mb-4"
+                      src="https://www.youtube.com/embed/${rawId}"
+                      frameborder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowfullscreen
+                    ></iframe>`;
                   }
                 )
               ),
@@ -289,7 +317,7 @@ fetch("/api/instructielog", {
         </>
       )}
 
-      {fase === "vragen" && (
+      {fase === "vragen" && vragen[index] && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Vraag {index + 1}</h2>
           <p>{vragen[index].vraag}</p>
@@ -313,7 +341,9 @@ fetch("/api/instructielog", {
                   onClick={naarVolgende}
                   className="bg-blue-600 text-white px-4 py-2 rounded"
                 >
-                  {index === vragen.length - 1 ? "Bekijk resultaat" : "Volgende vraag (↵)"}
+                  {index === vragen.length - 1
+                    ? "Bekijk resultaat"
+                    : "Volgende vraag (↵)"}
                 </button>
               </div>
             </div>
@@ -325,13 +355,16 @@ fetch("/api/instructielog", {
         <div className="text-center text-xl font-semibold space-y-4">
           {heeftToets ? (
             <p className={score >= 80 ? "text-green-700" : "text-red-700"}>
-              {score >= 80 ? "✅ Geslaagd!" : "❌ Niet geslaagd."} Je score: {score}%
+              {score >= 80 ? "✅ Geslaagd!" : "❌ Niet geslaagd."} Je score:{" "}
+              {score}%
               <br />
-              {Math.min(aantalJuist, vragen.length)} van {vragen.length} goed beantwoord
+              {Math.min(aantalJuist, vragen.length)} van {vragen.length} goed
+              beantwoord
             </p>
           ) : (
             <p className="text-green-700">✅ Instructie gelezen</p>
           )}
+
           <Link
             href="/instructies"
             className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
