@@ -25,8 +25,6 @@ export default async function Page(props: {
         html={instructie.inhoud}
         instructie_id={instructie.id}
         titel={instructie.titel}
-        terugHref="/keuken/instructies-skills"
-        terugLabel="Terug naar keukeninstructies"
       />
     </>
   );
