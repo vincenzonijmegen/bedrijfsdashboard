@@ -40,10 +40,6 @@ export default function StapVoorStapMetToets({
   >([]);
   const beantwoordeVragen = useRef<Set<number>>(new Set());
 
-
-
-
-  
   useEffect(() => {
     startTijd.current = Date.now();
 
@@ -85,7 +81,6 @@ export default function StapVoorStapMetToets({
       gebruiker = {};
     }
 
-    // Status registreren alleen als er een gebruiker is
     if (gebruiker?.email && instructie_id) {
       fetch("/api/instructiestatus", {
         method: "POST",
@@ -94,7 +89,6 @@ export default function StapVoorStapMetToets({
       });
     }
 
-    // INHOUD ALTIJD OPBOUWEN — ook zonder gebruiker/email
     const parts = html.split(/\[end\]/gi);
 
     const fixImgTags = (html: string) =>
@@ -276,13 +270,16 @@ export default function StapVoorStapMetToets({
   };
 
   return (
-    <div ref={containerRef} className="max-w-4xl mx-auto p-4 space-y-4">
-      <h1 className="text-2xl font-bold">{titel}</h1>
+    <div
+      ref={containerRef}
+      className="mx-auto flex min-h-screen max-w-4xl flex-col bg-slate-50"
+    >
+      <div className="p-4 pb-28 space-y-4">
+        <h1 className="text-2xl font-bold">{titel}</h1>
 
-      {fase === "stappen" && (
-        <>
+        {fase === "stappen" && (
           <div
-            className="border rounded p-4 bg-white shadow min-h-[150px] prose prose-blue max-w-none"
+            className="min-h-[150px] rounded border bg-white p-4 shadow prose prose-blue max-w-none"
             dangerouslySetInnerHTML={{
               __html: decode(
                 (stappen[index] || "").replace(
@@ -304,81 +301,86 @@ export default function StapVoorStapMetToets({
               ),
             }}
           />
+        )}
 
-          <div className="flex justify-between">
+        {fase === "vragen" && vragen[index] && (
+          <div className="space-y-4 rounded border bg-white p-4 shadow">
+            <h2 className="text-xl font-semibold">Vraag {index + 1}</h2>
+            <p>{vragen[index].vraag}</p>
+            <div className="space-y-2">
+              {["A", "B", "C"].map((letter, i) => (
+                <button
+                  key={letter}
+                  onClick={() => selectAntwoord(letter as "A" | "B" | "C")}
+                  className="block w-full rounded border bg-white px-4 py-2 text-left hover:bg-blue-50"
+                  disabled={feedback != null}
+                >
+                  {letter}. {vragen[index].opties[i]}
+                </button>
+              ))}
+            </div>
+
+            {feedback && (
+              <div className="mt-2 text-sm">
+                {feedback}
+                <div className="mt-2">
+                  <button
+                    onClick={naarVolgende}
+                    className="rounded bg-blue-600 px-4 py-2 text-white"
+                  >
+                    {index === vragen.length - 1
+                      ? "Bekijk resultaat"
+                      : "Volgende vraag (↵)"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {fase === "klaar" && (
+          <div className="space-y-4 text-center text-xl font-semibold">
+            {heeftToets ? (
+              <p className={score >= 80 ? "text-green-700" : "text-red-700"}>
+                {score >= 80 ? "✅ Geslaagd!" : "❌ Niet geslaagd."} Je score: {score}%
+                <br />
+                {Math.min(aantalJuist, vragen.length)} van {vragen.length} goed
+                beantwoord
+              </p>
+            ) : (
+              <p className="text-green-700">✅ Instructie gelezen</p>
+            )}
+
+            <Link
+              href={terugHref}
+              className="inline-block rounded bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
+            >
+              {terugLabel}
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {fase === "stappen" && (
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 p-4 backdrop-blur">
+          <div className="mx-auto flex max-w-4xl justify-between gap-3">
             <button
               onClick={() => setIndex((i) => Math.max(i - 1, 0))}
               disabled={index === 0}
-              className="px-4 py-2 rounded bg-gray-300 disabled:opacity-40"
+              className="rounded bg-gray-300 px-4 py-3 disabled:opacity-40"
             >
               Vorige
             </button>
+
             <button
               onClick={naarVolgende}
-              className="bg-blue-600 text-white px-4 py-2 rounded"
+              className="rounded bg-blue-600 px-4 py-3 text-white"
             >
               {index === stappen.length - 1 && heeftToets
                 ? "Start toets (↵)"
                 : "Volgende stap (↵)"}
             </button>
           </div>
-        </>
-      )}
-
-      {fase === "vragen" && vragen[index] && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Vraag {index + 1}</h2>
-          <p>{vragen[index].vraag}</p>
-          <div className="space-y-2">
-            {["A", "B", "C"].map((letter, i) => (
-              <button
-                key={letter}
-                onClick={() => selectAntwoord(letter as "A" | "B" | "C")}
-                className="block w-full border rounded px-4 py-2 text-left bg-white hover:bg-blue-50"
-                disabled={feedback != null}
-              >
-                {letter}. {vragen[index].opties[i]}
-              </button>
-            ))}
-          </div>
-          {feedback && (
-            <div className="text-sm mt-2">
-              {feedback}
-              <div className="mt-2">
-                <button
-                  onClick={naarVolgende}
-                  className="bg-blue-600 text-white px-4 py-2 rounded"
-                >
-                  {index === vragen.length - 1
-                    ? "Bekijk resultaat"
-                    : "Volgende vraag (↵)"}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {fase === "klaar" && (
-        <div className="text-center text-xl font-semibold space-y-4">
-          {heeftToets ? (
-            <p className={score >= 80 ? "text-green-700" : "text-red-700"}>
-              {score >= 80 ? "✅ Geslaagd!" : "❌ Niet geslaagd."} Je score:{" "}
-              {score}%
-              <br />
-              {Math.min(aantalJuist, vragen.length)} van {vragen.length} goed
-              beantwoord
-            </p>
-          ) : (
-            <p className="text-green-700">✅ Instructie gelezen</p>
-          )}
-
-<Link
-  href={terugHref}
-  className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
->
-  {terugLabel}
-</Link>
         </div>
       )}
     </div>
