@@ -40,6 +40,10 @@ export default function StapVoorStapMetToets({
   >([]);
   const beantwoordeVragen = useRef<Set<number>>(new Set());
 
+
+
+
+  
   useEffect(() => {
     startTijd.current = Date.now();
 
