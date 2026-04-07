@@ -5,6 +5,19 @@ import React, { useState } from 'react';
 import { Building, Tag, Hash, List, Phone, Mail, Globe, Users } from 'lucide-react';
 import { Company, Correspondentie } from '@/types/contacten';
 
+function normalizeWebsiteUrl(url?: string | null) {
+  if (!url) return "";
+  const value = url.trim();
+
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return value;
+  }
+
+  return `https://${value}`;
+}
+
+
+
 interface Props {
   company: Company;
   correspondentie: Correspondentie[];
@@ -47,7 +60,19 @@ export default function CompanyCard({ company: c, correspondentie, onEdit, onDel
         {c.rubriek && <div className="flex items-center space-x-2"><List /><span>{c.rubriek}</span></div>}
         {c.telefoon && <div className="flex items-center space-x-2"><Phone /><span>{c.telefoon}</span></div>}
         {c.email && <div className="flex items-center space-x-2"><Mail /><span>{c.email}</span></div>}
-        {c.website && <div className="flex items-center space-x-2"><Globe /><a href={c.website} target="_blank" rel="noreferrer" className="underline">{c.website}</a></div>}
+        {c.website && (
+  <div className="flex items-center space-x-2">
+    <Globe />
+    <a
+      href={normalizeWebsiteUrl(c.website)}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="underline text-blue-600 break-all"
+    >
+      {c.website}
+    </a>
+  </div>
+)}
         {c.opmerking && <div className="italic">{c.opmerking}</div>}
       </div>
 
