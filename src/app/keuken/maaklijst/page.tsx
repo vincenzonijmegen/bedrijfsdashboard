@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type ReceptItem = {
   id: number;
@@ -38,6 +38,22 @@ export default function MaaklijstPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeItem, setActiveItem] = useState<ReceptItem | null>(null);
   const [aantal, setAantal] = useState(1);
+  const [showDeleteId, setShowDeleteId] = useState<number | null>(null);
+const holdTimer = useRef<number | null>(null);
+
+function startHold(id: number) {
+  clearHold();
+  holdTimer.current = window.setTimeout(() => {
+    setShowDeleteId(id);
+  }, 600);
+}
+
+function clearHold() {
+  if (holdTimer.current) {
+    window.clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+  }
+}
 
   useEffect(() => {
     try {
@@ -350,10 +366,16 @@ export default function MaaklijstPage() {
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
               {openItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
-                >
+              <div
+                key={item.id}
+                onTouchStart={() => startHold(item.id)}
+                onTouchEnd={clearHold}
+                onTouchCancel={clearHold}
+                onMouseDown={() => startHold(item.id)}
+                onMouseUp={clearHold}
+                onMouseLeave={clearHold}
+                className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+              >
                   <div>
                     <div className="text-lg font-semibold text-slate-900">
                       {item.naam}
@@ -382,13 +404,18 @@ export default function MaaklijstPage() {
                       Afgehandeld
                     </button>
 
+                    {showDeleteId === item.id && (
                     <button
                       type="button"
-                      onClick={() => removeFromMaaklijst(item.id)}
-                      className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+                      onClick={() => {
+                        removeFromMaaklijst(item.id);
+                        setShowDeleteId(null);
+                      }}
+                      className="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700"
                     >
                       Verwijder
                     </button>
+                  )}
                   </div>
                 </div>
               ))}
