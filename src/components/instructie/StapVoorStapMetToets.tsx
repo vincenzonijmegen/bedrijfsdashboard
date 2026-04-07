@@ -8,6 +8,8 @@ interface Props {
   html: string;
   instructie_id: string;
   titel: string;
+  terugHref?: string;
+  terugLabel?: string;
 }
 
 type Vraag = {
@@ -20,6 +22,8 @@ export default function StapVoorStapMetToets({
   html,
   instructie_id,
   titel,
+  terugHref = "/instructies",
+  terugLabel = "Terug naar instructies",
 }: Props) {
   const [stappen, setStappen] = useState<string[]>([]);
   const [vragen, setVragen] = useState<Vraag[]>([]);
@@ -365,12 +369,12 @@ export default function StapVoorStapMetToets({
             <p className="text-green-700">✅ Instructie gelezen</p>
           )}
 
-          <Link
-            href="/instructies"
-            className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-          >
-            Terug naar instructies
-          </Link>
+<Link
+  href={terugHref}
+  className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+>
+  {terugLabel}
+</Link>
         </div>
       )}
     </div>
