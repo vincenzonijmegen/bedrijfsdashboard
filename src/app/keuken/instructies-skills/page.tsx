@@ -84,24 +84,24 @@ export default function KeukenInstructiesPage() {
     );
   }
 
- const toegestaneFuncties = ["keukenmedewerkers", "ijsvoorbereiders"];
+  const toegestaneFuncties = ["keukenmedewerkers", "ijsvoorbereiders"];
 
-const keukenInstructies = [...instructies]
-  .filter((i) => {
-    if (!i.functies || i.functies.length === 0) return false;
+  const keukenInstructies = [...instructies]
+    .filter((i) => {
+      if (!i.functies || i.functies.length === 0) return false;
 
-    const functies = i.functies.map((f) => f.toLowerCase().trim());
+      const functies = i.functies.map((f) => f.toLowerCase().trim());
 
-    return (
-      functies.length > 0 &&
-      functies.every((f) => toegestaneFuncties.includes(f))
-    );
-  })
-  .sort((a, b) => {
-    const na = a.nummer || "";
-    const nb = b.nummer || "";
-    return na.localeCompare(nb, "nl");
-  });
+      return (
+        functies.length > 0 &&
+        functies.every((f) => toegestaneFuncties.includes(f))
+      );
+    })
+    .sort((a, b) => {
+      const na = a.nummer || "";
+      const nb = b.nummer || "";
+      return na.localeCompare(nb, "nl");
+    });
 
   return (
     <main className="min-h-screen bg-slate-50 p-4 md:p-6">
@@ -131,7 +131,7 @@ const keukenInstructies = [...instructies]
             {keukenInstructies.map((item) => (
               <Link
                 key={item.id}
-                href={`/instructies/${item.slug}`}
+                href={`/keuken/instructies-skills/${item.slug}`}
                 className="flex h-[96px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center shadow-sm transition active:scale-95"
               >
                 <span className="block max-w-[170px] text-lg font-semibold leading-snug text-slate-900">
