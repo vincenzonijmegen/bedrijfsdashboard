@@ -73,6 +73,21 @@ function scaleAmountText(text: string, factor: number) {
     };
   }
 
+  if (unit.includes("cl")) {
+  return {
+    text: `${Math.round(scaledValue)} cl`,
+    scaled: true,
+  };
+}
+
+  if (unit.includes("cc")) {
+  return {
+    text: `${Math.round(scaledValue)} cc`,
+    scaled: true,
+  };
+}
+
+
   if (unit.includes("kg")) {
     return {
       text: `${formatNumber(scaledValue, 2)} kg`,
@@ -192,7 +207,7 @@ export default function ReceptSchaalClient({
         <h2 className="text-2xl font-bold text-slate-900">Benodigdheden</h2>
 
           {basisLiters && opties.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2 md:gap-3">
             {opties.map((liters) => {
               const actief = liters === gekozenLiters;
 
