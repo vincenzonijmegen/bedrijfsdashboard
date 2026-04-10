@@ -188,11 +188,11 @@ export default function ReceptSchaalClient({
 
   return (
     <section className="rounded-3xl bg-slate-50 p-5 md:p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div>
         <h2 className="text-2xl font-bold text-slate-900">Benodigdheden</h2>
 
-        {basisLiters && opties.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
+          {basisLiters && opties.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
             {opties.map((liters) => {
               const actief = liters === gekozenLiters;
 
