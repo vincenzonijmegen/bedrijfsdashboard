@@ -11,9 +11,10 @@ type ReceptRow = {
   categorie: string;
   naam: string;
   hoeveelheid_mix: string | null;
-  maakinstructie: string | null;
+  voorbereiding: string | null;
+  draaien: string | null;
   actief: boolean;
-  maakvolgorde: number; // 👈 toevoegen
+  maakvolgorde: number;
 };
 
 type IngredientRow = {
@@ -31,16 +32,17 @@ export async function GET(
     const receptResult = await query<ReceptRow>(
       `
       SELECT
-  id,
-  categorie,
-  naam,
-  hoeveelheid_mix,
-  maakinstructie,
-  actief,
-  maakvolgorde
-FROM keuken_recepten
-WHERE id = $1
-LIMIT 1
+        id,
+        categorie,
+        naam,
+        hoeveelheid_mix,
+        voorbereiding,
+        draaien,
+        actief,
+        maakvolgorde
+      FROM keuken_recepten
+      WHERE id = $1
+      LIMIT 1
       `,
       [id]
     );
@@ -94,7 +96,8 @@ export async function PUT(
     const maakvolgorde = Number(body?.maakvolgorde ?? 50);
     const categorie = String(body?.categorie || "").trim();
     const hoeveelheid_mix = String(body?.hoeveelheid_mix || "").trim();
-    const maakinstructie = String(body?.maakinstructie || "").trim();
+    const voorbereiding = String(body?.voorbereiding || "").trim();
+    const draaien = String(body?.draaien || "").trim();
     const actief = body?.actief !== false;
 
     const ingredientenRaw = Array.isArray(body?.ingredienten)
@@ -125,28 +128,30 @@ export async function PUT(
     await client.query("BEGIN");
 
     const updateResult = await client.query(
-  `
-  UPDATE keuken_recepten
-  SET
-    categorie = $1,
-    naam = $2,
-    hoeveelheid_mix = $3,
-    maakinstructie = $4,
-    actief = $5,
-    maakvolgorde = $6,
-    updated_at = now()
-  WHERE id = $7
-  `,
-  [
-    categorie,
-    naam,
-    hoeveelheid_mix || null,
-    maakinstructie || null,
-    actief,
-    maakvolgorde,
-    id,
-  ]
-);
+      `
+      UPDATE keuken_recepten
+      SET
+        categorie = $1,
+        naam = $2,
+        hoeveelheid_mix = $3,
+        voorbereiding = $4,
+        draaien = $5,
+        actief = $6,
+        maakvolgorde = $7,
+        updated_at = now()
+      WHERE id = $8
+      `,
+      [
+        categorie,
+        naam,
+        hoeveelheid_mix || null,
+        voorbereiding || null,
+        draaien || null,
+        actief,
+        maakvolgorde,
+        id,
+      ]
+    );
 
     if (updateResult.rowCount === 0) {
       await client.query("ROLLBACK");

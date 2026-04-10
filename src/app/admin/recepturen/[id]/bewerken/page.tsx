@@ -25,7 +25,8 @@ export default function BewerkReceptPage() {
   const [maakvolgorde, setMaakvolgorde] = useState(50);
   const [categorie, setCategorie] = useState("melksmaken");
   const [hoeveelheidMix, setHoeveelheidMix] = useState("");
-  const [maakinstructie, setMaakinstructie] = useState("");
+  const [voorbereiding, setVoorbereiding] = useState("");
+  const [draaien, setDraaien] = useState("");
   const [actief, setActief] = useState(true);
   const [ingredienten, setIngredienten] = useState<Ingredient[]>([
     { naam: "", gewicht: "" },
@@ -56,7 +57,8 @@ export default function BewerkReceptPage() {
         setMaakvolgorde(recept.maakvolgorde ?? 50);
         setCategorie(recept.categorie || "melksmaken");
         setHoeveelheidMix(recept.hoeveelheid_mix || "");
-        setMaakinstructie(recept.maakinstructie || "");
+        setVoorbereiding(recept.voorbereiding || "");
+        setDraaien(recept.draaien || "");
         setActief(recept.actief !== false);
         setIngredienten(
           Array.isArray(recept.ingredienten) && recept.ingredienten.length > 0
@@ -105,15 +107,16 @@ export default function BewerkReceptPage() {
         headers: {
           "Content-Type": "application/json",
         },
-body: JSON.stringify({
-  naam,
-  categorie,
-  hoeveelheid_mix: hoeveelheidMix,
-  maakinstructie,
-  actief,
-  maakvolgorde,
-  ingredienten,
-})
+        body: JSON.stringify({
+          naam,
+          categorie,
+          hoeveelheid_mix: hoeveelheidMix,
+          voorbereiding,
+          draaien,
+          actief,
+          maakvolgorde,
+          ingredienten,
+        }),
       });
 
       const data = await res.json();
@@ -210,26 +213,23 @@ body: JSON.stringify({
                 placeholder="Bijv. 5 liter"
               />
             </div>
-            
+
             <div>
-  <label className="mb-2 block text-sm font-medium text-slate-700">
-    Maakvolgorde
-  </label>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Maakvolgorde
+              </label>
 
-  <input
-    type="number"
-    value={maakvolgorde}
-    onChange={(e) => setMaakvolgorde(Number(e.target.value))}
-    className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-pink-500"
-  />
+              <input
+                type="number"
+                value={maakvolgorde}
+                onChange={(e) => setMaakvolgorde(Number(e.target.value))}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-pink-500"
+              />
 
-  <p className="mt-1 text-xs text-slate-500">
-    Lager = eerder maken (bijv. yoghurt 10, snickers 90)
-  </p>
-</div>
-
-
-
+              <p className="mt-1 text-xs text-slate-500">
+                Lager = eerder maken (bijv. yoghurt 10, snickers 90)
+              </p>
+            </div>
 
             <div className="flex items-end">
               <label className="inline-flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3">
@@ -246,17 +246,31 @@ body: JSON.stringify({
 
             <div className="md:col-span-2">
               <label className="mb-2 block text-sm font-medium text-slate-700">
-                Maakinstructie
+                Werkwijze – voorbereiden
               </label>
               <textarea
-                value={maakinstructie}
-                onChange={(e) => setMaakinstructie(e.target.value)}
+                value={voorbereiding}
+                onChange={(e) => setVoorbereiding(e.target.value)}
                 rows={8}
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-pink-500"
                 placeholder={`1. Base afwegen
 2. Pasta toevoegen
 3. Goed mixen
-4. In bak doen en afdraaien`}
+4. Brix meten`}
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Werkwijze – draaien
+              </label>
+              <textarea
+                value={draaien}
+                onChange={(e) => setDraaien(e.target.value)}
+                rows={6}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-pink-500"
+                placeholder={`1. Emulgator toevoegen op -7
+2. Uittappen op -9`}
               />
             </div>
           </div>
