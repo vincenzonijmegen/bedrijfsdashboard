@@ -7,7 +7,6 @@ import { SnackbarProvider } from "@/lib/useSnackbar";
 export const metadata = {
   title: "Vincenzo App",
   description: "Personeelsapp van IJssalon Vincenzo",
-  manifest: "/manifest.json",
   themeColor: "#008080",
   icons: {
     icon: "/icons/icon-192x192.png",
