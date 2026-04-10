@@ -10,12 +10,13 @@ type Recept = {
   id: number;
   naam: string;
   hoeveelheid_mix: string | null;
-  maakinstructie: string | null;
+  voorbereiding: string | null;
+  draaien: string | null;
 };
 
-function splitStappen(maakinstructie: string | null) {
-  if (!maakinstructie) return [];
-  return maakinstructie
+function splitStappen(tekst: string | null) {
+  if (!tekst) return [];
+  return tekst
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
@@ -31,10 +32,10 @@ export default async function ReceptDetailPage({
   const { id, categorie } = await params;
   const { from, cat } = await searchParams;
 
-const terugHref =
-  from === "maaklijst"
-    ? `/keuken/maaklijst?cat=${cat || categorie}`
-    : `/keuken/recepturen/${categorie}`;
+  const terugHref =
+    from === "maaklijst"
+      ? `/keuken/maaklijst?cat=${cat || categorie}`
+      : `/keuken/recepturen/${categorie}`;
 
   const terugLabel =
     from === "maaklijst"
@@ -47,7 +48,8 @@ const terugHref =
       id,
       naam,
       hoeveelheid_mix,
-      maakinstructie
+      voorbereiding,
+      draaien
     FROM keuken_recepten
     WHERE id = $1
     LIMIT 1
@@ -87,7 +89,11 @@ const terugHref =
   );
 
   const ingredienten = ingrediëntenResult.rows;
-  const stappen = splitStappen(recept.maakinstructie);
+  const voorbereidingStappen = splitStappen(recept.voorbereiding);
+  const draaiStappen = splitStappen(recept.draaien);
+
+  const heeftWerkwijze =
+    voorbereidingStappen.length > 0 || draaiStappen.length > 0;
 
   return (
     <main className="min-h-screen bg-slate-50 p-4 md:p-6">
@@ -141,26 +147,60 @@ const terugHref =
             <section className="rounded-3xl bg-slate-50 p-5 md:p-6">
               <h2 className="text-2xl font-bold text-slate-900">Werkwijze</h2>
 
-              {stappen.length === 0 ? (
+              {!heeftWerkwijze ? (
                 <p className="mt-4 text-lg text-slate-500">
                   Geen werkwijze ingevuld.
                 </p>
               ) : (
-                <ol className="mt-4 space-y-4">
-                  {stappen.map((stap, index) => (
-                    <li
-                      key={index}
-                      className="flex gap-4 rounded-2xl bg-white px-4 py-4 shadow-sm"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-lg font-bold text-white">
-                        {index + 1}
-                      </div>
-                      <div className="pt-1 text-lg leading-relaxed text-slate-800">
-                        {stap.replace(/^\d+\.\s*/, "")}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
+                <div className="mt-4 space-y-6">
+                  {voorbereidingStappen.length > 0 && (
+                    <div>
+                      <h3 className="mb-3 text-lg font-semibold text-slate-700">
+                        Voorbereiden
+                      </h3>
+
+                      <ol className="space-y-4">
+                        {voorbereidingStappen.map((stap, index) => (
+                          <li
+                            key={`voorbereiding-${index}`}
+                            className="flex gap-4 rounded-2xl bg-white px-4 py-4 shadow-sm"
+                          >
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-lg font-bold text-white">
+                              {index + 1}
+                            </div>
+                            <div className="pt-1 text-lg leading-relaxed text-slate-800">
+                              {stap.replace(/^\d+\.\s*/, "")}
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
+                  {draaiStappen.length > 0 && (
+                    <div>
+                      <h3 className="mb-3 text-lg font-semibold text-slate-700">
+                        Draaien
+                      </h3>
+
+                      <ol className="space-y-4">
+                        {draaiStappen.map((stap, index) => (
+                          <li
+                            key={`draaien-${index}`}
+                            className="flex gap-4 rounded-2xl bg-white px-4 py-4 shadow-sm"
+                          >
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900 text-lg font-bold text-white">
+                              {index + 1}
+                            </div>
+                            <div className="pt-1 text-lg leading-relaxed text-slate-800">
+                              {stap.replace(/^\d+\.\s*/, "")}
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                </div>
               )}
             </section>
           </div>
