@@ -177,9 +177,9 @@ export default async function ReceptDetailPage({
                     </div>
                   )}
 
-                  {draaiStappen.length > 0 && (
-                    <div>
-                      <h3 className="mb-3 text-lg font-semibold text-slate-700">
+                    {draaiStappen.length > 0 && (
+                      <div className="mt-6 border-t border-slate-200 pt-4">
+                      <h3 className="mb-3 text-lg font-semibold text-slate-800">
                         Draaien
                       </h3>
 
