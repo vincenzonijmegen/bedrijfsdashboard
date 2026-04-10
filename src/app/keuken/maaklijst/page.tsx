@@ -39,21 +39,21 @@ export default function MaaklijstPage() {
   const [activeItem, setActiveItem] = useState<ReceptItem | null>(null);
   const [aantal, setAantal] = useState(1);
   const [showDeleteId, setShowDeleteId] = useState<number | null>(null);
-const holdTimer = useRef<number | null>(null);
+  const holdTimer = useRef<number | null>(null);
 
-function startHold(id: number) {
-  clearHold();
-  holdTimer.current = window.setTimeout(() => {
-    setShowDeleteId(id);
-  }, 600);
-}
-
-function clearHold() {
-  if (holdTimer.current) {
-    window.clearTimeout(holdTimer.current);
-    holdTimer.current = null;
+  function startHold(id: number) {
+    clearHold();
+    holdTimer.current = window.setTimeout(() => {
+      setShowDeleteId(id);
+    }, 600);
   }
-}
+
+  function clearHold() {
+    if (holdTimer.current) {
+      window.clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+  }
 
   useEffect(() => {
     try {
@@ -158,9 +158,7 @@ function clearHold() {
   }
 
   function isSelected(id: number) {
-    return maaklijst.some(
-      (item) => item.id === id && item.status === "open"
-    );
+    return maaklijst.some((item) => item.id === id && item.status === "open");
   }
 
   function openAddDialog(item: ReceptItem) {
@@ -292,7 +290,8 @@ function clearHold() {
               Maaklijst
             </h1>
             <p className="mt-2 text-slate-600">
-              Klik op een recept en kies hoeveel je wilt maken.
+              Bekijk bovenaan wat er gemaakt moet worden en voeg onderaan nieuwe
+              smaken toe.
             </p>
           </div>
 
@@ -318,42 +317,7 @@ function clearHold() {
           </div>
         ) : null}
 
-        <div className="space-y-8">
-          {grouped.map((groep) => (
-            <section id={`cat-${groep.categorie}`} key={groep.categorie}>
-              <h2 className="mb-3 text-2xl font-semibold text-slate-900">
-                {groep.titel}
-              </h2>
-
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-                {groep.items.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => openAddDialog(item)}
-                    className={`relative flex h-[96px] items-center justify-center rounded-2xl border px-3 py-3 text-center shadow-sm transition active:scale-95 ${
-                      isSelected(item.id)
-                        ? "border-emerald-300 bg-emerald-100 text-emerald-900"
-                        : "border-slate-200 bg-white text-slate-900"
-                    }`}
-                  >
-                    <span className="block max-w-[170px] text-lg font-semibold leading-snug text-slate-900">
-                      {item.naam}
-                    </span>
-
-                    {isSelected(item.id) && (
-                      <div className="absolute right-2 top-2 rounded-full bg-emerald-600 px-2 py-1 text-xs font-bold text-white">
-                        {maaklijst.find((x) => x.id === item.id)?.aantal}
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-
-        <section className="mt-10 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-2xl font-bold text-slate-900">Te maken</h2>
             <div className="text-sm text-slate-500">{openItems.length} open</div>
@@ -366,16 +330,16 @@ function clearHold() {
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
               {openItems.map((item) => (
-              <div
-                key={item.id}
-                onTouchStart={() => startHold(item.id)}
-                onTouchEnd={clearHold}
-                onTouchCancel={clearHold}
-                onMouseDown={() => startHold(item.id)}
-                onMouseUp={clearHold}
-                onMouseLeave={clearHold}
-                className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
-              >
+                <div
+                  key={item.id}
+                  onTouchStart={() => startHold(item.id)}
+                  onTouchEnd={clearHold}
+                  onTouchCancel={clearHold}
+                  onMouseDown={() => startHold(item.id)}
+                  onMouseUp={clearHold}
+                  onMouseLeave={clearHold}
+                  className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+                >
                   <div>
                     <div className="text-lg font-semibold text-slate-900">
                       {item.naam}
@@ -405,17 +369,17 @@ function clearHold() {
                     </button>
 
                     {showDeleteId === item.id && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        removeFromMaaklijst(item.id);
-                        setShowDeleteId(null);
-                      }}
-                      className="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700"
-                    >
-                      Verwijder
-                    </button>
-                  )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          removeFromMaaklijst(item.id);
+                          setShowDeleteId(null);
+                        }}
+                        className="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700"
+                      >
+                        Verwijder
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -456,6 +420,41 @@ function clearHold() {
             </div>
           )}
         </section>
+
+        <div className="mt-8 space-y-8">
+          {grouped.map((groep) => (
+            <section id={`cat-${groep.categorie}`} key={groep.categorie}>
+              <h2 className="mb-3 text-2xl font-semibold text-slate-900">
+                {groep.titel}
+              </h2>
+
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+                {groep.items.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => openAddDialog(item)}
+                    className={`relative flex h-[96px] items-center justify-center rounded-2xl border px-3 py-3 text-center shadow-sm transition active:scale-95 ${
+                      isSelected(item.id)
+                        ? "border-emerald-300 bg-emerald-100 text-emerald-900"
+                        : "border-slate-200 bg-white text-slate-900"
+                    }`}
+                  >
+                    <span className="block max-w-[170px] text-lg font-semibold leading-snug text-slate-900">
+                      {item.naam}
+                    </span>
+
+                    {isSelected(item.id) && (
+                      <div className="absolute right-2 top-2 rounded-full bg-emerald-600 px-2 py-1 text-xs font-bold text-white">
+                        {maaklijst.find((x) => x.id === item.id)?.aantal}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       </div>
 
       {dialogOpen && activeItem ? (
