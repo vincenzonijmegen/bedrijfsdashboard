@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { query } from "@/lib/db";
+import ReceptSchaalClient from "./ReceptSchaalClient";
 
 type Ingredient = {
   naam: string;
@@ -20,6 +21,17 @@ function splitStappen(tekst: string | null) {
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+function parseBasisLiters(hoeveelheidMix: string | null) {
+  if (!hoeveelheidMix) return null;
+
+  const normalized = hoeveelheidMix.trim().toLowerCase().replace(",", ".");
+  const match = normalized.match(/(\d+(?:\.\d+)?)\s*(liter|l)\b/);
+
+  if (!match) return null;
+
+  return Number(match[1]);
 }
 
 export default async function ReceptDetailPage({
@@ -91,9 +103,10 @@ export default async function ReceptDetailPage({
   const ingredienten = ingrediëntenResult.rows;
   const voorbereidingStappen = splitStappen(recept.voorbereiding);
   const draaiStappen = splitStappen(recept.draaien);
-
   const heeftWerkwijze =
     voorbereidingStappen.length > 0 || draaiStappen.length > 0;
+
+  const basisLiters = parseBasisLiters(recept.hoeveelheid_mix);
 
   return (
     <main className="min-h-screen bg-slate-50 p-4 md:p-6">
@@ -116,33 +129,10 @@ export default async function ReceptDetailPage({
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.4fr]">
-            <section className="rounded-3xl bg-slate-50 p-5 md:p-6">
-              <h2 className="text-2xl font-bold text-slate-900">
-                Benodigdheden
-              </h2>
-
-              {ingredienten.length === 0 ? (
-                <p className="mt-4 text-base italic text-slate-400">
-                  Geen benodigdheden ingevuld.
-                </p>
-              ) : (
-                <ul className="mt-4 space-y-3">
-                  {ingredienten.map((ing, index) => (
-                    <li
-                      key={`${ing.naam}-${index}`}
-                      className="flex items-start justify-between gap-4 rounded-2xl bg-white px-4 py-4 text-lg shadow-sm"
-                    >
-                      <span className="font-medium text-slate-800">
-                        {ing.naam}
-                      </span>
-                      <span className="whitespace-nowrap font-semibold text-slate-900">
-                        {ing.gewicht}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
+            <ReceptSchaalClient
+              basisLiters={basisLiters}
+              ingredienten={ingredienten}
+            />
 
             <section className="rounded-3xl bg-slate-50 p-5 md:p-6">
               <h2 className="text-2xl font-bold text-slate-900">Werkwijze</h2>
@@ -155,7 +145,7 @@ export default async function ReceptDetailPage({
                 <div className="mt-4 space-y-6">
                   {voorbereidingStappen.length > 0 && (
                     <div>
-                      <h3 className="mb-3 text-lg font-semibold text-slate-700">
+                      <h3 className="mb-3 text-lg font-semibold text-slate-800">
                         Voorbereiden
                       </h3>
 
@@ -177,8 +167,8 @@ export default async function ReceptDetailPage({
                     </div>
                   )}
 
-                    {draaiStappen.length > 0 && (
-                      <div className="mt-6 border-t border-slate-200 pt-4">
+                  {draaiStappen.length > 0 && (
+                    <div className="mt-6 border-t border-slate-200 pt-4">
                       <h3 className="mb-3 text-lg font-semibold text-slate-800">
                         Draaien
                       </h3>
