@@ -25,13 +25,23 @@ type CategorieItem = {
   sortering: number;
 };
 
-const todayKey = new Date().toISOString().slice(0, 10);
-const STORAGE_KEY = `keuken-maaklijst-${todayKey}`;
+function getLocalDateKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getStorageKey() {
+  return `keuken-maaklijst-${getLocalDateKey()}`;
+}
 
 export default function MaaklijstPage() {
   const [items, setItems] = useState<ReceptItem[]>([]);
   const [categorieen, setCategorieen] = useState<CategorieItem[]>([]);
   const [maaklijst, setMaaklijst] = useState<MaaklijstEntry[]>([]);
+  const [storageKey, setStorageKey] = useState(() => getStorageKey());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -57,21 +67,32 @@ export default function MaaklijstPage() {
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(storageKey);
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
           setMaaklijst(parsed);
+          return;
         }
       }
+      setMaaklijst([]);
     } catch {
-      // niets doen
+      setMaaklijst([]);
     }
-  }, []);
+  }, [storageKey]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(maaklijst));
-  }, [maaklijst]);
+    localStorage.setItem(storageKey, JSON.stringify(maaklijst));
+  }, [maaklijst, storageKey]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      const nextKey = getStorageKey();
+      setStorageKey((prev) => (prev !== nextKey ? nextKey : prev));
+    }, 60 * 1000);
+
+    return () => window.clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     async function loadItems() {
