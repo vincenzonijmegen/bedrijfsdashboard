@@ -50,6 +50,7 @@ export default function MaaklijstPage() {
   const [aantal, setAantal] = useState(1);
   const [showDeleteId, setShowDeleteId] = useState<number | null>(null);
   const holdTimer = useRef<number | null>(null);
+  const [selectieSortering, setSelectieSortering] = useState<"alfabetisch" | "maakvolgorde">("alfabetisch");
 
   function startHold(id: number) {
     clearHold();
@@ -237,14 +238,32 @@ export default function MaaklijstPage() {
   }
 
   const grouped = useMemo(() => {
-    return categorieen
-      .map((categorie) => ({
+  function sorteer(items: ReceptItem[]) {
+    return [...items].sort((a, b) => {
+      if (selectieSortering === "maakvolgorde") {
+        const diff = (a.maakvolgorde ?? 9999) - (b.maakvolgorde ?? 9999);
+        if (diff !== 0) return diff;
+        return a.naam.localeCompare(b.naam, "nl");
+      }
+
+      return a.naam.localeCompare(b.naam, "nl");
+    });
+  }
+
+  return categorieen
+    .map((categorie) => {
+      const categorieItems = items.filter(
+        (item) => item.categorie === categorie.slug
+      );
+
+      return {
         categorie: categorie.slug,
         titel: categorie.naam,
-        items: items.filter((item) => item.categorie === categorie.slug),
-      }))
-      .filter((groep) => groep.items.length > 0);
-  }, [items, categorieen]);
+        items: sorteer(categorieItems),
+      };
+    })
+    .filter((groep) => groep.items.length > 0);
+}, [items, categorieen, selectieSortering]);
 
   const sortedMaaklijst = useMemo(() => {
     return [...maaklijst].sort((a, b) => {
@@ -441,6 +460,33 @@ export default function MaaklijstPage() {
             </div>
           )}
         </section>
+
+          <div className="mb-4 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectieSortering("alfabetisch")}
+              className={`rounded-xl px-4 py-2 text-sm font-medium ${
+                selectieSortering === "alfabetisch"
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-700"
+              }`}
+            >
+              Alfabetisch
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectieSortering("maakvolgorde")}
+              className={`rounded-xl px-4 py-2 text-sm font-medium ${
+                selectieSortering === "maakvolgorde"
+                  ? "bg-slate-900 text-white"
+                  : "bg-slate-100 text-slate-700"
+              }`}
+            >
+              Maakvolgorde
+            </button>
+          </div>
+
 
         <div className="mt-8 space-y-8">
           {grouped.map((groep) => (
