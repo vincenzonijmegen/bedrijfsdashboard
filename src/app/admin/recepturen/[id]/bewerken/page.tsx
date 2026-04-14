@@ -9,12 +9,11 @@ type Ingredient = {
   gewicht: string;
 };
 
-const categorieen = [
-  { value: "melksmaken", label: "Melksmaken" },
-  { value: "vruchtensmaken", label: "Vruchtensmaken" },
-  { value: "suikervrij", label: "Suikervrij" },
-  { value: "sauzen", label: "Sauzen" },
-];
+type CategorieItem = {
+  slug: string;
+  naam: string;
+  sortering: number;
+};
 
 export default function BewerkReceptPage() {
   const router = useRouter();
@@ -23,7 +22,8 @@ export default function BewerkReceptPage() {
 
   const [naam, setNaam] = useState("");
   const [maakvolgorde, setMaakvolgorde] = useState(50);
-  const [categorie, setCategorie] = useState("melksmaken");
+  const [categorie, setCategorie] = useState("");
+  const [categorieen, setCategorieen] = useState<CategorieItem[]>([]);
   const [hoeveelheidMix, setHoeveelheidMix] = useState("");
   const [voorbereiding, setVoorbereiding] = useState("");
   const [draaien, setDraaien] = useState("");
@@ -37,12 +37,33 @@ export default function BewerkReceptPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    async function loadCategorieen() {
+      try {
+        const res = await fetch("/api/keuken/categorieen", {
+          cache: "no-store",
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          setCategorieen(data.items || []);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    loadCategorieen();
+  }, []);
+
+  useEffect(() => {
     async function load() {
       try {
         setLoading(true);
         setError("");
 
-        const res = await fetch(`/api/admin/recepturen/${id}`);
+        const res = await fetch(`/api/admin/recepturen/${id}`, {
+          cache: "no-store",
+        });
         const data = await res.json();
 
         if (!res.ok || !data.success) {
@@ -55,7 +76,7 @@ export default function BewerkReceptPage() {
 
         setNaam(recept.naam || "");
         setMaakvolgorde(recept.maakvolgorde ?? 50);
-        setCategorie(recept.categorie || "melksmaken");
+        setCategorie(recept.categorie || "");
         setHoeveelheidMix(recept.hoeveelheid_mix || "");
         setVoorbereiding(recept.voorbereiding || "");
         setDraaien(recept.draaien || "");
@@ -75,6 +96,12 @@ export default function BewerkReceptPage() {
 
     if (id) load();
   }, [id]);
+
+  useEffect(() => {
+    if (!categorie && categorieen.length > 0) {
+      setCategorie(categorieen[0].slug);
+    }
+  }, [categorie, categorieen]);
 
   function updateIngredient(
     index: number,
@@ -195,8 +222,8 @@ export default function BewerkReceptPage() {
                 className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-pink-500"
               >
                 {categorieen.map((cat) => (
-                  <option key={cat.value} value={cat.value}>
-                    {cat.label}
+                  <option key={cat.slug} value={cat.slug}>
+                    {cat.naam}
                   </option>
                 ))}
               </select>
