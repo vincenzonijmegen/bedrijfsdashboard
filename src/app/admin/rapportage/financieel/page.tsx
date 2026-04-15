@@ -20,8 +20,13 @@ const rapportages = [
   },
     {
     titel: 'Omzet Feestdagen',
-    beschrijving: 'Toon omzet op feestdagen (tooltip toont uuromzet)',
+    beschrijving: 'Toon omzet op feestdagen',
     link: '/admin/rapportage/financieel/feestdagomzet',
+  },
+    {
+    titel: 'Top omzetdagen',
+    beschrijving: 'Toon de top omzetdagen',
+    link: '/admin/rapportage/financieel/top-omzetdagen',
   },
   {
     titel: 'JP MyPos',
