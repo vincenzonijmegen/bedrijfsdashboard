@@ -38,8 +38,8 @@ export default function TopOmzetdagenPage() {
 
   return (
     <div className="p-6">
-      <Link href="/admin/rapportage" className="text-sm underline text-blue-600">
-        ← Terug naar Rapportage
+      <Link href="/admin/rapportage/financieel" className="text-sm underline text-blue-600">
+        ← Financiële Rapportages
       </Link>
 
       <div className="mt-4 mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
