@@ -442,7 +442,6 @@ const {
                   onTouchEnd={clearHold}
                   onTouchCancel={clearHold}
                   onMouseDown={() => startHold(item.id)}
-                  onMouseUp={clearHold}
                   onMouseLeave={clearHold}
                   onContextMenu={(e) => e.preventDefault()}
                   className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 select-none"
