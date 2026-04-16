@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
+import useSWR from "swr";
 
 type ReceptItem = {
   id: number;
@@ -12,6 +13,7 @@ type ReceptItem = {
 
 type MaaklijstEntry = {
   id: number;
+  recept_id: number;
   categorie: string;
   naam: string;
   maakvolgorde: number;
@@ -25,122 +27,86 @@ type CategorieItem = {
   sortering: number;
 };
 
+type MaaklijstResponse = {
+  success: boolean;
+  lijst: {
+    id: number;
+    datum: string;
+    locatie: string;
+    status: string;
+  } | null;
+  items: MaaklijstEntry[];
+  openCount: number;
+  doneCount: number;
+};
+
+const fetcher = async (url: string) => {
+  const res = await fetch(url, { cache: "no-store" });
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data?.error || "Fout bij laden");
+  }
+
+  return data;
+};
+
 function getLocalDateKey() {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function getStorageKey() {
-  return `keuken-maaklijst-${getLocalDateKey()}`;
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  const d = String(now.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 export default function MaaklijstPage() {
-  const [items, setItems] = useState<ReceptItem[]>([]);
-  const [categorieen, setCategorieen] = useState<CategorieItem[]>([]);
-  const [maaklijst, setMaaklijst] = useState<MaaklijstEntry[]>([]);
-  const [storageKey, setStorageKey] = useState(() => getStorageKey());
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeItem, setActiveItem] = useState<ReceptItem | null>(null);
   const [aantal, setAantal] = useState(1);
-  const [showDeleteId, setShowDeleteId] = useState<number | null>(null);
-  const holdTimer = useRef<number | null>(null);
-  const [selectieSortering, setSelectieSortering] = useState<"alfabetisch" | "maakvolgorde">("alfabetisch");
 
-  function startHold(id: number) {
-    clearHold();
-    holdTimer.current = window.setTimeout(() => {
-      setShowDeleteId(id);
-    }, 600);
-  }
+  const datum = getLocalDateKey();
+  const locatie = "keuken";
 
-  function clearHold() {
-    if (holdTimer.current) {
-      window.clearTimeout(holdTimer.current);
-      holdTimer.current = null;
-    }
-  }
+  const {
+    data: maaklijstData,
+    error: maaklijstError,
+    mutate,
+    isLoading: maaklijstLoading,
+  } = useSWR<MaaklijstResponse>(
+    `/api/keuken/maaklijst?datum=${datum}&locatie=${locatie}`,
+    fetcher
+  );
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          setMaaklijst(parsed);
-          return;
-        }
-      }
-      setMaaklijst([]);
-    } catch {
-      setMaaklijst([]);
-    }
-  }, [storageKey]);
+  const {
+    data: itemsData,
+    error: itemsError,
+    isLoading: itemsLoading,
+  } = useSWR<{ success: boolean; items: ReceptItem[] }>(
+    "/api/keuken/maaklijst-items",
+    fetcher
+  );
 
-  useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(maaklijst));
-  }, [maaklijst, storageKey]);
+  const {
+    data: categorieenData,
+    error: categorieenError,
+    isLoading: categorieenLoading,
+  } = useSWR<{ success: boolean; items: CategorieItem[] }>(
+    "/api/keuken/categorieen",
+    fetcher
+  );
 
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      const nextKey = getStorageKey();
-      setStorageKey((prev) => (prev !== nextKey ? nextKey : prev));
-    }, 60 * 1000);
+  const items = itemsData?.items || [];
+  const categorieen = categorieenData?.items || [];
+  const maaklijst = maaklijstData?.items || [];
 
-    return () => window.clearInterval(interval);
-  }, []);
+  const loading = maaklijstLoading || itemsLoading || categorieenLoading;
 
-  useEffect(() => {
-    async function loadItems() {
-      try {
-        setLoading(true);
-        setError("");
-
-        const res = await fetch("/api/keuken/maaklijst-items", {
-          cache: "no-store",
-        });
-        const data = await res.json();
-
-        if (!res.ok || !data.success) {
-          setError(data.error || "Fout bij ophalen");
-          return;
-        }
-
-        setItems(data.items || []);
-      } catch (error) {
-        console.error(error);
-        setError("Fout bij ophalen");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadItems();
-  }, []);
-
-  useEffect(() => {
-    async function loadCategorieen() {
-      try {
-        const res = await fetch("/api/keuken/categorieen", {
-          cache: "no-store",
-        });
-        const data = await res.json();
-
-        if (res.ok && data.success) {
-          setCategorieen(data.items || []);
-        }
-      } catch (error) {
-        console.error(error);
-      }
-    }
-
-    loadCategorieen();
-  }, []);
+  const combinedError =
+    error ||
+    (maaklijstError instanceof Error ? maaklijstError.message : "") ||
+    (itemsError instanceof Error ? itemsError.message : "") ||
+    (categorieenError instanceof Error ? categorieenError.message : "");
 
   function getCategorieNaam(slug: string) {
     return categorieen.find((c) => c.slug === slug)?.naam || slug;
@@ -148,39 +114,57 @@ export default function MaaklijstPage() {
 
   async function markAsDone(item: MaaklijstEntry) {
     try {
-      const res = await fetch("/api/keuken/productie-log", {
+      setError("");
+
+      const logRes = await fetch("/api/keuken/productie-log", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          recept_id: item.id,
+          recept_id: item.recept_id,
           recept_naam: item.naam,
           categorie: item.categorie,
           aantal: item.aantal,
         }),
       });
 
-      const data = await res.json();
+      const logData = await logRes.json();
 
-      if (!res.ok || !data.success) {
-        alert(data.error || "Logging mislukt");
+      if (!logRes.ok || !logData.success) {
+        setError(logData.error || "Logging mislukt");
         return;
       }
 
-      setMaaklijst((prev) =>
-        prev.map((x) =>
-          x.id === item.id ? { ...x, status: "afgehandeld" } : x
-        )
-      );
-    } catch (error) {
-      console.error(error);
-      alert("Logging mislukt");
+      const res = await fetch("/api/keuken/maaklijst/items", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          id: item.id,
+          status: "afgehandeld",
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setError(data.error || "Wijzigen mislukt");
+        return;
+      }
+
+      await mutate();
+    } catch (err) {
+      console.error(err);
+      setError("Logging mislukt");
     }
   }
 
-  function isSelected(id: number) {
-    return maaklijst.some((item) => item.id === id && item.status === "open");
+  function isSelected(receptId: number) {
+    return maaklijst.some(
+      (item) => item.recept_id === receptId && item.status === "open"
+    );
   }
 
   function openAddDialog(item: ReceptItem) {
@@ -195,75 +179,101 @@ export default function MaaklijstPage() {
     setAantal(1);
   }
 
-  function addToMaaklijst() {
+  async function addToMaaklijst() {
     if (!activeItem) return;
 
-    setMaaklijst((prev) => {
-      const existing = prev.find((x) => x.id === activeItem.id);
+    try {
+      setError("");
 
-      if (existing) {
-        return prev.map((x) =>
-          x.id === activeItem.id
-            ? {
-                ...x,
-                aantal: x.aantal + aantal,
-                status: "open",
-              }
-            : x
-        );
-      }
-
-      return [
-        ...prev,
-        {
-          id: activeItem.id,
+      const res = await fetch("/api/keuken/maaklijst/items", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          datum,
+          locatie,
+          recept_id: activeItem.id,
           categorie: activeItem.categorie,
           naam: activeItem.naam,
           maakvolgorde: activeItem.maakvolgorde ?? 50,
           aantal,
-          status: "open",
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setError(data.error || "Toevoegen mislukt");
+        return;
+      }
+
+      closeDialog();
+      await mutate();
+    } catch (err) {
+      console.error(err);
+      setError("Toevoegen mislukt");
+    }
+  }
+
+  async function removeFromMaaklijst(id: number) {
+    try {
+      setError("");
+
+      const res = await fetch("/api/keuken/maaklijst/items", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
         },
-      ];
-    });
+        body: JSON.stringify({ id }),
+      });
 
-    closeDialog();
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setError(data.error || "Verwijderen mislukt");
+        return;
+      }
+
+      await mutate();
+    } catch (err) {
+      console.error(err);
+      setError("Verwijderen mislukt");
+    }
   }
 
-  function removeFromMaaklijst(id: number) {
-    setMaaklijst((prev) => prev.filter((x) => x.id !== id));
-  }
+  async function clearList() {
+    try {
+      setError("");
 
-  function clearList() {
-    setMaaklijst([]);
+      await Promise.all(
+        maaklijst.map((item) =>
+          fetch("/api/keuken/maaklijst/items", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ id: item.id }),
+          })
+        )
+      );
+
+      await mutate();
+    } catch (err) {
+      console.error(err);
+      setError("Wissen mislukt");
+    }
   }
 
   const grouped = useMemo(() => {
-  function sorteer(items: ReceptItem[]) {
-    return [...items].sort((a, b) => {
-      if (selectieSortering === "maakvolgorde") {
-        const diff = (a.maakvolgorde ?? 9999) - (b.maakvolgorde ?? 9999);
-        if (diff !== 0) return diff;
-        return a.naam.localeCompare(b.naam, "nl");
-      }
-
-      return a.naam.localeCompare(b.naam, "nl");
-    });
-  }
-
-  return categorieen
-    .map((categorie) => {
-      const categorieItems = items.filter(
-        (item) => item.categorie === categorie.slug
-      );
-
-      return {
+    return categorieen
+      .map((categorie) => ({
         categorie: categorie.slug,
         titel: categorie.naam,
-        items: sorteer(categorieItems),
-      };
-    })
-    .filter((groep) => groep.items.length > 0);
-}, [items, categorieen, selectieSortering]);
+        items: items.filter((item) => item.categorie === categorie.slug),
+      }))
+      .filter((groep) => groep.items.length > 0);
+  }, [items, categorieen]);
 
   const sortedMaaklijst = useMemo(() => {
     return [...maaklijst].sort((a, b) => {
@@ -286,21 +296,6 @@ export default function MaaklijstPage() {
   const doneItems = useMemo(() => {
     return sortedMaaklijst.filter((item) => item.status === "afgehandeld");
   }, [sortedMaaklijst]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const cat = params.get("cat");
-
-    if (!cat) return;
-    if (grouped.length === 0) return;
-
-    const el = document.getElementById(`cat-${cat}`);
-    if (el) {
-      setTimeout(() => {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 100);
-    }
-  }, [grouped]);
 
   if (loading) {
     return (
@@ -330,8 +325,7 @@ export default function MaaklijstPage() {
               Maaklijst
             </h1>
             <p className="mt-2 text-slate-600">
-              Bekijk bovenaan wat er gemaakt moet worden en voeg onderaan nieuwe
-              smaken toe.
+              Klik op een recept en kies hoeveel je wilt maken.
             </p>
           </div>
 
@@ -351,13 +345,52 @@ export default function MaaklijstPage() {
           </div>
         </div>
 
-        {error ? (
+        {combinedError ? (
           <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
+            {combinedError}
           </div>
         ) : null}
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+        <div className="space-y-8">
+          {grouped.map((groep) => (
+            <section id={`cat-${groep.categorie}`} key={groep.categorie}>
+              <h2 className="mb-3 text-2xl font-semibold text-slate-900">
+                {groep.titel}
+              </h2>
+
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+                {groep.items.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => openAddDialog(item)}
+                    className={`relative flex h-[96px] items-center justify-center rounded-2xl border px-3 py-3 text-center shadow-sm transition active:scale-95 ${
+                      isSelected(item.id)
+                        ? "border-emerald-300 bg-emerald-100 text-emerald-900"
+                        : "border-slate-200 bg-white text-slate-900"
+                    }`}
+                  >
+                    <span className="block max-w-[170px] text-lg font-semibold leading-snug text-slate-900">
+                      {item.naam}
+                    </span>
+
+                    {isSelected(item.id) && (
+                      <div className="absolute right-2 top-2 rounded-full bg-emerald-600 px-2 py-1 text-xs font-bold text-white">
+                        {
+                          maaklijst.find(
+                            (x) => x.recept_id === item.id && x.status === "open"
+                          )?.aantal
+                        }
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        <section className="mt-10 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-2xl font-bold text-slate-900">Te maken</h2>
             <div className="text-sm text-slate-500">{openItems.length} open</div>
@@ -372,12 +405,6 @@ export default function MaaklijstPage() {
               {openItems.map((item) => (
                 <div
                   key={item.id}
-                  onTouchStart={() => startHold(item.id)}
-                  onTouchEnd={clearHold}
-                  onTouchCancel={clearHold}
-                  onMouseDown={() => startHold(item.id)}
-                  onMouseUp={clearHold}
-                  onMouseLeave={clearHold}
                   className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
                 >
                   <div>
@@ -394,7 +421,7 @@ export default function MaaklijstPage() {
 
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <Link
-                      href={`/keuken/recepturen/${item.categorie}/${item.id}?from=maaklijst&cat=${item.categorie}`}
+                      href={`/keuken/recepturen/${item.categorie}/${item.recept_id}?from=maaklijst&cat=${item.categorie}`}
                       className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
                     >
                       Recept
@@ -408,18 +435,13 @@ export default function MaaklijstPage() {
                       Afgehandeld
                     </button>
 
-                    {showDeleteId === item.id && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          removeFromMaaklijst(item.id);
-                          setShowDeleteId(null);
-                        }}
-                        className="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700"
-                      >
-                        Verwijder
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeFromMaaklijst(item.id)}
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+                    >
+                      Verwijder
+                    </button>
                   </div>
                 </div>
               ))}
@@ -460,68 +482,6 @@ export default function MaaklijstPage() {
             </div>
           )}
         </section>
-
-          <div className="mb-4 flex gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectieSortering("alfabetisch")}
-              className={`rounded-xl px-4 py-2 text-sm font-medium ${
-                selectieSortering === "alfabetisch"
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-700"
-              }`}
-            >
-              Alfabetisch
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectieSortering("maakvolgorde")}
-              className={`rounded-xl px-4 py-2 text-sm font-medium ${
-                selectieSortering === "maakvolgorde"
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-100 text-slate-700"
-              }`}
-            >
-              Maakvolgorde
-            </button>
-          </div>
-
-
-        <div className="mt-8 space-y-8">
-          {grouped.map((groep) => (
-            <section id={`cat-${groep.categorie}`} key={groep.categorie}>
-              <h2 className="mb-3 text-2xl font-semibold text-slate-900">
-                {groep.titel}
-              </h2>
-
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-                {groep.items.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => openAddDialog(item)}
-                    className={`relative flex h-[96px] items-center justify-center rounded-2xl border px-3 py-3 text-center shadow-sm transition active:scale-95 ${
-                      isSelected(item.id)
-                        ? "border-emerald-300 bg-emerald-100 text-emerald-900"
-                        : "border-slate-200 bg-white text-slate-900"
-                    }`}
-                  >
-                    <span className="block max-w-[170px] text-lg font-semibold leading-snug text-slate-900">
-                      {item.naam}
-                    </span>
-
-                    {isSelected(item.id) && (
-                      <div className="absolute right-2 top-2 rounded-full bg-emerald-600 px-2 py-1 text-xs font-bold text-white">
-                        {maaklijst.find((x) => x.id === item.id)?.aantal}
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
       </div>
 
       {dialogOpen && activeItem ? (
