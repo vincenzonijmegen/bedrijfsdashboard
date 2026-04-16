@@ -386,132 +386,134 @@ export default function RoutinePagina({
         </div>
       </div>
 
-      {showRotatieMenu && (
+           {showRotatieMenu && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md space-y-3 rounded-2xl bg-white p-4 shadow-xl">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Rotatie beheren
-            </h2>
+          <div className="w-full max-w-md max-h-[85vh] overflow-hidden rounded-2xl bg-white shadow-xl">
+            <div className="max-h-[85vh] overflow-y-auto space-y-3 p-4">
+              <h2 className="text-lg font-semibold text-slate-900">
+                Rotatie beheren
+              </h2>
 
-            <button
-              onClick={async () => {
-                try {
-                  setMessage("");
+              <button
+                onClick={async () => {
+                  try {
+                    setMessage("");
 
-                  const res = await fetch("/api/routines/rotatie/volgende", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ routineId: data?.routine.id }),
-                  });
+                    const res = await fetch("/api/routines/rotatie/volgende", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ routineId: data?.routine.id }),
+                    });
 
-                  const json = await res.json();
-                  if (!res.ok) {
-                    throw new Error(json?.error || "Doorschuiven mislukt");
+                    const json = await res.json();
+                    if (!res.ok) {
+                      throw new Error(json?.error || "Doorschuiven mislukt");
+                    }
+
+                    setShowRotatieMenu(false);
+                    await mutate();
+                    setMessage("Rotatietaak doorgeschoven.");
+                  } catch (err) {
+                    setMessage(
+                      err instanceof Error
+                        ? err.message
+                        : "Doorschuiven mislukt"
+                    );
                   }
+                }}
+                className="w-full rounded-xl border px-4 py-3 text-left text-sm"
+              >
+                ➜ Volgende taak
+              </button>
 
-                  setShowRotatieMenu(false);
-                  await mutate();
-                  setMessage("Rotatietaak doorgeschoven.");
-                } catch (err) {
-                  setMessage(
-                    err instanceof Error
-                      ? err.message
-                      : "Doorschuiven mislukt"
-                  );
-                }
-              }}
-              className="w-full rounded-xl border px-4 py-3 text-left"
-            >
-              ➜ Volgende taak
-            </button>
+              {rotatieItems.length > 0 && (
+                <div className="space-y-2">
+                  <div className="px-1 text-sm font-medium text-slate-500">
+                    Andere taak kiezen
+                  </div>
 
-            {rotatieItems.length > 0 && (
-              <div className="space-y-2">
-                <div className="px-1 text-sm font-medium text-slate-500">
-                  Andere taak kiezen
-                </div>
+                  {rotatieItems.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={async () => {
+                        try {
+                          setMessage("");
 
-                {rotatieItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={async () => {
-                      try {
-                        setMessage("");
+                          const res = await fetch("/api/routines/rotatie/set", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              routineId: data?.routine.id,
+                              rotatieItemId: item.id,
+                            }),
+                          });
 
-                        const res = await fetch("/api/routines/rotatie/set", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            routineId: data?.routine.id,
-                            rotatieItemId: item.id,
-                          }),
-                        });
+                          const json = await res.json();
+                          if (!res.ok) {
+                            throw new Error(
+                              json?.error || "Kiezen van rotatietaak mislukt"
+                            );
+                          }
 
-                        const json = await res.json();
-                        if (!res.ok) {
-                          throw new Error(
-                            json?.error || "Kiezen van rotatietaak mislukt"
+                          setShowRotatieMenu(false);
+                          await mutate();
+                          setMessage(`Rotatietaak ingesteld op: ${item.naam}`);
+                        } catch (err) {
+                          setMessage(
+                            err instanceof Error
+                              ? err.message
+                              : "Kiezen van rotatietaak mislukt"
                           );
                         }
+                      }}
+                      className="w-full rounded-xl border px-4 py-3 text-left text-sm"
+                    >
+                      {item.naam}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-                        setShowRotatieMenu(false);
-                        await mutate();
-                        setMessage(`Rotatietaak ingesteld op: ${item.naam}`);
-                      } catch (err) {
-                        setMessage(
-                          err instanceof Error
-                            ? err.message
-                            : "Kiezen van rotatietaak mislukt"
-                        );
-                      }
-                    }}
-                    className="w-full rounded-xl border px-4 py-3 text-left"
-                  >
-                    {item.naam}
-                  </button>
-                ))}
-              </div>
-            )}
+              <button
+                onClick={async () => {
+                  try {
+                    setMessage("");
 
-            <button
-              onClick={async () => {
-                try {
-                  setMessage("");
+                    const res = await fetch("/api/routines/rotatie/set", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        routineId: data?.routine.id,
+                        rotatieItemId: null,
+                      }),
+                    });
 
-                  const res = await fetch("/api/routines/rotatie/set", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      routineId: data?.routine.id,
-                      rotatieItemId: null,
-                    }),
-                  });
+                    const json = await res.json();
+                    if (!res.ok) {
+                      throw new Error(json?.error || "Overslaan mislukt");
+                    }
 
-                  const json = await res.json();
-                  if (!res.ok) {
-                    throw new Error(json?.error || "Overslaan mislukt");
+                    setShowRotatieMenu(false);
+                    await mutate();
+                    setMessage("Vandaag staat er geen rotatietaak ingepland.");
+                  } catch (err) {
+                    setMessage(
+                      err instanceof Error ? err.message : "Overslaan mislukt"
+                    );
                   }
+                }}
+                className="w-full rounded-xl border px-4 py-3 text-left text-sm"
+              >
+                ⏭ Vandaag overslaan
+              </button>
 
-                  setShowRotatieMenu(false);
-                  await mutate();
-                  setMessage("Vandaag staat er geen rotatietaak ingepland.");
-                } catch (err) {
-                  setMessage(
-                    err instanceof Error ? err.message : "Overslaan mislukt"
-                  );
-                }
-              }}
-              className="w-full rounded-xl border px-4 py-3 text-left"
-            >
-              ⏭ Vandaag overslaan
-            </button>
-
-            <button
-              onClick={() => setShowRotatieMenu(false)}
-              className="w-full rounded-xl bg-slate-900 px-4 py-3 text-white"
-            >
-              Sluiten
-            </button>
+              <button
+                onClick={() => setShowRotatieMenu(false)}
+                className="w-full rounded-xl bg-slate-900 px-4 py-3 text-white"
+              >
+                Sluiten
+              </button>
+            </div>
           </div>
         </div>
       )}
