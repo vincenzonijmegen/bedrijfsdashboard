@@ -146,6 +146,36 @@ export default function RoutinePagina({
     }
   }
 
+  async function schuifRotatieDoor() {
+    if (!data) return;
+
+    if (!confirm("Doorschuiven naar volgende rotatietaak?")) return;
+
+    try {
+      setMessage("");
+
+      const res = await fetch("/api/routines/rotatie/volgende", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          routineId: data.routine.id,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json?.error || "Doorschuiven mislukt");
+      }
+
+      await mutate();
+      setSelectedTaskId(null);
+      setMessage("Rotatietaak doorgeschoven.");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Doorschuiven mislukt");
+    }
+  }
+
   if (error) {
     return <div className="p-6">Fout bij laden van routine.</div>;
   }
@@ -250,6 +280,11 @@ export default function RoutinePagina({
             return (
               <section
                 key={taak.id}
+                onContextMenu={async (e) => {
+                  if (!taak.isRotatie) return;
+                  e.preventDefault();
+                  await schuifRotatieDoor();
+                }}
                 className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
               >
                 <div className="flex flex-col gap-3 p-4 md:flex-row md:items-start md:justify-between">
@@ -318,6 +353,15 @@ export default function RoutinePagina({
                   </div>
 
                   <div className="flex gap-2 md:flex-col md:items-end">
+                    {taak.isRotatie && (
+                      <button
+                        onClick={schuifRotatieDoor}
+                        className="rounded-xl border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700"
+                      >
+                        Volgende
+                      </button>
+                    )}
+
                     <button
                       onClick={() => setSelectedTaskId(open ? null : taak.id)}
                       className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
