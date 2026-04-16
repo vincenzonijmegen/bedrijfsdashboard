@@ -428,6 +428,39 @@ export default function AdminDashboard() {
       <Section id="prognosetools" title="📊 Prognosetools" color="indigo" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/planning/forecast" label="Forecast planning" color="indigo" Icon={Wrench} breadcrumb="Prognosetools – Forecast planning" />
       </Section>
+
+      <Link
+  href="/keuken/login"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="block"
+>
+  <LinkCard
+    href="#"
+    label="Keuken-app openen"
+    color="blue"
+    Icon={Wrench}
+    breadcrumb="Keuken-app"
+  />
+</Link>
+
+<Link
+  href="/vitrine/login"
+  target="_blank"
+  rel="noopener noreferrer"
+  className="block"
+>
+  <LinkCard
+    href="#"
+    label="Vitrine-app openen"
+    color="blue"
+    Icon={Wrench}
+    breadcrumb="Vitrine-app"
+  />
+</Link>
+
+
+
     </main>
   );
 }
