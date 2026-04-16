@@ -45,6 +45,32 @@ function taakIsVandaagZichtbaar(taak: TaakRow, vandaag: Date) {
   return true;
 }
 
+async function getActieveRotatieTaak(routineId: number) {
+  const rotatie = await db.query(
+    `SELECT * FROM routine_rotaties 
+     WHERE routine_id = $1 AND actief = true 
+     LIMIT 1`,
+    [routineId]
+  );
+
+  if (!rotatie.rows[0]) return null;
+
+  const r = rotatie.rows[0];
+
+  const items = await db.query(
+    `SELECT * FROM routine_rotatie_items
+     WHERE rotatie_id = $1
+     ORDER BY sortering ASC`,
+    [r.id]
+  );
+
+  if (items.rows.length === 0) return null;
+
+  const index = r.huidige_index % items.rows.length;
+
+  return items.rows[index];
+}
+
 export async function GET(_req: NextRequest, context: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await context.params;
@@ -89,6 +115,22 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ slug: 
 
     const alleTaken = takenResult.rows as TaakRow[];
     const zichtbareTaken = alleTaken.filter((taak) => taakIsVandaagZichtbaar(taak, datum));
+    const rotatieTaak = await getActieveRotatieTaak(routine.id);
+
+if (rotatieTaak) {
+  zichtbareTaken.unshift({
+    id: -rotatieTaak.id, // uniek maken
+    naam: rotatieTaak.naam,
+    kleurcode: null,
+    reinigen: true,
+    desinfecteren: false,
+    frequentie: "D",
+    weekdagen: [],
+    sortering: 0,
+    afgetekend_door_naam: null,
+    afgetekend_op: null,
+  });
+}
 
     return NextResponse.json({
       datum: vandaag,
