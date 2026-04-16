@@ -278,28 +278,30 @@ const {
   }
 
   async function clearList() {
-    try {
-      setError("");
+  try {
+    setError("");
 
-      await Promise.all(
-        maaklijst.map((item) =>
-          fetch("/api/keuken/maaklijst/items", {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ id: item.id }),
-          })
-        )
-      );
+    const openItems = maaklijst.filter((item) => item.status === "open");
 
-      setShowDeleteId(null);
-      await mutate();
-    } catch (err) {
-      console.error(err);
-      setError("Wissen mislukt");
-    }
+    await Promise.all(
+      openItems.map((item) =>
+        fetch("/api/keuken/maaklijst/items", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: item.id }),
+        })
+      )
+    );
+
+    setShowDeleteId(null);
+    await mutate();
+  } catch (err) {
+    console.error(err);
+    setError("Wissen mislukt");
   }
+}
 
   const grouped = useMemo(() => {
     function sorteer(recepten: ReceptItem[]) {
@@ -438,12 +440,12 @@ const {
               {openItems.map((item) => (
                 <div
                   key={item.id}
-onTouchStart={() => startHold(item.id)}
-onTouchEnd={clearHold}
-onTouchCancel={clearHold}
-onMouseDown={() => startHold(item.id)}
-onMouseLeave={clearHold}
-onClick={(e) => e.stopPropagation()}
+                onTouchStart={() => startHold(item.id)}
+                onTouchEnd={clearHold}
+                onTouchCancel={clearHold}
+                onMouseDown={() => startHold(item.id)}
+                onMouseLeave={clearHold}
+                onClick={(e) => e.stopPropagation()}
                   onContextMenu={(e) => e.preventDefault()}
                   className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 select-none"
                   style={{ WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
