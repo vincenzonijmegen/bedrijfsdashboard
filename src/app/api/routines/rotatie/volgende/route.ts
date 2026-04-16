@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
     const r = rotatie.rows[0];
 
     const items = await db.query(
-      `SELECT id FROM routine_rotatie_items
+      `SELECT id
+       FROM routine_rotatie_items
        WHERE rotatie_id = $1
        ORDER BY sortering ASC`,
       [r.id]
@@ -39,12 +40,20 @@ export async function POST(req: NextRequest) {
     }
 
     const nieuweIndex = (r.huidige_index + 1) % count;
+    const vandaag = new Date().toISOString().slice(0, 10);
 
     await db.query(
       `UPDATE routine_rotaties
        SET huidige_index = $1
        WHERE id = $2`,
       [nieuweIndex, r.id]
+    );
+
+    await db.query(
+      `DELETE FROM routine_rotatie_override
+       WHERE routine_id = $1
+         AND datum = $2::date`,
+      [routineId, vandaag]
     );
 
     return NextResponse.json({ ok: true });
