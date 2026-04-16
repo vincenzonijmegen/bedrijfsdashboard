@@ -15,6 +15,8 @@ type TaakRow = {
   sortering: number;
   afgetekend_door_naam: string | null;
   afgetekend_op: string | null;
+  isRotatie?: boolean;
+  rotatieItemId?: number;
 };
 
 const WEEKDAGEN = ["zo", "ma", "di", "wo", "do", "vr", "za"];
@@ -117,9 +119,22 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ slug: 
     const zichtbareTaken = alleTaken.filter((taak) => taakIsVandaagZichtbaar(taak, datum));
     const rotatieTaak = await getActieveRotatieTaak(routine.id);
 
+const rotatieAftekeningResult = rotatieTaak
+  ? await db.query(
+      `SELECT afgetekend_door_naam, afgetekend_op
+       FROM routine_rotatie_aftekeningen
+       WHERE rotatie_item_id = $1
+         AND datum = $2::date
+       LIMIT 1`,
+      [rotatieTaak.id, vandaag]
+    )
+  : null;
+
+const rotatieAftekening = rotatieAftekeningResult?.rows?.[0] ?? null;
+
 if (rotatieTaak) {
   zichtbareTaken.unshift({
-    id: -rotatieTaak.id, // uniek maken
+    id: -rotatieTaak.id,
     naam: rotatieTaak.naam,
     kleurcode: null,
     reinigen: true,
@@ -127,11 +142,12 @@ if (rotatieTaak) {
     frequentie: "D",
     weekdagen: [],
     sortering: 0,
-    afgetekend_door_naam: null,
-    afgetekend_op: null,
+    afgetekend_door_naam: rotatieAftekening?.afgetekend_door_naam ?? null,
+    afgetekend_op: rotatieAftekening?.afgetekend_op ?? null,
+    isRotatie: true,
+    rotatieItemId: rotatieTaak.id,
   });
 }
-
     return NextResponse.json({
       datum: vandaag,
       routine,

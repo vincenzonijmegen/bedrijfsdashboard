@@ -15,6 +15,8 @@ type Taak = {
   sortering: number;
   afgetekend_door_naam: string | null;
   afgetekend_op: string | null;
+  isRotatie?: boolean;
+  rotatieItemId?: number;
 };
 
 type RoutineResponse = {
@@ -105,23 +107,26 @@ export default function RoutinePagina({
   const selectedMedewerker =
     medewerkers.find((m) => m.id === medewerkerId) || null;
 
-  async function tekenAf(taakId: number) {
+  async function tekenAf(taak: Taak) {
     if (!selectedMedewerker) {
       setMessage("Kies eerst een ingeklokte medewerker.");
       return;
     }
 
     try {
-      setSavingTaskId(taakId);
+      setSavingTaskId(taak.id);
       setMessage("");
 
       const res = await fetch("/api/routines/aftekenen", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          routineTaakId: taakId,
+          routineTaakId: taak.id,
           medewerkerId: selectedMedewerker.id,
           medewerkerNaam: selectedMedewerker.name,
+          isRotatie: taak.isRotatie ?? false,
+          rotatieItemId: taak.rotatieItemId ?? null,
+          routineId: data?.routine.id ?? null,
         }),
       });
 
@@ -154,7 +159,7 @@ export default function RoutinePagina({
 
   return (
     <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-5xl p-4 md:p-6 space-y-4">
+      <div className="mx-auto max-w-5xl space-y-4 p-4 md:p-6">
         <div className="sticky top-0 z-20 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur md:p-6">
           <div className="mb-4">
             <Link
@@ -167,18 +172,18 @@ export default function RoutinePagina({
 
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm text-slate-500 uppercase tracking-wide">
+              <p className="text-sm uppercase tracking-wide text-slate-500">
                 {data.routine.locatie} · {data.routine.type}
               </p>
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-900">
+              <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
                 {data.routine.naam}
               </h1>
-              <p className="text-sm text-slate-500 mt-1">
+              <p className="mt-1 text-sm text-slate-500">
                 Datum: {new Date(data.datum).toLocaleDateString("nl-NL")}
               </p>
             </div>
 
-            <div className="w-full md:w-80 space-y-3">
+            <div className="w-full space-y-3 md:w-80">
               <label className="block text-sm font-medium text-slate-700">
                 Aftekenen als
               </label>
@@ -208,7 +213,7 @@ export default function RoutinePagina({
                 {data.afgerond}/{data.totaal}
               </span>
             </div>
-            <div className="h-3 rounded-full bg-slate-200 overflow-hidden">
+            <div className="h-3 overflow-hidden rounded-full bg-slate-200">
               <div
                 className="h-3 rounded-full bg-slate-900 transition-all"
                 style={{ width: `${progress}%` }}
@@ -245,7 +250,7 @@ export default function RoutinePagina({
             return (
               <section
                 key={taak.id}
-                className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden"
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
               >
                 <div className="flex flex-col gap-3 p-4 md:flex-row md:items-start md:justify-between">
                   <div className="flex gap-4">
@@ -270,6 +275,12 @@ export default function RoutinePagina({
                         <span className="inline-flex rounded-full border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600">
                           {taak.frequentie}
                         </span>
+
+                        {taak.isRotatie && (
+                          <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                            rotatie
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex flex-wrap gap-2">
@@ -279,7 +290,7 @@ export default function RoutinePagina({
                           label="Desinfecteren"
                         />
                         {taak.weekdagen?.length ? (
-                          <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium border bg-slate-100 text-slate-700 border-slate-200">
+                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
                             {taak.weekdagen.join(", ")}
                           </span>
                         ) : null}
@@ -309,7 +320,7 @@ export default function RoutinePagina({
                   <div className="flex gap-2 md:flex-col md:items-end">
                     <button
                       onClick={() => setSelectedTaskId(open ? null : taak.id)}
-                      className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 bg-white"
+                      className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
                     >
                       {open
                         ? "Sluiten"
@@ -321,14 +332,14 @@ export default function RoutinePagina({
                 </div>
 
                 {open ? (
-                  <div className="border-t border-slate-200 bg-slate-50 px-4 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-4 md:flex-row md:items-center md:justify-between">
                     <p className="text-sm text-slate-600">
                       Deze taak wordt afgetekend op naam van{" "}
                       <strong>{selectedMedewerker?.name || "..."}</strong>.
                     </p>
 
                     <button
-                      onClick={() => tekenAf(taak.id)}
+                      onClick={() => tekenAf(taak)}
                       disabled={
                         !selectedMedewerker || savingTaskId === taak.id
                       }
