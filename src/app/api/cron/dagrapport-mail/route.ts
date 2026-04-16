@@ -25,7 +25,7 @@ export async function GET() {
 
     await resend.emails.send({
       from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
-      to: ["herman@ijssalonvincenzo.nl"], // later uitbreiden
+      to: ["herman@ijssalonvincenzo.nl","erik@ijssalonvincenzo.nl"], // later uitbreiden
       subject: `Dagrapport ${data.datum}`,
       html,
     });
