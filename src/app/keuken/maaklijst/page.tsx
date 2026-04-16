@@ -444,7 +444,9 @@ const {
                   onMouseDown={() => startHold(item.id)}
                   onMouseUp={clearHold}
                   onMouseLeave={clearHold}
-                  className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+                  onContextMenu={(e) => e.preventDefault()}
+                  className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 select-none"
+                  style={{ WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
                 >
                   <div>
                     <div className="text-lg font-semibold text-slate-900">
