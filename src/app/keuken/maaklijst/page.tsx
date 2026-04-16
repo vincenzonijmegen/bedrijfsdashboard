@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 
 type ReceptItem = {
@@ -40,7 +40,15 @@ type MaaklijstResponse = {
   doneCount: number;
 };
 
-const fetcher = async (url: string) => {
+function getLocalDateKey(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+async function fetcher<T>(url: string): Promise<T> {
   const res = await fetch(url, { cache: "no-store" });
   const data = await res.json();
 
@@ -48,15 +56,7 @@ const fetcher = async (url: string) => {
     throw new Error(data?.error || "Fout bij laden");
   }
 
-  return data;
-};
-
-function getLocalDateKey() {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return data as T;
 }
 
 export default function MaaklijstPage() {
@@ -64,15 +64,21 @@ export default function MaaklijstPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeItem, setActiveItem] = useState<ReceptItem | null>(null);
   const [aantal, setAantal] = useState(1);
+  const [showDeleteId, setShowDeleteId] = useState<number | null>(null);
+  const [selectieSortering, setSelectieSortering] = useState<
+    "alfabetisch" | "maakvolgorde"
+  >("alfabetisch");
+
+  const holdTimer = useRef<number | null>(null);
 
   const datum = getLocalDateKey();
   const locatie = "keuken";
 
   const {
-    data: maaklijstData,
-    error: maaklijstError,
+    data: lijstData,
+    error: lijstError,
     mutate,
-    isLoading: maaklijstLoading,
+    isLoading: lijstLoading,
   } = useSWR<MaaklijstResponse>(
     `/api/keuken/maaklijst?datum=${datum}&locatie=${locatie}`,
     fetcher
@@ -98,15 +104,38 @@ export default function MaaklijstPage() {
 
   const items = itemsData?.items || [];
   const categorieen = categorieenData?.items || [];
-  const maaklijst = maaklijstData?.items || [];
+  const maaklijst = lijstData?.items || [];
 
-  const loading = maaklijstLoading || itemsLoading || categorieenLoading;
+  const loading = lijstLoading || itemsLoading || categorieenLoading;
 
   const combinedError =
     error ||
-    (maaklijstError instanceof Error ? maaklijstError.message : "") ||
+    (lijstError instanceof Error ? lijstError.message : "") ||
     (itemsError instanceof Error ? itemsError.message : "") ||
     (categorieenError instanceof Error ? categorieenError.message : "");
+
+  function startHold(id: number) {
+    clearHold();
+    holdTimer.current = window.setTimeout(() => {
+      setShowDeleteId(id);
+    }, 600);
+  }
+
+  function clearHold() {
+    if (holdTimer.current !== null) {
+      window.clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+  }
+
+  useEffect(() => {
+    function handleWindowClick() {
+      setShowDeleteId(null);
+    }
+
+    window.addEventListener("click", handleWindowClick);
+    return () => window.removeEventListener("click", handleWindowClick);
+  }, []);
 
   function getCategorieNaam(slug: string) {
     return categorieen.find((c) => c.slug === slug)?.naam || slug;
@@ -154,6 +183,7 @@ export default function MaaklijstPage() {
         return;
       }
 
+      setShowDeleteId(null);
       await mutate();
     } catch (err) {
       console.error(err);
@@ -235,6 +265,7 @@ export default function MaaklijstPage() {
         return;
       }
 
+      setShowDeleteId(null);
       await mutate();
     } catch (err) {
       console.error(err);
@@ -258,6 +289,7 @@ export default function MaaklijstPage() {
         )
       );
 
+      setShowDeleteId(null);
       await mutate();
     } catch (err) {
       console.error(err);
@@ -266,14 +298,32 @@ export default function MaaklijstPage() {
   }
 
   const grouped = useMemo(() => {
+    function sorteer(recepten: ReceptItem[]) {
+      return [...recepten].sort((a, b) => {
+        if (selectieSortering === "maakvolgorde") {
+          const diff = (a.maakvolgorde ?? 9999) - (b.maakvolgorde ?? 9999);
+          if (diff !== 0) return diff;
+          return a.naam.localeCompare(b.naam, "nl");
+        }
+
+        return a.naam.localeCompare(b.naam, "nl");
+      });
+    }
+
     return categorieen
-      .map((categorie) => ({
-        categorie: categorie.slug,
-        titel: categorie.naam,
-        items: items.filter((item) => item.categorie === categorie.slug),
-      }))
+      .map((categorie) => {
+        const categorieItems = items.filter(
+          (item) => item.categorie === categorie.slug
+        );
+
+        return {
+          categorie: categorie.slug,
+          titel: categorie.naam,
+          items: sorteer(categorieItems),
+        };
+      })
       .filter((groep) => groep.items.length > 0);
-  }, [items, categorieen]);
+  }, [items, categorieen, selectieSortering]);
 
   const sortedMaaklijst = useMemo(() => {
     return [...maaklijst].sort((a, b) => {
@@ -296,6 +346,23 @@ export default function MaaklijstPage() {
   const doneItems = useMemo(() => {
     return sortedMaaklijst.filter((item) => item.status === "afgehandeld");
   }, [sortedMaaklijst]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cat = params.get("cat");
+
+    if (!cat) return;
+    if (grouped.length === 0) return;
+
+    const el = document.getElementById(`cat-${cat}`);
+    if (!el) return;
+
+    const timeout = window.setTimeout(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+
+    return () => window.clearTimeout(timeout);
+  }, [grouped]);
 
   if (loading) {
     return (
@@ -325,7 +392,8 @@ export default function MaaklijstPage() {
               Maaklijst
             </h1>
             <p className="mt-2 text-slate-600">
-              Klik op een recept en kies hoeveel je wilt maken.
+              Bekijk bovenaan wat er gemaakt moet worden en voeg onderaan nieuwe
+              smaken toe.
             </p>
           </div>
 
@@ -351,46 +419,7 @@ export default function MaaklijstPage() {
           </div>
         ) : null}
 
-        <div className="space-y-8">
-          {grouped.map((groep) => (
-            <section id={`cat-${groep.categorie}`} key={groep.categorie}>
-              <h2 className="mb-3 text-2xl font-semibold text-slate-900">
-                {groep.titel}
-              </h2>
-
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-                {groep.items.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => openAddDialog(item)}
-                    className={`relative flex h-[96px] items-center justify-center rounded-2xl border px-3 py-3 text-center shadow-sm transition active:scale-95 ${
-                      isSelected(item.id)
-                        ? "border-emerald-300 bg-emerald-100 text-emerald-900"
-                        : "border-slate-200 bg-white text-slate-900"
-                    }`}
-                  >
-                    <span className="block max-w-[170px] text-lg font-semibold leading-snug text-slate-900">
-                      {item.naam}
-                    </span>
-
-                    {isSelected(item.id) && (
-                      <div className="absolute right-2 top-2 rounded-full bg-emerald-600 px-2 py-1 text-xs font-bold text-white">
-                        {
-                          maaklijst.find(
-                            (x) => x.recept_id === item.id && x.status === "open"
-                          )?.aantal
-                        }
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-
-        <section className="mt-10 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-2xl font-bold text-slate-900">Te maken</h2>
             <div className="text-sm text-slate-500">{openItems.length} open</div>
@@ -405,6 +434,12 @@ export default function MaaklijstPage() {
               {openItems.map((item) => (
                 <div
                   key={item.id}
+                  onTouchStart={() => startHold(item.id)}
+                  onTouchEnd={clearHold}
+                  onTouchCancel={clearHold}
+                  onMouseDown={() => startHold(item.id)}
+                  onMouseUp={clearHold}
+                  onMouseLeave={clearHold}
                   className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
                 >
                   <div>
@@ -435,13 +470,15 @@ export default function MaaklijstPage() {
                       Afgehandeld
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => removeFromMaaklijst(item.id)}
-                      className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
-                    >
-                      Verwijder
-                    </button>
+                    {showDeleteId === item.id && (
+                      <button
+                        type="button"
+                        onClick={() => removeFromMaaklijst(item.id)}
+                        className="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700"
+                      >
+                        Verwijder
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -482,6 +519,72 @@ export default function MaaklijstPage() {
             </div>
           )}
         </section>
+
+        <div className="mb-4 mt-6 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setSelectieSortering("alfabetisch")}
+            className={`rounded-xl px-4 py-2 text-sm font-medium ${
+              selectieSortering === "alfabetisch"
+                ? "bg-slate-900 text-white"
+                : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            Alfabetisch
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setSelectieSortering("maakvolgorde")}
+            className={`rounded-xl px-4 py-2 text-sm font-medium ${
+              selectieSortering === "maakvolgorde"
+                ? "bg-slate-900 text-white"
+                : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            Maakvolgorde
+          </button>
+        </div>
+
+        <div className="mt-8 space-y-8">
+          {grouped.map((groep) => (
+            <section id={`cat-${groep.categorie}`} key={groep.categorie}>
+              <h2 className="mb-3 text-2xl font-semibold text-slate-900">
+                {groep.titel}
+              </h2>
+
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+                {groep.items.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => openAddDialog(item)}
+                    className={`relative flex h-[96px] items-center justify-center rounded-2xl border px-3 py-3 text-center shadow-sm transition active:scale-95 ${
+                      isSelected(item.id)
+                        ? "border-emerald-300 bg-emerald-100 text-emerald-900"
+                        : "border-slate-200 bg-white text-slate-900"
+                    }`}
+                  >
+                    <span className="block max-w-[170px] text-lg font-semibold leading-snug text-slate-900">
+                      {item.naam}
+                    </span>
+
+                    {isSelected(item.id) && (
+                      <div className="absolute right-2 top-2 rounded-full bg-emerald-600 px-2 py-1 text-xs font-bold text-white">
+                        {
+                          maaklijst.find(
+                            (x) =>
+                              x.recept_id === item.id && x.status === "open"
+                          )?.aantal
+                        }
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       </div>
 
       {dialogOpen && activeItem ? (
