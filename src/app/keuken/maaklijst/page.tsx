@@ -74,15 +74,19 @@ export default function MaaklijstPage() {
   const datum = getLocalDateKey();
   const locatie = "keuken";
 
-  const {
-    data: lijstData,
-    error: lijstError,
-    mutate,
-    isLoading: lijstLoading,
-  } = useSWR<MaaklijstResponse>(
-    `/api/keuken/maaklijst?datum=${datum}&locatie=${locatie}`,
-    fetcher
-  );
+const {
+  data: lijstData,
+  error: lijstError,
+  mutate,
+  isLoading: lijstLoading,
+} = useSWR<MaaklijstResponse>(
+  `/api/keuken/maaklijst?datum=${datum}&locatie=${locatie}`,
+  fetcher,
+  {
+    refreshInterval: 10000,
+    revalidateOnFocus: true,
+  }
+);
 
   const {
     data: itemsData,
