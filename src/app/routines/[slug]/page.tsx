@@ -60,7 +60,7 @@ const kleurUitlegMap: Record<string, string> = {
   geel: "Gele doek · vieze dingen zoals vloer/afval",
 };
 
-const [showRotatieMenu, setShowRotatieMenu] = useState(false);
+
 
 function ActieBadge({ actief, label }: { actief: boolean; label: string }) {
   return (
@@ -87,7 +87,7 @@ export default function RoutinePagina({
   const [message, setMessage] = useState<string>("");
 
   const [slugState, setSlugState] = useState<string | null>(null);
-
+  const [showRotatieMenu, setShowRotatieMenu] = useState(false);
   useMemo(() => {
     params.then((value) => setSlugState(value.slug));
   }, [params]);
