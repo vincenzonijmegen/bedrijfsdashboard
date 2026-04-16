@@ -89,9 +89,9 @@ export async function GET(req: NextRequest) {
     const datum = formatDateOnly(datumObj);
 
     const routineSlugs = [
-      "keuken-start",
+      "keuken-opstart",
       "keuken-afsluit",
-      "winkel-start",
+      "winkel-opstart",
       "winkel-afsluit",
     ];
 
