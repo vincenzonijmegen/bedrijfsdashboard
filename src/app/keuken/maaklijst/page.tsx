@@ -443,6 +443,7 @@ onTouchEnd={clearHold}
 onTouchCancel={clearHold}
 onMouseDown={() => startHold(item.id)}
 onMouseLeave={clearHold}
+onClick={(e) => e.stopPropagation()}
                   onContextMenu={(e) => e.preventDefault()}
                   className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 select-none"
                   style={{ WebkitUserSelect: "none", WebkitTouchCallout: "none" }}
