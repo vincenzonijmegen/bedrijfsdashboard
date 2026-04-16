@@ -60,7 +60,7 @@ const kleurUitlegMap: Record<string, string> = {
   geel: "Gele doek · vieze dingen zoals vloer/afval",
 };
 
-
+const [showRotatieMenu, setShowRotatieMenu] = useState(false);
 
 function ActieBadge({ actief, label }: { actief: boolean; label: string }) {
   return (
@@ -422,12 +422,9 @@ export default function RoutinePagina({
 
                   <div className="flex gap-2 md:flex-col md:items-end">
                     {taak.isRotatie && (
-                    <button
-                     onClick={beheerRotatie}
-                        className="rounded-xl border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700"
-                      >
-                        Volgende
-                      </button>
+                    <button onClick={() => setShowRotatieMenu(true)}>
+                      Rotatie
+                    </button>
                     )}
 
                     <button
@@ -468,6 +465,54 @@ export default function RoutinePagina({
           })}
         </div>
       </div>
+      {showRotatieMenu && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+    <div className="w-full max-w-md rounded-2xl bg-white p-4 space-y-3">
+
+      <h2 className="text-lg font-semibold">Rotatie beheren</h2>
+
+      <button
+        onClick={async () => {
+          await fetch("/api/routines/rotatie/volgende", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ routineId: data?.routine.id }),
+          });
+          setShowRotatieMenu(false);
+          await mutate();
+        }}
+        className="w-full rounded-xl border px-4 py-3 text-left"
+      >
+        ➜ Volgende taak
+      </button>
+
+      <button
+        onClick={async () => {
+          await fetch("/api/routines/rotatie/set", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              routineId: data?.routine.id,
+              rotatieItemId: null,
+            }),
+          });
+          setShowRotatieMenu(false);
+          await mutate();
+        }}
+        className="w-full rounded-xl border px-4 py-3 text-left"
+      >
+        ⏭ Vandaag overslaan
+      </button>
+
+      <button
+        onClick={() => setShowRotatieMenu(false)}
+        className="w-full rounded-xl bg-slate-900 px-4 py-3 text-white"
+      >
+        Sluiten
+      </button>
+    </div>
+  </div>
+)}
     </main>
   );
 }
