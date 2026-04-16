@@ -56,6 +56,8 @@ type LinkCardProps = {
   color: string;
   Icon: React.FC<React.SVGProps<SVGSVGElement>>;
   breadcrumb?: string; // ✅ optioneel
+  target?: string;
+  rel?: string;
 };
 
 function useVragenTeller(intervalMs = 10000) {
@@ -82,13 +84,15 @@ function useVragenTeller(intervalMs = 10000) {
   return teller;
 }
 
-const LinkCard = ({ href, label, color, Icon, breadcrumb }: LinkCardProps) => {
+const LinkCard = ({ href, label, color, Icon, breadcrumb, target, rel }: LinkCardProps) => {
   // ✅ runtime-registratie (voegt alleen toe als nog niet aanwezig)
   if (breadcrumb) registerRoute(href, breadcrumb);
 
   return (
     <Link
       href={href}
+      target={target}
+      rel={rel}
       className={`flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium shadow transition ${
         bgColorMap[color] || "bg-gray-200 text-gray-900"
       }`}
@@ -163,7 +167,7 @@ function DailyTotalDisplay({ mask = false }: { mask?: boolean }) {
 
   if (mask) {
     return <span className="text-lg font-semibold tracking-widest select-none">••••••</span>;
-    }
+  }
 
   return (
     <span className="text-lg font-semibold">
@@ -283,9 +287,25 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/vragen" label="Vragen" color="blue" Icon={CheckSquare} breadcrumb="Management – Vragen" />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} breadcrumb="Management – Schoonmaakroutines" />
         <LinkCard href="/admin/contacten" label="Relaties" color="blue" Icon={Folder} breadcrumb="Management – Relaties" />
-        <LinkCard href="admin/routines" label="Routines HACCP" color="blue" Icon={Folder} breadcrumb="Management – Routines HACCP" />
-
-       
+        <LinkCard href="/admin/routines" label="Routines HACCP" color="blue" Icon={Folder} breadcrumb="Management – Routines HACCP" />
+        <LinkCard
+          href="/keuken/login"
+          label="Keuken-app openen"
+          color="blue"
+          Icon={Wrench}
+          breadcrumb="Keuken-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        />
+        <LinkCard
+          href="/vitrine/login"
+          label="Vitrine-app openen"
+          color="blue"
+          Icon={Wrench}
+          breadcrumb="Vitrine-app"
+          target="_blank"
+          rel="noopener noreferrer"
+        />
       </Section>
 
       {/* 👇 Planning */}
@@ -322,7 +342,6 @@ export default function AdminDashboard() {
           Icon={BarChart2}
           breadcrumb="Rapportages – Formulieren/-rapporten"
         />
-       
       </Section>
 
       {/* 👇 Medewerkers */}
@@ -377,25 +396,30 @@ export default function AdminDashboard() {
           breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Bestel-app"
         />
         <LinkCard href="/admin/recepten" label="Receptprijs" color="pink" Icon={Truck} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Receptprijs" />
-        
-<LinkCard
-  href="/admin/recepturen"
-  label="Recepturen keuken"
-  color="pink"
-  Icon={List}
-  breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Recepturen keuken"
-/>
-      
-     <LinkCard
-        href="/admin/keuken/productie-log"
-        label="Productie keuken"
-        color="pink"
-        Icon={BarChart2}
-        breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Productie keuken"
-      />    
-        
-        <LinkCard href="admin/keuken/categorieen" label="Categorie Keuken" color="pink" Icon={Folder} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Categorieen" />
 
+        <LinkCard
+          href="/admin/recepturen"
+          label="Recepturen keuken"
+          color="pink"
+          Icon={List}
+          breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Recepturen keuken"
+        />
+
+        <LinkCard
+          href="/admin/keuken/productie-log"
+          label="Productie keuken"
+          color="pink"
+          Icon={BarChart2}
+          breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Productie keuken"
+        />
+
+        <LinkCard
+          href="/admin/keuken/categorieen"
+          label="Categorie Keuken"
+          color="pink"
+          Icon={Folder}
+          breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Categorieen"
+        />
 
         <LinkCard
           href="/admin/producten/allergenen"
@@ -428,39 +452,6 @@ export default function AdminDashboard() {
       <Section id="prognosetools" title="📊 Prognosetools" color="indigo" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/planning/forecast" label="Forecast planning" color="indigo" Icon={Wrench} breadcrumb="Prognosetools – Forecast planning" />
       </Section>
-
-      <Link
-  href="/keuken/login"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="block"
->
-  <LinkCard
-    href="#"
-    label="Keuken-app openen"
-    color="blue"
-    Icon={Wrench}
-    breadcrumb="Keuken-app"
-  />
-</Link>
-
-<Link
-  href="/vitrine/login"
-  target="_blank"
-  rel="noopener noreferrer"
-  className="block"
->
-  <LinkCard
-    href="#"
-    label="Vitrine-app openen"
-    color="blue"
-    Icon={Wrench}
-    breadcrumb="Vitrine-app"
-  />
-</Link>
-
-
-
     </main>
   );
 }
