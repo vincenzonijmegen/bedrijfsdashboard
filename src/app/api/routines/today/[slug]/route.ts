@@ -117,7 +117,32 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ slug: 
 
     const alleTaken = takenResult.rows as TaakRow[];
     const zichtbareTaken = alleTaken.filter((taak) => taakIsVandaagZichtbaar(taak, datum));
-    const rotatieTaak = await getActieveRotatieTaak(routine.id);
+    const override = await db.query(
+  `SELECT rotatie_item_id
+   FROM routine_rotatie_override
+   WHERE routine_id = $1
+     AND datum = $2::date
+   LIMIT 1`,
+  [routine.id, vandaag]
+);
+
+let rotatieTaak = null;
+
+if (override.rows.length > 0) {
+  const overrideItemId = override.rows[0].rotatie_item_id;
+
+  if (overrideItemId) {
+    const item = await db.query(
+      `SELECT * FROM routine_rotatie_items WHERE id = $1`,
+      [overrideItemId]
+    );
+    rotatieTaak = item.rows[0] ?? null;
+  } else {
+    rotatieTaak = null; // expliciet niets doen
+  }
+} else {
+  rotatieTaak = await getActieveRotatieTaak(routine.id);
+}
 
 const rotatieAftekeningResult = rotatieTaak
   ? await db.query(

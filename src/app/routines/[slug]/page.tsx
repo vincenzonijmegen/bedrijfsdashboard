@@ -60,6 +60,8 @@ const kleurUitlegMap: Record<string, string> = {
   geel: "Gele doek · vieze dingen zoals vloer/afval",
 };
 
+
+
 function ActieBadge({ actief, label }: { actief: boolean; label: string }) {
   return (
     <span
@@ -176,6 +178,72 @@ export default function RoutinePagina({
     }
   }
 
+  async function beheerRotatie() {
+    if (!data) return;
+
+    const keuze = prompt(
+      "Kies actie:\n\n1 = Volgende\n2 = Andere taak kiezen\n3 = Vandaag overslaan"
+    );
+
+    if (!keuze) return;
+
+    try {
+      setMessage("");
+
+      if (keuze === "1") {
+        const res = await fetch("/api/routines/rotatie/volgende", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            routineId: data.routine.id,
+          }),
+        });
+
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json?.error || "Doorschuiven mislukt");
+        }
+
+        await mutate();
+        setSelectedTaskId(null);
+        setMessage("Rotatietaak doorgeschoven.");
+        return;
+      }
+
+      if (keuze === "2") {
+        setMessage("Andere taak kiezen bouwen we hierna netjes als keuzelijst in.");
+        return;
+      }
+
+      if (keuze === "3") {
+        const res = await fetch("/api/routines/rotatie/set", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            routineId: data.routine.id,
+            rotatieItemId: null,
+          }),
+        });
+
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json?.error || "Overslaan mislukt");
+        }
+
+        await mutate();
+        setSelectedTaskId(null);
+        setMessage("Vandaag staat er geen rotatietaak ingepland.");
+        return;
+      }
+
+      setMessage("Ongeldige keuze.");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Actie mislukt");
+    }
+  }
+
+
+  
   if (error) {
     return <div className="p-6">Fout bij laden van routine.</div>;
   }
@@ -281,10 +349,10 @@ export default function RoutinePagina({
               <section
                 key={taak.id}
                 onContextMenu={async (e) => {
-                  if (!taak.isRotatie) return;
-                  e.preventDefault();
-                  await schuifRotatieDoor();
-                }}
+  if (!taak.isRotatie) return;
+  e.preventDefault();
+  await beheerRotatie();
+}}
                 className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
               >
                 <div className="flex flex-col gap-3 p-4 md:flex-row md:items-start md:justify-between">
@@ -354,8 +422,8 @@ export default function RoutinePagina({
 
                   <div className="flex gap-2 md:flex-col md:items-end">
                     {taak.isRotatie && (
-                      <button
-                        onClick={schuifRotatieDoor}
+                    <button
+                     onClick={beheerRotatie}
                         className="rounded-xl border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700"
                       >
                         Volgende
