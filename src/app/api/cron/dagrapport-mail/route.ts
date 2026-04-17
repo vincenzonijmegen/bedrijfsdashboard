@@ -21,14 +21,14 @@ export async function GET() {
       throw new Error("Dagrapport ophalen mislukt");
     }
 
-    const { html } = renderDagrapportEmail(data);
+    const { subject, html } = renderDagrapportEmail(data);
 
-    await resend.emails.send({
-      from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
-      to: ["herman@ijssalonvincenzo.nl","erik@ijssalonvincenzo.nl"], // later uitbreiden
-      subject: `Dagrapport ${data.datum}`,
-      html,
-    });
+await resend.emails.send({
+  from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
+  to: ["herman@ijssalonvincenzo.nl", "erik@ijssalonvincenzo.nl"],
+  subject,
+  html,
+});
 
     return NextResponse.json({ success: true });
   } catch (err) {
