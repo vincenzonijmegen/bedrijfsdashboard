@@ -4,7 +4,8 @@
 
 import useSWR from 'swr';
 import { useState } from 'react';
-
+const huidigJaar = new Date().getFullYear();
+const jaren = Array.from({ length: 5 }, (_, i) => String(huidigJaar - i));
 const fetcher = async (url: string) => {
   const res = await fetch(url);
   const json = await res.json().catch(() => null);
@@ -45,15 +46,17 @@ export default function KasstaatPagina() {
   </button>
 </div>
 
-      <select
-        value={jaar}
-        onChange={(e) => setJaar(e.target.value)}
-        className="border px-2 py-1 mb-4"
-      >
-        <option value="2025">2025</option>
-        <option value="2024">2024</option>
-        <option value="2023">2023</option>
-      </select>
+<select
+  value={jaar}
+  onChange={(e) => setJaar(e.target.value)}
+  className="border px-2 py-1 mb-4"
+>
+  {jaren.map((j) => (
+    <option key={j} value={j}>
+      {j}
+    </option>
+  ))}
+</select>
 
       {isLoading && (
         <div className="p-3 rounded bg-gray-100 border">
@@ -183,11 +186,7 @@ export default function KasstaatPagina() {
           </div>
         ))}
 
-      {!isLoading && !error && data && (
-        <pre className="mt-6 p-3 bg-gray-100 rounded text-xs overflow-auto">
-          {JSON.stringify(data, null, 2)}
-        </pre>
-      )}
+      
     </div>
   );
 }
