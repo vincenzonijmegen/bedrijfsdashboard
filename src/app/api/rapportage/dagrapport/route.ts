@@ -25,6 +25,15 @@ type ProductieRow = {
   totaal: string | number;
 };
 
+type OmzetPerUurRow = {
+  uur: string;
+  omzet: string | number;
+};
+
+type DagomzetRow = {
+  dagomzet: string | number | null;
+};
+
 const WEEKDAGEN = ["zo", "ma", "di", "wo", "do", "vr", "za"];
 const ISO_EVEN_REFERENCE = new Date("2026-01-05T00:00:00"); // maandag
 
@@ -81,6 +90,109 @@ function getRoutineLabel(row: Pick<HaccpRow, "routine_naam" | "locatie" | "type"
   const loc = row.locatie ? row.locatie.charAt(0).toUpperCase() + row.locatie.slice(1) : "";
   const type = row.type ? row.type.charAt(0).toUpperCase() + row.type.slice(1) : "";
   return `${type} ${loc}`.trim();
+}
+
+function getWeatherDescription(code: number | null | undefined) {
+  switch (code) {
+    case 0:
+      return "zonnig";
+    case 1:
+      return "overwegend zonnig";
+    case 2:
+      return "half bewolkt";
+    case 3:
+      return "bewolkt";
+    case 45:
+    case 48:
+      return "mistig";
+    case 51:
+    case 53:
+    case 55:
+      return "motregen";
+    case 56:
+    case 57:
+      return "ijzel";
+    case 61:
+    case 63:
+    case 65:
+      return "regen";
+    case 66:
+    case 67:
+      return "ijzelregen";
+    case 71:
+    case 73:
+    case 75:
+      return "sneeuw";
+    case 77:
+      return "sneeuwkorrels";
+    case 80:
+    case 81:
+    case 82:
+      return "regenbuien";
+    case 85:
+    case 86:
+      return "sneeuwbuien";
+    case 95:
+      return "onweer";
+    case 96:
+    case 99:
+      return "onweer met hagel";
+    default:
+      return "onbekend";
+  }
+}
+
+async function getWeerVanDag(datum: string) {
+  const latitude = process.env.DAGRAPPORT_WEATHER_LAT ?? "51.8426";
+  const longitude = process.env.DAGRAPPORT_WEATHER_LON ?? "5.8518";
+
+  const url =
+    `https://archive-api.open-meteo.com/v1/archive` +
+    `?latitude=${encodeURIComponent(latitude)}` +
+    `&longitude=${encodeURIComponent(longitude)}` +
+    `&start_date=${encodeURIComponent(datum)}` +
+    `&end_date=${encodeURIComponent(datum)}` +
+    `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum` +
+    `&timezone=Europe%2FAmsterdam`;
+
+  try {
+    const response = await fetch(url, {
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const json = await response.json();
+
+    const daily = json?.daily;
+    if (!daily) {
+      return null;
+    }
+
+    const weatherCode = Array.isArray(daily.weather_code) ? daily.weather_code[0] : null;
+    const maxTemp = Array.isArray(daily.temperature_2m_max)
+      ? Number(daily.temperature_2m_max[0])
+      : null;
+    const minTemp = Array.isArray(daily.temperature_2m_min)
+      ? Number(daily.temperature_2m_min[0])
+      : null;
+    const neerslag = Array.isArray(daily.precipitation_sum)
+      ? Number(daily.precipitation_sum[0])
+      : null;
+
+    return {
+      omschrijving: getWeatherDescription(
+        typeof weatherCode === "number" ? weatherCode : Number(weatherCode)
+      ),
+      minTemp: Number.isFinite(minTemp) ? minTemp : null,
+      maxTemp: Number.isFinite(maxTemp) ? maxTemp : null,
+      neerslag: Number.isFinite(neerslag) ? neerslag : null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -248,9 +360,46 @@ export async function GET(req: NextRequest) {
       a.categorie.localeCompare(b.categorie, "nl")
     );
 
+    const [dagomzetResult, omzetPerUurResult, weer] = await Promise.all([
+      db.query(
+        `
+        SELECT
+          ROUND(COALESCE(SUM(aantal * eenheidsprijs), 0)) AS dagomzet
+        FROM rapportage.omzet
+        WHERE datum = $1::date
+        `,
+        [datum]
+      ),
+      db.query(
+        `
+        SELECT
+          TO_CHAR(tijdstip, 'HH24:00') AS uur,
+          ROUND(COALESCE(SUM(aantal * eenheidsprijs), 0)) AS omzet
+        FROM rapportage.omzet
+        WHERE datum = $1::date
+        GROUP BY TO_CHAR(tijdstip, 'HH24:00')
+        ORDER BY TO_CHAR(tijdstip, 'HH24:00')
+        `,
+        [datum]
+      ),
+      getWeerVanDag(datum),
+    ]);
+
+    const dagomzetRows = dagomzetResult.rows as DagomzetRow[];
+    const dagomzet = Number(dagomzetRows[0]?.dagomzet || 0);
+
+    const omzetPerUurRows = omzetPerUurResult.rows as OmzetPerUurRow[];
+    const omzetPerUur = omzetPerUurRows.map((row) => ({
+      uur: row.uur,
+      omzet: Number(row.omzet || 0),
+    }));
+
     return NextResponse.json({
       success: true,
       datum,
+      dagomzet,
+      weer,
+      omzetPerUur,
       haccp,
       productie,
     });

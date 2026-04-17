@@ -1,6 +1,17 @@
 type DagrapportResponse = {
   success: boolean;
   datum: string;
+  dagomzet: number;
+  weer: {
+    omschrijving: string;
+    minTemp: number | null;
+    maxTemp: number | null;
+    neerslag: number | null;
+  } | null;
+  omzetPerUur: {
+    uur: string;
+    omzet: number;
+  }[];
   haccp: {
     routineId: number | string;
     routineNaam: string;
@@ -49,6 +60,22 @@ function formatTijd(value: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatEuro(value: number) {
+  return new Intl.NumberFormat("nl-NL", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value || 0);
+}
+
+function formatGetal(value: number) {
+  return new Intl.NumberFormat("nl-NL", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  }).format(value);
 }
 
 function getRoutineLabel(slug: string, fallback: string) {
@@ -111,6 +138,11 @@ function getStatusLabel(gedaan: number, totaal: number) {
     bg: "#fef3c7",
     color: "#92400e",
   };
+}
+
+function getWeerLabel(omschrijving: string) {
+  if (!omschrijving) return "Onbekend";
+  return omschrijving.charAt(0).toUpperCase() + omschrijving.slice(1);
 }
 
 export function renderDagrapportEmail(data: DagrapportResponse) {
@@ -186,6 +218,56 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
           </div>
         </div>
       `;
+
+  const samenvattingKernHtml = `
+    <div style="margin-bottom:20px;">
+      <div style="font-size:18px;font-weight:800;color:#0f172a;margin-bottom:10px;">
+        Kerncijfers
+      </div>
+
+      <table role="presentation" style="width:100%;border-collapse:separate;border-spacing:0 10px;">
+        <tbody>
+          <tr>
+            <td style="padding:14px 16px;background:#ffffff;border:1px solid #e5e7eb;border-radius:14px 0 0 14px;font-size:15px;font-weight:700;color:#0f172a;">
+              Dagomzet gisteren
+            </td>
+            <td style="padding:14px 16px;background:#ecfeff;border:1px solid #e5e7eb;border-left:none;border-radius:0 14px 14px 0;font-size:15px;font-weight:800;color:#155e75;text-align:right;white-space:nowrap;">
+              ${escapeHtml(formatEuro(data.dagomzet))}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:14px 16px;background:#ffffff;border:1px solid #e5e7eb;border-radius:14px 0 0 14px;font-size:15px;font-weight:700;color:#0f172a;">
+              Weer gisteren
+            </td>
+            <td style="padding:14px 16px;background:#f8fafc;border:1px solid #e5e7eb;border-left:none;border-radius:0 14px 14px 0;font-size:14px;font-weight:700;color:#334155;text-align:right;">
+              ${
+                data.weer
+                  ? `
+                    ${escapeHtml(getWeerLabel(data.weer.omschrijving))}
+                    ${
+                      data.weer.maxTemp !== null
+                        ? ` · max ${escapeHtml(formatGetal(data.weer.maxTemp))}°C`
+                        : ""
+                    }
+                    ${
+                      data.weer.minTemp !== null
+                        ? ` · min ${escapeHtml(formatGetal(data.weer.minTemp))}°C`
+                        : ""
+                    }
+                    ${
+                      data.weer.neerslag !== null
+                        ? ` · ${escapeHtml(formatGetal(data.weer.neerslag))} mm`
+                        : ""
+                    }
+                  `
+                  : `Geen weergegevens beschikbaar`
+              }
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  `;
 
   const samenvattingHaccpHtml = haccpSamenvatting.length
     ? `
@@ -271,6 +353,56 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
           Geen productie geregistreerd.
         </div>
       `;
+
+  const omzetPerUurHtml = data.omzetPerUur.length
+    ? `
+      <div style="margin:0 0 28px 0;">
+        <div style="margin-bottom:12px;font-size:24px;font-weight:800;color:#0f172a;">
+          Omzetverdeling per uur
+        </div>
+
+        <div style="padding:16px;border:1px solid #e5e7eb;border-radius:16px;background:#ffffff;">
+          <table role="presentation" style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style="padding:10px;border-bottom:2px solid #e5e7eb;text-align:left;font-size:13px;color:#475569;">
+                  Uur
+                </th>
+                <th style="padding:10px;border-bottom:2px solid #e5e7eb;text-align:right;font-size:13px;color:#475569;">
+                  Omzet
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              ${data.omzetPerUur
+                .map(
+                  (item) => `
+                    <tr>
+                      <td style="padding:10px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#0f172a;">
+                        ${escapeHtml(item.uur)}
+                      </td>
+                      <td style="padding:10px;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:700;color:#0f172a;text-align:right;white-space:nowrap;">
+                        ${escapeHtml(formatEuro(item.omzet))}
+                      </td>
+                    </tr>
+                  `
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `
+    : `
+      <div style="margin:0 0 28px 0;">
+        <div style="margin-bottom:12px;font-size:24px;font-weight:800;color:#0f172a;">
+          Omzetverdeling per uur
+        </div>
+        <div style="padding:16px;border:1px dashed #cbd5e1;border-radius:16px;background:#ffffff;color:#475569;font-size:14px;">
+          Geen omzetgegevens beschikbaar.
+        </div>
+      </div>
+    `;
 
   const haccpHtml = data.haccp.length
     ? data.haccp
@@ -402,11 +534,14 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
               Samenvatting
             </div>
 
+            ${samenvattingKernHtml}
             ${samenvattingHaccpHtml}
             ${samenvattingProductieHtml}
           </div>
 
           ${belangrijkHtml}
+
+          ${omzetPerUurHtml}
 
           <div style="margin-bottom:28px;">
             <div style="margin-bottom:12px;font-size:24px;font-weight:800;color:#0f172a;">
