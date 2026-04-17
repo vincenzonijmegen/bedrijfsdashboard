@@ -28,6 +28,11 @@ const rapportages = [
     beschrijving: 'Toon de top omzetdagen',
     link: '/admin/rapportage/financieel/top-omzetdagen',
   },
+      {
+    titel: 'Export kasboek t.b.v. accountant',
+    beschrijving: 'Exporteer kasboek per jaar',
+    link: '/admin/admin/kasboek/kasstaat',
+  },
   {
     titel: 'JP MyPos',
     beschrijving: 'Journaalpost MyPOS t.b.v. Snelstart',
