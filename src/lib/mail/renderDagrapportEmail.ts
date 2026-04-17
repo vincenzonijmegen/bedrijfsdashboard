@@ -81,8 +81,196 @@ function getCategorieLabel(categorie: string) {
   }
 }
 
+function getStatusLabel(gedaan: number, totaal: number) {
+  if (totaal === 0) {
+    return {
+      tekst: "Geen taken",
+      bg: "#e2e8f0",
+      color: "#334155",
+    };
+  }
+
+  if (gedaan === totaal) {
+    return {
+      tekst: "Compleet",
+      bg: "#dcfce7",
+      color: "#166534",
+    };
+  }
+
+  if (gedaan === 0) {
+    return {
+      tekst: "Niet gestart",
+      bg: "#fee2e2",
+      color: "#991b1b",
+    };
+  }
+
+  return {
+    tekst: "Incompleet",
+    bg: "#fef3c7",
+    color: "#92400e",
+  };
+}
+
 export function renderDagrapportEmail(data: DagrapportResponse) {
   const datumLabel = formatDatum(data.datum);
+
+  const haccpSamenvatting = data.haccp.map((groep) => {
+    const routineTitel = getRoutineLabel(groep.routineSlug, groep.routineNaam);
+    const ontbrekend = groep.totaalTaken - groep.gedaanTaken;
+    const status = getStatusLabel(groep.gedaanTaken, groep.totaalTaken);
+
+    return {
+      titel: routineTitel,
+      gedaan: groep.gedaanTaken,
+      totaal: groep.totaalTaken,
+      ontbrekend,
+      status,
+    };
+  });
+
+  const productieSamenvatting = data.productie.map((groep) => ({
+    categorie: getCategorieLabel(groep.categorie),
+    totaal: groep.totaal,
+  }));
+
+  const totaalProductie = data.productie.reduce(
+    (sum, groep) => sum + groep.totaal,
+    0
+  );
+
+  const nietGedaanTaken = data.haccp.flatMap((groep) => {
+    const routineTitel = getRoutineLabel(groep.routineSlug, groep.routineNaam);
+
+    return groep.taken
+      .filter((taak) => !taak.afgetekend)
+      .map((taak) => ({
+        routineTitel,
+        taakNaam: taak.taakNaam,
+      }));
+  });
+
+  const belangrijkHtml =
+    nietGedaanTaken.length > 0
+      ? `
+        <div style="margin:0 0 28px 0;padding:18px;border:1px solid #fecaca;border-radius:18px;background:#fef2f2;">
+          <div style="font-size:18px;font-weight:800;color:#991b1b;margin-bottom:10px;">
+            ⚠️ Belangrijk
+          </div>
+          <div style="font-size:14px;color:#7f1d1d;margin-bottom:10px;">
+            De volgende HACCP-punten zijn niet afgehandeld:
+          </div>
+          <ul style="margin:0;padding-left:20px;color:#7f1d1d;font-size:14px;line-height:1.6;">
+            ${nietGedaanTaken
+              .map(
+                (item) => `
+                  <li>
+                    <strong>${escapeHtml(item.routineTitel)}</strong>: ${escapeHtml(
+                      item.taakNaam
+                    )}
+                  </li>
+                `
+              )
+              .join("")}
+          </ul>
+        </div>
+      `
+      : `
+        <div style="margin:0 0 28px 0;padding:18px;border:1px solid #bbf7d0;border-radius:18px;background:#f0fdf4;">
+          <div style="font-size:18px;font-weight:800;color:#166534;">
+            ✅ Belangrijk
+          </div>
+          <div style="margin-top:8px;font-size:14px;color:#166534;">
+            Alle zichtbare HACCP-taken van ${escapeHtml(datumLabel)} zijn afgehandeld.
+          </div>
+        </div>
+      `;
+
+  const samenvattingHaccpHtml = haccpSamenvatting.length
+    ? `
+      <div style="margin-bottom:20px;">
+        <div style="font-size:18px;font-weight:800;color:#0f172a;margin-bottom:10px;">
+          HACCP
+        </div>
+        <table role="presentation" style="width:100%;border-collapse:separate;border-spacing:0 10px;">
+          <tbody>
+            ${haccpSamenvatting
+              .map(
+                (groep) => `
+                  <tr>
+                    <td style="padding:14px 16px;background:#ffffff;border:1px solid #e5e7eb;border-radius:14px 0 0 14px;font-size:15px;font-weight:700;color:#0f172a;">
+                      ${escapeHtml(groep.titel)}
+                    </td>
+                    <td style="padding:14px 16px;background:#ffffff;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;font-size:14px;color:#334155;white-space:nowrap;">
+                      ${groep.gedaan}/${groep.totaal}
+                    </td>
+                    <td style="padding:14px 16px;background:#ffffff;border-top:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;font-size:14px;color:${
+                      groep.ontbrekend > 0 ? "#991b1b" : "#166534"
+                    };white-space:nowrap;">
+                      ${
+                        groep.ontbrekend > 0
+                          ? `${groep.ontbrekend} niet gedaan`
+                          : "Alles gedaan"
+                      }
+                    </td>
+                    <td style="padding:14px 16px;background:${groep.status.bg};border:1px solid #e5e7eb;border-left:none;border-radius:0 14px 14px 0;font-size:13px;font-weight:800;color:${groep.status.color};white-space:nowrap;text-align:right;">
+                      ${groep.status.tekst}
+                    </td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `
+    : `
+      <div style="margin-bottom:20px;padding:16px;border:1px dashed #cbd5e1;border-radius:16px;background:#ffffff;color:#475569;font-size:14px;">
+        Geen HACCP-samenvatting beschikbaar.
+      </div>
+    `;
+
+  const samenvattingProductieHtml =
+    productieSamenvatting.length > 0
+      ? `
+        <div>
+          <div style="font-size:18px;font-weight:800;color:#0f172a;margin-bottom:10px;">
+            Productie
+          </div>
+          <table role="presentation" style="width:100%;border-collapse:separate;border-spacing:0 10px;">
+            <tbody>
+              ${productieSamenvatting
+                .map(
+                  (groep) => `
+                    <tr>
+                      <td style="padding:14px 16px;background:#ffffff;border:1px solid #e5e7eb;border-radius:14px 0 0 14px;font-size:15px;font-weight:700;color:#0f172a;">
+                        ${escapeHtml(groep.categorie)}
+                      </td>
+                      <td style="padding:14px 16px;background:#e0f2fe;border:1px solid #e5e7eb;border-left:none;border-radius:0 14px 14px 0;font-size:13px;font-weight:800;color:#075985;white-space:nowrap;text-align:right;">
+                        ${groep.totaal}
+                      </td>
+                    </tr>
+                  `
+                )
+                .join("")}
+              <tr>
+                <td style="padding:14px 16px;background:#0f172a;border-radius:14px 0 0 14px;font-size:15px;font-weight:800;color:#ffffff;">
+                  Totaal productie-items
+                </td>
+                <td style="padding:14px 16px;background:#0f172a;border-radius:0 14px 14px 0;font-size:15px;font-weight:800;color:#ffffff;text-align:right;">
+                  ${totaalProductie}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      `
+      : `
+        <div style="padding:16px;border:1px dashed #cbd5e1;border-radius:16px;background:#ffffff;color:#475569;font-size:14px;">
+          Geen productie geregistreerd.
+        </div>
+      `;
 
   const haccpHtml = data.haccp.length
     ? data.haccp
@@ -96,7 +284,7 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
             .map((taak) => {
               const done = taak.afgetekend;
               const icon = done ? "✅" : "❌";
-              const naam = done
+              const tekst = done
                 ? `${escapeHtml(taak.afgetekendDoorNaam || "")}${
                     taak.afgetekendOp ? ` · ${formatTijd(taak.afgetekendOp)}` : ""
                   }`
@@ -110,7 +298,7 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
                   <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:14px;color:${
                     done ? "#166534" : "#991b1b"
                   };white-space:nowrap;">
-                    ${icon} ${escapeHtml(naam)}
+                    ${icon} ${escapeHtml(tekst)}
                   </td>
                 </tr>
               `;
@@ -209,16 +397,27 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
             </div>
           </div>
 
+          <div style="margin-bottom:28px;padding:20px;border:1px solid #e5e7eb;border-radius:20px;background:#f8fafc;">
+            <div style="margin-bottom:18px;font-size:24px;font-weight:800;color:#0f172a;">
+              Samenvatting
+            </div>
+
+            ${samenvattingHaccpHtml}
+            ${samenvattingProductieHtml}
+          </div>
+
+          ${belangrijkHtml}
+
           <div style="margin-bottom:28px;">
             <div style="margin-bottom:12px;font-size:24px;font-weight:800;color:#0f172a;">
-              HACCP
+              HACCP detail
             </div>
             ${haccpHtml}
           </div>
 
           <div>
             <div style="margin-bottom:12px;font-size:24px;font-weight:800;color:#0f172a;">
-              Productie
+              Productie detail
             </div>
             ${productieHtml}
           </div>
