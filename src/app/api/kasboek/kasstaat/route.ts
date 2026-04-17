@@ -10,7 +10,7 @@ const ONTVANGSTEN = [
   { key: 'verkopen_laag', label: 'Omzet 9%', btw: 9 },
   { key: 'verkoop_kadobonnen', label: 'Verkoop kadobonnen', btw: 9 },
   { key: 'wisselgeld_van_bank', label: 'Wisselgeld van bank', btw: null },
-  { key: 'kosten_wisselgeld', label: 'Kosten wisselgeld', btw: null },
+  
 ] as const;
 
 const UITGAVEN = [
@@ -115,7 +115,6 @@ export async function GET(req: NextRequest) {
       COALESCE(SUM(CASE WHEN t.categorie = 'verkopen_laag'        THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS verkopen_laag,
       COALESCE(SUM(CASE WHEN t.categorie = 'verkoop_kadobonnen'   THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS verkoop_kadobonnen,
       COALESCE(SUM(CASE WHEN t.categorie = 'wisselgeld_van_bank'  THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS wisselgeld_van_bank,
-      COALESCE(SUM(CASE WHEN t.categorie = 'kosten_wisselgeld'    THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS kosten_wisselgeld,
 
       COALESCE(SUM(CASE WHEN t.categorie = 'prive_opname_herman'  THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS prive_opname_herman,
       COALESCE(SUM(CASE WHEN t.categorie = 'prive_opname_erik'    THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS prive_opname_erik,
