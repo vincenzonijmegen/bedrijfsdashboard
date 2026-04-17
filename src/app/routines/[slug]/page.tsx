@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
+
 import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 
 type Taak = {
@@ -80,11 +81,17 @@ function ActieBadge({ actief, label }: { actief: boolean; label: string }) {
   );
 }
 
+
+
+
 export default function RoutinePagina({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const from = searchParams.get("from");
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [medewerkerId, setMedewerkerId] = useState<string>("");
   const [savingTaskId, setSavingTaskId] = useState<number | null>(null);
@@ -177,12 +184,12 @@ export default function RoutinePagina({
       <div className="mx-auto max-w-5xl space-y-4 p-4 md:p-6">
         <div className="sticky top-0 z-20 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur md:p-6">
           <div className="mb-4">
-            <Link
-              href={data.routine.locatie === "winkel" ? "/winkel" : "/keuken"}
-              className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
-            >
-              ← Terug
-            </Link>
+            <button
+  onClick={() => router.push(from || (data.routine.locatie === "winkel" ? "/winkel" : "/keuken"))}
+  className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+>
+  ← Terug
+</button>
           </div>
 
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

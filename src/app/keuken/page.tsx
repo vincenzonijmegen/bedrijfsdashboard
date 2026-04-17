@@ -34,15 +34,15 @@ const tegels = [
     omschrijving: "Werk de lijst af.",
   },
       {
-    href: "/routines/winkel-opstart",
-    titel: "winkel - opstartroutine",
-    omschrijving: "Werk de lijst af.",
-  },
-  {
-    href: "/routines/winkel-afsluit",
-    titel: "winkel - afsluitroutine",
-    omschrijving: "Werk de lijst af.",
-  },
+  href: "/routines/winkel-opstart?from=/keuken",
+  titel: "winkel - opstartroutine",
+  omschrijving: "Werk de lijst af.",
+},
+{
+  href: "/routines/winkel-afsluit?from=/keuken",
+  titel: "winkel - afsluitroutine",
+  omschrijving: "Werk de lijst af.",
+},
 ];
 
 export default function KeukenHomePage() {
