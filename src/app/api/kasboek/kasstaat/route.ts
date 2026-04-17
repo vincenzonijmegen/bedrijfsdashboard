@@ -18,7 +18,6 @@ const UITGAVEN = [
   { key: 'prive_opname_erik', label: 'Prive opnamen Erik', btw: null },
   { key: 'ingenomen_kadobon', label: 'Ingenomen kadobonnen', btw: 9 },
   { key: 'contant_inkoop', label: 'Contant betaalde inkopen', btw: null },
-  { key: 'pinbetalingen', label: 'Pinbetalingen', btw: null },
   { key: 'naar_bank_afgestort', label: 'Naar bank afgestort', btw: null },
   { key: 'kasverschil', label: 'Kasverschil', btw: null },
 ] as const;
@@ -115,12 +114,10 @@ export async function GET(req: NextRequest) {
       COALESCE(SUM(CASE WHEN t.categorie = 'verkopen_laag'        THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS verkopen_laag,
       COALESCE(SUM(CASE WHEN t.categorie = 'verkoop_kadobonnen'   THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS verkoop_kadobonnen,
       COALESCE(SUM(CASE WHEN t.categorie = 'wisselgeld_van_bank'  THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS wisselgeld_van_bank,
-
       COALESCE(SUM(CASE WHEN t.categorie = 'prive_opname_herman'  THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS prive_opname_herman,
       COALESCE(SUM(CASE WHEN t.categorie = 'prive_opname_erik'    THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS prive_opname_erik,
       COALESCE(SUM(CASE WHEN t.categorie = 'ingenomen_kadobon'    THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS ingenomen_kadobon,
       COALESCE(SUM(CASE WHEN t.categorie = 'contant_inkoop'       THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS contant_inkoop,
-      COALESCE(SUM(CASE WHEN t.categorie = 'pinbetalingen'        THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS pinbetalingen,
       COALESCE(SUM(CASE WHEN t.categorie = 'naar_bank_afgestort'  THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS naar_bank_afgestort,
       COALESCE(SUM(CASE WHEN t.categorie = 'kasverschil'          THEN t.bedrag ELSE 0 END), 0)::numeric(12,2) AS kasverschil
 
