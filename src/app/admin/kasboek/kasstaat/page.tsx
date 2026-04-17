@@ -1,5 +1,7 @@
 'use client';
 
+
+
 import useSWR from 'swr';
 import { useState } from 'react';
 
@@ -30,7 +32,18 @@ export default function KasstaatPagina() {
 
   return (
     <div className="p-4 max-w-6xl">
-      <h1 className="text-xl font-bold mb-4">Kasstaat {jaar}</h1>
+<div className="flex items-center justify-between mb-4">
+  <h1 className="text-xl font-bold">Kasstaat {jaar}</h1>
+
+  <button
+    onClick={() =>
+      window.open(`/api/kasboek/kasstaat/export?jaar=${jaar}`, '_blank')
+    }
+    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+  >
+    Download Excel
+  </button>
+</div>
 
       <select
         value={jaar}

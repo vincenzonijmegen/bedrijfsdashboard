@@ -29,6 +29,7 @@
     "csv-parser": "^3.2.0",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
+    "exceljs": "^4.4.0",
     "html-entities": "^2.6.0",
     "html-react-parser": "^5.2.6",
     "html2pdf.js": "^0.10.3",
