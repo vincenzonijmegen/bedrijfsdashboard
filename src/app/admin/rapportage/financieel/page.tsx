@@ -31,7 +31,7 @@ const rapportages = [
       {
     titel: 'Export kasboek t.b.v. accountant',
     beschrijving: 'Exporteer kasboek per jaar',
-    link: '/admin/admin/kasboek/kasstaat',
+    link: '/admin/kasboek/kasstaat',
   },
   {
     titel: 'JP MyPos',
@@ -46,17 +46,21 @@ export default function RapportageOverzicht() {
     <div className="p-6 space-y-6">
       <h1 className="text-2xl font-bold">Financiële Rapportages Vincenzo</h1>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {rapportages.map((r) => (
-          <Link href={r.link} key={r.titel}>
-            <Card className="hover:bg-gray-50 cursor-pointer">
-              <CardContent className="p-4">
-                <h2 className="font-semibold text-lg mb-1">{r.titel}</h2>
-                <p className="text-sm text-gray-600">{r.beschrijving}</p>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
+  {rapportages.map((r) => (
+    <Link href={r.link} key={r.titel}>
+      <Card className="cursor-pointer border border-gray-200 hover:shadow-md transition-all duration-200 bg-gradient-to-br from-white to-gray-50">
+        <CardContent className="p-5">
+          <h2 className="font-semibold text-lg mb-1 text-gray-800">
+            {r.titel}
+          </h2>
+          <p className="text-sm text-gray-600">
+            {r.beschrijving}
+          </p>
+        </CardContent>
+      </Card>
+    </Link>
+  ))}
+</div>
     </div>
   );
 }
