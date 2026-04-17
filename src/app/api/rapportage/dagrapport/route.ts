@@ -203,6 +203,7 @@ export async function GET(req: NextRequest) {
     const routineSlugs = [
       "keuken-opstart",
       "keuken-afsluit",
+      "keuken-eindschoonmaak",
       "winkel-opstart",
       "winkel-afsluit",
     ];

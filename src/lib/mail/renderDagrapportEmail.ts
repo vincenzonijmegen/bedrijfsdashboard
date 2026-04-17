@@ -78,12 +78,47 @@ function formatGetal(value: number) {
   }).format(value);
 }
 
+function getOmzetHeatStyle(omzet: number, min: number, max: number) {
+  if (max <= 0) {
+    return {
+      bg: "#f8fafc",
+      color: "#0f172a",
+    };
+  }
+
+  if (max === min) {
+    return {
+      bg: "#dbeafe",
+      color: "#1e3a8a",
+    };
+  }
+
+  const ratio = (omzet - min) / (max - min);
+
+  if (ratio >= 0.85) {
+    return { bg: "#1d4ed8", color: "#ffffff" };
+  }
+  if (ratio >= 0.65) {
+    return { bg: "#60a5fa", color: "#0f172a" };
+  }
+  if (ratio >= 0.45) {
+    return { bg: "#93c5fd", color: "#0f172a" };
+  }
+  if (ratio >= 0.25) {
+    return { bg: "#bfdbfe", color: "#0f172a" };
+  }
+
+  return { bg: "#eff6ff", color: "#334155" };
+}
+
 function getRoutineLabel(slug: string, fallback: string) {
   switch (slug) {
     case "keuken-opstart":
       return "Start keuken";
     case "keuken-afsluit":
       return "Einde keuken";
+    case "keuken-eindschoonmaak":
+      return "Keuken eindschoonmaak";
     case "winkel-opstart":
       return "Start winkel";
     case "winkel-afsluit":
@@ -354,6 +389,10 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
         </div>
       `;
 
+    const omzetWaarden = data.omzetPerUur.map((item) => item.omzet);
+  const minOmzet = omzetWaarden.length ? Math.min(...omzetWaarden) : 0;
+  const maxOmzet = omzetWaarden.length ? Math.max(...omzetWaarden) : 0;
+
   const omzetPerUurHtml = data.omzetPerUur.length
     ? `
       <div style="margin:0 0 28px 0;">
@@ -375,25 +414,50 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
             </thead>
             <tbody>
               ${data.omzetPerUur
-                .map(
-                  (item) => `
+                .map((item) => {
+                  const heat = getOmzetHeatStyle(item.omzet, minOmzet, maxOmzet);
+
+                  return `
                     <tr>
                       <td style="padding:10px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#0f172a;">
                         ${escapeHtml(item.uur)}
                       </td>
-                      <td style="padding:10px;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:700;color:#0f172a;text-align:right;white-space:nowrap;">
+                      <td style="
+                        padding:10px;
+                        border-bottom:1px solid #e5e7eb;
+                        font-size:14px;
+                        font-weight:800;
+                        text-align:right;
+                        white-space:nowrap;
+                        background:${heat.bg};
+                        color:${heat.color};
+                        border-radius:10px;
+                      ">
                         ${escapeHtml(formatEuro(item.omzet))}
                       </td>
                     </tr>
-                  `
-                )
+                  `;
+                })
                 .join("")}
             </tbody>
           </table>
+
+          <div style="margin-top:12px;font-size:12px;color:#64748b;">
+            Licht = rustiger uur · donkerder = drukker uur
+          </div>
         </div>
       </div>
     `
     : `
+      <div style="margin:0 0 28px 0;">
+        <div style="margin-bottom:12px;font-size:24px;font-weight:800;color:#0f172a;">
+          Omzetverdeling per uur
+        </div>
+        <div style="padding:16px;border:1px dashed #cbd5e1;border-radius:16px;background:#ffffff;color:#475569;font-size:14px;">
+          Geen omzetgegevens beschikbaar.
+        </div>
+      </div>
+    `; `
       <div style="margin:0 0 28px 0;">
         <div style="margin-bottom:12px;font-size:24px;font-weight:800;color:#0f172a;">
           Omzetverdeling per uur
