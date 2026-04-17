@@ -389,7 +389,7 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
         </div>
       `;
 
-    const omzetWaarden = data.omzetPerUur.map((item) => item.omzet);
+      const omzetWaarden = data.omzetPerUur.map((item) => item.omzet);
   const minOmzet = omzetWaarden.length ? Math.min(...omzetWaarden) : 0;
   const maxOmzet = omzetWaarden.length ? Math.max(...omzetWaarden) : 0;
 
@@ -422,17 +422,7 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
                       <td style="padding:10px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#0f172a;">
                         ${escapeHtml(item.uur)}
                       </td>
-                      <td style="
-                        padding:10px;
-                        border-bottom:1px solid #e5e7eb;
-                        font-size:14px;
-                        font-weight:800;
-                        text-align:right;
-                        white-space:nowrap;
-                        background:${heat.bg};
-                        color:${heat.color};
-                        border-radius:10px;
-                      ">
+                      <td style="padding:10px;border-bottom:1px solid #e5e7eb;font-size:14px;font-weight:800;text-align:right;white-space:nowrap;background:${heat.bg};color:${heat.color};">
                         ${escapeHtml(formatEuro(item.omzet))}
                       </td>
                     </tr>
@@ -449,15 +439,6 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
       </div>
     `
     : `
-      <div style="margin:0 0 28px 0;">
-        <div style="margin-bottom:12px;font-size:24px;font-weight:800;color:#0f172a;">
-          Omzetverdeling per uur
-        </div>
-        <div style="padding:16px;border:1px dashed #cbd5e1;border-radius:16px;background:#ffffff;color:#475569;font-size:14px;">
-          Geen omzetgegevens beschikbaar.
-        </div>
-      </div>
-    `; `
       <div style="margin:0 0 28px 0;">
         <div style="margin-bottom:12px;font-size:24px;font-weight:800;color:#0f172a;">
           Omzetverdeling per uur
