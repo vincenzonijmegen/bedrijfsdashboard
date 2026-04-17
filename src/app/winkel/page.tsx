@@ -3,43 +3,13 @@
 import Link from "next/link";
 
 const tegels = [
-  {
-    href: "/keuken/recepturen",
-    titel: "Recepturen",
-    omschrijving: "Bekijk recepturen per categorie.",
-  },
-  {
-    href: "/keuken/instructies-skills",
-    titel: "Werkinstructies / skills",
-    omschrijving: "Open keukeninstructies en skills.",
-  },
-  {
-    href: "/keuken/maaklijst",
-    titel: "Maaklijst",
-    omschrijving: "Klik aan wat bijgemaakt moet worden.",
-  },
-    {
-    href: "/routines/keuken-opstart",
-    titel: "Keuken - opstartroutine",
-    omschrijving: "Werk de lijst af.",
-  },
-  {
-    href: "/routines/keuken-afsluit",
-    titel: "Keuken - afsluitroutine",
-    omschrijving: "Werk de lijst af.",
-  },
-    {
-    href: "/routines/keuken-eindschoonmaak",
-    titel: "Keuken - eindschoonmaak",
-    omschrijving: "Werk de lijst af.",
-  },
       {
-  href: "/routines/winkel-opstart?from=/keuken",
+  href: "/routines/winkel-opstart?from=/winkel",
   titel: "Winkel - opstartroutine",
   omschrijving: "Werk de lijst af.",
 },
 {
-  href: "/routines/winkel-afsluit?from=/keuken",
+  href: "/routines/winkel-afsluit?from=/winkel",
   titel: "Winkel - afsluitroutine",
   omschrijving: "Werk de lijst af.",
 },
@@ -51,7 +21,7 @@ export default function KeukenHomePage() {
     if (!ok) return;
 
     await fetch("/api/keuken/logout", { method: "POST" });
-    window.location.href = "/keuken/login";
+    window.location.href = "/winkel/login";
   }
 
   return (
@@ -60,13 +30,13 @@ export default function KeukenHomePage() {
         <div className="mb-6 flex items-start justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-              Keuken iPad
+              Winkel iPad
             </p>
             <h1 className="text-3xl font-bold text-slate-900 md:text-4xl">
-              Keukenoverzicht
+              Winkel overzicht
             </h1>
             <p className="mt-2 max-w-2xl text-base text-slate-600">
-              Snelle toegang tot recepturen, werkinstructies en de maaklijst.
+              .
             </p>
           </div>
 
