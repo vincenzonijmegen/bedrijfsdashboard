@@ -34,7 +34,7 @@ const rapportages = [
     link: '/admin/kasboek/kasstaat',
   },
   {
-    titel: 'JP MyPos',
+    titel: 'Journaalpost MyPos',
     beschrijving: 'Journaalpost MyPOS t.b.v. Snelstart',
     link: '/admin/mypos/boeking',
   },

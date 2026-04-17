@@ -18,9 +18,19 @@ const tegels = [
     titel: "Maaklijst",
     omschrijving: "Klik aan wat bijgemaakt moet worden.",
   },
+    {
+    href: "/routines/keuken-opstart",
+    titel: "Keuken - opstartroutine",
+    omschrijving: "Werk de lijst af.",
+  },
   {
     href: "/routines/keuken-afsluit",
     titel: "Keuken - afsluitroutine",
+    omschrijving: "Werk de lijst af.",
+  },
+    {
+    href: "/routines/keuken-eindschoonmaak",
+    titel: "Keuken - eindschoonmaak",
     omschrijving: "Werk de lijst af.",
   },
 ];
