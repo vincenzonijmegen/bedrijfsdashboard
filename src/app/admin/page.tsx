@@ -298,11 +298,11 @@ export default function AdminDashboard() {
           rel="noopener noreferrer"
         />
         <LinkCard
-          href="/vitrine/login"
-          label="Vitrine-app openen"
+          href="/winkel/login"
+          label="winkel-app openen"
           color="blue"
           Icon={Wrench}
-          breadcrumb="Vitrine-app"
+          breadcrumb="Winkel-app"
           target="_blank"
           rel="noopener noreferrer"
         />
