@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
       FROM maaklijst_items
       WHERE maaklijst_id = $1
         AND recept_id = $2
+        AND status = 'open'
       LIMIT 1
       `,
       [maaklijstId, receptId]
@@ -75,7 +76,6 @@ export async function POST(req: NextRequest) {
         UPDATE maaklijst_items
         SET
           aantal = aantal + $1,
-          status = 'open',
           bijgewerkt_op = NOW()
         WHERE id = $2
         RETURNING *
