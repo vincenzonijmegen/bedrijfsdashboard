@@ -40,8 +40,28 @@ export async function GET(req: NextRequest) {
         a.afgetekend_op
       FROM routines r
       INNER JOIN routine_taken t
-        ON t.routine_id = r.id
-       AND COALESCE(t.actief, true) = true
+  ON t.routine_id = r.id
+ AND COALESCE(t.actief, true) = true
+ AND (
+   t.frequentie = 'D'
+   OR (
+     t.frequentie = 'W'
+     AND t.weekdagen IS NOT NULL
+     AND CASE EXTRACT(ISODOW FROM $1::date)
+       WHEN 1 THEN 'ma'
+       WHEN 2 THEN 'di'
+       WHEN 3 THEN 'wo'
+       WHEN 4 THEN 'do'
+       WHEN 5 THEN 'vr'
+       WHEN 6 THEN 'za'
+       WHEN 7 THEN 'zo'
+     END = ANY(t.weekdagen)
+   )
+   OR (
+     t.frequentie = '2D'
+     AND MOD(($1::date - DATE '2026-01-05')::int, 2) = 0
+   )
+ )
       LEFT JOIN routine_aftekeningen a
         ON a.routine_taak_id = t.id
        AND a.datum = $1::date
