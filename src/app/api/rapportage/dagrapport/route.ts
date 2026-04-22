@@ -362,15 +362,15 @@ export async function GET(req: NextRequest) {
     );
 
     const [dagomzetResult, omzetPerUurResult, weer] = await Promise.all([
-      db.query(
-        `
-        SELECT
-          ROUND(COALESCE(SUM(aantal * eenheidsprijs), 0)) AS dagomzet
-        FROM rapportage.omzet
-        WHERE datum = $1::date
-        `,
-        [datum]
-      ),
+db.query(
+  `
+  SELECT
+    ROUND(SUM(aantal * eenheidsprijs)) AS dagomzet
+  FROM rapportage.omzet
+  WHERE datum = $1::date
+  `,
+  [datum]
+),
       db.query(
         `
         SELECT
@@ -386,8 +386,9 @@ export async function GET(req: NextRequest) {
       getWeerVanDag(datum),
     ]);
 
-    const dagomzetRows = dagomzetResult.rows as DagomzetRow[];
-    const dagomzet = Number(dagomzetRows[0]?.dagomzet || 0);
+const dagomzetRows = dagomzetResult.rows as DagomzetRow[];
+const rawDagomzet = dagomzetRows[0]?.dagomzet;
+const dagomzet = rawDagomzet == null ? null : Number(rawDagomzet);
 
     const omzetPerUurRows = omzetPerUurResult.rows as OmzetPerUurRow[];
     const omzetPerUur = omzetPerUurRows.map((row) => ({

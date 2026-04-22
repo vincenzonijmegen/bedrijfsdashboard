@@ -1,7 +1,7 @@
 type DagrapportResponse = {
   success: boolean;
   datum: string;
-  dagomzet: number;
+  dagomzet: number | null;
   weer: {
     omschrijving: string;
     minTemp: number | null;
@@ -62,13 +62,18 @@ function formatTijd(value: string | null) {
   });
 }
 
-function formatEuro(value: number) {
+function formatEuro(value: number | null | undefined) {
   return new Intl.NumberFormat("nl-NL", {
     style: "currency",
     currency: "EUR",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(value || 0);
+  }).format(value ?? 0);
+}
+
+function formatDagomzet(value: number | null | undefined) {
+  if (value == null) return "nog niet beschikbaar";
+  return formatEuro(value);
 }
 
 function formatGetal(value: number) {
@@ -267,7 +272,7 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
               Dagomzet gisteren
             </td>
             <td style="padding:14px 16px;background:#ecfeff;border:1px solid #e5e7eb;border-left:none;border-radius:0 14px 14px 0;font-size:15px;font-weight:800;color:#155e75;text-align:right;white-space:nowrap;">
-              ${escapeHtml(formatEuro(data.dagomzet))}
+              ${escapeHtml(formatDagomzet(data.dagomzet))}
             </td>
           </tr>
           <tr>
