@@ -320,29 +320,38 @@ export default function AdminDashboard() {
       </Section>
 
       {/* 👇 Rapportages */}
-      <Section id="rapportages" title="📊 Rapportages" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard
-          href="/admin/rapportage/financieel"
-          label="Financiële Rapporten"
-          color="purple"
-          Icon={BarChart2}
-          breadcrumb="Rapportages – Financiële Rapporten"
-        />
-        <LinkCard
-          href="/admin/rapportage/medewerkers"
-          label="Medewerkers Rapporten"
-          color="purple"
-          Icon={BarChart2}
-          breadcrumb="Rapportages – Medewerkers Rapporten"
-        />
-        <LinkCard
-          href="/admin/aftekenlijsten"
-          label="Overzicht formulieren/rapporten"
-          color="purple"
-          Icon={BarChart2}
-          breadcrumb="Rapportages – Formulieren/-rapporten"
-        />
-      </Section>
+<Section id="rapportages" title="📊 Rapportages" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
+  <LinkCard
+    href="/admin/rapportage/financieel"
+    label="Financiële Rapporten"
+    color="purple"
+    Icon={BarChart2}
+    breadcrumb="Rapportages – Financiële Rapporten"
+  />
+  <LinkCard
+    href="/admin/rapportage/medewerkers"
+    label="Medewerkers Rapporten"
+    color="purple"
+    Icon={BarChart2}
+    breadcrumb="Rapportages – Medewerkers Rapporten"
+  />
+  <LinkCard
+    href="/admin/aftekenlijsten"
+    label="Overzicht formulieren/rapporten"
+    color="purple"
+    Icon={BarChart2}
+    breadcrumb="Rapportages – Formulieren/-rapporten"
+  />
+
+  {/* NIEUW */}
+  <LinkCard
+    href="/admin/rapportage/haccp"
+    label="HACCP Rapportage"
+    color="purple"
+    Icon={BarChart2}
+    breadcrumb="Rapportages – HACCP"
+  />
+</Section>
 
       {/* 👇 Medewerkers */}
       <Section id="medewerkers" title="👥 Medewerkers" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
