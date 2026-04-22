@@ -14,6 +14,11 @@ type WeerApiResponse = {
   };
 };
 
+
+
+
+
+
 function isISO(s?: string | null) {
   return !!s && /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
@@ -87,22 +92,22 @@ function dateDiffInDays(start: string, end: string) {
 }
 
 async function ensureWeerRange(start: string, end: string) {
-  const expectedDays = dateDiffInDays(start, end);
+  const vandaag = new Date().toISOString().slice(0, 10);
 
-const vandaag = new Date().toISOString().slice(0, 10);
+  const fetchStart = start;
+  let fetchEnd = end;
 
-const fetchStart = start;
-let fetchEnd = end;
+  // nooit voorbij vandaag ophalen
+  if (fetchEnd > vandaag) {
+    fetchEnd = vandaag;
+  }
 
-// nooit voorbij vandaag ophalen
-if (fetchEnd > vandaag) {
-  fetchEnd = vandaag;
-}
+  // alles ligt in de toekomst -> niks doen
+  if (fetchStart > vandaag) {
+    return;
+  }
 
-// alles ligt in de toekomst -> niks doen
-if (fetchStart > vandaag) {
-  return;
-}
+  const expectedDays = dateDiffInDays(fetchStart, fetchEnd);
 
   const existing = await dbRapportage.query<{ count: string }>(
     `
@@ -110,7 +115,7 @@ if (fetchStart > vandaag) {
     FROM rapportage.weer_per_dag
     WHERE datum BETWEEN $1 AND $2
     `,
-    [start, end]
+    [fetchStart, fetchEnd]
   );
 
   const existingCount = Number(existing.rows[0]?.count ?? 0);
@@ -126,8 +131,8 @@ if (fetchStart > vandaag) {
     `https://archive-api.open-meteo.com/v1/archive` +
     `?latitude=${latitude}` +
     `&longitude=${longitude}` +
-`&start_date=${fetchStart}` +
-`&end_date=${fetchEnd}` +
+    `&start_date=${fetchStart}` +
+    `&end_date=${fetchEnd}` +
     `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum` +
     `&timezone=Europe/Amsterdam`;
 
@@ -152,14 +157,10 @@ if (fetchStart > vandaag) {
 
   for (let i = 0; i < dates.length; i++) {
     const datum = dates[i];
-    const weatherCode =
-      codes[i] == null ? null : Number(codes[i]);
-    const tempMin =
-      mins[i] == null ? null : Number(mins[i]);
-    const tempMax =
-      maxs[i] == null ? null : Number(maxs[i]);
-    const neerslagMm =
-      precs[i] == null ? null : Number(precs[i]);
+    const weatherCode = codes[i] == null ? null : Number(codes[i]);
+    const tempMin = mins[i] == null ? null : Number(mins[i]);
+    const tempMax = maxs[i] == null ? null : Number(maxs[i]);
+    const neerslagMm = precs[i] == null ? null : Number(precs[i]);
 
     await dbRapportage.query(
       `
