@@ -44,19 +44,21 @@ export async function GET(req: NextRequest) {
  AND COALESCE(t.actief, true) = true
  AND (
    t.frequentie = 'D'
-   OR (
-     t.frequentie = 'W'
-     AND t.weekdagen IS NOT NULL
-     AND CASE EXTRACT(ISODOW FROM $1::date)
-       WHEN 1 THEN 'ma'
-       WHEN 2 THEN 'di'
-       WHEN 3 THEN 'wo'
-       WHEN 4 THEN 'do'
-       WHEN 5 THEN 'vr'
-       WHEN 6 THEN 'za'
-       WHEN 7 THEN 'zo'
-     END = ANY(t.weekdagen)
-   )
+OR (
+  t.frequentie = 'W'
+  AND COALESCE(t.weekdagen::text, '') <> ''
+  AND t.weekdagen::text ILIKE '%' ||
+    CASE EXTRACT(ISODOW FROM $1::date)
+      WHEN 1 THEN 'ma'
+      WHEN 2 THEN 'di'
+      WHEN 3 THEN 'wo'
+      WHEN 4 THEN 'do'
+      WHEN 5 THEN 'vr'
+      WHEN 6 THEN 'za'
+      WHEN 7 THEN 'zo'
+    END
+  || '%'
+)
    OR (
      t.frequentie = '2D'
      AND MOD(($1::date - DATE '2026-01-05')::int, 2) = 0
