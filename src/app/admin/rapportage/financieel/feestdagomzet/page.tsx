@@ -196,7 +196,7 @@ export default function FeestdagOmzetPage() {
             <select
               value={jaar}
               onChange={(e) => setJaar(Number(e.target.value))}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm outline-none ring-0 transition focus:border-blue-400"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm outline-none transition focus:border-blue-400"
             >
               {jaren.map((y) => (
                 <option key={y} value={y}>
@@ -208,31 +208,31 @@ export default function FeestdagOmzetPage() {
         </div>
 
         <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Feestdagen</div>
-            <div className="mt-2 text-3xl font-bold text-slate-900">{rows.length}</div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs text-slate-500">Feestdagen</div>
+            <div className="mt-2 text-2xl font-semibold text-slate-900">{rows.length}</div>
             <div className="mt-1 text-sm text-slate-500">in {jaar}</div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Totale omzet</div>
-            <div className="mt-2 text-3xl font-bold text-emerald-700">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs text-slate-500">Totale omzet</div>
+            <div className="mt-2 text-2xl font-semibold text-emerald-700">
               {formatEuro(totalen.omzet)}
             </div>
             <div className="mt-1 text-sm text-slate-500">totaal</div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Totaal aantal</div>
-            <div className="mt-2 text-3xl font-bold text-violet-700">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs text-slate-500">Totaal aantal</div>
+            <div className="mt-2 text-2xl font-semibold text-violet-700">
               {formatInt(totalen.aantal)}
             </div>
             <div className="mt-1 text-sm text-slate-500">bezoekers</div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Gem. temperatuur</div>
-            <div className="mt-2 text-3xl font-bold text-orange-600">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs text-slate-500">Gem. temperatuur</div>
+            <div className="mt-2 text-2xl font-semibold text-orange-600">
               {gemiddeldeTemps.avgMin !== null && gemiddeldeTemps.avgMax !== null
                 ? `${formatDecimal(gemiddeldeTemps.avgMin)}° / ${formatDecimal(
                     gemiddeldeTemps.avgMax
@@ -242,9 +242,9 @@ export default function FeestdagOmzetPage() {
             <div className="mt-1 text-sm text-slate-500">min / max</div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="text-sm text-slate-500">Totale neerslag</div>
-            <div className="mt-2 text-3xl font-bold text-sky-600">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-xs text-slate-500">Totale neerslag</div>
+            <div className="mt-2 text-2xl font-semibold text-sky-600">
               {formatDecimal(totalen.neerslag)} mm
             </div>
             <div className="mt-1 text-sm text-slate-500">totaal</div>
@@ -253,7 +253,7 @@ export default function FeestdagOmzetPage() {
 
         <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 bg-slate-900 px-6 py-4 text-white">
-            <div className="grid grid-cols-[130px_1.4fr_1fr_0.7fr_1fr_0.8fr_0.8fr_0.9fr] gap-4 text-sm font-semibold">
+            <div className="grid grid-cols-[120px_1.5fr_1fr_0.8fr_1fr_0.8fr_0.8fr_0.9fr] gap-4 text-sm font-semibold">
               <div>Datum</div>
               <div>Feestdag</div>
               <div>Omzet</div>
@@ -266,13 +266,11 @@ export default function FeestdagOmzetPage() {
           </div>
 
           {loading ? (
-            <div className="px-6 py-10 text-sm text-slate-500">Gegevens laden...</div>
+            <div className="px-6 py-8 text-sm text-slate-500">Gegevens laden...</div>
           ) : error ? (
-            <div className="px-6 py-10 text-sm text-red-600">Fout: {error}</div>
+            <div className="px-6 py-8 text-sm text-red-600">Fout: {error}</div>
           ) : rows.length === 0 ? (
-            <div className="px-6 py-10 text-sm text-slate-500">
-              Geen gegevens gevonden.
-            </div>
+            <div className="px-6 py-8 text-sm text-slate-500">Geen gegevens gevonden.</div>
           ) : (
             <div className="divide-y divide-slate-200">
               {rows.map((row, index) => {
@@ -281,60 +279,58 @@ export default function FeestdagOmzetPage() {
                 return (
                   <div
                     key={`${row.dag}-${row.naam}-${index}`}
-                    className="grid grid-cols-[130px_1.4fr_1fr_0.7fr_1fr_0.8fr_0.8fr_0.9fr] gap-4 px-6 py-5 transition hover:bg-slate-50"
+                    className="grid grid-cols-[120px_1.5fr_1fr_0.8fr_1fr_0.8fr_0.8fr_0.9fr] gap-4 px-6 py-3 transition hover:bg-slate-50"
                   >
-                    <div>
-                      <div className="inline-flex min-w-[72px] flex-col items-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                        <div className="w-full bg-blue-600 px-2 py-1 text-center text-xs font-bold tracking-wide text-white">
+                    <div className="flex items-center">
+                      <div className="inline-flex min-w-[68px] flex-col items-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                        <div className="w-full bg-blue-600 px-2 py-1 text-center text-[11px] font-bold tracking-wide text-white">
                           {datumInfo.maand}
                         </div>
-                        <div className="px-2 pt-2 text-3xl font-bold leading-none text-slate-900">
+                        <div className="px-2 pt-2 text-xl font-semibold leading-none text-slate-900">
                           {datumInfo.dag}
                         </div>
-                        <div className="px-2 pb-2 pt-1 text-xs text-slate-500">
+                        <div className="px-2 pb-2 pt-1 text-[11px] text-slate-500">
                           {datumInfo.weekdag}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex flex-col justify-center">
-                      <div className="text-lg font-semibold text-slate-900">
+                    <div className="flex items-center">
+                      <div className="text-base font-semibold text-slate-900">
                         {row.feestdag || row.naam}
                       </div>
                     </div>
 
-                    <div className="flex flex-col justify-center">
-                      <div className="text-2xl font-bold text-slate-900">
+                    <div className="flex items-center">
+                      <div className="text-lg font-semibold text-slate-900">
                         {formatEuro(row.omzet)}
                       </div>
                     </div>
 
-                    <div className="flex flex-col justify-center">
-                      <div className="text-2xl font-bold text-slate-900">
+                    <div className="flex items-center">
+                      <div className="text-lg font-semibold text-slate-900">
                         {formatInt(row.aantal)}
                       </div>
                     </div>
 
-                    <div className="flex flex-col justify-center">
-                      <div className="flex items-center gap-3">
-                        <span className="text-3xl">{weerIcoon(row.weer_omschrijving)}</span>
-                        <div>
-                          <div className="font-medium text-slate-900">
-                            {row.weer_omschrijving || "—"}
-                          </div>
+                    <div className="flex items-center">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{weerIcoon(row.weer_omschrijving)}</span>
+                        <div className="text-sm text-slate-700">
+                          {row.weer_omschrijving || "—"}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center text-2xl font-bold text-sky-600">
+                    <div className="flex items-center text-lg font-semibold text-sky-500">
                       {row.temp_min == null ? "—" : `${formatDecimal(row.temp_min)}°`}
                     </div>
 
-                    <div className="flex items-center text-2xl font-bold text-orange-500">
+                    <div className="flex items-center text-lg font-semibold text-orange-400">
                       {row.temp_max == null ? "—" : `${formatDecimal(row.temp_max)}°`}
                     </div>
 
-                    <div className="flex items-center text-xl font-semibold text-blue-600">
+                    <div className="flex items-center text-base font-semibold text-blue-600">
                       {row.neerslag_mm == null ? "—" : `${formatDecimal(row.neerslag_mm)} mm`}
                     </div>
                   </div>
