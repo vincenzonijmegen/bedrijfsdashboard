@@ -89,6 +89,21 @@ function dateDiffInDays(start: string, end: string) {
 async function ensureWeerRange(start: string, end: string) {
   const expectedDays = dateDiffInDays(start, end);
 
+const vandaag = new Date().toISOString().slice(0, 10);
+
+let fetchStart = start;
+let fetchEnd = end;
+
+// nooit voorbij vandaag ophalen
+if (fetchEnd > vandaag) {
+  fetchEnd = vandaag;
+}
+
+// als alles in de toekomst ligt → niks doen
+if (fetchStart > vandaag) {
+  return;
+}
+
   const existing = await dbRapportage.query<{ count: string }>(
     `
     SELECT COUNT(*)::int AS count
@@ -111,8 +126,8 @@ async function ensureWeerRange(start: string, end: string) {
     `https://archive-api.open-meteo.com/v1/archive` +
     `?latitude=${latitude}` +
     `&longitude=${longitude}` +
-    `&start_date=${start}` +
-    `&end_date=${end}` +
+`&start_date=${fetchStart}` +
+`&end_date=${fetchEnd}` +
     `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum` +
     `&timezone=Europe/Amsterdam`;
 
