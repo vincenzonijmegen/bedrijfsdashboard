@@ -91,7 +91,7 @@ async function ensureWeerRange(start: string, end: string) {
 
 const vandaag = new Date().toISOString().slice(0, 10);
 
-let fetchStart = start;
+const fetchStart = start;
 let fetchEnd = end;
 
 // nooit voorbij vandaag ophalen
@@ -99,7 +99,7 @@ if (fetchEnd > vandaag) {
   fetchEnd = vandaag;
 }
 
-// als alles in de toekomst ligt → niks doen
+// alles ligt in de toekomst -> niks doen
 if (fetchStart > vandaag) {
   return;
 }
