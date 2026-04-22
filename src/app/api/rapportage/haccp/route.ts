@@ -43,9 +43,8 @@ export async function GET(req: NextRequest) {
         ON t.routine_id = r.id
        AND COALESCE(t.actief, true) = true
       LEFT JOIN routine_aftekeningen a
-        ON a.routine_id = r.id
-       AND a.taak_id = t.id
-       AND a.datum = $1::date
+  ON a.taak_id = t.id
+ AND a.datum = $1::date
       WHERE COALESCE(r.actief, true) = true
         ${routineFilterSql}
       ORDER BY
