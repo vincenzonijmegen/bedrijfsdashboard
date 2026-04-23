@@ -1,6 +1,5 @@
 "use client";
 
-
 import { useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
@@ -61,6 +60,12 @@ const kleurStyleMap: Record<string, string> = {
   geel: "bg-yellow-100 text-yellow-900 border-yellow-200",
 };
 
+const kleurLabelMap: Record<string, string> = {
+  roze: "roze doek",
+  groen: "groene doek",
+  geel: "gele doek",
+};
+
 const kleurUitlegMap: Record<string, string> = {
   roze: "Roze doek · mag met ijs in aanraking komen",
   groen: "Groene doek · normale schoonmaak",
@@ -80,9 +85,6 @@ function ActieBadge({ actief, label }: { actief: boolean; label: string }) {
     </span>
   );
 }
-
-
-
 
 export default function RoutinePagina({
   params,
@@ -185,11 +187,16 @@ export default function RoutinePagina({
         <div className="sticky top-0 z-20 rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur md:p-6">
           <div className="mb-4">
             <button
-  onClick={() => router.push(from || (data.routine.locatie === "winkel" ? "/winkel" : "/keuken"))}
-  className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
->
-  ← Terug
-</button>
+              onClick={() =>
+                router.push(
+                  from ||
+                    (data.routine.locatie === "winkel" ? "/winkel" : "/keuken")
+                )
+              }
+              className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+            >
+              ← Terug
+            </button>
           </div>
 
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -295,7 +302,7 @@ export default function RoutinePagina({
                           className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${kleurClass}`}
                         >
                           {taak.kleurcode
-                            ? `${taak.kleurcode}e doek`
+                            ? kleurLabelMap[taak.kleurcode]
                             : "geen doekcode"}
                         </span>
 
@@ -376,9 +383,7 @@ export default function RoutinePagina({
 
                     <button
                       onClick={() => tekenAf(taak)}
-                      disabled={
-                        !selectedMedewerker || savingTaskId === taak.id
-                      }
+                      disabled={!selectedMedewerker || savingTaskId === taak.id}
                       className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white disabled:opacity-50"
                     >
                       {savingTaskId === taak.id
@@ -393,7 +398,7 @@ export default function RoutinePagina({
         </div>
       </div>
 
-           {showRotatieMenu && (
+      {showRotatieMenu && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md max-h-[85vh] overflow-hidden rounded-2xl bg-white shadow-xl">
             <div className="max-h-[85vh] overflow-y-auto space-y-3 p-4">
