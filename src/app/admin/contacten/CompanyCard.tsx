@@ -105,7 +105,7 @@ export default function CompanyCard({ company: c, correspondentie, onEdit, onDel
                     <span>{new Date(item.datum).toLocaleDateString('nl-NL')} – {item.type}</span>
                   )}
                   <span>{item.omschrijving}</span>
-                  {item.bijlage_url && <a href={item.bijlage_url} target="_blank" rel="noreferrer" className="underline">PDF</a>}
+                  {item.bijlage_url && <a href={item.bijlage_url} target="_blank" rel="noreferrer" className="underline">Bestand openen</a>}
                 </div>
                 <button
                   onClick={() => {
