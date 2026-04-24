@@ -81,10 +81,10 @@ function RowInner({
   const isWeeklyDone = !!(actie.is_weekly && actie.done_this_week);
 
   const containerClass = isWeeklyDone
-    ? "flex items-center justify-between border border-emerald-200 bg-emerald-50 text-emerald-900 p-3 rounded"
+    ? "flex items-center justify-between border border-emerald-200 bg-emerald-50 text-emerald-900 px-3 py-2 rounded-md transition"
     : isAfgehandeld
-    ? "flex items-center justify-between border p-3 rounded bg-gray-50 text-gray-500"
-    : "flex items-center justify-between border p-3 rounded bg-white shadow-sm";
+    ? "flex items-center justify-between border border-gray-200 bg-white text-gray-500 px-3 py-2 rounded-md transition"
+    : "flex items-center justify-between border border-gray-200 bg-white px-3 py-2 rounded-md shadow-sm hover:bg-gray-50 transition";
 
   return (
     <div className={containerClass}>
@@ -99,13 +99,13 @@ function RowInner({
               e.stopPropagation();
               onToggleCheck(actie.id, actie.voltooid);
             }}
-            className="mt-1"
+            className="mt-1 h-4 w-4 accent-blue-600"
           />
         )}
 
-        <div>
+        <div className="min-w-0">
           <div
-            className={`prose max-w-none text-base ${
+            className={`prose max-w-none text-[15px] leading-relaxed ${
               isAfgehandeld ? "line-through" : ""
             }`}
             dangerouslySetInnerHTML={{ __html: actie.tekst || "" }}
@@ -119,13 +119,13 @@ function RowInner({
         </div>
       </div>
 
-      <div className="ml-3 flex items-center gap-2">
+      <div className="ml-3 flex items-center gap-2 shrink-0">
         {actie.is_weekly && !isAfgehandeld && !actie.done_this_week && (
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => onWeeklyDone(actie.id)}
-            className="px-3 py-1 rounded bg-emerald-600 text-white text-sm"
+            className="px-3 py-1 rounded-md bg-emerald-600 text-white text-sm hover:bg-emerald-700 transition"
             title="Markeer als klaar voor deze week"
           >
             Klaar voor deze week
@@ -155,7 +155,7 @@ function RowInner({
         <button
           type="button"
           title="Bewerken"
-          className="p-1 rounded hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition"
+          className="p-1 rounded text-gray-400 hover:bg-blue-50 hover:text-blue-600 transition opacity-70 hover:opacity-100"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() =>
             onEdit({
@@ -194,7 +194,7 @@ function SortableActieRow(props: SortableRowProps) {
           <button
             aria-label="Sleep om te sorteren"
             title="Sleep om te sorteren"
-            className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 cursor-grab active:cursor-grabbing"
+            className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 cursor-grab active:cursor-grabbing transition opacity-60 hover:opacity-100"
             onPointerDown={(e) => e.stopPropagation()}
             {...attributes}
             {...listeners}
@@ -416,9 +416,9 @@ export default function ActieLijstPagina() {
   const isEmptyLists = !lijsten || lijsten.length === 0;
 
   return (
-    <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 bg-gray-50 min-h-screen">
       <div className="col-span-1 space-y-2">
-        <h2 className="text-lg font-semibold">Actielijst</h2>
+        <h2 className="text-lg font-semibold text-slate-800">Actielijst</h2>
 
         {lijstLoading && <div className="text-gray-600">Bezig met laden...</div>}
         {lijstError && (
@@ -430,48 +430,50 @@ export default function ActieLijstPagina() {
 
         {!lijstLoading && !lijstError && !isEmptyLists && (
           <>
-            {lijsten!
-              .slice()
-              .sort((a, b) => a.naam.localeCompare(b.naam))
-              .map((lijst) => (
-                <div key={lijst.id} className="flex items-center gap-2">
-                  <button
-                    className={`flex-1 flex items-center gap-2 px-4 py-2 border rounded ${
-                      lijst.id === geselecteerdeLijst?.id
-                        ? "bg-gray-100 font-semibold"
-                        : "hover:bg-gray-50"
-                    }`}
-                    onClick={() => setGeselecteerdeLijst(lijst)}
-                  >
-                    <span>{lijst.icoon}</span> {lijst.naam}
-                  </button>
+            <div className="space-y-2">
+              {lijsten!
+                .slice()
+                .sort((a, b) => a.naam.localeCompare(b.naam))
+                .map((lijst) => (
+                  <div key={lijst.id} className="flex items-center gap-2">
+                    <button
+                      className={`flex-1 flex items-center gap-2 px-4 py-2 border rounded-md text-left transition ${
+                        lijst.id === geselecteerdeLijst?.id
+                          ? "bg-blue-50 border-blue-200 text-blue-950 font-semibold shadow-sm"
+                          : "bg-white hover:bg-gray-50 border-gray-200"
+                      }`}
+                      onClick={() => setGeselecteerdeLijst(lijst)}
+                    >
+                      <span>{lijst.icoon}</span> {lijst.naam}
+                    </button>
 
-                  <button
-                    onClick={() => setLijstEdit({ ...lijst })}
-                    className="text-sm text-blue-600"
-                  >
-                    ✏️
-                  </button>
+                    <button
+                      onClick={() => setLijstEdit({ ...lijst })}
+                      className="text-sm text-blue-500 opacity-70 hover:opacity-100 transition"
+                    >
+                      ✏️
+                    </button>
 
-                  <button
-                    onClick={() => lijstVerwijderen(lijst.id)}
-                    className="text-sm text-red-500"
-                  >
-                    🗑️
-                  </button>
-                </div>
-              ))}
+                    <button
+                      onClick={() => lijstVerwijderen(lijst.id)}
+                      className="text-sm text-red-400 opacity-70 hover:opacity-100 transition"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                ))}
+            </div>
 
             <div className="pt-4 space-y-2">
               <input
-                className="w-full border rounded px-2 py-1"
+                className="w-full border border-gray-200 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-200"
                 value={nieuweLijstNaam}
                 onChange={(e) => setNieuweLijstNaam(e.target.value)}
                 placeholder="Nieuwe lijstnaam"
               />
               <button
                 onClick={nieuweLijstToevoegen}
-                className="w-full bg-blue-500 text-white py-1 rounded"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md transition"
               >
                 + Nieuwe lijst
               </button>
@@ -482,7 +484,7 @@ export default function ActieLijstPagina() {
                 <h3 className="text-sm font-semibold">Bewerk lijst</h3>
 
                 <input
-                  className="w-full border rounded px-2 py-1"
+                  className="w-full border border-gray-200 rounded-md px-3 py-2 bg-white"
                   value={lijstEdit.naam}
                   onChange={(e) =>
                     setLijstEdit({ ...lijstEdit, naam: e.target.value })
@@ -490,7 +492,7 @@ export default function ActieLijstPagina() {
                 />
 
                 <input
-                  className="w-full border rounded px-2 py-1"
+                  className="w-full border border-gray-200 rounded-md px-3 py-2 bg-white"
                   value={lijstEdit.icoon}
                   onChange={(e) =>
                     setLijstEdit({ ...lijstEdit, icoon: e.target.value })
@@ -499,7 +501,7 @@ export default function ActieLijstPagina() {
 
                 <button
                   onClick={lijstBijwerken}
-                  className="w-full bg-green-600 text-white py-1 rounded"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-md transition"
                 >
                   Opslaan
                 </button>
@@ -510,61 +512,63 @@ export default function ActieLijstPagina() {
       </div>
 
       <div className="col-span-2">
-        <h2 className="text-lg font-semibold mb-4">
+        <h2 className="text-lg font-semibold mb-4 text-slate-900">
           {geselecteerdeLijst?.naam ?? "—"}
         </h2>
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={async ({ active, over }) => {
-            if (!over || active.id === over.id) return;
+        <div className="space-y-1.5">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={async ({ active, over }) => {
+              if (!over || active.id === over.id) return;
 
-            const oudeIndex = dndVolgorde.indexOf(active.id as number);
-            const nieuweIndex = dndVolgorde.indexOf(over.id as number);
+              const oudeIndex = dndVolgorde.indexOf(active.id as number);
+              const nieuweIndex = dndVolgorde.indexOf(over.id as number);
 
-            if (oudeIndex === -1 || nieuweIndex === -1) return;
+              if (oudeIndex === -1 || nieuweIndex === -1) return;
 
-            const nieuweVolgorde = arrayMove(
-              dndVolgorde,
-              oudeIndex,
-              nieuweIndex
-            );
+              const nieuweVolgorde = arrayMove(
+                dndVolgorde,
+                oudeIndex,
+                nieuweIndex
+              );
 
-            setDndVolgorde(nieuweVolgorde);
+              setDndVolgorde(nieuweVolgorde);
 
-            await fetch("/api/acties/volgorde", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                ids: nieuweVolgorde.map((id, i) => ({ id, volgorde: i })),
-              }),
-            });
+              await fetch("/api/acties/volgorde", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  ids: nieuweVolgorde.map((id, i) => ({ id, volgorde: i })),
+                }),
+              });
 
-            mutate();
-          }}
-        >
-          <SortableContext
-            items={dndVolgorde}
-            strategy={verticalListSortingStrategy}
+              mutate();
+            }}
           >
-            {openActiesSorted.map((actie) => (
-              <SortableActieRow
-                key={actie.id}
-                id={actie.id}
-                actie={actie}
-                isAfgehandeld={false}
-                onToggleCheck={toggleActie}
-                onEdit={(s) => setActieEdit(s)}
-                onWeeklyDone={markWeeklyDone}
-                onWeeklyUndo={undoWeeklyDone}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
+            <SortableContext
+              items={dndVolgorde}
+              strategy={verticalListSortingStrategy}
+            >
+              {openActiesSorted.map((actie) => (
+                <SortableActieRow
+                  key={actie.id}
+                  id={actie.id}
+                  actie={actie}
+                  isAfgehandeld={false}
+                  onToggleCheck={toggleActie}
+                  onEdit={(s) => setActieEdit(s)}
+                  onWeeklyDone={markWeeklyDone}
+                  onWeeklyUndo={undoWeeklyDone}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+        </div>
 
-        <div className="mt-4 border rounded">
-          <div className="flex items-center gap-2 bg-gray-50 border-b px-2 py-1 rounded-t">
+        <div className="mt-4 border border-gray-200 rounded-md bg-white overflow-hidden">
+          <div className="flex items-center gap-2 bg-gray-100 border-b border-gray-200 px-3 py-2">
             <span className="text-sm text-gray-600">Nieuwe actie</span>
 
             <label className="flex items-center gap-2 text-sm ml-auto">
@@ -578,7 +582,7 @@ export default function ActieLijstPagina() {
 
             <button
               onClick={nieuweActieToevoegen}
-              className="ml-2 bg-blue-600 text-white px-3 py-1 rounded"
+              className="ml-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md transition"
             >
               Toevoegen
             </button>
@@ -594,10 +598,10 @@ export default function ActieLijstPagina() {
 
         {actieEdit && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded shadow-lg w-full max-w-3xl">
+            <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-3xl">
               <h3 className="text-lg font-semibold mb-3">Bewerk actie</h3>
 
-              <div className="mb-3">
+              <div className="mb-3 border rounded-md overflow-hidden">
                 <NotitieEditor
                   value={actieEdit.tekst}
                   onChange={(html) =>
@@ -668,7 +672,7 @@ export default function ActieLijstPagina() {
 
                     setActieEdit(null);
                   }}
-                  className="bg-blue-600 text-white px-4 py-1 rounded"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded-md transition"
                 >
                   Opslaan
                 </button>
@@ -683,7 +687,7 @@ export default function ActieLijstPagina() {
               Deze week gedaan ({weeklyDoneThisWeek.length})
             </summary>
 
-            <div className="mt-2 space-y-2">
+            <div className="mt-2 space-y-1.5">
               {weeklyDoneThisWeek.map((actie) => (
                 <StaticActieRow
                   key={actie.id}
@@ -705,7 +709,7 @@ export default function ActieLijstPagina() {
               Afgehandeld
             </h3>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {afgehandeldSorted.map((actie) => (
                 <StaticActieRow
                   key={actie.id}
