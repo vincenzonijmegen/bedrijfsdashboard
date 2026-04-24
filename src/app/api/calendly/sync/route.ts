@@ -17,17 +17,21 @@ export async function POST() {
     }
 
     // 🔽 1. Haal afspraken op
-    const res = await fetch(
-      `https://api.calendly.com/scheduled_events?user=${encodeURIComponent(
-        user
-      )}&status=active`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
-      }
-    );
+const minStartTime = new Date().toISOString();
+
+const res = await fetch(
+  `https://api.calendly.com/scheduled_events?user=${encodeURIComponent(
+    user
+  )}&status=active&min_start_time=${encodeURIComponent(
+    minStartTime
+  )}&sort=start_time:asc&count=100`,
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: "no-store",
+  }
+);
 
     if (!res.ok) {
       console.error("Calendly fetch error:", await res.text());

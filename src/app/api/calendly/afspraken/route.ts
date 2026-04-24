@@ -7,9 +7,10 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const result = await db.query(`
-      SELECT id, naam, email, starttijd, eindtijd, status, calendly_uri
-      FROM sollicitatie_afspraken
-      ORDER BY starttijd ASC
+SELECT id, naam, email, starttijd, eindtijd, status, calendly_uri
+FROM sollicitatie_afspraken
+WHERE starttijd >= CURRENT_DATE
+ORDER BY starttijd ASC
     `);
 
     return NextResponse.json(result.rows);
