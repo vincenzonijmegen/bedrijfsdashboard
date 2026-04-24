@@ -34,6 +34,23 @@ import { registerRoute } from "./_components/routeRegistry"; // ✅ breadcrumb-r
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
+type SollicitatieAfspraakVandaag = {
+  id: number;
+  naam: string;
+  email: string;
+  starttijd: string;
+  eindtijd: string;
+  status: string;
+};
+
+const { data: afsprakenVandaag } = useSWR<SollicitatieAfspraakVandaag[]>(
+  "/api/calendly/vandaag",
+  fetcher,
+  { refreshInterval: 60000 }
+);
+
+
+
 const bgColorMap: Record<string, string> = {
   green: "bg-green-100 text-green-900 hover:bg-green-200",
   pink: "bg-pink-100 text-pink-900 hover:bg-pink-200",
@@ -59,6 +76,47 @@ type LinkCardProps = {
   target?: string;
   rel?: string;
 };
+
+
+{afsprakenVandaag && afsprakenVandaag.length > 0 && (
+  <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4">
+    <div className="mb-2 flex items-center justify-between">
+      <h2 className="font-semibold text-green-900">
+        Sollicitatiegesprekken vandaag
+      </h2>
+      <Link
+        href="/admin/sollicitaties/afspraken"
+        className="text-sm underline text-green-800"
+      >
+        Bekijk alles
+      </Link>
+    </div>
+
+    <div className="space-y-2">
+      {afsprakenVandaag.map((a) => (
+        <div
+          key={a.id}
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg bg-white px-3 py-2 text-sm border"
+        >
+          <div>
+            <div className="font-medium text-slate-900">{a.naam}</div>
+            <div className="text-slate-500">{a.email}</div>
+          </div>
+          <div className="mt-1 sm:mt-0 font-semibold text-slate-800">
+            {new Date(a.starttijd).toLocaleTimeString("nl-NL", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+
+
+
 
 function useVragenTeller(intervalMs = 10000) {
   const [teller, setTeller] = React.useState<number | null>(null);
