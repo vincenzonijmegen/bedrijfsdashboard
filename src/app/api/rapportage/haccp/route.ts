@@ -46,9 +46,10 @@ export async function GET(req: NextRequest) {
    t.frequentie = 'D'
 OR (
   t.frequentie = 'W'
-  AND COALESCE(t.weekdagen::text, '') <> ''
-  AND t.weekdagen::text ILIKE '%' ||
-    CASE EXTRACT(ISODOW FROM $1::date)
+  AND EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements_text(t.weekdagen::jsonb) AS wd(dag)
+    WHERE wd.dag = CASE EXTRACT(ISODOW FROM $1::date)
       WHEN 1 THEN 'ma'
       WHEN 2 THEN 'di'
       WHEN 3 THEN 'wo'
@@ -57,7 +58,7 @@ OR (
       WHEN 6 THEN 'za'
       WHEN 7 THEN 'zo'
     END
-  || '%'
+  )
 )
    OR (
      t.frequentie = '2D'
