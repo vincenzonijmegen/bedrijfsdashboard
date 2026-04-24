@@ -84,9 +84,6 @@ export default function HaccpRapportagePage() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <Link href="/admin/rapportage" className="text-sm underline text-blue-600">
-          ← Terug naar Rapportage
-        </Link>
         <h1 className="text-2xl font-bold mt-4">HACCP-rapportage</h1>
         <p className="text-sm text-gray-600 mt-1">
           Bekijk per dag en per lijst wie onderdelen heeft afgehandeld.

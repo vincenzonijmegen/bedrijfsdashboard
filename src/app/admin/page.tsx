@@ -448,10 +448,6 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Kasboek bijwerken" />
         <LinkCard href="/admin/omzet/omzetdagen" label="Omzetdagen aanpassen" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Omzetdagen aanpassen" />
       </Section>
-
-      <Section id="prognosetools" title="📊 Prognosetools" color="indigo" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/planning/forecast" label="Forecast planning" color="indigo" Icon={Wrench} breadcrumb="Prognosetools – Forecast planning" />
-      </Section>
     </main>
   );
 }
