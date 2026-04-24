@@ -21,21 +21,20 @@ import { Pencil, CheckCircle2, GripVertical } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-// Rijke editor uit Notities hergebruiken (client-only)
 const NotitieEditor = dynamic(() => import("@/components/NotitieEditor"), {
   ssr: false,
 });
 
 interface Actie {
   id: number;
-  tekst: string;               // nu HTML uit Tiptap
+  tekst: string;
   voltooid: boolean;
   deadline?: string;
   verantwoordelijke?: string;
   volgorde: number;
-  // afgeleid via GET /api/acties:
-  is_weekly?: boolean;         // recurring == 'weekly'
-  done_this_week?: boolean;    // deze ISO-week afgehandeld
+  afgehandeld_op?: string | null;
+  is_weekly?: boolean;
+  done_this_week?: boolean;
 }
 
 interface ActieLijst {
@@ -46,9 +45,19 @@ interface ActieLijst {
 
 type EditState = { id: number; tekst: string; is_weekly: boolean };
 
-// helpers
 const isHtmlEmpty = (html: string) =>
   !html || !html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+
+const formatDatumTijd = (value?: string | null) => {
+  if (!value) return "";
+  return new Date(value).toLocaleString("nl-NL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
 type RowCommonProps = {
   actie: Actie;
@@ -79,7 +88,6 @@ function RowInner({
 
   return (
     <div className={containerClass}>
-      {/* Links: checkbox (indien niet-weeklijks) + geformatteerde tekst */}
       <div className="flex items-start gap-3 flex-1 select-none">
         {!actie.is_weekly && (
           <input
@@ -94,14 +102,23 @@ function RowInner({
             className="mt-1"
           />
         )}
-        <div
-          className={`prose max-w-none text-base ${isAfgehandeld ? "line-through" : ""}`}
-          // veilige HTML: komt uit NotitieEditor met plak-sanitizer
-          dangerouslySetInnerHTML={{ __html: actie.tekst || "" }}
-        />
+
+        <div>
+          <div
+            className={`prose max-w-none text-base ${
+              isAfgehandeld ? "line-through" : ""
+            }`}
+            dangerouslySetInnerHTML={{ __html: actie.tekst || "" }}
+          />
+
+          {isAfgehandeld && actie.afgehandeld_op && (
+            <div className="mt-1 text-xs text-gray-500 no-underline">
+              Afgehandeld op {formatDatumTijd(actie.afgehandeld_op)}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Rechts: acties / knoppen */}
       <div className="ml-3 flex items-center gap-2">
         {actie.is_weekly && !isAfgehandeld && !actie.done_this_week && (
           <button
@@ -141,7 +158,11 @@ function RowInner({
           className="p-1 rounded hover:bg-blue-100 text-gray-400 hover:text-blue-600 transition"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() =>
-            onEdit({ id: actie.id, tekst: actie.tekst || "<p></p>", is_weekly: !!actie.is_weekly })
+            onEdit({
+              id: actie.id,
+              tekst: actie.tekst || "<p></p>",
+              is_weekly: !!actie.is_weekly,
+            })
           }
         >
           <Pencil size={18} />
@@ -151,15 +172,12 @@ function RowInner({
   );
 }
 
-/* --------------------------- Sortable Row (open) --------------------------- */
-
 type SortableRowProps = RowCommonProps & { id: number };
 
 function SortableActieRow(props: SortableRowProps) {
   const { id } = props;
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id,
-  });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -189,16 +207,11 @@ function SortableActieRow(props: SortableRowProps) {
   );
 }
 
-/* ------------------------------ Static Row ------------------------------ */
-
 function StaticActieRow(props: RowCommonProps) {
   return <RowInner {...props} />;
 }
 
-/* ---------------------------------- Page ---------------------------------- */
-
 export default function ActieLijstPagina() {
-  // Lijsten
   const {
     data: lijsten,
     error: lijstError,
@@ -209,22 +222,24 @@ export default function ActieLijstPagina() {
     revalidateOnReconnect: false,
   });
 
-  const [geselecteerdeLijst, setGeselecteerdeLijst] = useState<ActieLijst | null>(null);
+  const [geselecteerdeLijst, setGeselecteerdeLijst] =
+    useState<ActieLijst | null>(null);
 
-  // Acties
   const { data: actiesRaw = [], mutate } = useSWR<Actie[]>(
     geselecteerdeLijst ? `/api/acties?lijst_id=${geselecteerdeLijst.id}` : null,
     fetcher,
-    { revalidateOnFocus: false, revalidateOnReconnect: false, dedupingInterval: 30000 }
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 30000,
+    }
   );
 
-  // DnD setup
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
-  const [dndVolgorde, setDndVolgorde] = useState<number[]>([]);
 
-  // Form state
+  const [dndVolgorde, setDndVolgorde] = useState<number[]>([]);
   const [nieuweLijstNaam, setNieuweLijstNaam] = useState("");
   const [nieuweActieHtml, setNieuweActieHtml] = useState<string>("");
   const [nieuweActieWeekly, setNieuweActieWeekly] = useState(false);
@@ -232,29 +247,35 @@ export default function ActieLijstPagina() {
     useState<{ id: number; naam: string; icoon: string } | null>(null);
   const [actieEdit, setActieEdit] = useState<EditState | null>(null);
 
-  // Init: kies eerste lijst
   useEffect(() => {
     if (lijsten && lijsten.length > 0 && !geselecteerdeLijst) {
       setGeselecteerdeLijst(lijsten[0]);
     }
   }, [lijsten, geselecteerdeLijst]);
 
-  // DnD volgorde sync met server-data (alleen open & niet weekly-done)
   useEffect(() => {
     const openActies = actiesRaw
       .filter((a) => !a.voltooid && !(a.is_weekly && a.done_this_week))
       .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
+
     setDndVolgorde(openActies.map((a) => a.id));
   }, [actiesRaw]);
 
-  // Handlers
   const toggleActie = async (id: number, voltooid: boolean) => {
-    // Optimistisch wisselen
     mutate(
       (huidig) =>
-        (huidig || []).map((a: Actie) => (a.id === id ? { ...a, voltooid: !voltooid } : a)),
+        (huidig || []).map((a: Actie) =>
+          a.id === id
+            ? {
+                ...a,
+                voltooid: !voltooid,
+                afgehandeld_op: !voltooid ? new Date().toISOString() : null,
+              }
+            : a
+        ),
       { revalidate: false }
     );
+
     try {
       await fetch("/api/acties", {
         method: "PATCH",
@@ -284,44 +305,58 @@ export default function ActieLijstPagina() {
     mutate();
   };
 
-  const updateActie = async (id: number, tekstHtml: string, is_weekly: boolean) => {
+  const updateActie = async (
+    id: number,
+    tekstHtml: string,
+    is_weekly: boolean
+  ) => {
     await fetch("/api/acties", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, tekst: tekstHtml, recurring: is_weekly ? "weekly" : "none" }),
+      body: JSON.stringify({
+        id,
+        tekst: tekstHtml,
+        recurring: is_weekly ? "weekly" : "none",
+      }),
     });
     mutate();
   };
 
   const nieuweLijstToevoegen = async () => {
     if (!nieuweLijstNaam.trim()) return;
+
     await fetch("/api/actielijsten", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ naam: nieuweLijstNaam.trim(), icoon: "📋" }),
     });
+
     setNieuweLijstNaam("");
     mutateLijsten();
   };
 
   const lijstVerwijderen = async (id: number) => {
     if (!confirm("Weet je zeker dat je deze lijst wilt verwijderen?")) return;
+
     await fetch("/api/actielijsten", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
+
     mutateLijsten();
     if (geselecteerdeLijst?.id === id) setGeselecteerdeLijst(null);
   };
 
   const lijstBijwerken = async () => {
     if (!lijstEdit) return;
+
     await fetch("/api/actielijsten", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(lijstEdit),
     });
+
     setLijstEdit(null);
     mutateLijsten();
   };
@@ -339,15 +374,19 @@ export default function ActieLijstPagina() {
         recurring: nieuweActieWeekly ? "weekly" : "none",
       }),
     });
+
     setNieuweActieHtml("");
     setNieuweActieWeekly(false);
     mutate();
   };
 
-  // Afgeleide sets
   const openActiesSorted = useMemo(() => {
-    const open = actiesRaw.filter((a) => !a.voltooid && !(a.is_weekly && a.done_this_week));
-    return open.sort((a, b) => dndVolgorde.indexOf(a.id) - dndVolgorde.indexOf(b.id));
+    const open = actiesRaw.filter(
+      (a) => !a.voltooid && !(a.is_weekly && a.done_this_week)
+    );
+    return open.sort(
+      (a, b) => dndVolgorde.indexOf(a.id) - dndVolgorde.indexOf(b.id)
+    );
   }, [actiesRaw, dndVolgorde]);
 
   const weeklyDoneThisWeek = useMemo(
@@ -360,7 +399,17 @@ export default function ActieLijstPagina() {
 
   const afgehandeldSorted = useMemo(
     () =>
-      actiesRaw.filter((a) => a.voltooid).sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0)),
+      actiesRaw
+        .filter((a) => a.voltooid)
+        .sort((a, b) => {
+          const aDate = a.afgehandeld_op
+            ? new Date(a.afgehandeld_op).getTime()
+            : 0;
+          const bDate = b.afgehandeld_op
+            ? new Date(b.afgehandeld_op).getTime()
+            : 0;
+          return bDate - aDate;
+        }),
     [actiesRaw]
   );
 
@@ -368,12 +417,13 @@ export default function ActieLijstPagina() {
 
   return (
     <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-      {/* Lijstenkolom */}
       <div className="col-span-1 space-y-2">
         <h2 className="text-lg font-semibold">Actielijst</h2>
 
         {lijstLoading && <div className="text-gray-600">Bezig met laden...</div>}
-        {lijstError && <div className="text-red-600">Fout bij laden actielijsten.</div>}
+        {lijstError && (
+          <div className="text-red-600">Fout bij laden actielijsten.</div>
+        )}
         {!lijstLoading && !lijstError && isEmptyLists && (
           <div className="text-gray-600">Geen actielijsten gevonden.</div>
         )}
@@ -387,16 +437,26 @@ export default function ActieLijstPagina() {
                 <div key={lijst.id} className="flex items-center gap-2">
                   <button
                     className={`flex-1 flex items-center gap-2 px-4 py-2 border rounded ${
-                      lijst.id === geselecteerdeLijst?.id ? "bg-gray-100 font-semibold" : "hover:bg-gray-50"
+                      lijst.id === geselecteerdeLijst?.id
+                        ? "bg-gray-100 font-semibold"
+                        : "hover:bg-gray-50"
                     }`}
                     onClick={() => setGeselecteerdeLijst(lijst)}
                   >
                     <span>{lijst.icoon}</span> {lijst.naam}
                   </button>
-                  <button onClick={() => setLijstEdit({ ...lijst })} className="text-sm text-blue-600">
+
+                  <button
+                    onClick={() => setLijstEdit({ ...lijst })}
+                    className="text-sm text-blue-600"
+                  >
                     ✏️
                   </button>
-                  <button onClick={() => lijstVerwijderen(lijst.id)} className="text-sm text-red-500">
+
+                  <button
+                    onClick={() => lijstVerwijderen(lijst.id)}
+                    className="text-sm text-red-500"
+                  >
                     🗑️
                   </button>
                 </div>
@@ -409,7 +469,10 @@ export default function ActieLijstPagina() {
                 onChange={(e) => setNieuweLijstNaam(e.target.value)}
                 placeholder="Nieuwe lijstnaam"
               />
-              <button onClick={nieuweLijstToevoegen} className="w-full bg-blue-500 text-white py-1 rounded">
+              <button
+                onClick={nieuweLijstToevoegen}
+                className="w-full bg-blue-500 text-white py-1 rounded"
+              >
                 + Nieuwe lijst
               </button>
             </div>
@@ -417,17 +480,27 @@ export default function ActieLijstPagina() {
             {lijstEdit && (
               <div className="pt-4 space-y-2 border-t mt-4">
                 <h3 className="text-sm font-semibold">Bewerk lijst</h3>
+
                 <input
                   className="w-full border rounded px-2 py-1"
                   value={lijstEdit.naam}
-                  onChange={(e) => setLijstEdit({ ...lijstEdit, naam: e.target.value })}
+                  onChange={(e) =>
+                    setLijstEdit({ ...lijstEdit, naam: e.target.value })
+                  }
                 />
+
                 <input
                   className="w-full border rounded px-2 py-1"
                   value={lijstEdit.icoon}
-                  onChange={(e) => setLijstEdit({ ...lijstEdit, icoon: e.target.value })}
+                  onChange={(e) =>
+                    setLijstEdit({ ...lijstEdit, icoon: e.target.value })
+                  }
                 />
-                <button onClick={lijstBijwerken} className="w-full bg-green-600 text-white py-1 rounded">
+
+                <button
+                  onClick={lijstBijwerken}
+                  className="w-full bg-green-600 text-white py-1 rounded"
+                >
                   Opslaan
                 </button>
               </div>
@@ -436,32 +509,45 @@ export default function ActieLijstPagina() {
         )}
       </div>
 
-      {/* Rechterkolom */}
       <div className="col-span-2">
-        <h2 className="text-lg font-semibold mb-4">{geselecteerdeLijst?.naam ?? "—"}</h2>
+        <h2 className="text-lg font-semibold mb-4">
+          {geselecteerdeLijst?.naam ?? "—"}
+        </h2>
 
-        {/* OPEN acties (DnD + toggles) */}
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={async ({ active, over }) => {
             if (!over || active.id === over.id) return;
+
             const oudeIndex = dndVolgorde.indexOf(active.id as number);
             const nieuweIndex = dndVolgorde.indexOf(over.id as number);
+
             if (oudeIndex === -1 || nieuweIndex === -1) return;
 
-            const nieuweVolgorde = arrayMove(dndVolgorde, oudeIndex, nieuweIndex);
+            const nieuweVolgorde = arrayMove(
+              dndVolgorde,
+              oudeIndex,
+              nieuweIndex
+            );
+
             setDndVolgorde(nieuweVolgorde);
 
             await fetch("/api/acties/volgorde", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ ids: nieuweVolgorde.map((id, i) => ({ id, volgorde: i })) }),
+              body: JSON.stringify({
+                ids: nieuweVolgorde.map((id, i) => ({ id, volgorde: i })),
+              }),
             });
+
             mutate();
           }}
         >
-          <SortableContext items={dndVolgorde} strategy={verticalListSortingStrategy}>
+          <SortableContext
+            items={dndVolgorde}
+            strategy={verticalListSortingStrategy}
+          >
             {openActiesSorted.map((actie) => (
               <SortableActieRow
                 key={actie.id}
@@ -477,10 +563,10 @@ export default function ActieLijstPagina() {
           </SortableContext>
         </DndContext>
 
-        {/* Nieuwe actie: Tiptap editor */}
         <div className="mt-4 border rounded">
           <div className="flex items-center gap-2 bg-gray-50 border-b px-2 py-1 rounded-t">
             <span className="text-sm text-gray-600">Nieuwe actie</span>
+
             <label className="flex items-center gap-2 text-sm ml-auto">
               <input
                 type="checkbox"
@@ -489,6 +575,7 @@ export default function ActieLijstPagina() {
               />
               Wekelijks
             </label>
+
             <button
               onClick={nieuweActieToevoegen}
               className="ml-2 bg-blue-600 text-white px-3 py-1 rounded"
@@ -496,6 +583,7 @@ export default function ActieLijstPagina() {
               Toevoegen
             </button>
           </div>
+
           <NotitieEditor
             value={nieuweActieHtml}
             onChange={setNieuweActieHtml}
@@ -504,7 +592,6 @@ export default function ActieLijstPagina() {
           />
         </div>
 
-        {/* Modaal: bewerk actie (Tiptap) */}
         {actieEdit && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white p-6 rounded shadow-lg w-full max-w-3xl">
@@ -513,7 +600,11 @@ export default function ActieLijstPagina() {
               <div className="mb-3">
                 <NotitieEditor
                   value={actieEdit.tekst}
-                  onChange={(html) => setActieEdit((prev) => (prev ? { ...prev, tekst: html } : prev))}
+                  onChange={(html) =>
+                    setActieEdit((prev) =>
+                      prev ? { ...prev, tekst: html } : prev
+                    )
+                  }
                   editable
                   placeholder="Wijzig de actie…"
                 />
@@ -523,7 +614,12 @@ export default function ActieLijstPagina() {
                 <input
                   type="checkbox"
                   checked={actieEdit.is_weekly}
-                  onChange={(e) => setActieEdit({ ...actieEdit, is_weekly: e.target.checked })}
+                  onChange={(e) =>
+                    setActieEdit({
+                      ...actieEdit,
+                      is_weekly: e.target.checked,
+                    })
+                  }
                 />
                 Wekelijks
               </label>
@@ -532,12 +628,15 @@ export default function ActieLijstPagina() {
                 <button
                   type="button"
                   onClick={async () => {
-                    if (confirm("Weet je zeker dat je deze actie wilt verwijderen?")) {
+                    if (
+                      confirm("Weet je zeker dat je deze actie wilt verwijderen?")
+                    ) {
                       await fetch("/api/acties", {
                         method: "DELETE",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ id: actieEdit.id }),
                       });
+
                       setActieEdit(null);
                       mutate();
                     }
@@ -546,15 +645,27 @@ export default function ActieLijstPagina() {
                 >
                   🗑️ Verwijderen
                 </button>
-                <button type="button" onClick={() => setActieEdit(null)} className="text-gray-600">
+
+                <button
+                  type="button"
+                  onClick={() => setActieEdit(null)}
+                  className="text-gray-600"
+                >
                   Annuleren
                 </button>
+
                 <button
                   type="button"
                   onClick={async () => {
                     if (!actieEdit) return;
                     if (isHtmlEmpty(actieEdit.tekst)) return;
-                    await updateActie(actieEdit.id, actieEdit.tekst, actieEdit.is_weekly);
+
+                    await updateActie(
+                      actieEdit.id,
+                      actieEdit.tekst,
+                      actieEdit.is_weekly
+                    );
+
                     setActieEdit(null);
                   }}
                   className="bg-blue-600 text-white px-4 py-1 rounded"
@@ -566,12 +677,12 @@ export default function ActieLijstPagina() {
           </div>
         )}
 
-        {/* Deze week gedaan (wekelijks) */}
         {weeklyDoneThisWeek.length > 0 && (
           <details className="mt-8">
             <summary className="cursor-pointer text-sm font-semibold text-emerald-700">
               Deze week gedaan ({weeklyDoneThisWeek.length})
             </summary>
+
             <div className="mt-2 space-y-2">
               {weeklyDoneThisWeek.map((actie) => (
                 <StaticActieRow
@@ -588,10 +699,12 @@ export default function ActieLijstPagina() {
           </details>
         )}
 
-        {/* Afgehandeld (definitief) */}
         {afgehandeldSorted.length > 0 && (
           <div className="mt-8">
-            <h3 className="text-sm font-semibold text-gray-600 mb-2">Afgehandeld</h3>
+            <h3 className="text-sm font-semibold text-gray-600 mb-2">
+              Afgehandeld
+            </h3>
+
             <div className="space-y-2">
               {afgehandeldSorted.map((actie) => (
                 <StaticActieRow
