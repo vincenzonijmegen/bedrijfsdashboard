@@ -30,7 +30,7 @@ import {
   Truck,
 } from "lucide-react";
 import { EyeOff } from "lucide-react";
-import { registerRoute } from "./_components/routeRegistry"; // ✅ breadcrumb-registratie
+import { registerRoute } from "./_components/routeRegistry";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -43,14 +43,6 @@ type SollicitatieAfspraakVandaag = {
   status: string;
 };
 
-const { data: afsprakenVandaag } = useSWR<SollicitatieAfspraakVandaag[]>(
-  "/api/calendly/vandaag",
-  fetcher,
-  { refreshInterval: 60000 }
-);
-
-
-
 const bgColorMap: Record<string, string> = {
   green: "bg-green-100 text-green-900 hover:bg-green-200",
   pink: "bg-pink-100 text-pink-900 hover:bg-pink-200",
@@ -61,8 +53,8 @@ const bgColorMap: Record<string, string> = {
   orange: "bg-orange-100 text-orange-900 hover:bg-orange-200",
   gray: "bg-gray-100 text-gray-900 hover:bg-gray-200",
   yellow: "bg-yellow-100 text-yellow-900 hover:bg-yellow-200",
-  amber: "bg-amber-100  text-amber-900  hover:bg-amber-200",
-  teal: "bg-teal-100   text-teal-900   hover:bg-teal-200",
+  amber: "bg-amber-100 text-amber-900 hover:bg-amber-200",
+  teal: "bg-teal-100 text-teal-900 hover:bg-teal-200",
   indigo: "bg-indigo-100 text-indigo-900 hover:bg-indigo-200",
   emerald: "bg-emerald-100 text-emerald-900 hover:bg-emerald-200",
 };
@@ -72,51 +64,10 @@ type LinkCardProps = {
   label: string;
   color: string;
   Icon: React.FC<React.SVGProps<SVGSVGElement>>;
-  breadcrumb?: string; // ✅ optioneel
+  breadcrumb?: string;
   target?: string;
   rel?: string;
 };
-
-
-{afsprakenVandaag && afsprakenVandaag.length > 0 && (
-  <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4">
-    <div className="mb-2 flex items-center justify-between">
-      <h2 className="font-semibold text-green-900">
-        Sollicitatiegesprekken vandaag
-      </h2>
-      <Link
-        href="/admin/sollicitaties/afspraken"
-        className="text-sm underline text-green-800"
-      >
-        Bekijk alles
-      </Link>
-    </div>
-
-    <div className="space-y-2">
-      {afsprakenVandaag.map((a) => (
-        <div
-          key={a.id}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg bg-white px-3 py-2 text-sm border"
-        >
-          <div>
-            <div className="font-medium text-slate-900">{a.naam}</div>
-            <div className="text-slate-500">{a.email}</div>
-          </div>
-          <div className="mt-1 sm:mt-0 font-semibold text-slate-800">
-            {new Date(a.starttijd).toLocaleTimeString("nl-NL", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
-
-
-
-
 
 function useVragenTeller(intervalMs = 10000) {
   const [teller, setTeller] = React.useState<number | null>(null);
@@ -126,7 +77,9 @@ function useVragenTeller(intervalMs = 10000) {
       const res = await fetch("/api/admin/vragen", { credentials: "include" });
       if (!res.ok) return;
       const data = await res.json();
-      const open = Array.isArray(data) ? data.filter((v: any) => !v.antwoord).length : 0;
+      const open = Array.isArray(data)
+        ? data.filter((v: any) => !v.antwoord).length
+        : 0;
       setTeller(open);
     } catch {
       setTeller(null);
@@ -142,8 +95,15 @@ function useVragenTeller(intervalMs = 10000) {
   return teller;
 }
 
-const LinkCard = ({ href, label, color, Icon, breadcrumb, target, rel }: LinkCardProps) => {
-  // ✅ runtime-registratie (voegt alleen toe als nog niet aanwezig)
+const LinkCard = ({
+  href,
+  label,
+  color,
+  Icon,
+  breadcrumb,
+  target,
+  rel,
+}: LinkCardProps) => {
   if (breadcrumb) registerRoute(href, breadcrumb);
 
   return (
@@ -170,20 +130,38 @@ type SectionProps = {
   setActiveSection: (id: string) => void;
 };
 
-const Section = ({ id, title, children, color, activeSection, setActiveSection }: SectionProps) => {
+const Section = ({
+  id,
+  title,
+  children,
+  color,
+  activeSection,
+  setActiveSection,
+}: SectionProps) => {
   const open = id === activeSection;
+
   return (
     <section className="mb-6 border rounded-xl overflow-hidden shadow-sm">
       <button
         onClick={() => setActiveSection(open ? "" : id)}
         className={`w-full flex items-center justify-between px-6 py-3 font-semibold tracking-tight transition ${
-          bgColorMap[color || ""] || "bg-gray-100 text-gray-900 hover:bg-gray-200"
+          bgColorMap[color || ""] ||
+          "bg-gray-100 text-gray-900 hover:bg-gray-200"
         }`}
       >
         <span>{title}</span>
-        {open ? <ChevronDown className="w-5 h-5 opacity-70" /> : <ChevronRight className="w-5 h-5 opacity-70" />}
+        {open ? (
+          <ChevronDown className="w-5 h-5 opacity-70" />
+        ) : (
+          <ChevronRight className="w-5 h-5 opacity-70" />
+        )}
       </button>
-      {open && <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-white">{children}</div>}
+
+      {open && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-white">
+          {children}
+        </div>
+      )}
     </section>
   );
 };
@@ -198,6 +176,7 @@ const SubSection = ({
   children: React.ReactNode;
 }) => {
   const [open, setOpen] = React.useState(false);
+
   return (
     <div className="col-span-full border rounded-md mb-2">
       <button
@@ -207,9 +186,18 @@ const SubSection = ({
         }`}
       >
         <span>{title}</span>
-        {open ? <ChevronDown className="w-4 h-4 opacity-70" /> : <ChevronRight className="w-4 h-4 opacity-70" />}
+        {open ? (
+          <ChevronDown className="w-4 h-4 opacity-70" />
+        ) : (
+          <ChevronRight className="w-4 h-4 opacity-70" />
+        )}
       </button>
-      {open && <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 bg-white">{children}</div>}
+
+      {open && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 bg-white">
+          {children}
+        </div>
+      )}
     </div>
   );
 };
@@ -217,6 +205,7 @@ const SubSection = ({
 function DailyTotalDisplay({ mask = false }: { mask?: boolean }) {
   const today = new Date().toISOString().slice(0, 10).split("-").reverse().join("-");
   const { data } = useSWR("/api/kassa/omzet?start=" + today + "&totalen=1", fetcher);
+
   const record = Array.isArray(data) ? data[0] : null;
   const cash = record ? parseFloat(record.Cash) || 0 : 0;
   const pin = record ? parseFloat(record.Pin) || 0 : 0;
@@ -224,24 +213,30 @@ function DailyTotalDisplay({ mask = false }: { mask?: boolean }) {
   const total = cash + pin + bon;
 
   if (mask) {
-    return <span className="text-lg font-semibold tracking-widest select-none">••••••</span>;
+    return (
+      <span className="text-lg font-semibold tracking-widest select-none">
+        ••••••
+      </span>
+    );
   }
 
   return (
     <span className="text-lg font-semibold">
-      € {total.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      €{" "}
+      {total.toLocaleString("nl-NL", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}
     </span>
   );
 }
 
 export default function AdminDashboard() {
-  // Hooks altijd bovenaan
   const [activeSection, setActive] = React.useState<string>(() => {
     if (typeof window === "undefined") return "meest";
     return localStorage.getItem("activeSection") || "meest";
   });
 
-  // Omzet verbergen/tonen (onthouden in localStorage)
   const [hideOmzet, setHideOmzet] = React.useState<boolean>(() => {
     if (typeof window === "undefined") return false;
     try {
@@ -251,7 +246,13 @@ export default function AdminDashboard() {
     }
   });
 
-  const openVragenTeller = useVragenTeller(10000); // elke 10s tijdens testen
+  const { data: afsprakenVandaag } = useSWR<SollicitatieAfspraakVandaag[]>(
+    "/api/calendly/vandaag",
+    fetcher,
+    { refreshInterval: 60000 }
+  );
+
+  const openVragenTeller = useVragenTeller(10000);
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -260,6 +261,7 @@ export default function AdminDashboard() {
   }, [hideOmzet]);
 
   let user = null;
+
   if (typeof window !== "undefined") {
     try {
       user = JSON.parse(localStorage.getItem("gebruiker") || "null");
@@ -268,7 +270,6 @@ export default function AdminDashboard() {
     }
   }
 
-  // Autorisatie
   if (!user || user.rol !== "beheerder") {
     if (typeof window !== "undefined") {
       window.location.href = "/sign-in";
@@ -286,11 +287,14 @@ export default function AdminDashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
         <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
 
-        {/* Rechts: omzet + verbergknop */}
         <div className="mt-2 sm:mt-0 flex items-center gap-2">
-          <Link href="/admin/dashboard" className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200">
+          <Link
+            href="/admin/dashboard"
+            className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200"
+          >
             <DailyTotalDisplay mask={hideOmzet} />
           </Link>
+
           <button
             type="button"
             onClick={() => setHideOmzet((v) => !v)}
@@ -298,22 +302,63 @@ export default function AdminDashboard() {
             title={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
             aria-label={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
           >
-            {hideOmzet ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+            {hideOmzet ? (
+              <Eye className="w-5 h-5" />
+            ) : (
+              <EyeOff className="w-5 h-5" />
+            )}
           </button>
         </div>
       </div>
 
-      {/* Melding over vragen onder dashboardtitel, altijd apart */}
+      {afsprakenVandaag && afsprakenVandaag.length > 0 && (
+        <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="font-semibold text-green-900">
+              Sollicitatiegesprekken vandaag
+            </h2>
+
+            <Link
+              href="/admin/sollicitaties/afspraken"
+              className="text-sm underline text-green-800"
+            >
+              Bekijk alles
+            </Link>
+          </div>
+
+          <div className="space-y-2">
+            {afsprakenVandaag.map((a) => (
+              <div
+                key={a.id}
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg bg-white px-3 py-2 text-sm border"
+              >
+                <div>
+                  <div className="font-medium text-slate-900">{a.naam}</div>
+                  <div className="text-slate-500">{a.email}</div>
+                </div>
+
+                <div className="mt-1 sm:mt-0 font-semibold text-slate-800">
+                  {new Date(a.starttijd).toLocaleTimeString("nl-NL", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {openVragenTeller !== null && openVragenTeller > 0 && (
         <div className="mb-6 text-sm text-red-700 font-semibold">
-          📬 {openVragenTeller} onbeantwoorde vragen{openVragenTeller > 1 ? "en" : ""}.
+          📬 {openVragenTeller} onbeantwoorde vragen
+          {openVragenTeller > 1 ? "en" : ""}.
           <Link href="/admin/vragen" className="ml-2 underline text-blue-600">
             Bekijk nu
           </Link>
         </div>
       )}
 
-      {/* 👇 Meest gebruikte onderdelen */}
       <Section
         id="meest"
         title="👥 Meest gebruikte onderdelen"
@@ -327,18 +372,11 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} breadcrumb="Planning – Rooster" />
         <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} breadcrumb="Planning – Open Shifts" />
         <LinkCard href="/admin/dossier" label="Dossiers" color="orange" Icon={Folder} breadcrumb="Medewerkers – Dossiers" />
-        <LinkCard
-          href="/admin/voorraad/bestelpagina"
-          label="Bestel-app"
-          color="pink"
-          Icon={ShoppingCart}
-          breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Bestel-app"
-        />
+        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ShoppingCart} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Bestel-app" />
         <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} breadcrumb="Import / Invoer – Kasstaat invullen" />
         <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Kasboek bijwerken" />
       </Section>
 
-      {/* 👇 Management */}
       <Section id="management" title="📘 Management" color="blue" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} breadcrumb="Management – Actielijsten" />
         <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} breadcrumb="Management – Notities" />
@@ -346,27 +384,10 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} breadcrumb="Management – Schoonmaakroutines" />
         <LinkCard href="/admin/contacten" label="Relaties" color="blue" Icon={Folder} breadcrumb="Management – Relaties" />
         <LinkCard href="/admin/routines" label="Routines HACCP" color="blue" Icon={Folder} breadcrumb="Management – Routines HACCP" />
-        <LinkCard
-          href="/keuken/login"
-          label="Keuken-app openen"
-          color="blue"
-          Icon={Wrench}
-          breadcrumb="Keuken-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        />
-        <LinkCard
-          href="/winkel/login"
-          label="winkel-app openen"
-          color="blue"
-          Icon={Wrench}
-          breadcrumb="Winkel-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        />
+        <LinkCard href="/keuken/login" label="Keuken-app openen" color="blue" Icon={Wrench} breadcrumb="Keuken-app" target="_blank" rel="noopener noreferrer" />
+        <LinkCard href="/winkel/login" label="winkel-app openen" color="blue" Icon={Wrench} breadcrumb="Winkel-app" target="_blank" rel="noopener noreferrer" />
       </Section>
 
-      {/* 👇 Planning */}
       <Section id="planning" title="📅 Planning" color="orange" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} breadcrumb="Planning – Rooster" />
         <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} breadcrumb="Planning – Open Shifts" />
@@ -377,52 +398,18 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/beschikbaarheid/periode" label="Beschikbaarheid per periode" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid per periode" />
       </Section>
 
-      {/* 👇 Rapportages */}
-<Section id="rapportages" title="📊 Rapportages" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
-  <LinkCard
-    href="/admin/rapportage/financieel"
-    label="Financiële Rapporten"
-    color="purple"
-    Icon={BarChart2}
-    breadcrumb="Rapportages – Financiële Rapporten"
-  />
-  <LinkCard
-    href="/admin/rapportage/medewerkers"
-    label="Medewerkers Rapporten"
-    color="purple"
-    Icon={BarChart2}
-    breadcrumb="Rapportages – Medewerkers Rapporten"
-  />
-  <LinkCard
-    href="/admin/aftekenlijsten"
-    label="Overzicht formulieren/rapporten"
-    color="purple"
-    Icon={BarChart2}
-    breadcrumb="Rapportages – Formulieren/-rapporten"
-  />
+      <Section id="rapportages" title="📊 Rapportages" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
+        <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages – Financiële Rapporten" />
+        <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers Rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages – Medewerkers Rapporten" />
+        <LinkCard href="/admin/aftekenlijsten" label="Overzicht formulieren/rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages – Formulieren/-rapporten" />
+        <LinkCard href="/admin/rapportage/haccp" label="HACCP Rapportage" color="purple" Icon={BarChart2} breadcrumb="Rapportages – HACCP" />
+      </Section>
 
-  {/* NIEUW */}
-  <LinkCard
-    href="/admin/rapportage/haccp"
-    label="HACCP Rapportage"
-    color="purple"
-    Icon={BarChart2}
-    breadcrumb="Rapportages – HACCP"
-  />
-</Section>
-
-      {/* 👇 Medewerkers */}
       <Section id="medewerkers" title="👥 Medewerkers" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} breadcrumb="Medewerkers – Medewerkers beheren" />
-        <LinkCard
-          href="/admin/medewerkers/overzicht"
-          label="Gegevens medewerkers"
-          color="green"
-          Icon={Users}
-          breadcrumb="Medewerkers – Gegevens medewerkers"
-        />
+        <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="green" Icon={Users} breadcrumb="Medewerkers – Gegevens medewerkers" />
         <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="green" Icon={FileText} breadcrumb="Medewerkers – Sollicitatiemails" />
-        <LinkCard href="/admin/sollicitaties/afspraken" label="Sollicitatiegesprekken" color="green" Icon={CalendarDays} breadcrumb="Medewerkers – Sollicitatiegesprekken"/>
+        <LinkCard href="/admin/sollicitaties/afspraken" label="Sollicitatiegesprekken" color="green" Icon={CalendarDays} breadcrumb="Medewerkers – Sollicitatiegesprekken" />
         <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} breadcrumb="Medewerkers – Functies" />
         <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} breadcrumb="Medewerkers – Dossiers" />
 
@@ -439,84 +426,29 @@ export default function AdminDashboard() {
         </SubSection>
       </Section>
 
-      {/* 👇 Voorraadbeheer, Recepturen & Allergenen */}
-      <Section
-        id="voorraad"
-        title="📦 Voorraadbeheer, Recepturen & Allergenen"
-        color="pink"
-        activeSection={activeSection}
-        setActiveSection={setActiveSection}
-      >
-        <LinkCard
-          href="/admin/leveranciers"
-          label="Leveranciers beheren"
-          color="pink"
-          Icon={CreditCard}
-          breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Leveranciers beheren"
-        />
+      <Section id="voorraad" title="📦 Voorraadbeheer, Recepturen & Allergenen" color="pink" activeSection={activeSection} setActiveSection={setActiveSection}>
+        <LinkCard href="/admin/leveranciers" label="Leveranciers beheren" color="pink" Icon={CreditCard} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Leveranciers beheren" />
         <LinkCard href="/admin/suikervrij" label="Suikervrij productie" color="pink" Icon={IceCream} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Suikervrij productie" />
         <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="pink" Icon={Box} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Artikelen beheren" />
-        <LinkCard
-          href="/admin/voorraad/bestelpagina"
-          label="Bestel-app"
-          color="pink"
-          Icon={ClipboardList}
-          breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Bestel-app"
-        />
+        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ClipboardList} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Bestel-app" />
         <LinkCard href="/admin/recepten" label="Receptprijs" color="pink" Icon={Truck} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Receptprijs" />
-
-        <LinkCard
-          href="/admin/recepturen"
-          label="Recepturen keuken"
-          color="pink"
-          Icon={List}
-          breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Recepturen keuken"
-        />
-
-        <LinkCard
-          href="/admin/keuken/productie-log"
-          label="Productie keuken"
-          color="pink"
-          Icon={BarChart2}
-          breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Productie keuken"
-        />
-
-        <LinkCard
-          href="/admin/keuken/categorieen"
-          label="Categorie Keuken"
-          color="pink"
-          Icon={Folder}
-          breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Categorieen"
-        />
-
-        <LinkCard
-          href="/admin/producten/allergenen"
-          label="Allergenenregistratie"
-          color="pink"
-          Icon={List}
-          breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Allergenenregistratie"
-        />
+        <LinkCard href="/admin/recepturen" label="Recepturen keuken" color="pink" Icon={List} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Recepturen keuken" />
+        <LinkCard href="/admin/keuken/productie-log" label="Productie keuken" color="pink" Icon={BarChart2} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Productie keuken" />
+        <LinkCard href="/admin/keuken/categorieen" label="Categorie Keuken" color="pink" Icon={Folder} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Categorieen" />
+        <LinkCard href="/admin/producten/allergenen" label="Allergenenregistratie" color="pink" Icon={List} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Allergenenregistratie" />
         <LinkCard href="/admin/recepten/allergenen" label="Allergenenkaart" color="pink" Icon={List} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Allergenenkaart" />
       </Section>
 
-      {/* 👇 Import / Invoer */}
       <Section id="import_invoer" title="📊 Import / Invoer" color="teal" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Omzet inlezen" />
         <LinkCard href="/admin/mypos" label="Inlezen myPOS (maand)" color="teal" Icon={Archive} breadcrumb="Import / Invoer – Inlezen myPOS (maand)" />
         <LinkCard href="/admin/omzet/loonkosten" label="Invoeren loonkosten" color="teal" Icon={Archive} breadcrumb="Import / Invoer – Invoeren loonkosten" />
-        <LinkCard
-          href="/admin/aftekenlijsten/upload"
-          label="Upload formulieren"
-          color="teal"
-          Icon={Archive}
-          breadcrumb="Import / Invoer – Upload formulieren"
-        />
+        <LinkCard href="/admin/aftekenlijsten/upload" label="Upload formulieren" color="teal" Icon={Archive} breadcrumb="Import / Invoer – Upload formulieren" />
         <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} breadcrumb="Import / Invoer – Kasstaat invullen" />
         <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Kasboek bijwerken" />
         <LinkCard href="/admin/omzet/omzetdagen" label="Omzetdagen aanpassen" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Omzetdagen aanpassen" />
       </Section>
 
-      {/* 👇 Prognosetools */}
       <Section id="prognosetools" title="📊 Prognosetools" color="indigo" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/planning/forecast" label="Forecast planning" color="indigo" Icon={Wrench} breadcrumb="Prognosetools – Forecast planning" />
       </Section>
