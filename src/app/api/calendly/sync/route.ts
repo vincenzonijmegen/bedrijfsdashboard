@@ -9,10 +9,15 @@ async function syncCalendly() {
   const user = process.env.CALENDLY_USER_URI;
 
   if (!token || !user) {
-    return NextResponse.json({ error: "Missing env vars" }, { status: 500 });
-  }
+  return NextResponse.json({ error: "Missing env vars" }, { status: 500 });
+}
 
-  const minStartTime = new Date().toISOString();
+await db.query(`
+  DELETE FROM sollicitatie_afspraken
+  WHERE starttijd >= CURRENT_DATE
+`);
+
+const minStartTime = new Date().toISOString();
 
   const res = await fetch(
     `https://api.calendly.com/scheduled_events?user=${encodeURIComponent(
