@@ -364,6 +364,7 @@ export default function AdminDashboard() {
           breadcrumb="Medewerkers – Gegevens medewerkers"
         />
         <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="green" Icon={FileText} breadcrumb="Medewerkers – Sollicitatiemails" />
+        <LinkCard href="/admin/sollicitaties/afspraken" label="Sollicitatiegesprekken" color="green" Icon={CalendarDays} breadcrumb="Medewerkers – Sollicitatiegesprekken"/>
         <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} breadcrumb="Medewerkers – Functies" />
         <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} breadcrumb="Medewerkers – Dossiers" />
 
