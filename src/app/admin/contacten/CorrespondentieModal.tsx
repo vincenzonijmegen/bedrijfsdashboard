@@ -130,26 +130,30 @@ export default function CorrespondentieModal({ open, corrForm, setCorrForm, onCl
             />
           </div>
           <div className="flex flex-col">
-            <label>PDF upload (optioneel)</label>
-            <input
-              key={corrForm.contact_id ?? 'file'}
-              type="file"
-              accept="application/pdf"
-              onChange={handleFileUpload}
-              className="border rounded px-2 py-1"
-              disabled={uploading}
-            />
-            {uploading && <span className="text-sm text-gray-500 mt-1">Bezig met uploaden...</span>}
-            {corrForm.bijlage_url && (
-              <a
-                href={corrForm.bijlage_url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-blue-600 underline mt-1 block"
-              >
-                Bekijk geüploade PDF
-              </a>
-            )}
+            <label>Bestand uploaden (optioneel)</label>
+<input
+  key={corrForm.contact_id ?? 'file'}
+  type="file"
+  accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.jpg,.jpeg,.png,.webp"
+  onChange={handleFileUpload}
+  className="border rounded px-2 py-1"
+  disabled={uploading}
+/>
+{uploading && (
+  <span className="text-sm text-gray-500 mt-1">
+    Bezig met uploaden...
+  </span>
+)}
+{corrForm.bijlage_url && (
+  <a
+    href={corrForm.bijlage_url}
+    target="_blank"
+    rel="noreferrer"
+    className="text-blue-600 underline mt-1 block"
+  >
+    Bekijk geüpload bestand
+  </a>
+)}
           </div>
           <div className="flex justify-between space-x-2 pt-4">
             <button type="button" onClick={onClose} className="px-4 py-2 border rounded hover:bg-gray-100">Annuleer</button>
