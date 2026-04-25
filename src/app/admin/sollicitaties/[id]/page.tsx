@@ -1,4 +1,5 @@
 "use client";
+
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
@@ -36,31 +37,82 @@ export default function SollicitatieDetail({
   params: Promise<{ id: string }>;
 }) {
   const [id, setId] = useState<string | null>(null);
+  const [savingStatus, setSavingStatus] = useState(false);
 
   useMemo(() => {
     params.then((p) => setId(p.id));
   }, [params]);
 
-  const { data } = useSWR(
+  const { data, mutate } = useSWR(
     id ? `/api/sollicitaties/${id}` : null,
     fetcher
   );
+
+  async function updateStatus(status: string) {
+    if (!id) return;
+
+    try {
+      setSavingStatus(true);
+
+      const res = await fetch(`/api/sollicitaties/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json?.error || "Status aanpassen mislukt");
+      }
+
+      await mutate();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Status aanpassen mislukt");
+    } finally {
+      setSavingStatus(false);
+    }
+  }
 
   if (!data) return <div className="p-6">Laden...</div>;
 
   return (
     <main className="p-6 max-w-4xl mx-auto space-y-6">
       <Link
-  href="/admin/sollicitaties"
-  className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
->
-  ← Terug naar sollicitaties
-</Link>
+        href="/admin/sollicitaties"
+        className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+      >
+        ← Terug naar sollicitaties
+      </Link>
+
       <h1 className="text-2xl font-bold">
         {data.voornaam} {data.achternaam}
       </h1>
 
-      {/* GEGEVENS */}
+      <section className="rounded-xl border bg-white p-4">
+        <label className="mb-2 block text-sm font-medium text-slate-700">
+          Status sollicitatie
+        </label>
+
+        <select
+          value={data.status || "nieuw"}
+          onChange={(e) => updateStatus(e.target.value)}
+          disabled={savingStatus}
+          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+        >
+          <option value="nieuw">Nieuw</option>
+          <option value="uitgenodigd">Uitgenodigd</option>
+          <option value="gesprek gepland">Gesprek gepland</option>
+          <option value="in de wacht">In de wacht</option>
+          <option value="aangenomen">Aangenomen</option>
+          <option value="afgewezen">Afgewezen</option>
+        </select>
+
+        {savingStatus ? (
+          <p className="mt-2 text-xs text-slate-500">Status opslaan...</p>
+        ) : null}
+      </section>
+
       <section className="bg-white border rounded-xl p-4">
         <h2 className="font-semibold mb-2">Gegevens</h2>
         <div className="text-sm space-y-1">
@@ -71,15 +123,14 @@ export default function SollicitatieDetail({
             {data.woonplaats}
           </div>
           <div>
-  Geboortedatum: {formatDateNl(data.geboortedatum)}
-  {data.geboortedatum
-    ? ` (${berekenLeeftijd(data.geboortedatum)} jaar)`
-    : ""}
-</div>
+            Geboortedatum: {formatDateNl(data.geboortedatum)}
+            {data.geboortedatum
+              ? ` (${berekenLeeftijd(data.geboortedatum)} jaar)`
+              : ""}
+          </div>
         </div>
       </section>
 
-      {/* BESCHIKBAARHEID */}
       <section className="bg-white border rounded-xl p-4">
         <h2 className="font-semibold mb-2">Beschikbaarheid</h2>
         <ul className="list-disc ml-5 text-sm">
@@ -89,7 +140,6 @@ export default function SollicitatieDetail({
         </ul>
       </section>
 
-      {/* OVERIG */}
       <section className="bg-white border rounded-xl p-4">
         <h2 className="font-semibold mb-2">Overig</h2>
         <div className="text-sm space-y-1">
@@ -100,12 +150,9 @@ export default function SollicitatieDetail({
         </div>
       </section>
 
-      {/* MOTIVATIE */}
       <section className="bg-white border rounded-xl p-4">
         <h2 className="font-semibold mb-2">Motivatie</h2>
-        <p className="text-sm whitespace-pre-wrap">
-          {data.motivatie}
-        </p>
+        <p className="text-sm whitespace-pre-wrap">{data.motivatie}</p>
       </section>
     </main>
   );
