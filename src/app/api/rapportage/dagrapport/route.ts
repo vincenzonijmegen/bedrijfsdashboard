@@ -17,6 +17,9 @@ type HaccpRow = {
   sortering: number;
   afgetekend_door_naam: string | null;
   afgetekend_op: string | null;
+  status: "gedaan" | "overgeslagen" | null;
+  bron: "medewerker" | "leiding" | null;
+  overgeslagen_reden: string | null;
 };
 
 type ProductieRow = {
@@ -35,7 +38,7 @@ type DagomzetRow = {
 };
 
 const WEEKDAGEN = ["zo", "ma", "di", "wo", "do", "vr", "za"];
-const ISO_EVEN_REFERENCE = new Date("2026-01-05T00:00:00"); // maandag
+const ISO_EVEN_REFERENCE = new Date("2026-01-05T00:00:00");
 
 function parseDatum(input: string | null): Date {
   if (!input) {
@@ -84,11 +87,18 @@ function taakIsOpDatumZichtbaar(
   return true;
 }
 
-function getRoutineLabel(row: Pick<HaccpRow, "routine_naam" | "locatie" | "type">) {
+function getRoutineLabel(
+  row: Pick<HaccpRow, "routine_naam" | "locatie" | "type">
+) {
   if (row.routine_naam) return row.routine_naam;
 
-  const loc = row.locatie ? row.locatie.charAt(0).toUpperCase() + row.locatie.slice(1) : "";
-  const type = row.type ? row.type.charAt(0).toUpperCase() + row.type.slice(1) : "";
+  const loc = row.locatie
+    ? row.locatie.charAt(0).toUpperCase() + row.locatie.slice(1)
+    : "";
+  const type = row.type
+    ? row.type.charAt(0).toUpperCase() + row.type.slice(1)
+    : "";
+
   return `${type} ${loc}`.trim();
 }
 
@@ -156,28 +166,27 @@ async function getWeerVanDag(datum: string) {
     `&timezone=Europe%2FAmsterdam`;
 
   try {
-    const response = await fetch(url, {
-      cache: "no-store",
-    });
+    const response = await fetch(url, { cache: "no-store" });
 
-    if (!response.ok) {
-      return null;
-    }
+    if (!response.ok) return null;
 
     const json = await response.json();
-
     const daily = json?.daily;
-    if (!daily) {
-      return null;
-    }
 
-    const weatherCode = Array.isArray(daily.weather_code) ? daily.weather_code[0] : null;
+    if (!daily) return null;
+
+    const weatherCode = Array.isArray(daily.weather_code)
+      ? daily.weather_code[0]
+      : null;
+
     const maxTemp = Array.isArray(daily.temperature_2m_max)
       ? Number(daily.temperature_2m_max[0])
       : null;
+
     const minTemp = Array.isArray(daily.temperature_2m_min)
       ? Number(daily.temperature_2m_min[0])
       : null;
+
     const neerslag = Array.isArray(daily.precipitation_sum)
       ? Number(daily.precipitation_sum[0])
       : null;
@@ -222,7 +231,10 @@ export async function GET(req: NextRequest) {
         COALESCE(t.weekdagen, '[]'::jsonb) AS weekdagen,
         t.sortering,
         a.afgetekend_door_naam,
-        a.afgetekend_op
+        a.afgetekend_op,
+        a.status,
+        a.bron,
+        a.overgeslagen_reden
       FROM routines r
       JOIN routine_taken t
         ON t.routine_id = r.id
@@ -264,6 +276,9 @@ export async function GET(req: NextRequest) {
           afgetekend: boolean;
           afgetekendDoorNaam: string | null;
           afgetekendOp: string | null;
+          status: "gedaan" | "overgeslagen" | null;
+          bron: "medewerker" | "leiding" | null;
+          overgeslagenReden: string | null;
         }[];
       }
     >();
@@ -289,6 +304,7 @@ export async function GET(req: NextRequest) {
       const afgetekend = Boolean(row.afgetekend_op);
 
       groep.totaalTaken += 1;
+
       if (afgetekend) {
         groep.gedaanTaken += 1;
       } else {
@@ -301,6 +317,9 @@ export async function GET(req: NextRequest) {
         afgetekend,
         afgetekendDoorNaam: row.afgetekend_door_naam,
         afgetekendOp: row.afgetekend_op,
+        status: row.status,
+        bron: row.bron,
+        overgeslagenReden: row.overgeslagen_reden,
       });
     }
 
@@ -362,15 +381,15 @@ export async function GET(req: NextRequest) {
     );
 
     const [dagomzetResult, omzetPerUurResult, weer] = await Promise.all([
-db.query(
-  `
-  SELECT
-    ROUND(SUM(aantal * eenheidsprijs)) AS dagomzet
-  FROM rapportage.omzet
-  WHERE datum = $1::date
-  `,
-  [datum]
-),
+      db.query(
+        `
+        SELECT
+          ROUND(SUM(aantal * eenheidsprijs)) AS dagomzet
+        FROM rapportage.omzet
+        WHERE datum = $1::date
+        `,
+        [datum]
+      ),
       db.query(
         `
         SELECT
@@ -386,9 +405,9 @@ db.query(
       getWeerVanDag(datum),
     ]);
 
-const dagomzetRows = dagomzetResult.rows as DagomzetRow[];
-const rawDagomzet = dagomzetRows[0]?.dagomzet;
-const dagomzet = rawDagomzet == null ? null : Number(rawDagomzet);
+    const dagomzetRows = dagomzetResult.rows as DagomzetRow[];
+    const rawDagomzet = dagomzetRows[0]?.dagomzet;
+    const dagomzet = rawDagomzet == null ? null : Number(rawDagomzet);
 
     const omzetPerUurRows = omzetPerUurResult.rows as OmzetPerUurRow[];
     const omzetPerUur = omzetPerUurRows.map((row) => ({

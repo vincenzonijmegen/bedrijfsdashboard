@@ -21,13 +21,16 @@ type DagrapportResponse = {
     compleet: boolean;
     totaalTaken: number;
     gedaanTaken: number;
-    taken: {
-      taakId: number | string;
-      taakNaam: string;
-      afgetekend: boolean;
-      afgetekendDoorNaam: string | null;
-      afgetekendOp: string | null;
-    }[];
+taken: {
+  taakId: number | string;
+  taakNaam: string;
+  afgetekend: boolean;
+  afgetekendDoorNaam: string | null;
+  afgetekendOp: string | null;
+  status?: "gedaan" | "overgeslagen" | null;
+  bron?: "medewerker" | "leiding" | null;
+  overgeslagenReden?: string | null;
+}[];
   }[];
   productie: {
     categorie: string;
@@ -212,52 +215,77 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
     0
   );
 
-  const nietGedaanTaken = data.haccp.flatMap((groep) => {
-    const routineTitel = getRoutineLabel(groep.routineSlug, groep.routineNaam);
+  const afwijkendeTaken = data.haccp.flatMap((groep) => {
+  const routineTitel = getRoutineLabel(groep.routineSlug, groep.routineNaam);
 
-    return groep.taken
-      .filter((taak) => !taak.afgetekend)
-      .map((taak) => ({
-        routineTitel,
-        taakNaam: taak.taakNaam,
-      }));
-  });
+  return groep.taken
+    .filter((taak) => !taak.afgetekend || taak.status === "overgeslagen")
+    .map((taak) => ({
+      routineTitel,
+      taakNaam: taak.taakNaam,
+      afgetekend: taak.afgetekend,
+      status: taak.status,
+      bron: taak.bron,
+      afgetekendDoorNaam: taak.afgetekendDoorNaam,
+      afgetekendOp: taak.afgetekendOp,
+      overgeslagenReden: taak.overgeslagenReden,
+    }));
+});
 
   const belangrijkHtml =
-    nietGedaanTaken.length > 0
-      ? `
-        <div style="margin:0 0 28px 0;padding:18px;border:1px solid #fecaca;border-radius:18px;background:#fef2f2;">
-          <div style="font-size:18px;font-weight:800;color:#991b1b;margin-bottom:10px;">
-            ⚠️ Belangrijk
-          </div>
-          <div style="font-size:14px;color:#7f1d1d;margin-bottom:10px;">
-            De volgende HACCP-punten zijn niet afgehandeld:
-          </div>
-          <ul style="margin:0;padding-left:20px;color:#7f1d1d;font-size:14px;line-height:1.6;">
-            ${nietGedaanTaken
-              .map(
-                (item) => `
-                  <li>
-                    <strong>${escapeHtml(item.routineTitel)}</strong>: ${escapeHtml(
-                      item.taakNaam
-                    )}
-                  </li>
-                `
-              )
-              .join("")}
-          </ul>
+  afwijkendeTaken.length > 0
+    ? `
+      <div style="margin:0 0 28px 0;padding:18px;border:1px solid #fed7aa;border-radius:18px;background:#fff7ed;">
+        <div style="font-size:18px;font-weight:800;color:#9a3412;margin-bottom:10px;">
+          ⚠️ Belangrijk
         </div>
-      `
-      : `
-        <div style="margin:0 0 28px 0;padding:18px;border:1px solid #bbf7d0;border-radius:18px;background:#f0fdf4;">
-          <div style="font-size:18px;font-weight:800;color:#166534;">
-            ✅ Belangrijk
-          </div>
-          <div style="margin-top:8px;font-size:14px;color:#166534;">
-            Alle zichtbare HACCP-taken van ${escapeHtml(datumLabel)} zijn afgehandeld.
-          </div>
+        <div style="font-size:14px;color:#7c2d12;margin-bottom:10px;">
+          De volgende HACCP-punten vragen aandacht:
         </div>
-      `;
+        <ul style="margin:0;padding-left:20px;color:#7c2d12;font-size:14px;line-height:1.6;">
+          ${afwijkendeTaken
+            .map((item) => {
+              const isOvergeslagen = item.status === "overgeslagen";
+
+              return `
+                <li>
+                  <strong>${escapeHtml(item.routineTitel)}</strong>: ${escapeHtml(
+                    item.taakNaam
+                  )}
+                  ${
+                    isOvergeslagen
+                      ? `<br /><span style="color:#9a3412;">
+                          Geautoriseerd overgeslagen door ${escapeHtml(
+                            item.afgetekendDoorNaam || "leiding"
+                          )}${
+                          item.afgetekendOp
+                            ? ` · ${escapeHtml(formatTijd(item.afgetekendOp))}`
+                            : ""
+                        }${
+                          item.overgeslagenReden
+                            ? `<br />Reden: ${escapeHtml(item.overgeslagenReden)}`
+                            : ""
+                        }
+                        </span>`
+                      : `<br /><span style="color:#991b1b;">Niet afgehandeld</span>`
+                  }
+                </li>
+              `;
+            })
+            .join("")}
+        </ul>
+      </div>
+    `
+    : `
+      <div style="margin:0 0 28px 0;padding:18px;border:1px solid #bbf7d0;border-radius:18px;background:#f0fdf4;">
+        <div style="font-size:18px;font-weight:800;color:#166534;">
+          ✅ Belangrijk
+        </div>
+        <div style="margin-top:8px;font-size:14px;color:#166534;">
+          Geen openstaande of afwijkende HACCP-punten op ${escapeHtml(datumLabel)}.
+        </div>
+      </div>
+    `;
 
   const samenvattingKernHtml = `
     <div style="margin-bottom:20px;">
@@ -462,15 +490,29 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
           const statusBg = groep.compleet ? "#dcfce7" : "#fee2e2";
           const statusColor = groep.compleet ? "#166534" : "#991b1b";
 
-          const takenHtml = groep.taken
-            .map((taak) => {
-              const done = taak.afgetekend;
-              const icon = done ? "✅" : "❌";
-              const tekst = done
-                ? `${escapeHtml(taak.afgetekendDoorNaam || "")}${
-                    taak.afgetekendOp ? ` · ${formatTijd(taak.afgetekendOp)}` : ""
-                  }`
-                : "niet afgehandeld";
+          const afwijkendeTakenInGroep = groep.taken.filter(
+  (taak) => !taak.afgetekend || taak.status === "overgeslagen"
+);
+
+if (afwijkendeTakenInGroep.length === 0) {
+  return "";
+}
+
+const takenHtml = afwijkendeTakenInGroep
+  .map((taak) => {
+const isOvergeslagen = taak.status === "overgeslagen";
+const icon = isOvergeslagen ? "⚠️" : "❌";
+const tekst = isOvergeslagen
+  ? `Geautoriseerd overgeslagen door ${escapeHtml(
+      taak.afgetekendDoorNaam || "leiding"
+    )}${
+      taak.afgetekendOp ? ` · ${escapeHtml(formatTijd(taak.afgetekendOp))}` : ""
+    }${
+      taak.overgeslagenReden
+        ? ` · Reden: ${escapeHtml(taak.overgeslagenReden)}`
+        : ""
+    }`
+  : "niet afgehandeld";
 
               return `
                 <tr>
@@ -478,7 +520,7 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
                     ${escapeHtml(taak.taakNaam)}
                   </td>
                   <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:14px;color:${
-                    done ? "#166534" : "#991b1b"
+                    isOvergeslagen ? "#9a3412" : "#991b1b"
                   };white-space:nowrap;">
                     ${icon} ${escapeHtml(tekst)}
                   </td>
