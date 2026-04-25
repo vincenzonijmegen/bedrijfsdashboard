@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import useSWR from "swr";
+import Link from "next/link";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -49,12 +50,12 @@ export default function SollicitatieDetail({
 
   return (
     <main className="p-6 max-w-4xl mx-auto space-y-6">
-      <a
+      <Link
   href="/admin/sollicitaties"
   className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
 >
   ← Terug naar sollicitaties
-</a>
+</Link>
       <h1 className="text-2xl font-bold">
         {data.voornaam} {data.achternaam}
       </h1>
