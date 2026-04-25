@@ -185,6 +185,13 @@ export default function SollicitatieDetail({
         ← Terug naar sollicitaties
       </Link>
 
+      <Link
+  href={`/admin/sollicitaties/${id}/gesprek`}
+  className="mt-3 block w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-center text-sm font-medium text-slate-700 hover:bg-slate-50"
+>
+  Gespreksdocument openen
+</Link>
+
       <h1 className="text-2xl font-bold">
         {data.voornaam} {data.achternaam}
       </h1>
