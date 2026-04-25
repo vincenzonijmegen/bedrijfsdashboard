@@ -4,6 +4,31 @@ import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+function formatDateNl(value: string | null) {
+  if (!value) return "-";
+  const d = new Date(value);
+  return d.toLocaleDateString("nl-NL");
+}
+
+function berekenLeeftijd(value: string | null) {
+  if (!value) return null;
+
+  const geboortedatum = new Date(value);
+  const vandaag = new Date();
+
+  let leeftijd = vandaag.getFullYear() - geboortedatum.getFullYear();
+  const maandVerschil = vandaag.getMonth() - geboortedatum.getMonth();
+
+  if (
+    maandVerschil < 0 ||
+    (maandVerschil === 0 && vandaag.getDate() < geboortedatum.getDate())
+  ) {
+    leeftijd--;
+  }
+
+  return leeftijd;
+}
+
 export default function SollicitatieDetail({
   params,
 }: {
@@ -24,6 +49,12 @@ export default function SollicitatieDetail({
 
   return (
     <main className="p-6 max-w-4xl mx-auto space-y-6">
+      <a
+  href="/admin/sollicitaties"
+  className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+>
+  ← Terug naar sollicitaties
+</a>
       <h1 className="text-2xl font-bold">
         {data.voornaam} {data.achternaam}
       </h1>
@@ -38,7 +69,12 @@ export default function SollicitatieDetail({
             Adres: {data.adres} {data.huisnummer}, {data.postcode}{" "}
             {data.woonplaats}
           </div>
-          <div>Geboortedatum: {data.geboortedatum}</div>
+          <div>
+  Geboortedatum: {formatDateNl(data.geboortedatum)}
+  {data.geboortedatum
+    ? ` (${berekenLeeftijd(data.geboortedatum)} jaar)`
+    : ""}
+</div>
         </div>
       </section>
 
