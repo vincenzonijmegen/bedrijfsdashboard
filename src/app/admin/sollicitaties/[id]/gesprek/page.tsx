@@ -121,7 +121,23 @@ function groepeerFeestdagen(rows: { naam: string; datum: string }[]) {
   }
 
   addSingle("Vaderdag", "Vaderdag", false);
-  addRange("Zomerfeesten Nijmegen", "Zomerfeesten Nijmegen");
+  const zomerfeesten = rows.filter(
+  (r) =>
+    r.naam.toLowerCase().includes("zomerfeesten dag") ||
+    r.naam.toLowerCase() === "dag voor zomerfeesten"
+);
+
+if (zomerfeesten.length) {
+  regels.push({
+    label: "Zomerfeesten Nijmegen",
+    waarde:
+      zomerfeesten.length === 1
+        ? formatDateShort(zomerfeesten[0].datum)
+        : `${formatDateShort(zomerfeesten[0].datum)} t/m ${formatDateShort(
+            zomerfeesten[zomerfeesten.length - 1].datum
+          )}`,
+  });
+}
 
   return regels;
 }
