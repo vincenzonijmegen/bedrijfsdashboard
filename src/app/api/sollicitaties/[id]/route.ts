@@ -9,6 +9,7 @@ const geldigeStatussen = [
   "uitgenodigd",
   "gesprek gepland",
   "in de wacht",
+  "wacht op gegevens",
   "aangenomen",
   "afgewezen",
 ];
