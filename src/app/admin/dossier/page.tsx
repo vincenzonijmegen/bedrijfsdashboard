@@ -7,6 +7,26 @@ import useSWR from "swr";
 import { format } from "date-fns";
 import { nl } from "date-fns/locale";
 
+function berekenLeeftijd(value: string | null) {
+  if (!value) return null;
+
+  const geboortedatum = new Date(value);
+  const vandaag = new Date();
+
+  let leeftijd = vandaag.getFullYear() - geboortedatum.getFullYear();
+  const maandVerschil = vandaag.getMonth() - geboortedatum.getMonth();
+
+  if (
+    maandVerschil < 0 ||
+    (maandVerschil === 0 && vandaag.getDate() < geboortedatum.getDate())
+  ) {
+    leeftijd--;
+  }
+
+  return leeftijd;
+}
+
+
 const formatDate = (dateStr: string) => {
   try {
     return format(new Date(dateStr), "d MMMM yyyy", { locale: nl });
@@ -179,82 +199,87 @@ export default function DossierOverzicht() {
 
       {email && (
         <>
-          {sollicitatie && (
-            <div className="my-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
-              <h2 className="mb-3 font-semibold text-blue-900">
-                Sollicitatiegegevens
-              </h2>
+{sollicitatie && (
+  <div className="my-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
+    <h2 className="mb-3 font-semibold text-blue-900">
+      Sollicitatiegegevens
+    </h2>
 
-              <div className="grid gap-3 text-sm md:grid-cols-2">
-                <div>
-                  <strong>Beschikbaar vanaf:</strong>{" "}
-                  {sollicitatie.beschikbaar_vanaf
-                    ? formatDate(sollicitatie.beschikbaar_vanaf)
-                    : "-"}
-                </div>
+    <div className="grid gap-3 text-sm md:grid-cols-2">
+      <div><strong>Naam:</strong> {sollicitatie.voornaam} {sollicitatie.achternaam}</div>
+      <div><strong>Telefoon:</strong> {sollicitatie.telefoon || "-"}</div>
+      <div><strong>Email:</strong> {sollicitatie.email || "-"}</div>
+      <div>
+  <strong>Geboortedatum:</strong>{" "}
+  {sollicitatie.geboortedatum
+    ? `${formatDate(sollicitatie.geboortedatum)} (${berekenLeeftijd(sollicitatie.geboortedatum)} jaar)`
+    : "-"}
+</div>
+      <div><strong>Adres:</strong> {sollicitatie.adres || "-"} {sollicitatie.huisnummer || ""}</div>
+      <div><strong>PC/Woonplaats:</strong> {sollicitatie.postcode || "-"} {sollicitatie.woonplaats || ""}</div>
 
-                <div>
-                  <strong>Beschikbaar tot:</strong>{" "}
-                  {sollicitatie.beschikbaar_tot
-                    ? formatDate(sollicitatie.beschikbaar_tot)
-                    : "-"}
-                </div>
+      <div><strong>Beschikbaar vanaf:</strong> {sollicitatie.beschikbaar_vanaf ? formatDate(sollicitatie.beschikbaar_vanaf) : "-"}</div>
+      <div><strong>Beschikbaar tot:</strong> {sollicitatie.beschikbaar_tot ? formatDate(sollicitatie.beschikbaar_tot) : "-"}</div>
+      <div><strong>Shifts per week:</strong> {sollicitatie.shifts_per_week || "-"}</div>
+      <div><strong>Voorkeur functie:</strong> {sollicitatie.voorkeur_functie || "-"}</div>
+      <div><strong>Andere bijbaan:</strong> {sollicitatie.bijbaan || "-"}</div>
+      <div><strong>Vakantie:</strong> {sollicitatie.vakantie || "-"}</div>
+      <div><strong>Gesprek:</strong> {sollicitatie.gesprek_datum ? formatDate(sollicitatie.gesprek_datum) : "-"}</div>
+      <div><strong>Status sollicitatie:</strong> {sollicitatie.status || "-"}</div>
+    </div>
 
-                <div>
-                  <strong>Shifts per week:</strong>{" "}
-                  {sollicitatie.shifts_per_week || "-"}
-                </div>
+    {Array.isArray(sollicitatie.beschikbaar_momenten) &&
+      sollicitatie.beschikbaar_momenten.length > 0 && (
+        <div className="mt-4">
+          <strong className="text-sm">Opgegeven beschikbaarheid:</strong>
+          <ul className="mt-2 grid list-disc gap-x-6 pl-5 text-sm md:grid-cols-2">
+            {sollicitatie.beschikbaar_momenten.map((moment: string) => (
+              <li key={moment}>{moment}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-                <div>
-                  <strong>Voorkeur functie:</strong>{" "}
-                  {sollicitatie.voorkeur_functie || "-"}
-                </div>
+    <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
+      {sollicitatie.ervaring && (
+        <div><strong>Werkervaring:</strong> {sollicitatie.ervaring}</div>
+      )}
+      {sollicitatie.opleiding && (
+        <div><strong>Opleiding:</strong> {sollicitatie.opleiding}</div>
+      )}
+      {sollicitatie.rekenen && (
+        <div><strong>Rekenvaardigheid:</strong> {sollicitatie.rekenen}</div>
+      )}
+      {sollicitatie.kassa && (
+        <div><strong>Kassa-ervaring:</strong> {sollicitatie.kassa}</div>
+      )}
+      {sollicitatie.duits && (
+        <div><strong>Duits:</strong> {sollicitatie.duits}</div>
+      )}
+      {sollicitatie.extra && (
+        <div><strong>Extra:</strong> {sollicitatie.extra}</div>
+      )}
+    </div>
 
-                <div>
-                  <strong>Andere bijbaan:</strong>{" "}
-                  {sollicitatie.bijbaan || "-"}
-                </div>
+    {sollicitatie.gesprek_notities && (
+      <div className="mt-4">
+        <strong className="text-sm">Gespreksnotities:</strong>
+        <p className="mt-1 whitespace-pre-wrap rounded bg-white p-3 text-sm">
+          {sollicitatie.gesprek_notities}
+        </p>
+      </div>
+    )}
 
-                <div>
-                  <strong>Vakantie:</strong> {sollicitatie.vakantie || "-"}
-                </div>
-              </div>
-
-              {Array.isArray(sollicitatie.beschikbaar_momenten) &&
-                sollicitatie.beschikbaar_momenten.length > 0 && (
-                  <div className="mt-4">
-                    <strong className="text-sm">
-                      Opgegeven beschikbaarheid:
-                    </strong>
-                    <ul className="mt-2 list-disc pl-5 text-sm">
-                      {sollicitatie.beschikbaar_momenten.map(
-                        (moment: string) => (
-                          <li key={moment}>{moment}</li>
-                        )
-                      )}
-                    </ul>
-                  </div>
-                )}
-
-              {sollicitatie.motivatie && (
-                <div className="mt-4">
-                  <strong className="text-sm">Motivatie / opmerking:</strong>
-                  <p className="mt-1 whitespace-pre-wrap rounded bg-white p-3 text-sm">
-                    {sollicitatie.motivatie}
-                  </p>
-                </div>
-              )}
-
-              <div className="mt-4">
-                <a
-                  href={`/admin/sollicitaties/${sollicitatie.id}`}
-                  className="text-sm font-medium text-blue-700 underline"
-                >
-                  Open volledige sollicitatie →
-                </a>
-              </div>
-            </div>
-          )}
+    {sollicitatie.motivatie && (
+      <div className="mt-4">
+        <strong className="text-sm">Motivatie / opmerking:</strong>
+        <p className="mt-1 whitespace-pre-wrap rounded bg-white p-3 text-sm">
+          {sollicitatie.motivatie}
+        </p>
+      </div>
+    )}
+  </div>
+)}
 
           <div className="my-4">
             <textarea
