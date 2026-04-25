@@ -12,6 +12,14 @@ function formatDateNl(value: string | null) {
   return d.toLocaleDateString("nl-NL");
 }
 
+function formatDateTimeLocal(value: string | null) {
+  if (!value) return "";
+  const d = new Date(value);
+  const offset = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - offset * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
 function berekenLeeftijd(value: string | null) {
   if (!value) return null;
 
@@ -58,6 +66,7 @@ export default function SollicitatieDetail({
 }) {
   const [id, setId] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [savingGesprek, setSavingGesprek] = useState(false);
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
   const [whatsappText, setWhatsappText] = useState("");
 
@@ -70,29 +79,52 @@ export default function SollicitatieDetail({
     fetcher
   );
 
-  async function updateStatus(status: string) {
+  async function patchSollicitatie(body: Record<string, unknown>) {
     if (!id) return;
 
+    const res = await fetch(`/api/sollicitaties/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      throw new Error(json?.error || "Opslaan mislukt");
+    }
+
+    await mutate();
+  }
+
+  async function updateStatus(status: string) {
     try {
       setSavingStatus(true);
-
-      const res = await fetch(`/api/sollicitaties/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        throw new Error(json?.error || "Status aanpassen mislukt");
-      }
-
-      await mutate();
+      await patchSollicitatie({ status });
     } catch (err) {
       alert(err instanceof Error ? err.message : "Status aanpassen mislukt");
     } finally {
       setSavingStatus(false);
+    }
+  }
+
+  async function updateGesprek(
+    gesprekDatum: string | null,
+    gesprekNotities: string | null,
+    zetStatus = false
+  ) {
+    try {
+      setSavingGesprek(true);
+
+      await patchSollicitatie({
+        gesprek_datum: gesprekDatum,
+        gesprek_notities: gesprekNotities,
+        ...(zetStatus ? { status: "gesprek gepland" } : {}),
+      });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Gesprek opslaan mislukt");
+    } finally {
+      setSavingGesprek(false);
     }
   }
 
@@ -124,7 +156,6 @@ export default function SollicitatieDetail({
 
   function openWhatsappModal() {
     if (!data) return;
-
     setWhatsappText(getDefaultWhatsappText(data.voornaam));
     setShowWhatsappModal(true);
   }
@@ -187,6 +218,51 @@ export default function SollicitatieDetail({
         >
           Uitnodigen via WhatsApp
         </button>
+      </section>
+
+      <section className="rounded-xl border bg-white p-4 space-y-3">
+        <h2 className="font-semibold">Gesprek</h2>
+
+        <div>
+          <label className="mb-1 block text-sm text-slate-700">
+            Datum en tijd gesprek
+          </label>
+          <input
+            type="datetime-local"
+            defaultValue={formatDateTimeLocal(data.gesprek_datum)}
+            onBlur={(e) =>
+              updateGesprek(
+                e.target.value || null,
+                data.gesprek_notities || null,
+                Boolean(e.target.value)
+              )
+            }
+            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm text-slate-700">
+            Gespreksnotities
+          </label>
+          <textarea
+            defaultValue={data.gesprek_notities || ""}
+            onBlur={(e) =>
+              updateGesprek(
+                data.gesprek_datum || null,
+                e.target.value || null,
+                false
+              )
+            }
+            rows={6}
+            className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+            placeholder="Notities tijdens of na het gesprek..."
+          />
+        </div>
+
+        {savingGesprek ? (
+          <p className="text-xs text-slate-500">Gesprek opslaan...</p>
+        ) : null}
       </section>
 
       <section className="bg-white border rounded-xl p-4">

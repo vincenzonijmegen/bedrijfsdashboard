@@ -13,6 +13,12 @@ const geldigeStatussen = [
   "afgewezen",
 ];
 
+function cleanOptional(value: unknown) {
+  if (value === undefined) return undefined;
+  const cleaned = String(value ?? "").trim();
+  return cleaned || null;
+}
+
 export async function GET(
   _req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -41,9 +47,13 @@ export async function PATCH(
     const { id } = await context.params;
     const body = await req.json();
 
-    const status = String(body?.status || "").trim();
+    const status =
+      body?.status === undefined ? undefined : String(body.status).trim();
 
-    if (!geldigeStatussen.includes(status)) {
+    const gesprekDatum = cleanOptional(body?.gesprek_datum);
+    const gesprekNotities = cleanOptional(body?.gesprek_notities);
+
+    if (status !== undefined && !geldigeStatussen.includes(status)) {
       return NextResponse.json(
         { success: false, error: "Ongeldige status" },
         { status: 400 }
@@ -54,12 +64,20 @@ export async function PATCH(
       `
       UPDATE sollicitaties
       SET
-        status = $1,
-        aangenomen_op = CASE WHEN $1 = 'aangenomen' THEN COALESCE(aangenomen_op, NOW()) ELSE aangenomen_op END,
-        afgewezen_op = CASE WHEN $1 = 'afgewezen' THEN COALESCE(afgewezen_op, NOW()) ELSE afgewezen_op END
-      WHERE id = $2
+        status = COALESCE($1, status),
+        gesprek_datum = COALESCE($2::timestamptz, gesprek_datum),
+        gesprek_notities = COALESCE($3, gesprek_notities),
+        aangenomen_op = CASE
+          WHEN $1 = 'aangenomen' THEN COALESCE(aangenomen_op, NOW())
+          ELSE aangenomen_op
+        END,
+        afgewezen_op = CASE
+          WHEN $1 = 'afgewezen' THEN COALESCE(afgewezen_op, NOW())
+          ELSE afgewezen_op
+        END
+      WHERE id = $4
       `,
-      [status, id]
+      [status ?? null, gesprekDatum, gesprekNotities, id]
     );
 
     return NextResponse.json({ success: true });
@@ -72,6 +90,7 @@ export async function PATCH(
     );
   }
 }
+
 export async function DELETE(
   _req: NextRequest,
   context: { params: Promise<{ id: string }> }
