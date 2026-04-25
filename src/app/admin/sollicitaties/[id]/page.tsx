@@ -62,11 +62,30 @@ function getWhatsappNumber(telefoon: string) {
 function getGegevensWhatsappText(naam: string) {
   return `*IJssalon Vincenzo*
 
-Beste ${naam},
+*IJssalon Vincenzo*
 
-Welkom bij IJssalon Vincenzo!
+Beste [naam],
 
-In de Vincenzo-app vind je alle belangrijke informatie en werkinstructies. Neem deze zo snel mogelijk door.
+Welkom bij IJssalon Vincenzo! 🎉
+
+In de Vincenzo-app vind je alle belangrijke informatie en werkinstructies. Neem deze zo snel mogelijk door en rond af wat nodig is.
+
+Heb je iets niet helemaal duidelijk? Reageer gerust op dit bericht 👍
+
+---
+
+*Tools*
+
+Je krijgt toegang tot:
+
+• *ShiftBase*  
+Planning, rooster, verlof en ruilen
+
+• *Employes*  
+Contract en salarisstroken
+
+• *Vincenzo-app*  
+Werkinstructies en skills
 
 ---
 
@@ -74,22 +93,34 @@ In de Vincenzo-app vind je alle belangrijke informatie en werkinstructies. Neem 
 
 We hebben van je nodig:
 
-• Kopie ID (voor- en achterzijde) of paspoort  
-• IBAN  
-• Loonheffingskorting (ja/nee)
+• Kopie ID (voor- en achterzijde) of paspoort (fotopagina)  
+→ *Niet bewerkt*
+
+• IBAN (bankrekeningnummer)
+
+• Loonheffingskorting  
+→ Ja als dit je enige baan is  
+→ Nee als je nog een werkgever hebt
 
 ---
 
-*Foto*
+*Foto (ShiftBase & app)*
 
-Stuur een duidelijke foto van jezelf (alleen gezicht zichtbaar)
+Stuur een duidelijke foto van jezelf (alleen gezicht zichtbaar).  
+Deze gebruiken we alleen intern en verwijderen we na je dienstverband (AVG-proof).
 
 ---
 
-Je kunt alles via WhatsApp sturen 👍
+*Aanleveren*
 
-Groet,
-Herman`;
+Je kunt alles gewoon via WhatsApp sturen 👍  
+(of mailen naar: herman@ijssalonvincenzo.nl)
+
+---
+
+Met vriendelijke groet,  
+Herman van den Akker  
+IJssalon Vincenzo`;
 }
 
 
@@ -273,6 +304,7 @@ async function sendGegevensWhatsapp() {
           <option value="gesprek gepland">Gesprek gepland</option>
           <option value="in de wacht">In de wacht</option>
           <option value="aangenomen">Aangenomen</option>
+          <option value="wacht op gegevens">Wacht op gegevens</option>
           <option value="afgewezen">Afgewezen</option>
         </select>
 
