@@ -5,8 +5,6 @@ import useSWR from "swr";
 import Link from "next/link";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
-const [showGegevensModal, setShowGegevensModal] = useState(false);
-const [gegevensText, setGegevensText] = useState("");
 
 function formatDateNl(value: string | null) {
   if (!value) return "-";
@@ -106,6 +104,9 @@ export default function SollicitatieDetail({
   const [savingGesprek, setSavingGesprek] = useState(false);
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
   const [whatsappText, setWhatsappText] = useState("");
+  const [showGegevensModal, setShowGegevensModal] = useState(false);
+  const [gegevensText, setGegevensText] = useState("");
+
 
   useMemo(() => {
     params.then((p) => setId(p.id));
