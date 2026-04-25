@@ -31,6 +31,26 @@ function berekenLeeftijd(value: string | null) {
   return leeftijd;
 }
 
+function getDefaultWhatsappText(naam: string) {
+  return `*Bericht van IJssalon Vincenzo*
+Beste ${naam},
+
+Hartelijk bedankt voor je sollicitatie.
+
+Graag nodigen we je uit voor een kort gesprek in de ijssalon.
+Via onderstaande link kun je een tijdstip boeken.
+
+Met vriendelijke groet,
+Herman van den Akker
+IJssalon Vincenzo
+
+https://calendly.com/ijssalonvincenzo/sollicitatiegesprek-1`;
+}
+
+function getWhatsappNumber(telefoon: string) {
+  return telefoon.replace(/\D/g, "").replace(/^0/, "31");
+}
+
 export default function SollicitatieDetail({
   params,
 }: {
@@ -38,6 +58,8 @@ export default function SollicitatieDetail({
 }) {
   const [id, setId] = useState<string | null>(null);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [showWhatsappModal, setShowWhatsappModal] = useState(false);
+  const [whatsappText, setWhatsappText] = useState("");
 
   useMemo(() => {
     params.then((p) => setId(p.id));
@@ -74,33 +96,52 @@ export default function SollicitatieDetail({
     }
   }
 
+  async function deleteSollicitatie() {
+    if (!id) return;
 
-async function deleteSollicitatie() {
-  if (!id) return;
+    const ok = window.confirm(
+      "Weet je zeker dat je deze sollicitatie definitief wilt verwijderen? Dit kan niet ongedaan worden gemaakt."
+    );
 
-  const ok = window.confirm(
-    "Weet je zeker dat je deze sollicitatie definitief wilt verwijderen? Dit kan niet ongedaan worden gemaakt."
-  );
+    if (!ok) return;
 
-  if (!ok) return;
+    try {
+      const res = await fetch(`/api/sollicitaties/${id}`, {
+        method: "DELETE",
+      });
 
-  try {
-    const res = await fetch(`/api/sollicitaties/${id}`, {
-      method: "DELETE",
-    });
+      const json = await res.json();
 
-    const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.error || "Verwijderen mislukt");
+      }
 
-    if (!res.ok) {
-      throw new Error(json?.error || "Verwijderen mislukt");
+      window.location.href = "/admin/sollicitaties";
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Verwijderen mislukt");
     }
-
-    window.location.href = "/admin/sollicitaties";
-  } catch (err) {
-    alert(err instanceof Error ? err.message : "Verwijderen mislukt");
   }
-}
 
+  function openWhatsappModal() {
+    if (!data) return;
+
+    setWhatsappText(getDefaultWhatsappText(data.voornaam));
+    setShowWhatsappModal(true);
+  }
+
+  async function sendWhatsapp() {
+    if (!data) return;
+
+    const nummer = getWhatsappNumber(data.telefoon);
+    const url = `https://wa.me/${nummer}?text=${encodeURIComponent(
+      whatsappText
+    )}`;
+
+    window.open(url, "_blank");
+
+    setShowWhatsappModal(false);
+    await updateStatus("uitgenodigd");
+  }
 
   if (!data) return <div className="p-6">Laden...</div>;
 
@@ -139,6 +180,13 @@ async function deleteSollicitatie() {
         {savingStatus ? (
           <p className="mt-2 text-xs text-slate-500">Status opslaan...</p>
         ) : null}
+
+        <button
+          onClick={openWhatsappModal}
+          className="mt-4 w-full rounded-xl bg-green-600 px-4 py-3 text-sm font-medium text-white hover:bg-green-700"
+        >
+          Uitnodigen via WhatsApp
+        </button>
       </section>
 
       <section className="bg-white border rounded-xl p-4">
@@ -184,18 +232,52 @@ async function deleteSollicitatie() {
       </section>
 
       <section className="rounded-xl border border-red-200 bg-red-50 p-4">
-  <h2 className="font-semibold text-red-800">Verwijderen</h2>
-  <p className="mt-1 text-sm text-red-700">
-    Gebruik dit voor dubbele sollicitaties of kandidaten die definitief zijn afgewezen.
-  </p>
+        <h2 className="font-semibold text-red-800">Verwijderen</h2>
+        <p className="mt-1 text-sm text-red-700">
+          Gebruik dit voor dubbele sollicitaties of kandidaten die definitief
+          zijn afgewezen.
+        </p>
 
-  <button
-    onClick={deleteSollicitatie}
-    className="mt-3 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-  >
-    Sollicitatie definitief verwijderen
-  </button>
-</section>
+        <button
+          onClick={deleteSollicitatie}
+          className="mt-3 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+        >
+          Sollicitatie definitief verwijderen
+        </button>
+      </section>
+
+      {showWhatsappModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-4 shadow-xl space-y-3">
+            <h2 className="text-lg font-semibold">
+              WhatsApp bericht aanpassen
+            </h2>
+
+            <textarea
+              value={whatsappText}
+              onChange={(e) => setWhatsappText(e.target.value)}
+              rows={11}
+              className="w-full rounded-xl border border-slate-300 p-3 text-sm"
+            />
+
+            <div className="flex gap-2">
+              <button
+                onClick={sendWhatsapp}
+                className="flex-1 rounded-xl bg-green-600 py-3 text-sm font-medium text-white hover:bg-green-700"
+              >
+                Versturen via WhatsApp
+              </button>
+
+              <button
+                onClick={() => setShowWhatsappModal(false)}
+                className="flex-1 rounded-xl border border-slate-300 py-3 text-sm font-medium"
+              >
+                Annuleren
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
