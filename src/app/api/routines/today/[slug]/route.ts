@@ -15,16 +15,15 @@ type TaakRow = {
   sortering: number;
   afgetekend_door_naam: string | null;
   afgetekend_op: string | null;
+  status: "gedaan" | "overgeslagen" | null;
+  bron: "medewerker" | "leiding" | null;
+  overgeslagen_reden: string | null;
   isRotatie?: boolean;
   rotatieItemId?: number;
 };
 
 const WEEKDAGEN = ["zo", "ma", "di", "wo", "do", "vr", "za"];
-const ISO_EVEN_REFERENCE = new Date("2026-01-05T00:00:00"); // maandag
-
-function isZelfdeDag(date: Date, ref: Date) {
-  return date.toISOString().slice(0, 10) === ref.toISOString().slice(0, 10);
-}
+const ISO_EVEN_REFERENCE = new Date("2026-01-05T00:00:00");
 
 function dagenVerschil(a: Date, b: Date) {
   const utcA = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
@@ -49,9 +48,13 @@ function taakIsVandaagZichtbaar(taak: TaakRow, vandaag: Date) {
 
 async function getActieveRotatieTaak(routineId: number) {
   const rotatie = await db.query(
-    `SELECT * FROM routine_rotaties 
-     WHERE routine_id = $1 AND actief = true 
-     LIMIT 1`,
+    `
+    SELECT *
+    FROM routine_rotaties
+    WHERE routine_id = $1
+      AND actief = true
+    LIMIT 1
+    `,
     [routineId]
   );
 
@@ -60,9 +63,12 @@ async function getActieveRotatieTaak(routineId: number) {
   const r = rotatie.rows[0];
 
   const items = await db.query(
-    `SELECT * FROM routine_rotatie_items
-     WHERE rotatie_id = $1
-     ORDER BY sortering ASC`,
+    `
+    SELECT *
+    FROM routine_rotatie_items
+    WHERE rotatie_id = $1
+    ORDER BY sortering ASC
+    `,
     [r.id]
   );
 
@@ -73,112 +79,144 @@ async function getActieveRotatieTaak(routineId: number) {
   return items.rows[index];
 }
 
-export async function GET(_req: NextRequest, context: { params: Promise<{ slug: string }> }) {
+export async function GET(
+  _req: NextRequest,
+  context: { params: Promise<{ slug: string }> }
+) {
   try {
     const { slug } = await context.params;
     const datum = new Date();
     const vandaag = datum.toISOString().slice(0, 10);
 
     const routineResult = await db.query(
-      `SELECT id, slug, naam, locatie, type
-       FROM routines
-       WHERE slug = $1 AND actief = true
-       LIMIT 1`,
+      `
+      SELECT id, slug, naam, locatie, type
+      FROM routines
+      WHERE slug = $1
+        AND actief = true
+      LIMIT 1
+      `,
       [slug]
     );
 
     if (routineResult.rowCount === 0) {
-      return NextResponse.json({ error: "Routine niet gevonden" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Routine niet gevonden" },
+        { status: 404 }
+      );
     }
 
     const routine = routineResult.rows[0];
 
     const takenResult = await db.query(
-      `SELECT
-         t.id,
-         t.naam,
-         t.kleurcode,
-         t.reinigen,
-         t.desinfecteren,
-         t.frequentie,
-         COALESCE(t.weekdagen, '[]'::jsonb) AS weekdagen,
-         t.sortering,
-         a.afgetekend_door_naam,
-         a.afgetekend_op
-       FROM routine_taken t
-       LEFT JOIN routine_aftekeningen a
-         ON a.routine_taak_id = t.id
-        AND a.datum = $2::date
-       WHERE t.routine_id = $1
-         AND t.actief = true
-       ORDER BY t.sortering ASC, t.id ASC`,
+      `
+      SELECT
+        t.id,
+        t.naam,
+        t.kleurcode,
+        t.reinigen,
+        t.desinfecteren,
+        t.frequentie,
+        COALESCE(t.weekdagen, '[]'::jsonb) AS weekdagen,
+        t.sortering,
+        a.afgetekend_door_naam,
+        a.afgetekend_op,
+        a.status,
+        a.bron,
+        a.overgeslagen_reden
+      FROM routine_taken t
+      LEFT JOIN routine_aftekeningen a
+        ON a.routine_taak_id = t.id
+       AND a.datum = $2::date
+      WHERE t.routine_id = $1
+        AND t.actief = true
+      ORDER BY t.sortering ASC, t.id ASC
+      `,
       [routine.id, vandaag]
     );
 
     const alleTaken = takenResult.rows as TaakRow[];
-    const zichtbareTaken = alleTaken.filter((taak) => taakIsVandaagZichtbaar(taak, datum));
-    const override = await db.query(
-  `SELECT rotatie_item_id
-   FROM routine_rotatie_override
-   WHERE routine_id = $1
-     AND datum = $2::date
-   LIMIT 1`,
-  [routine.id, vandaag]
-);
-
-let rotatieTaak = null;
-
-if (override.rows.length > 0) {
-  const overrideItemId = override.rows[0].rotatie_item_id;
-
-  if (overrideItemId) {
-    const item = await db.query(
-      `SELECT * FROM routine_rotatie_items WHERE id = $1`,
-      [overrideItemId]
+    const zichtbareTaken = alleTaken.filter((taak) =>
+      taakIsVandaagZichtbaar(taak, datum)
     );
-    rotatieTaak = item.rows[0] ?? null;
-  } else {
-    rotatieTaak = null; // expliciet niets doen
-  }
-} else {
-  rotatieTaak = await getActieveRotatieTaak(routine.id);
-}
 
-const rotatieAftekeningResult = rotatieTaak
-  ? await db.query(
-      `SELECT afgetekend_door_naam, afgetekend_op
-       FROM routine_rotatie_aftekeningen
-       WHERE rotatie_item_id = $1
-         AND datum = $2::date
-       LIMIT 1`,
-      [rotatieTaak.id, vandaag]
-    )
-  : null;
+    const override = await db.query(
+      `
+      SELECT rotatie_item_id
+      FROM routine_rotatie_override
+      WHERE routine_id = $1
+        AND datum = $2::date
+      LIMIT 1
+      `,
+      [routine.id, vandaag]
+    );
 
-const rotatieAftekening = rotatieAftekeningResult?.rows?.[0] ?? null;
+    let rotatieTaak = null;
 
-if (rotatieTaak) {
-  zichtbareTaken.unshift({
-    id: -rotatieTaak.id,
-    naam: rotatieTaak.naam,
-    kleurcode: null,
-    reinigen: true,
-    desinfecteren: false,
-    frequentie: "D",
-    weekdagen: [],
-    sortering: 0,
-    afgetekend_door_naam: rotatieAftekening?.afgetekend_door_naam ?? null,
-    afgetekend_op: rotatieAftekening?.afgetekend_op ?? null,
-    isRotatie: true,
-    rotatieItemId: rotatieTaak.id,
-  });
-}
+    if (override.rows.length > 0) {
+      const overrideItemId = override.rows[0].rotatie_item_id;
+
+      if (overrideItemId) {
+        const item = await db.query(
+          `
+          SELECT *
+          FROM routine_rotatie_items
+          WHERE id = $1
+          `,
+          [overrideItemId]
+        );
+
+        rotatieTaak = item.rows[0] ?? null;
+      } else {
+        rotatieTaak = null;
+      }
+    } else {
+      rotatieTaak = await getActieveRotatieTaak(routine.id);
+    }
+
+    const rotatieAftekeningResult = rotatieTaak
+      ? await db.query(
+          `
+          SELECT afgetekend_door_naam, afgetekend_op
+          FROM routine_rotatie_aftekeningen
+          WHERE rotatie_item_id = $1
+            AND datum = $2::date
+          LIMIT 1
+          `,
+          [rotatieTaak.id, vandaag]
+        )
+      : null;
+
+    const rotatieAftekening = rotatieAftekeningResult?.rows?.[0] ?? null;
+
+    if (rotatieTaak) {
+      zichtbareTaken.unshift({
+        id: -rotatieTaak.id,
+        naam: rotatieTaak.naam,
+        kleurcode: null,
+        reinigen: true,
+        desinfecteren: false,
+        frequentie: "D",
+        weekdagen: [],
+        sortering: 0,
+        afgetekend_door_naam:
+          rotatieAftekening?.afgetekend_door_naam ?? null,
+        afgetekend_op: rotatieAftekening?.afgetekend_op ?? null,
+        status: null,
+        bron: null,
+        overgeslagen_reden: null,
+        isRotatie: true,
+        rotatieItemId: rotatieTaak.id,
+      });
+    }
+
     return NextResponse.json({
       datum: vandaag,
       routine,
       taken: zichtbareTaken,
       totaal: zichtbareTaken.length,
-      afgerond: zichtbareTaken.filter((taak) => Boolean(taak.afgetekend_op)).length,
+      afgerond: zichtbareTaken.filter((taak) => Boolean(taak.afgetekend_op))
+        .length,
     });
   } catch (error) {
     return NextResponse.json(

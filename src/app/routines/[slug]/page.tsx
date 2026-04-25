@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 
@@ -15,6 +15,9 @@ type Taak = {
   sortering: number;
   afgetekend_door_naam: string | null;
   afgetekend_op: string | null;
+  status?: "gedaan" | "overgeslagen";
+  bron?: "medewerker" | "leiding";
+  overgeslagen_reden?: string | null;
   isRotatie?: boolean;
   rotatieItemId?: number;
 };
@@ -36,6 +39,11 @@ type RoutineResponse = {
 type IngeklokteMedewerker = {
   id: string;
   name: string;
+};
+
+type Leidinggevende = {
+  id: number;
+  naam: string;
 };
 
 type RotatieItem = {
@@ -94,6 +102,7 @@ export default function RoutinePagina({
   const router = useRouter();
   const searchParams = useSearchParams();
   const from = searchParams.get("from");
+
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [medewerkerId, setMedewerkerId] = useState<string>("");
   const [savingTaskId, setSavingTaskId] = useState<number | null>(null);
@@ -102,9 +111,26 @@ export default function RoutinePagina({
 
   const [slugState, setSlugState] = useState<string | null>(null);
 
+  const [isPc, setIsPc] = useState(false);
+  const [leidinggevendeId, setLeidinggevendeId] = useState<string>("");
+  const [leidingReden, setLeidingReden] = useState<Record<number, string>>({});
+
   useMemo(() => {
     params.then((value) => setSlugState(value.slug));
   }, [params]);
+
+  useEffect(() => {
+    function checkDevice() {
+      const isLargeScreen = window.innerWidth >= 1024;
+      const hasTouch = navigator.maxTouchPoints > 0;
+      setIsPc(isLargeScreen && !hasTouch);
+    }
+
+    checkDevice();
+    window.addEventListener("resize", checkDevice);
+
+    return () => window.removeEventListener("resize", checkDevice);
+  }, []);
 
   const { data, mutate, error } = useSWR<RoutineResponse>(
     slugState ? `/api/routines/today/${slugState}` : null,
@@ -119,6 +145,11 @@ export default function RoutinePagina({
     }
   );
 
+  const { data: leidingData } = useSWR<{
+    success: boolean;
+    leidinggevenden: Leidinggevende[];
+  }>(isPc ? "/api/admin/leidinggevenden" : null, fetcher);
+
   const { data: rotatieItemsData } = useSWR<{ items: RotatieItem[] }>(
     data?.routine?.id
       ? `/api/routines/rotatie/items?routineId=${data.routine.id}`
@@ -128,6 +159,8 @@ export default function RoutinePagina({
 
   const rotatieItems = rotatieItemsData?.items || [];
   const medewerkers = ingekloktData || [];
+  const leidinggevenden = leidingData?.leidinggevenden || [];
+
   const selectedMedewerker =
     medewerkers.find((m) => m.id === medewerkerId) || null;
 
@@ -163,6 +196,58 @@ export default function RoutinePagina({
       await mutate();
       setSelectedTaskId(null);
       setMessage("Taak afgetekend.");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Opslaan mislukt");
+    } finally {
+      setSavingTaskId(null);
+    }
+  }
+
+  async function leidingAftekenen(
+    taak: Taak,
+    status: "gedaan" | "overgeslagen"
+  ) {
+    if (!leidinggevendeId) {
+      setMessage("Kies eerst een leidinggevende.");
+      return;
+    }
+
+    const reden = leidingReden[taak.id]?.trim() || "";
+
+    if (status === "overgeslagen" && !reden) {
+      setMessage("Vul een reden in bij geautoriseerd overslaan.");
+      return;
+    }
+
+    try {
+      setSavingTaskId(taak.id);
+      setMessage("");
+
+      const res = await fetch("/api/admin/haccp/leiding-aftekenen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          routineTaakId: taak.id,
+          datum: data?.datum,
+          leidinggevendeId: Number(leidinggevendeId),
+          status,
+          reden,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json?.error || "Opslaan mislukt");
+      }
+
+      await mutate();
+      setSelectedTaskId(null);
+      setMessage(
+        status === "overgeslagen"
+          ? "Taak geautoriseerd overgeslagen."
+          : "Taak door leiding afgetekend."
+      );
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Opslaan mislukt");
     } finally {
@@ -232,6 +317,32 @@ export default function RoutinePagina({
                 Alleen medewerkers die nu ingeklokt zijn via Shiftbase zijn
                 kiesbaar.
               </div>
+
+              {isPc ? (
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">
+                  <label className="block text-sm font-medium text-blue-900">
+                    Leiding / correctie
+                  </label>
+                  <select
+                    value={leidinggevendeId}
+                    onChange={(e) => setLeidinggevendeId(e.target.value)}
+                    className="mt-2 w-full rounded-xl border border-blue-300 bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="">Kies leidinggevende</option>
+                    {leidinggevenden.map((leidinggevende) => (
+                      <option
+                        key={leidinggevende.id}
+                        value={leidinggevende.id}
+                      >
+                        {leidinggevende.naam}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-xs text-blue-800">
+                    Alleen zichtbaar op pc. Niet op iPad.
+                  </p>
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -272,6 +383,7 @@ export default function RoutinePagina({
           {data.taken.map((taak, index) => {
             const open = selectedTaskId === taak.id;
             const isDone = Boolean(taak.afgetekend_op);
+            const isOvergeslagen = taak.status === "overgeslagen";
             const kleurClass = taak.kleurcode
               ? kleurStyleMap[taak.kleurcode]
               : "bg-white text-slate-700 border-slate-200";
@@ -315,6 +427,18 @@ export default function RoutinePagina({
                             rotatie
                           </span>
                         )}
+
+                        {taak.bron === "leiding" && (
+                          <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                            leiding
+                          </span>
+                        )}
+
+                        {isOvergeslagen && (
+                          <span className="inline-flex rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700">
+                            geautoriseerd overgeslagen
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex flex-wrap gap-2">
@@ -331,18 +455,34 @@ export default function RoutinePagina({
                       </div>
 
                       {isDone ? (
-                        <p className="text-sm text-green-700">
-                          Afgetekend door{" "}
-                          <strong>{taak.afgetekend_door_naam}</strong>
-                          {taak.afgetekend_op
-                            ? ` om ${new Date(
-                                taak.afgetekend_op
-                              ).toLocaleTimeString("nl-NL", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}`
-                            : ""}
-                        </p>
+                        <div className="space-y-1 text-sm">
+                          <p
+                            className={
+                              isOvergeslagen
+                                ? "text-orange-700"
+                                : "text-green-700"
+                            }
+                          >
+                            {isOvergeslagen
+                              ? "Geautoriseerd overgeslagen door "
+                              : "Afgetekend door "}
+                            <strong>{taak.afgetekend_door_naam}</strong>
+                            {taak.afgetekend_op
+                              ? ` om ${new Date(
+                                  taak.afgetekend_op
+                                ).toLocaleTimeString("nl-NL", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}`
+                              : ""}
+                          </p>
+
+                          {isOvergeslagen && taak.overgeslagen_reden ? (
+                            <p className="text-sm text-slate-600">
+                              Reden: {taak.overgeslagen_reden}
+                            </p>
+                          ) : null}
+                        </div>
                       ) : (
                         <p className="text-sm text-slate-500">
                           Nog niet afgetekend.
@@ -361,35 +501,88 @@ export default function RoutinePagina({
                       </button>
                     )}
 
-                    <button
-                      onClick={() => setSelectedTaskId(open ? null : taak.id)}
-                      className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
-                    >
-                      {open
-                        ? "Sluiten"
-                        : isDone
-                        ? "Opnieuw aftekenen"
-                        : "Aftekenen"}
-                    </button>
+                    {!isDone && (
+                      <button
+                        onClick={() => setSelectedTaskId(open ? null : taak.id)}
+                        className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+                      >
+                        {open ? "Sluiten" : "Aftekenen"}
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {open ? (
-                  <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-4 md:flex-row md:items-center md:justify-between">
-                    <p className="text-sm text-slate-600">
-                      Deze taak wordt afgetekend op naam van{" "}
-                      <strong>{selectedMedewerker?.name || "..."}</strong>.
-                    </p>
+                {open && !isDone ? (
+                  <div className="space-y-4 border-t border-slate-200 bg-slate-50 px-4 py-4">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                      <p className="text-sm text-slate-600">
+                        Deze taak wordt afgetekend op naam van{" "}
+                        <strong>{selectedMedewerker?.name || "..."}</strong>.
+                      </p>
 
-                    <button
-                      onClick={() => tekenAf(taak)}
-                      disabled={!selectedMedewerker || savingTaskId === taak.id}
-                      className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white disabled:opacity-50"
-                    >
-                      {savingTaskId === taak.id
-                        ? "Opslaan..."
-                        : "Definitief aftekenen"}
-                    </button>
+                      <button
+                        onClick={() => tekenAf(taak)}
+                        disabled={
+                          !selectedMedewerker || savingTaskId === taak.id
+                        }
+                        className="rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white disabled:opacity-50"
+                      >
+                        {savingTaskId === taak.id
+                          ? "Opslaan..."
+                          : "Definitief aftekenen"}
+                      </button>
+                    </div>
+
+                    {isPc ? (
+                      <div className="rounded-xl border border-blue-200 bg-white p-4">
+                        <div className="mb-3">
+                          <h3 className="font-semibold text-slate-900">
+                            Leiding / pc-correctie
+                          </h3>
+                          <p className="text-sm text-slate-500">
+                            Gebruik dit alleen voor leiding-aftekening of
+                            geautoriseerd overslaan.
+                          </p>
+                        </div>
+
+                        <textarea
+                          value={leidingReden[taak.id] || ""}
+                          onChange={(e) =>
+                            setLeidingReden((prev) => ({
+                              ...prev,
+                              [taak.id]: e.target.value,
+                            }))
+                          }
+                          placeholder="Reden bij overslaan..."
+                          className="mb-3 w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm"
+                          rows={2}
+                        />
+
+                        <div className="flex flex-col gap-2 md:flex-row">
+                          <button
+                            onClick={() => leidingAftekenen(taak, "gedaan")}
+                            disabled={
+                              !leidinggevendeId || savingTaskId === taak.id
+                            }
+                            className="rounded-xl border border-blue-300 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700 disabled:opacity-50"
+                          >
+                            Aftekenen als leiding
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              leidingAftekenen(taak, "overgeslagen")
+                            }
+                            disabled={
+                              !leidinggevendeId || savingTaskId === taak.id
+                            }
+                            className="rounded-xl border border-orange-300 bg-orange-50 px-4 py-3 text-sm font-medium text-orange-700 disabled:opacity-50"
+                          >
+                            Geautoriseerd overslaan
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </section>
