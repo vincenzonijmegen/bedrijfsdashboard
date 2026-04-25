@@ -69,7 +69,7 @@ Beste ${naam},
 Welkom bij IJssalon Vincenzo! 
 
 In dit bericht vind je alle belangrijke informatie en werkinstructies. Neem deze zo snel mogelijk door en rond af wat nodig is.
-Heb je iets niet helemaal duidelijk? Reageer gerust op dit bericht 👍
+Heb je iets niet helemaal duidelijk? Reageer gerust op dit bericht 
 
 *Tools*
 
@@ -185,6 +185,18 @@ export default function SollicitatieDetail({
       setSavingGesprek(false);
     }
   }
+
+async function updateChecklist(veld: string, waarde: boolean) {
+  try {
+    await patchSollicitatie({
+      [veld]: waarde,
+    });
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "Checklist opslaan mislukt");
+  }
+}
+
+
 
   async function deleteSollicitatie() {
     if (!id) return;
@@ -308,6 +320,60 @@ async function sendGegevensWhatsapp() {
           Uitnodigen via WhatsApp
         </button>
       </section>
+
+<section className="rounded-xl border bg-white p-4">
+  <h2 className="font-semibold mb-3">Onboarding checklist</h2>
+
+  <div className="grid gap-4 md:grid-cols-2">
+    <div>
+      <h3 className="mb-2 text-sm font-semibold text-slate-700">
+        Contract
+      </h3>
+
+      {[
+        ["id_ontvangen", "ID ontvangen"],
+        ["iban_ontvangen", "IBAN ontvangen"],
+        ["loonheffing_ontvangen", "Loonheffing ontvangen"],
+        ["pasfoto_ontvangen", "Pasfoto ontvangen"],
+      ].map(([veld, label]) => (
+        <label key={veld} className="mb-2 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={Boolean(data[veld])}
+            onChange={(e) => updateChecklist(veld, e.target.checked)}
+            className="h-4 w-4"
+          />
+          {label}
+        </label>
+      ))}
+    </div>
+
+    <div>
+      <h3 className="mb-2 text-sm font-semibold text-slate-700">
+        Systemen & groepen
+      </h3>
+
+      {[
+        ["employes_ingevoerd", "Ingevoerd in Employes"],
+        ["shiftbase_ingevoerd", "Toegevoegd aan ShiftBase"],
+        ["vincenzo_app_ingevoerd", "Toegevoegd aan Vincenzo-app"],
+        ["whatsapp_vincenzo", "Toegevoegd aan WhatsApp groep Vincenzo"],
+        ["whatsapp_ruilen", "Toegevoegd aan WhatsApp groep Ruilen"],
+      ].map(([veld, label]) => (
+        <label key={veld} className="mb-2 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={Boolean(data[veld])}
+            onChange={(e) => updateChecklist(veld, e.target.checked)}
+            className="h-4 w-4"
+          />
+          {label}
+        </label>
+      ))}
+    </div>
+  </div>
+</section>
+
 
 <button
   onClick={openGegevensModal}

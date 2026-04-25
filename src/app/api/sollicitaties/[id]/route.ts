@@ -14,6 +14,18 @@ const geldigeStatussen = [
   "afgewezen",
 ];
 
+const checklistVelden = [
+  "id_ontvangen",
+  "iban_ontvangen",
+  "loonheffing_ontvangen",
+  "pasfoto_ontvangen",
+  "employes_ingevoerd",
+  "shiftbase_ingevoerd",
+  "vincenzo_app_ingevoerd",
+  "whatsapp_vincenzo",
+  "whatsapp_ruilen",
+];
+
 function cleanOptional(value: unknown) {
   if (value === undefined) return undefined;
   const cleaned = String(value ?? "").trim();
@@ -80,6 +92,19 @@ export async function PATCH(
       `,
       [status ?? null, gesprekDatum, gesprekNotities, id]
     );
+
+    for (const veld of checklistVelden) {
+      if (body[veld] !== undefined) {
+        await db.query(
+          `
+          UPDATE sollicitaties
+          SET ${veld} = $1
+          WHERE id = $2
+          `,
+          [Boolean(body[veld]), id]
+        );
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
