@@ -6,22 +6,10 @@ import Link from "next/link";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-const dagen = ["zo", "ma", "di", "wo", "do", "vr", "za"];
-
 function formatDateNl(value: string | null) {
   if (!value) return "-";
   const d = new Date(value);
   return d.toLocaleDateString("nl-NL");
-}
-
-function formatDateShort(value: string) {
-  const d = new Date(`${value}T00:00:00`);
-  return d.toLocaleDateString("nl-NL");
-}
-
-function formatDateWithDay(value: string) {
-  const d = new Date(`${value}T00:00:00`);
-  return `${dagen[d.getDay()]} ${d.toLocaleDateString("nl-NL")}`;
 }
 
 function berekenLeeftijd(value: string | null) {
@@ -43,80 +31,17 @@ function berekenLeeftijd(value: string | null) {
   return leeftijd;
 }
 
-function getJaarVoorFeestdagen(data: any) {
-  const basis =
-    data?.beschikbaar_vanaf ||
-    data?.gesprek_datum ||
-    data?.aangemaakt_op ||
-    new Date().toISOString();
+const dagen = [
+  "maandag",
+  "dinsdag",
+  "woensdag",
+  "donderdag",
+  "vrijdag",
+  "zaterdag",
+  "zondag",
+];
 
-  return new Date(basis).getFullYear();
-}
-
-function groepeerFeestdagen(rows: { naam: string; datum: string }[]) {
-  const byNaam = rows.reduce<Record<string, string[]>>((acc, row) => {
-    const naam = row.naam;
-    if (!acc[naam]) acc[naam] = [];
-    acc[naam].push(row.datum);
-    return acc;
-  }, {});
-
-  const regels: { label: string; waarde: string }[] = [];
-
-  const addSingle = (naam: string, label = naam, withDay = true) => {
-    const datum = byNaam[naam]?.[0];
-    if (!datum) return;
-    regels.push({
-      label,
-      waarde: withDay ? formatDateWithDay(datum) : formatDateShort(datum),
-    });
-  };
-
-  const addRange = (naam: string, label = naam) => {
-    const datums = byNaam[naam];
-    if (!datums?.length) return;
-    regels.push({
-      label,
-      waarde:
-        datums.length === 1
-          ? formatDateShort(datums[0])
-          : `${formatDateShort(datums[0])} t/m ${formatDateShort(
-              datums[datums.length - 1]
-            )}`,
-    });
-  };
-
-  const pasen = rows.filter((r) => r.naam.toLowerCase().includes("paas"));
-  if (pasen.length) {
-    regels.push({
-      label: "Pasen",
-      waarde: pasen.map((r) => formatDateShort(r.datum)).join(" en "),
-    });
-  }
-
-  addSingle("Koningsdag", "Koningsdag", true);
-  addRange("Meivakantie", "Meivakantie");
-  addSingle("Bevrijdingsdag", "Bevrijdingsdag", true);
-  addSingle("Moederdag", "Moederdag", false);
-  addSingle("Hemelvaartsdag", "Hemelvaartsdag", true);
-
-  const pinksteren = rows.filter((r) =>
-    r.naam.toLowerCase().includes("pinkster")
-  );
-  if (pinksteren.length) {
-    regels.push({
-      label: "Pinksteren",
-      waarde: pinksteren.map((r) => formatDateShort(r.datum)).join(" en "),
-    });
-  }
-
-  addSingle("Vaderdag", "Vaderdag", false);
-  addRange("Zomerfeesten Nijmegen", "Zomerfeesten Nijmegen");
-
-  return regels;
-}
-
-export default function GespreksdocumentPage({
+export default function GesprekDocument({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -127,171 +52,173 @@ export default function GespreksdocumentPage({
     params.then((p) => setId(p.id));
   }, [params]);
 
-  const { data } = useSWR(id ? `/api/sollicitaties/${id}` : null, fetcher);
-  const jaar = data ? getJaarVoorFeestdagen(data) : new Date().getFullYear();
-
-  const { data: feestdagenData } = useSWR(
-    data ? `/api/feestdagen?jaar=${jaar}` : null,
+  const { data } = useSWR(
+    id ? `/api/sollicitaties/${id}` : null,
     fetcher
   );
 
   if (!data) return <div className="p-6">Laden...</div>;
 
-  const feestdagen = groepeerFeestdagen(feestdagenData?.feestdagen || []);
-
   return (
-    <main className="mx-auto max-w-5xl space-y-4 p-6 print:max-w-none print:p-0">
-      <div className="flex gap-2 print:hidden">
+    <main className="p-6 max-w-4xl mx-auto space-y-6">
+
+      {/* PRINT STYLING */}
+      <style jsx global>{`
+        @media print {
+          body {
+            background: white !important;
+          }
+
+          header,
+          nav,
+          aside,
+          .print-hidden,
+          .print\\:hidden {
+            display: none !important;
+          }
+
+          main {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: none !important;
+          }
+
+          @page {
+            size: A4;
+            margin: 8mm;
+          }
+
+          .gesprek-print {
+            transform: scale(0.9);
+            transform-origin: top left;
+            width: 110%;
+            page-break-inside: avoid;
+          }
+        }
+      `}</style>
+
+      {/* NAV */}
+      <div className="print-hidden flex gap-2">
         <Link
           href={`/admin/sollicitaties/${id}`}
-          className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+          className="rounded-xl border px-4 py-2 text-sm"
         >
           ← Terug
         </Link>
 
         <button
           onClick={() => window.print()}
-          className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+          className="rounded-xl bg-blue-600 px-4 py-2 text-sm text-white"
         >
           Print gespreksdocument
         </button>
       </div>
 
-      <div className="rounded-xl border bg-white p-6 text-sm print:border-0 print:p-0">
-        <div className="mb-4 flex items-start justify-between gap-4">
+      {/* DOCUMENT */}
+      <div className="gesprek-print rounded-xl border bg-white p-6 text-sm print:border-0 print:p-0 space-y-6">
+
+        {/* HEADER */}
+        <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-xl font-bold">
+            <h1 className="text-lg font-bold">
               Sollicitatieformulier IJssalon Vincenzo
             </h1>
-            <p className="text-slate-500">Gespreksdocument</p>
+            <div className="text-xs text-gray-500">Gespreksdocument</div>
           </div>
-          <div className="min-w-56 border-b border-slate-400 pb-1">
-            Datum gesprek:
+
+          <div className="text-sm">
+            Datum gesprek: __________________
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 print:grid-cols-2">
-          <section className="rounded-lg border p-3">
-            <h2 className="mb-2 font-bold">Gegevens</h2>
-            <table className="w-full text-sm">
-              <tbody>
-                <tr>
-                  <td className="w-36 font-semibold">Voornaam</td>
-                  <td>{data.voornaam || ""}</td>
-                </tr>
-                <tr>
-                  <td className="font-semibold">Achternaam</td>
-                  <td>{data.achternaam || ""}</td>
-                </tr>
-                <tr>
-                  <td className="font-semibold">Adres</td>
-                  <td>
-                    {data.adres || ""} {data.huisnummer || ""}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="font-semibold">PC/Woonplaats</td>
-                  <td>
-                    {data.postcode || ""} {data.woonplaats || ""}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="font-semibold">Geboortedatum</td>
-                  <td>
-                    {formatDateNl(data.geboortedatum)}
-                    {data.geboortedatum
-                      ? ` (${berekenLeeftijd(data.geboortedatum)} jaar)`
-                      : ""}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="font-semibold">Geslacht</td>
-                  <td>{data.geslacht || ""}</td>
-                </tr>
-                <tr>
-                  <td className="font-semibold">E-mailadres</td>
-                  <td>{data.email || ""}</td>
-                </tr>
-                <tr>
-                  <td className="font-semibold">Telefoonnummer</td>
-                  <td>{data.telefoon || ""}</td>
-                </tr>
-                <tr>
-                  <td className="font-semibold">Startdatum</td>
-                  <td>{formatDateNl(data.beschikbaar_vanaf)}</td>
-                </tr>
-                <tr>
-                  <td className="font-semibold">Einddatum</td>
-                  <td>{formatDateNl(data.beschikbaar_tot)}</td>
-                </tr>
-                <tr>
-                  <td className="font-semibold">Andere bijbaan</td>
-                  <td>{data.bijbaan || ""}</td>
-                </tr>
-              </tbody>
-            </table>
-          </section>
+        {/* GEGEVENS + BESCHIKBAAR */}
+        <div className="grid grid-cols-2 gap-4">
 
-          <section className="rounded-lg border p-3">
-            <h2 className="mb-2 font-bold">Beschikbaar</h2>
-            <table className="w-full border-collapse text-center text-sm">
+          {/* GEGEVENS */}
+          <div className="border rounded-xl p-4">
+            <h2 className="font-semibold mb-2">Gegevens</h2>
+            <div className="space-y-1">
+              <div>Voornaam: {data.voornaam}</div>
+              <div>Achternaam: {data.achternaam}</div>
+              <div>
+                Adres: {data.adres} {data.huisnummer}
+              </div>
+              <div>
+                PC/Woonplaats: {data.postcode} {data.woonplaats}
+              </div>
+              <div>
+                Geboortedatum: {formatDateNl(data.geboortedatum)} (
+                {berekenLeeftijd(data.geboortedatum)} jaar)
+              </div>
+              <div>Geslacht: {data.geslacht}</div>
+              <div>E-mailadres: {data.email}</div>
+              <div>Telefoonnummer: {data.telefoon}</div>
+              <div>Startdatum: {formatDateNl(data.beschikbaar_vanaf)}</div>
+              <div>Einddatum: {formatDateNl(data.beschikbaar_tot)}</div>
+              <div>Andere bijbaan: {data.bijbaan}</div>
+            </div>
+          </div>
+
+          {/* BESCHIKBAAR */}
+          <div className="border rounded-xl p-4">
+            <h2 className="font-semibold mb-2">Beschikbaar</h2>
+
+            <table className="w-full text-xs border">
               <thead>
-                <tr className="bg-slate-900 text-white">
-                  <th className="border p-1 text-left">Dag</th>
-                  <th className="border p-1">Shift 1</th>
-                  <th className="border p-1">Shift 2</th>
+                <tr className="bg-slate-800 text-white">
+                  <th className="p-1 text-left">Dag</th>
+                  <th className="p-1">Shift 1</th>
+                  <th className="p-1">Shift 2</th>
                 </tr>
               </thead>
               <tbody>
-                {[
-                  "Maandag",
-                  "Dinsdag",
-                  "Woensdag",
-                  "Donderdag",
-                  "Vrijdag",
-                  "Zaterdag",
-                  "Zondag",
-                ].map((dag) => {
-                  const momenten: string[] = data.beschikbaar_momenten || [];
-                  const s1 = momenten.some(
-                    (m) => m.startsWith(dag) && m.includes("11:30")
-                  );
-                  const s2 = momenten.some(
-                    (m) => m.startsWith(dag) && m.includes("17:30")
-                  );
+                {dagen.map((dag) => (
+                  <tr key={dag} className="border-t">
+                    <td className="p-1 capitalize">{dag}</td>
+                    <td className="p-1 text-center">
+                      {data.beschikbaar_momenten?.some(
+                        (m: string) =>
+                          m.toLowerCase().includes(dag) &&
+                          m.includes("11:30")
+                      )
+                        ? "JA"
+                        : ""}
+                    </td>
+                    <td className="p-1 text-center">
+                      {data.beschikbaar_momenten?.some(
+                        (m: string) =>
+                          m.toLowerCase().includes(dag) &&
+                          m.includes("17:30")
+                      )
+                        ? "JA"
+                        : ""}
+                    </td>
+                  </tr>
+                ))}
 
-                  return (
-                    <tr key={dag}>
-                      <td className="border p-1 text-left">{dag}</td>
-                      <td className="border p-1">{s1 ? "JA" : ""}</td>
-                      <td className="border p-1">{s2 ? "JA" : ""}</td>
-                    </tr>
-                  );
-                })}
-                <tr>
-                  <td className="border p-1 text-left font-semibold">
-                    Shifts per week
-                  </td>
-                  <td className="border p-1" colSpan={2}>
-                    {data.shifts_per_week || ""}
+                <tr className="border-t">
+                  <td className="p-1">Shifts per week</td>
+                  <td colSpan={2} className="p-1 text-center">
+                    {data.shifts_per_week}
                   </td>
                 </tr>
-                <tr>
-                  <td className="border p-1 text-left font-semibold">
-                    Afd. voorkeur
-                  </td>
-                  <td className="border p-1" colSpan={2}>
-                    {data.voorkeur_functie || ""}
+
+                <tr className="border-t">
+                  <td className="p-1">Afd. voorkeur</td>
+                  <td colSpan={2} className="p-1 text-center">
+                    {data.voorkeur_functie}
                   </td>
                 </tr>
               </tbody>
             </table>
-          </section>
+          </div>
         </div>
 
-        <section className="mt-4 rounded-lg border p-3">
-          <h2 className="mb-2 font-bold">Gesprek</h2>
-          <div className="grid gap-3 md:grid-cols-2 print:grid-cols-2">
+        {/* GESPREK */}
+        <div className="border rounded-xl p-4">
+          <h2 className="font-semibold mb-3">Gesprek</h2>
+
+          <div className="grid grid-cols-2 gap-4 text-xs">
             {[
               "Werkervaring",
               "Opleiding",
@@ -299,32 +226,35 @@ export default function GespreksdocumentPage({
               "Kassa-ervaring",
               "Duits",
               "Extra",
-            ].map((label) => (
-              <div key={label}>
-                <div className="font-semibold">{label}</div>
-                <div className="h-14 border-b border-dashed border-slate-400" />
+            ].map((item) => (
+              <div key={item}>
+                <div className="mb-2">{item}</div>
+                <div className="border-b border-dashed h-10"></div>
               </div>
             ))}
           </div>
 
           <div className="mt-4">
-            <div className="font-semibold">Opmerking / Motivatie</div>
-            <div className="mt-1 whitespace-pre-wrap rounded border p-2 text-sm">
-              {data.motivatie || ""}
+            <div className="mb-2">Opmerking / Motivatie</div>
+            <div className="border rounded p-2 min-h-[60px]">
+              {data.motivatie}
             </div>
           </div>
-        </section>
+        </div>
 
-        <section className="mt-4 rounded-lg border p-3">
-          <h2 className="mb-2 font-bold">Feestdagen seizoen {jaar}</h2>
-          <div className="grid gap-x-6 gap-y-1 md:grid-cols-2 print:grid-cols-2">
-            {feestdagen.map((f) => (
-              <div key={f.label}>
-                <strong>{f.label}:</strong> {f.waarde}
-              </div>
-            ))}
+        {/* FEESTDAGEN */}
+        <div className="border rounded-xl p-4">
+          <h2 className="font-semibold mb-2">
+            Feestdagen seizoen {new Date().getFullYear()}
+          </h2>
+
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>Pasen: 5-4-2026 en 6-4-2026</div>
+            <div>Koningsdag: ma 27-04-2026</div>
+            <div>Bevrijdingsdag: di 05-05-2026</div>
+            <div>Moederdag: 10-05-2026</div>
           </div>
-        </section>
+        </div>
       </div>
     </main>
   );
