@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+
 import BewerkMedewerkerModal from "@/components/BewerkMedewerkerModal";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
 
@@ -20,7 +20,6 @@ interface FunctieOptie {
 }
 
 export default function MedewerkersBeheer() {
-  const searchParams = useSearchParams();
 
   const [medewerkers, setMedewerkers] = useState<Medewerker[]>([]);
   const [functies, setFuncties] = useState<FunctieOptie[]>([]);
@@ -35,18 +34,20 @@ export default function MedewerkersBeheer() {
   const [modalOpen, setModalOpen] = useState(false);
   const [geselecteerde, setGeselecteerde] = useState<Medewerker | null>(null);
 
-  useEffect(() => {
-    const naam = searchParams.get("naam") || "";
-    const email = searchParams.get("email") || "";
+useEffect(() => {
+  const params = new URLSearchParams(window.location.search);
 
-    if (naam || email) {
-      setForm((prev) => ({
-        ...prev,
-        naam,
-        email,
-      }));
-    }
-  }, [searchParams]);
+  const naam = params.get("naam") || "";
+  const email = params.get("email") || "";
+
+  if (naam || email) {
+    setForm((prev) => ({
+      ...prev,
+      naam,
+      email,
+    }));
+  }
+}, []);
 
   useEffect(() => {
     fetch("/api/medewerkers")
