@@ -127,6 +127,20 @@ function groepeerFeestdagen(rows: { naam: string; datum: string }[]) {
     r.naam.toLowerCase() === "dag voor zomerfeesten"
 );
 
+const meivakantie = rows.filter((r) =>
+  r.naam.toLowerCase().includes("meivakantie dag")
+);
+
+if (meivakantie.length) {
+  regels.push({
+    label: "Meivakantie",
+    waarde: `${formatDateShort(meivakantie[0].datum)} t/m ${formatDateShort(
+      meivakantie[meivakantie.length - 1].datum
+    )}`,
+  });
+}
+
+
 if (zomerfeesten.length) {
   regels.push({
     label: "Zomerfeesten Nijmegen",
