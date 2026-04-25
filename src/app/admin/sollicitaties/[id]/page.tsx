@@ -64,15 +64,12 @@ function getGegevensWhatsappText(naam: string) {
 
 *IJssalon Vincenzo*
 
-Beste [naam],
+Beste ${naam},
 
-Welkom bij IJssalon Vincenzo! 🎉
+Welkom bij IJssalon Vincenzo! 
 
-In de Vincenzo-app vind je alle belangrijke informatie en werkinstructies. Neem deze zo snel mogelijk door en rond af wat nodig is.
-
+In dit bericht vind je alle belangrijke informatie en werkinstructies. Neem deze zo snel mogelijk door en rond af wat nodig is.
 Heb je iets niet helemaal duidelijk? Reageer gerust op dit bericht 👍
-
----
 
 *Tools*
 
@@ -87,8 +84,6 @@ Contract en salarisstroken
 • *Vincenzo-app*  
 Werkinstructies en skills
 
----
-
 *Gegevens voor contract*
 
 We hebben van je nodig:
@@ -102,21 +97,15 @@ We hebben van je nodig:
 → Ja als dit je enige baan is  
 → Nee als je nog een werkgever hebt
 
----
-
 *Foto (ShiftBase & app)*
 
 Stuur een duidelijke foto van jezelf (alleen gezicht zichtbaar).  
 Deze gebruiken we alleen intern en verwijderen we na je dienstverband (AVG-proof).
 
----
-
 *Aanleveren*
 
-Je kunt alles gewoon via WhatsApp sturen 👍  
-(of mailen naar: herman@ijssalonvincenzo.nl)
-
----
+Je kunt alles gewoon via WhatsApp sturen (of mailen naar: herman@ijssalonvincenzo.nl)
+Als je nog vragen hebt kun je die eventueel ook via WhatsApp aan mij stellen.
 
 Met vriendelijke groet,  
 Herman van den Akker  
