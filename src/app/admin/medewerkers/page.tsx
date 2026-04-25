@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import BewerkMedewerkerModal from "@/components/BewerkMedewerkerModal";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
 
@@ -17,13 +18,33 @@ interface FunctieOptie {
 }
 
 export default function MedewerkersBeheer() {
+  const searchParams = useSearchParams();
+
   const [medewerkers, setMedewerkers] = useState<Medewerker[]>([]);
   const [functies, setFuncties] = useState<FunctieOptie[]>([]);
-  const [form, setForm] = useState({ naam: "", email: "", functie: "", wachtwoord: "" });
+  const [form, setForm] = useState({
+    naam: "",
+    email: "",
+    functie: "",
+    wachtwoord: "",
+  });
   const [fout, setFout] = useState<string | null>(null);
   const [succes, setSucces] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [geselecteerde, setGeselecteerde] = useState<Medewerker | null>(null);
+
+  useEffect(() => {
+    const naam = searchParams.get("naam") || "";
+    const email = searchParams.get("email") || "";
+
+    if (naam || email) {
+      setForm((prev) => ({
+        ...prev,
+        naam,
+        email,
+      }));
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetch("/api/medewerkers")
@@ -47,6 +68,7 @@ export default function MedewerkersBeheer() {
     });
 
     const data = await res.json();
+
     if (res.ok) {
       setSucces(true);
       setForm({ naam: "", email: "", functie: "", wachtwoord: "" });
@@ -57,9 +79,11 @@ export default function MedewerkersBeheer() {
 
   const handleDelete = async (email: string) => {
     if (!confirm(`Verwijder medewerker met e-mail: ${email}?`)) return;
+
     await fetch(`/api/medewerkers?email=${encodeURIComponent(email)}`, {
       method: "DELETE",
     });
+
     setSucces(true);
   };
 
@@ -67,7 +91,10 @@ export default function MedewerkersBeheer() {
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">👥 Medewerkersbeheer</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4 bg-gray-50 p-4 rounded shadow">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4 bg-gray-50 p-4 rounded shadow"
+      >
         <div className="grid grid-cols-2 gap-4">
           <input
             type="text"
@@ -77,6 +104,7 @@ export default function MedewerkersBeheer() {
             onChange={(e) => setForm({ ...form, naam: e.target.value })}
             required
           />
+
           <input
             type="email"
             placeholder="E-mailadres"
@@ -85,6 +113,7 @@ export default function MedewerkersBeheer() {
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             required
           />
+
           <select
             className="border p-2 rounded"
             value={form.functie}
@@ -93,9 +122,12 @@ export default function MedewerkersBeheer() {
           >
             <option value="">Kies functie</option>
             {functies.map((f) => (
-              <option key={f.id} value={f.naam}>{f.naam}</option>
+              <option key={f.id} value={f.naam}>
+                {f.naam}
+              </option>
             ))}
           </select>
+
           <input
             type="text"
             placeholder="Tijdelijk wachtwoord"
@@ -105,18 +137,21 @@ export default function MedewerkersBeheer() {
             required
           />
         </div>
+
         <button
           type="submit"
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
           Medewerker toevoegen
         </button>
+
         {fout && <p className="text-red-600">❌ {fout}</p>}
         {succes && <p className="text-green-700">✅ Toegevoegd</p>}
       </form>
 
       <div className="bg-white shadow rounded p-4">
         <h2 className="text-lg font-semibold mb-2">Bestaande medewerkers</h2>
+
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="bg-gray-100">
@@ -127,31 +162,31 @@ export default function MedewerkersBeheer() {
             </tr>
           </thead>
           <tbody>
-            {medewerkers.map((m, i) => (
-              <tr key={i}>
+            {medewerkers.map((m) => (
+              <tr key={m.id}>
                 <td className="border p-2">{m.naam}</td>
                 <td className="border p-2">{m.email}</td>
                 <td className="border p-2">{m.functie}</td>
                 <td className="border p-2 text-center space-x-2">
-  <button
-    onClick={() => {
-      setGeselecteerde(m);
-      setModalOpen(true);
-    }}
-    className="text-blue-600 hover:text-blue-800"
-    title="Bewerken"
-  >
-    ✏️
-  </button>
-  <button
-    onClick={() => handleDelete(m.email)}
-    className="text-red-600 hover:text-red-800"
-    title="Verwijderen"
-  >
-    ❌
-  </button>
-</td>
+                  <button
+                    onClick={() => {
+                      setGeselecteerde(m);
+                      setModalOpen(true);
+                    }}
+                    className="text-blue-600 hover:text-blue-800"
+                    title="Bewerken"
+                  >
+                    ✏️
+                  </button>
 
+                  <button
+                    onClick={() => handleDelete(m.email)}
+                    className="text-red-600 hover:text-red-800"
+                    title="Verwijderen"
+                  >
+                    ❌
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -177,6 +212,7 @@ export default function MedewerkersBeheer() {
           }}
         />
       )}
+
       <ScrollToTopButton />
     </div>
   );
