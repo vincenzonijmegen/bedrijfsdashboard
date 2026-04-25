@@ -364,19 +364,32 @@ export default function GespreksdocumentPage({
             <section className="mt-4 rounded-lg border p-3">
               <h2 className="mb-2 font-bold">Gesprek</h2>
               <div className="grid grid-cols-2 gap-3">
-                {[
-                  "Werkervaring",
-                  "Opleiding",
-                  "Rekenvaardigheid",
-                  "Kassa-ervaring",
-                  "Duits",
-                  "Extra",
-                ].map((label) => (
-                  <div key={label}>
-                    <div className="font-semibold">{label}</div>
-                    <div className="h-12 border-b border-dashed border-slate-400" />
-                  </div>
-                ))}
+              {[
+                ["ervaring", "Werkervaring"],
+                ["opleiding", "Opleiding"],
+                ["rekenen", "Rekenvaardigheid"],
+                ["kassa", "Kassa-ervaring"],
+                ["duits", "Duits"],
+                ["extra", "Extra"],
+              ].map(([veld, label]) => (
+                <div key={veld}>
+                  <div className="font-semibold">{label}</div>
+                  <textarea
+                    defaultValue={data[veld] || ""}
+                    onBlur={async (e) => {
+                      await fetch(`/api/sollicitaties/${id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          [veld]: e.target.value,
+                        }),
+                      });
+                    }}
+                    rows={2}
+                    className="mt-1 w-full rounded border border-slate-300 p-2 text-sm print:border-0 print:p-0"
+                  />
+                </div>
+              ))}
               </div>
 
               <div className="mt-3">

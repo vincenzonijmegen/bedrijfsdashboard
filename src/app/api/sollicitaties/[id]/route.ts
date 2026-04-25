@@ -66,6 +66,15 @@ export async function PATCH(
     const gesprekDatum = cleanOptional(body?.gesprek_datum);
     const gesprekNotities = cleanOptional(body?.gesprek_notities);
 
+    const gesprekVelden = {
+      ervaring: cleanOptional(body?.ervaring),
+      opleiding: cleanOptional(body?.opleiding),
+      rekenen: cleanOptional(body?.rekenen),
+      kassa: cleanOptional(body?.kassa),
+      duits: cleanOptional(body?.duits),
+      extra: cleanOptional(body?.extra),
+    };
+
     if (status !== undefined && !geldigeStatussen.includes(status)) {
       return NextResponse.json(
         { success: false, error: "Ongeldige status" },
@@ -80,6 +89,14 @@ export async function PATCH(
         status = COALESCE($1, status),
         gesprek_datum = COALESCE($2::timestamptz, gesprek_datum),
         gesprek_notities = COALESCE($3, gesprek_notities),
+
+        ervaring = COALESCE($4, ervaring),
+        opleiding = COALESCE($5, opleiding),
+        rekenen = COALESCE($6, rekenen),
+        kassa = COALESCE($7, kassa),
+        duits = COALESCE($8, duits),
+        extra = COALESCE($9, extra),
+
         aangenomen_op = CASE
           WHEN $1 = 'aangenomen' THEN COALESCE(aangenomen_op, NOW())
           ELSE aangenomen_op
@@ -88,9 +105,20 @@ export async function PATCH(
           WHEN $1 = 'afgewezen' THEN COALESCE(afgewezen_op, NOW())
           ELSE afgewezen_op
         END
-      WHERE id = $4
+      WHERE id = $10
       `,
-      [status ?? null, gesprekDatum, gesprekNotities, id]
+      [
+        status ?? null,
+        gesprekDatum,
+        gesprekNotities,
+        gesprekVelden.ervaring,
+        gesprekVelden.opleiding,
+        gesprekVelden.rekenen,
+        gesprekVelden.kassa,
+        gesprekVelden.duits,
+        gesprekVelden.extra,
+        id,
+      ]
     );
 
     for (const veld of checklistVelden) {
