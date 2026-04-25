@@ -268,6 +268,7 @@ export default function SollicitatieDetail({
       <section className="bg-white border rounded-xl p-4">
         <h2 className="font-semibold mb-2">Gegevens</h2>
         <div className="text-sm space-y-1">
+          <div>Geslacht: {data.geslacht || "-"}</div>
           <div>Email: {data.email}</div>
           <div>Tel: {data.telefoon}</div>
           <div>
@@ -295,8 +296,10 @@ export default function SollicitatieDetail({
       <section className="bg-white border rounded-xl p-4">
         <h2 className="font-semibold mb-2">Overig</h2>
         <div className="text-sm space-y-1">
+          <div>Beschikbaar vanaf: {formatDateNl(data.beschikbaar_vanaf)}</div>
+          <div>Beschikbaar tot: {formatDateNl(data.beschikbaar_tot)}</div>
           <div>Bijbaan: {data.bijbaan}</div>
-          <div>Shifts: {data.shifts_per_week}</div>
+          <div>Shifts per week: {data.shifts_per_week}</div>
           <div>Voorkeur: {data.voorkeur_functie}</div>
           <div>Vakantie: {data.vakantie}</div>
         </div>
