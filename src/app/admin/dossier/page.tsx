@@ -1,4 +1,4 @@
-// src/app/admin/dossier
+// src/app/admin/dossier/page.tsx
 
 "use client";
 
@@ -48,10 +48,26 @@ export default function DossierOverzicht() {
     email ? `/api/dossier/opmerkingen?email=${email}` : null,
     fetcher
   );
-  const { data: medewerkers } = useSWR<Medewerker[]>("/api/admin/medewerkers", fetcher);
-  const { data: documenten } = useSWR(email ? `/api/dossier/document?email=${email}` : null, fetcher);
+
+  const { data: medewerkers } = useSWR<Medewerker[]>(
+    "/api/admin/medewerkers",
+    fetcher
+  );
+
+  const { data: documenten } = useSWR(
+    email ? `/api/dossier/document?email=${email}` : null,
+    fetcher
+  );
+
+  const { data: sollicitatieData } = useSWR(
+    email ? `/api/dossier/sollicitatie?email=${encodeURIComponent(email)}` : null,
+    fetcher
+  );
+
+  const sollicitatie = sollicitatieData?.sollicitatie;
 
   const geselecteerde = medewerkers?.find((m) => m.email === email);
+
   const { data: verzuim, mutate: mutateVerzuim } = useSWR<Ziekteverzuim[]>(
     geselecteerde ? `/api/medewerkers/${geselecteerde.email}/verzuim` : null,
     fetcher
@@ -59,11 +75,13 @@ export default function DossierOverzicht() {
 
   const voegToe = async () => {
     if (!email || !tekst.trim()) return;
+
     await fetch("/api/dossier/opmerkingen", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, tekst })
+      body: JSON.stringify({ email, tekst }),
     });
+
     setTekst("");
     setSuccess(true);
     mutate();
@@ -82,7 +100,7 @@ export default function DossierOverzicht() {
 
     const res = await fetch("/api/dossier/upload", {
       method: "POST",
-      body: formData
+      body: formData,
     });
 
     if (res.ok) {
@@ -95,11 +113,17 @@ export default function DossierOverzicht() {
 
   const voegZiekteverzuimToe = async () => {
     if (!van || !geselecteerde) return;
+
     await fetch(`/api/medewerkers/${geselecteerde.email}/verzuim`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ van, tot: tot?.length > 0 ? tot : null, opmerking: opmerkingZiekte })
+      body: JSON.stringify({
+        van,
+        tot: tot?.length > 0 ? tot : null,
+        opmerking: opmerkingZiekte,
+      }),
     });
+
     setVan("");
     setTot("");
     setOpmerkingZiekte("");
@@ -115,8 +139,9 @@ export default function DossierOverzicht() {
     await fetch("/api/dossier/opmerkingen", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id })
+      body: JSON.stringify({ id }),
     });
+
     mutate();
   };
 
@@ -124,8 +149,9 @@ export default function DossierOverzicht() {
     await fetch("/api/dossier/opmerkingen", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, tekst: editTekst })
+      body: JSON.stringify({ id, tekst: editTekst }),
     });
+
     setEditId(null);
     setEditTekst("");
     mutate();
@@ -137,16 +163,99 @@ export default function DossierOverzicht() {
 
       <label className="block mb-2">
         Kies medewerker:
-        <select value={email} onChange={(e) => setEmail(e.target.value)} className="ml-2 border rounded px-2 py-1">
+        <select
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="ml-2 border rounded px-2 py-1"
+        >
           <option value="">-- Kies --</option>
           {medewerkers?.map((m) => (
-            <option key={m.email} value={m.email}>{m.naam}</option>
+            <option key={m.email} value={m.email}>
+              {m.naam}
+            </option>
           ))}
         </select>
       </label>
 
       {email && (
         <>
+          {sollicitatie && (
+            <div className="my-6 rounded-xl border border-blue-200 bg-blue-50 p-4">
+              <h2 className="mb-3 font-semibold text-blue-900">
+                Sollicitatiegegevens
+              </h2>
+
+              <div className="grid gap-3 text-sm md:grid-cols-2">
+                <div>
+                  <strong>Beschikbaar vanaf:</strong>{" "}
+                  {sollicitatie.beschikbaar_vanaf
+                    ? formatDate(sollicitatie.beschikbaar_vanaf)
+                    : "-"}
+                </div>
+
+                <div>
+                  <strong>Beschikbaar tot:</strong>{" "}
+                  {sollicitatie.beschikbaar_tot
+                    ? formatDate(sollicitatie.beschikbaar_tot)
+                    : "-"}
+                </div>
+
+                <div>
+                  <strong>Shifts per week:</strong>{" "}
+                  {sollicitatie.shifts_per_week || "-"}
+                </div>
+
+                <div>
+                  <strong>Voorkeur functie:</strong>{" "}
+                  {sollicitatie.voorkeur_functie || "-"}
+                </div>
+
+                <div>
+                  <strong>Andere bijbaan:</strong>{" "}
+                  {sollicitatie.bijbaan || "-"}
+                </div>
+
+                <div>
+                  <strong>Vakantie:</strong> {sollicitatie.vakantie || "-"}
+                </div>
+              </div>
+
+              {Array.isArray(sollicitatie.beschikbaar_momenten) &&
+                sollicitatie.beschikbaar_momenten.length > 0 && (
+                  <div className="mt-4">
+                    <strong className="text-sm">
+                      Opgegeven beschikbaarheid:
+                    </strong>
+                    <ul className="mt-2 list-disc pl-5 text-sm">
+                      {sollicitatie.beschikbaar_momenten.map(
+                        (moment: string) => (
+                          <li key={moment}>{moment}</li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+                )}
+
+              {sollicitatie.motivatie && (
+                <div className="mt-4">
+                  <strong className="text-sm">Motivatie / opmerking:</strong>
+                  <p className="mt-1 whitespace-pre-wrap rounded bg-white p-3 text-sm">
+                    {sollicitatie.motivatie}
+                  </p>
+                </div>
+              )}
+
+              <div className="mt-4">
+                <a
+                  href={`/admin/sollicitaties/${sollicitatie.id}`}
+                  className="text-sm font-medium text-blue-700 underline"
+                >
+                  Open volledige sollicitatie →
+                </a>
+              </div>
+            </div>
+          )}
+
           <div className="my-4">
             <textarea
               value={tekst}
@@ -154,20 +263,30 @@ export default function DossierOverzicht() {
               placeholder="Opmerking toevoegen"
               className="w-full border p-2 rounded"
             />
-            <button onClick={voegToe} className="mt-2 bg-blue-500 text-white px-4 py-1 rounded">
+            <button
+              onClick={voegToe}
+              className="mt-2 bg-blue-500 text-white px-4 py-1 rounded"
+            >
               Opslaan
             </button>
             {success && <p className="text-green-600 mt-2">Opgeslagen</p>}
           </div>
 
           <div className="my-4">
-            <input id="upload" type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-            <button onClick={uploadBestand} className="ml-2 bg-green-500 text-white px-4 py-1 rounded">
+            <input
+              id="upload"
+              type="file"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+            />
+            <button
+              onClick={uploadBestand}
+              className="ml-2 bg-green-500 text-white px-4 py-1 rounded"
+            >
               Upload bestand
             </button>
             {success && <p className="text-green-600 mt-2">Upload voltooid</p>}
           </div>
-{/* Documenten */}
+
           {documenten?.length > 0 && (
             <div className="mt-6">
               <h2 className="font-semibold mb-2">Documenten</h2>
@@ -183,144 +302,180 @@ export default function DossierOverzicht() {
               ))}
             </div>
           )}
-          {/* Ziekteverzuim invoer */}
+
           <div className="my-6">
             <h2 className="font-semibold mb-2">Ziekteverzuim</h2>
             <div className="flex gap-2 items-center mb-2">
-              <input type="date" value={van} onChange={e => setVan(e.target.value)} className="border rounded px-2 py-1" />
+              <input
+                type="date"
+                value={van}
+                onChange={(e) => setVan(e.target.value)}
+                className="border rounded px-2 py-1"
+              />
               <span>t/m</span>
-              <input type="date" value={tot} onChange={e => setTot(e.target.value)} className="border rounded px-2 py-1" />
-              <input type="text" value={opmerkingZiekte} onChange={e => setOpmerkingZiekte(e.target.value)} placeholder="Toelichting" className="border rounded px-2 py-1 flex-1" />
-              <button onClick={voegZiekteverzuimToe} className="bg-blue-600 text-white px-3 py-1 rounded">➕ Toevoegen</button>
+              <input
+                type="date"
+                value={tot}
+                onChange={(e) => setTot(e.target.value)}
+                className="border rounded px-2 py-1"
+              />
+              <input
+                type="text"
+                value={opmerkingZiekte}
+                onChange={(e) => setOpmerkingZiekte(e.target.value)}
+                placeholder="Toelichting"
+                className="border rounded px-2 py-1 flex-1"
+              />
+              <button
+                onClick={voegZiekteverzuimToe}
+                className="bg-blue-600 text-white px-3 py-1 rounded"
+              >
+                ➕ Toevoegen
+              </button>
             </div>
+
             {Array.isArray(verzuim) && verzuim.length > 0 && (
               <ul className="mt-2 space-y-2">
                 {verzuim.map((v) => (
-<li key={v.id} className="bg-violet-50 border border-violet-200 p-3 rounded-xl shadow-sm relative">
-  {editId === v.id ? (
-    <>
-      <div className="flex gap-2 mb-2">
-        <input
-          type="date"
-          value={editVan} onChange={(e) => setEditVan(e.target.value)}
-          className="border rounded px-2 py-1"
-        />
-        <input
-          type="date"
-          value={editTot || ""} onChange={(e) => setEditTot(e.target.value)}
-          className="border rounded px-2 py-1"
-        />
-      </div>
-      <textarea
-        value={editTekst}
-        onChange={(e) => setEditTekst(e.target.value)}
-        className="w-full border rounded p-1"
-      />
-      <button
-        onClick={() => {
-fetch(`/api/medewerkers/verzuim/${v.id}`, {
-  method: "PATCH",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    van: editVan,
-    tot: editTot?.length > 0 ? editTot : null,
-    opmerking: editTekst
-  })
-          }).then(() => {
-            setEditId(null);
-            setEditTekst("");
-            mutateVerzuim();
-          });
-        }}
-        className="text-green-600 mt-1"
-      >
-        💾 Opslaan
-      </button>
-    </>
-  ) : (
-    <p className="text-sm">
-      <strong>{formatDate(v.van)}</strong>
-      {v.tot && v.van !== v.tot && (
-        <>
-          <span> t/m </span>
-          <strong>{formatDate(v.tot)}</strong>
-        </>
-      )}
-      {!v.tot && <span className='ml-2 inline-block text-xs text-red-600 font-semibold bg-red-100 px-2 py-0.5 rounded'>nog ziekgemeld</span>}<span> – {v.opmerking}</span>
-    </p>
-  )}
+                  <li
+                    key={v.id}
+                    className="bg-violet-50 border border-violet-200 p-3 rounded-xl shadow-sm relative"
+                  >
+                    {editId === v.id ? (
+                      <>
+                        <div className="flex gap-2 mb-2">
+                          <input
+                            type="date"
+                            value={editVan}
+                            onChange={(e) => setEditVan(e.target.value)}
+                            className="border rounded px-2 py-1"
+                          />
+                          <input
+                            type="date"
+                            value={editTot || ""}
+                            onChange={(e) => setEditTot(e.target.value)}
+                            className="border rounded px-2 py-1"
+                          />
+                        </div>
+                        <textarea
+                          value={editTekst}
+                          onChange={(e) => setEditTekst(e.target.value)}
+                          className="w-full border rounded p-1"
+                        />
+                        <button
+                          onClick={() => {
+                            fetch(`/api/medewerkers/verzuim/${v.id}`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                van: editVan,
+                                tot: editTot?.length > 0 ? editTot : null,
+                                opmerking: editTekst,
+                              }),
+                            }).then(() => {
+                              setEditId(null);
+                              setEditTekst("");
+                              mutateVerzuim();
+                            });
+                          }}
+                          className="text-green-600 mt-1"
+                        >
+                          💾 Opslaan
+                        </button>
+                      </>
+                    ) : (
+                      <p className="text-sm">
+                        <strong>{formatDate(v.van)}</strong>
+                        {v.tot && v.van !== v.tot && (
+                          <>
+                            <span> t/m </span>
+                            <strong>{formatDate(v.tot)}</strong>
+                          </>
+                        )}
+                        {!v.tot && (
+                          <span className="ml-2 inline-block text-xs text-red-600 font-semibold bg-red-100 px-2 py-0.5 rounded">
+                            nog ziekgemeld
+                          </span>
+                        )}
+                        <span> – {v.opmerking}</span>
+                      </p>
+                    )}
 
-  <div className="absolute right-2 top-2 flex gap-2 text-sm">
-    <button
-      onClick={() => {
-        setEditId(v.id);
-        setEditTekst(v.opmerking);
-        setEditVan(v.van);
-        setEditTot(v.tot);
-      }}
-      className="text-blue-600"
-    >
-      ✏️
-    </button>
-    <button
-      onClick={() => verwijderZiekteverzuim(v.id)}
-      className="text-red-500"
-    >
-      🗑️
-    </button>
-  </div>
-</li>
-
+                    <div className="absolute right-2 top-2 flex gap-2 text-sm">
+                      <button
+                        onClick={() => {
+                          setEditId(v.id);
+                          setEditTekst(v.opmerking);
+                          setEditVan(v.van);
+                          setEditTot(v.tot);
+                        }}
+                        className="text-blue-600"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => verwijderZiekteverzuim(v.id)}
+                        className="text-red-500"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </li>
                 ))}
               </ul>
             )}
           </div>
 
-          
-
-          {/* Opmerkingen */}
           {opmerkingen?.length > 0 && (
             <div className="mt-6">
               <h2 className="font-semibold mb-2">Opmerkingen</h2>
               <div className="space-y-3">
-                {opmerkingen.map((o: { id: number; tekst: string; datum: string }, i: number) => (
-                  <div key={o.id} className="bg-gray-100 border border-gray-300 p-3 rounded shadow-sm relative">
-  
+                {opmerkingen.map(
+                  (o: { id: number; tekst: string; datum: string }) => (
+                    <div
+                      key={o.id}
+                      className="bg-gray-100 border border-gray-300 p-3 rounded shadow-sm relative"
+                    >
+                      {editId === o.id ? (
+                        <>
+                          <textarea
+                            value={editTekst}
+                            onChange={(e) => setEditTekst(e.target.value)}
+                            className="w-full border rounded p-1"
+                          />
+                          <button
+                            onClick={() => bewerkOpmerking(o.id)}
+                            className="text-green-600 mt-1"
+                          >
+                            💾 Opslaan
+                          </button>
+                        </>
+                      ) : (
+                        <p className="text-sm">
+                          <strong>{formatDate(o.datum)}</strong> – {o.tekst}
+                        </p>
+                      )}
 
-  {editId === o.id ? (
-    <>
-      <textarea
-        value={editTekst}
-        onChange={(e) => setEditTekst(e.target.value)}
-        className="w-full border rounded p-1"
-      />
-      <button onClick={() => bewerkOpmerking(o.id)} className="text-green-600 mt-1">💾 Opslaan</button>
-    </>
-  ) : (
-    <p className="text-sm">
-      <strong>{formatDate(o.datum)}</strong> – {o.tekst}
-    </p>
-  )}
-
-  <div className="absolute top-2 right-2 flex gap-2 text-sm">
-    <button
-      onClick={() => {
-        setEditId(o.id);
-        setEditTekst(o.tekst);
-      }}
-      className="text-blue-600"
-    >
-      ✏️
-    </button>
-    <button
-      onClick={() => verwijderOpmerking(o.id)}
-      className="text-red-600"
-    >
-      🗑️
-    </button>
-  </div>
-</div>
-                ))}
+                      <div className="absolute top-2 right-2 flex gap-2 text-sm">
+                        <button
+                          onClick={() => {
+                            setEditId(o.id);
+                            setEditTekst(o.tekst);
+                          }}
+                          className="text-blue-600"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => verwijderOpmerking(o.id)}
+                          className="text-red-600"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  )
+                )}
               </div>
             </div>
           )}
@@ -342,7 +497,11 @@ fetch(`/api/medewerkers/verzuim/${v.id}`, {
                 className="w-full h-full rounded"
               />
             ) : (
-              <img src={actieveUrl} alt="Document" className="max-h-full max-w-full mx-auto" />
+              <img
+                src={actieveUrl}
+                alt="Document"
+                className="max-h-full max-w-full mx-auto"
+              />
             )}
           </div>
         </div>
