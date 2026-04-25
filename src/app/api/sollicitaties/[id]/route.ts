@@ -72,3 +72,36 @@ export async function PATCH(
     );
   }
 }
+export async function DELETE(
+  _req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await context.params;
+
+    const result = await db.query(
+      `
+      DELETE FROM sollicitaties
+      WHERE id = $1
+      RETURNING id
+      `,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return NextResponse.json(
+        { success: false, error: "Sollicitatie niet gevonden" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Fout bij verwijderen sollicitatie:", error);
+
+    return NextResponse.json(
+      { success: false, error: "Verwijderen mislukt" },
+      { status: 500 }
+    );
+  }
+}

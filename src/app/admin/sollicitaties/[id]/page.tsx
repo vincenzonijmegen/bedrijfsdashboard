@@ -74,6 +74,34 @@ export default function SollicitatieDetail({
     }
   }
 
+
+async function deleteSollicitatie() {
+  if (!id) return;
+
+  const ok = window.confirm(
+    "Weet je zeker dat je deze sollicitatie definitief wilt verwijderen? Dit kan niet ongedaan worden gemaakt."
+  );
+
+  if (!ok) return;
+
+  try {
+    const res = await fetch(`/api/sollicitaties/${id}`, {
+      method: "DELETE",
+    });
+
+    const json = await res.json();
+
+    if (!res.ok) {
+      throw new Error(json?.error || "Verwijderen mislukt");
+    }
+
+    window.location.href = "/admin/sollicitaties";
+  } catch (err) {
+    alert(err instanceof Error ? err.message : "Verwijderen mislukt");
+  }
+}
+
+
   if (!data) return <div className="p-6">Laden...</div>;
 
   return (
@@ -154,6 +182,20 @@ export default function SollicitatieDetail({
         <h2 className="font-semibold mb-2">Motivatie</h2>
         <p className="text-sm whitespace-pre-wrap">{data.motivatie}</p>
       </section>
+
+      <section className="rounded-xl border border-red-200 bg-red-50 p-4">
+  <h2 className="font-semibold text-red-800">Verwijderen</h2>
+  <p className="mt-1 text-sm text-red-700">
+    Gebruik dit voor dubbele sollicitaties of kandidaten die definitief zijn afgewezen.
+  </p>
+
+  <button
+    onClick={deleteSollicitatie}
+    className="mt-3 rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+  >
+    Sollicitatie definitief verwijderen
+  </button>
+</section>
     </main>
   );
 }
