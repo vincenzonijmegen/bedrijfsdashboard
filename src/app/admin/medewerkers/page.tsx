@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import BewerkMedewerkerModal from "@/components/BewerkMedewerkerModal";
 import ScrollToTopButton from "@/components/ScrollToTopButton";
 
+export const dynamic = "force-dynamic";
+
 interface Medewerker {
   id: number;
   naam: string;
