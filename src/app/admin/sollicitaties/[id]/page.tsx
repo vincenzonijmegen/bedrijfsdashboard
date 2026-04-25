@@ -5,6 +5,8 @@ import useSWR from "swr";
 import Link from "next/link";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const [showGegevensModal, setShowGegevensModal] = useState(false);
+const [gegevensText, setGegevensText] = useState("");
 
 function formatDateNl(value: string | null) {
   if (!value) return "-";
@@ -58,6 +60,41 @@ https://calendly.com/ijssalonvincenzo/sollicitatiegesprek-1`;
 function getWhatsappNumber(telefoon: string) {
   return telefoon.replace(/\D/g, "").replace(/^0/, "31");
 }
+
+function getGegevensWhatsappText(naam: string) {
+  return `*IJssalon Vincenzo*
+
+Beste ${naam},
+
+Welkom bij IJssalon Vincenzo!
+
+In de Vincenzo-app vind je alle belangrijke informatie en werkinstructies. Neem deze zo snel mogelijk door.
+
+---
+
+*Gegevens voor contract*
+
+We hebben van je nodig:
+
+• Kopie ID (voor- en achterzijde) of paspoort  
+• IBAN  
+• Loonheffingskorting (ja/nee)
+
+---
+
+*Foto*
+
+Stuur een duidelijke foto van jezelf (alleen gezicht zichtbaar)
+
+---
+
+Je kunt alles via WhatsApp sturen 👍
+
+Groet,
+Herman`;
+}
+
+
 
 export default function SollicitatieDetail({
   params,
@@ -154,6 +191,29 @@ export default function SollicitatieDetail({
     }
   }
 
+function openGegevensModal() {
+  if (!data) return;
+
+  setGegevensText(getGegevensWhatsappText(data.voornaam));
+  setShowGegevensModal(true);
+}
+
+async function sendGegevensWhatsapp() {
+  if (!data) return;
+
+  const nummer = data.telefoon.replace(/\D/g, "").replace(/^0/, "31");
+
+  const url = `https://wa.me/${nummer}?text=${encodeURIComponent(
+    gegevensText
+  )}`;
+
+  window.open(url, "_blank");
+
+  setShowGegevensModal(false);
+
+  await updateStatus("wacht op gegevens");
+}
+
   function openWhatsappModal() {
     if (!data) return;
     setWhatsappText(getDefaultWhatsappText(data.voornaam));
@@ -226,6 +286,15 @@ export default function SollicitatieDetail({
           Uitnodigen via WhatsApp
         </button>
       </section>
+
+<button
+  onClick={openGegevensModal}
+  className="mt-2 w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-medium text-white hover:bg-blue-700"
+>
+  Gegevens opvragen
+</button>
+
+
 
       <section className="rounded-xl border bg-white p-4 space-y-3">
         <h2 className="font-semibold">Gesprek</h2>
@@ -364,6 +433,41 @@ export default function SollicitatieDetail({
           </div>
         </div>
       )}
+
+      {showGegevensModal && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="w-full max-w-lg rounded-2xl bg-white p-4 shadow-xl space-y-3">
+      <h2 className="text-lg font-semibold">
+        Gegevens opvragen (WhatsApp)
+      </h2>
+
+      <textarea
+        value={gegevensText}
+        onChange={(e) => setGegevensText(e.target.value)}
+        rows={12}
+        className="w-full rounded-xl border border-slate-300 p-3 text-sm"
+      />
+
+      <div className="flex gap-2">
+        <button
+          onClick={sendGegevensWhatsapp}
+          className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          Versturen via WhatsApp
+        </button>
+
+        <button
+          onClick={() => setShowGegevensModal(false)}
+          className="flex-1 rounded-xl border border-slate-300 py-3 text-sm font-medium"
+        >
+          Annuleren
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
     </main>
   );
 }

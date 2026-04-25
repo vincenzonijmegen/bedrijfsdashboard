@@ -26,6 +26,7 @@ const statussen = [
   "gesprek gepland",
   "in de wacht",
   "aangenomen",
+  "wacht op gegevens",
   "afgewezen",
 ];
 
