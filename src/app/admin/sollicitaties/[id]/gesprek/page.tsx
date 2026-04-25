@@ -62,6 +62,18 @@ function getJaarVoorFeestdagen(data: any) {
   return new Date(basis).getFullYear();
 }
 
+function formatDateTimeNl(value: string | null) {
+  if (!value) return "";
+  const d = new Date(value);
+  return d.toLocaleString("nl-NL", {
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function groepeerFeestdagen(rows: { naam: string; datum: string }[]) {
   const byNaam = rows.reduce<Record<string, string[]>>((acc, row) => {
     if (!acc[row.naam]) acc[row.naam] = [];
@@ -245,7 +257,7 @@ export default function GespreksdocumentPage({
                 <p className="text-slate-500">Gespreksdocument</p>
               </div>
               <div className="min-w-56 border-b border-slate-400 pb-1">
-                Datum gesprek:
+                Datum gesprek: {formatDateTimeNl(data.gesprek_datum)}
               </div>
             </div>
 
@@ -335,8 +347,21 @@ export default function GespreksdocumentPage({
                       return (
                         <tr key={dag}>
                           <td className="border p-1 text-left">{dag}</td>
-                          <td className="border p-1">{s1 ? "JA" : ""}</td>
-                          <td className="border p-1">{s2 ? "JA" : ""}</td>
+                          <td
+                            className={`border p-1 ${
+                              s1 ? "bg-green-100 font-semibold text-green-800" : ""
+                            }`}
+                          >
+                            {s1 ? "JA" : ""}
+                          </td>
+
+                          <td
+                            className={`border p-1 ${
+                              s2 ? "bg-green-100 font-semibold text-green-800" : ""
+                            }`}
+                          >
+                            {s2 ? "JA" : ""}
+                          </td>
                         </tr>
                       );
                     })}
