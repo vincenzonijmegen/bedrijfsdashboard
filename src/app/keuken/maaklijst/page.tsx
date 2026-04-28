@@ -146,9 +146,12 @@ const {
   }
 
   async function markAsDone(item: MaaklijstEntry) {
-    try {
-      setError("");
+  try {
+    setError("");
 
+    const isEchtRecept = Number(item.recept_id) > 0;
+
+    if (isEchtRecept) {
       const logRes = await fetch("/api/keuken/productie-log", {
         method: "POST",
         headers: {
@@ -168,32 +171,33 @@ const {
         setError(logData.error || "Logging mislukt");
         return;
       }
-
-      const res = await fetch("/api/keuken/maaklijst/items", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          id: item.id,
-          status: "afgehandeld",
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        setError(data.error || "Wijzigen mislukt");
-        return;
-      }
-
-      setShowDeleteId(null);
-      await mutate();
-    } catch (err) {
-      console.error(err);
-      setError("Logging mislukt");
     }
+
+    const res = await fetch("/api/keuken/maaklijst/items", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: item.id,
+        status: "afgehandeld",
+      }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data.success) {
+      setError(data.error || "Wijzigen mislukt");
+      return;
+    }
+
+    setShowDeleteId(null);
+    await mutate();
+  } catch (err) {
+    console.error(err);
+    setError("Afhandelen mislukt");
   }
+}
 
   function isSelected(receptId: number) {
     return maaklijst.some(
