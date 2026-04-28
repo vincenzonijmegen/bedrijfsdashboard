@@ -714,8 +714,6 @@ const tekst = isOvergeslagen
             ${samenvattingProductieHtml}
           </div>
 
-                  ${belangrijkHtml}
-
           ${rotatiesHtml}
 
           ${omzetPerUurHtml}
