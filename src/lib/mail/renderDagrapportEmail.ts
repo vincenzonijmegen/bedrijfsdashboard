@@ -32,15 +32,24 @@ taken: {
   overgeslagenReden?: string | null;
 }[];
   }[];
-  productie: {
-    categorie: string;
-    totaal: number;
-    items: {
-      naam: string;
-      aantal: number;
-    }[];
+ productie: {
+  categorie: string;
+  totaal: number;
+  items: {
+    naam: string;
+    aantal: number;
   }[];
+}[];
+
+rotaties?: {
+  datum: string;
+  rotatieNaam: string;
+  taakNaam: string;
+  afgetekendDoorNaam: string | null;
+  afgetekendOp: string | null;
+}[];
 };
+
 
 function escapeHtml(value: string) {
   return value
@@ -482,6 +491,80 @@ export function renderDagrapportEmail(data: DagrapportResponse) {
       </div>
     `;
 
+  const rotaties = data.rotaties || [];
+
+  const rotatiesHtml = rotaties.length
+    ? `
+      <div style="margin:0 0 28px 0;">
+        <div style="margin-bottom:12px;font-size:24px;font-weight:800;color:#0f172a;">
+          Rotaties
+        </div>
+
+        <div style="padding:16px;border:1px solid #e5e7eb;border-radius:16px;background:#ffffff;">
+          <div style="margin-bottom:10px;font-size:14px;color:#475569;">
+            Laatste 7 uitgevoerde rotaties
+          </div>
+
+          <table role="presentation" style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style="padding:10px;border-bottom:2px solid #e5e7eb;text-align:left;font-size:13px;color:#475569;">
+                  Datum
+                </th>
+                <th style="padding:10px;border-bottom:2px solid #e5e7eb;text-align:left;font-size:13px;color:#475569;">
+                  Groep
+                </th>
+                <th style="padding:10px;border-bottom:2px solid #e5e7eb;text-align:left;font-size:13px;color:#475569;">
+                  Taak
+                </th>
+                <th style="padding:10px;border-bottom:2px solid #e5e7eb;text-align:right;font-size:13px;color:#475569;">
+                  Afgetekend
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rotaties
+                .map(
+                  (item) => `
+                    <tr>
+                      <td style="padding:10px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#0f172a;white-space:nowrap;">
+                        ${escapeHtml(formatDatum(item.datum))}
+                      </td>
+                      <td style="padding:10px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#0f172a;white-space:nowrap;">
+                        ${escapeHtml(item.rotatieNaam)}
+                      </td>
+                      <td style="padding:10px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#0f172a;">
+                        ${escapeHtml(item.taakNaam)}
+                      </td>
+                      <td style="padding:10px;border-bottom:1px solid #e5e7eb;font-size:14px;color:#475569;text-align:right;white-space:nowrap;">
+                        ${escapeHtml(item.afgetekendDoorNaam || "-")}
+                        ${
+                          item.afgetekendOp
+                            ? ` · ${escapeHtml(formatTijd(item.afgetekendOp))}`
+                            : ""
+                        }
+                      </td>
+                    </tr>
+                  `
+                )
+                .join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `
+    : `
+      <div style="margin:0 0 28px 0;">
+        <div style="margin-bottom:12px;font-size:24px;font-weight:800;color:#0f172a;">
+          Rotaties
+        </div>
+        <div style="padding:16px;border:1px dashed #cbd5e1;border-radius:16px;background:#ffffff;color:#475569;font-size:14px;">
+          Geen rotaties gevonden.
+        </div>
+      </div>
+    `;
+
+
   const haccpHtml = data.haccp.length
     ? data.haccp
         .map((groep) => {
@@ -631,7 +714,9 @@ const tekst = isOvergeslagen
             ${samenvattingProductieHtml}
           </div>
 
-          ${belangrijkHtml}
+                  ${belangrijkHtml}
+
+          ${rotatiesHtml}
 
           ${omzetPerUurHtml}
 

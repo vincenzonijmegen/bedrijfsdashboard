@@ -37,6 +37,15 @@ type DagomzetRow = {
   dagomzet: string | number | null;
 };
 
+type RotatieRow = {
+  datum: string;
+  rotatie_naam: string;
+  taak_naam: string;
+  afgetekend_door_naam: string | null;
+  afgetekend_op: string | null;
+};
+
+
 const WEEKDAGEN = ["zo", "ma", "di", "wo", "do", "vr", "za"];
 const ISO_EVEN_REFERENCE = new Date("2026-01-05T00:00:00");
 
@@ -415,6 +424,38 @@ export async function GET(req: NextRequest) {
       omzet: Number(row.omzet || 0),
     }));
 
+    const rotatiesResult = await db.query(
+      `
+      SELECT
+        TO_CHAR(a.datum, 'YYYY-MM-DD') AS datum,
+        r.naam AS rotatie_naam,
+        i.naam AS taak_naam,
+        a.afgetekend_door_naam,
+        a.afgetekend_op
+      FROM routine_rotatie_aftekeningen a
+      JOIN routine_rotatie_items i ON i.id = a.rotatie_item_id
+      JOIN routine_rotaties r ON r.id = i.rotatie_id
+      WHERE a.routine_id IN (
+        SELECT id
+        FROM routines
+        WHERE slug = ANY($2::text[])
+      )
+        AND a.datum <= $1::date
+      ORDER BY a.datum DESC, a.afgetekend_op DESC
+      LIMIT 7
+      `,
+      [datum, routineSlugs]
+    );
+
+    const rotaties = (rotatiesResult.rows as RotatieRow[]).map((row) => ({
+      datum: row.datum,
+      rotatieNaam: row.rotatie_naam,
+      taakNaam: row.taak_naam,
+      afgetekendDoorNaam: row.afgetekend_door_naam,
+      afgetekendOp: row.afgetekend_op,
+    }));
+
+
     return NextResponse.json({
       success: true,
       datum,
@@ -423,6 +464,7 @@ export async function GET(req: NextRequest) {
       omzetPerUur,
       haccp,
       productie,
+      rotaties,
     });
   } catch (error) {
     return NextResponse.json(
