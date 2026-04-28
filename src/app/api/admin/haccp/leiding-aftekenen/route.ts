@@ -6,6 +6,93 @@ import { db } from "@/lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+async function schuifRotatieItemNaarAchter(rotatieItemId: number) {
+  const itemResult = await db.query(
+    `
+    SELECT i.id, i.rotatie_id, r.naam AS rotatie_naam, r.routine_id
+    FROM routine_rotatie_items i
+    JOIN routine_rotaties r ON r.id = i.rotatie_id
+    WHERE i.id = $1
+    LIMIT 1
+    `,
+    [rotatieItemId]
+  );
+
+  const item = itemResult.rows[0];
+  if (!item) return;
+
+  const rotatieId = Number(item.rotatie_id);
+
+  const itemsResult = await db.query(
+    `
+    SELECT id
+    FROM routine_rotatie_items
+    WHERE rotatie_id = $1
+    ORDER BY sortering ASC, id ASC
+    `,
+    [rotatieId]
+  );
+
+  const items = itemsResult.rows;
+
+  const reordered = [
+    ...items.filter((row) => Number(row.id) !== rotatieItemId),
+    ...items.filter((row) => Number(row.id) === rotatieItemId),
+  ];
+
+  for (let i = 0; i < reordered.length; i++) {
+    await db.query(
+      `
+      UPDATE routine_rotatie_items
+      SET sortering = $1
+      WHERE id = $2
+      `,
+      [(i + 1) * 10, reordered[i].id]
+    );
+  }
+}
+
+async function updateHoofdritme(rotatieItemId: number) {
+  const result = await db.query(
+    `
+    SELECT r.routine_id, r.naam
+    FROM routine_rotatie_items i
+    JOIN routine_rotaties r ON r.id = i.rotatie_id
+    WHERE i.id = $1
+    LIMIT 1
+    `,
+    [rotatieItemId]
+  );
+
+  const row = result.rows[0];
+  if (!row) return;
+
+  const routineId = Number(row.routine_id);
+  const naam = String(row.naam);
+
+  if (naam === "Vitrines") {
+    await db.query(
+      `
+      UPDATE routine_rotatie_status
+      SET vitrines_sinds_bewaarkast = vitrines_sinds_bewaarkast + 1,
+          updated_at = NOW()
+      WHERE routine_id = $1
+      `,
+      [routineId]
+    );
+  } else if (naam === "Bewaarkasten") {
+    await db.query(
+      `
+      UPDATE routine_rotatie_status
+      SET vitrines_sinds_bewaarkast = 0,
+          updated_at = NOW()
+      WHERE routine_id = $1
+      `,
+      [routineId]
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -13,10 +100,9 @@ export async function POST(req: NextRequest) {
     const routineTaakId = Number(body?.routineTaakId);
     const datum = String(body?.datum || "").trim();
     const leidinggevendeId = Number(body?.leidinggevendeId);
-    const status = String(body?.status || "gedaan"); // gedaan | overgeslagen
+    const status = String(body?.status || "gedaan");
     const reden = String(body?.reden || "").trim();
 
-    // 🔒 Validatie
     if (!routineTaakId || !datum || !leidinggevendeId) {
       return NextResponse.json(
         { success: false, error: "Ontbrekende velden" },
@@ -38,26 +124,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 🔍 Check of taak al is afgetekend
-    const existing = await db.query(
+    // 🔍 Check of dit een rotatietaak is
+    const rotatieCheck = await db.query(
       `
-      SELECT id
-      FROM routine_aftekeningen
-      WHERE routine_taak_id = $1
+      SELECT rotatie_item_id, routine_id
+      FROM routine_rotatie_override
+      WHERE routine_id = (
+        SELECT routine_id FROM routine_taken WHERE id = $1
+      )
         AND datum = $2::date
       LIMIT 1
       `,
       [routineTaakId, datum]
     );
 
-    if (existing.rowCount && existing.rows[0]?.id) {
-      return NextResponse.json(
-        { success: false, error: "Taak is al afgetekend" },
-        { status: 400 }
-      );
+    let rotatieItemId: number | null = null;
+    let routineId: number | null = null;
+
+    if (rotatieCheck.rows[0]) {
+      rotatieItemId = rotatieCheck.rows[0].rotatie_item_id;
+      routineId = rotatieCheck.rows[0].routine_id;
     }
 
-    // 🔍 Haal naam leidinggevende op
+    // 🔍 Naam leidinggevende
     const leiding = await db.query(
       `
       SELECT naam
@@ -78,7 +167,7 @@ export async function POST(req: NextRequest) {
 
     const naam = leiding.rows[0].naam;
 
-    // 💾 Insert
+    // 💾 Normale taak aftekenen
     await db.query(
       `
       INSERT INTO routine_aftekeningen (
@@ -113,6 +202,37 @@ export async function POST(req: NextRequest) {
         status === "overgeslagen" ? reden : null,
       ]
     );
+
+    // 🔁 ROTATIE meenemen
+    if (rotatieItemId && routineId && status === "gedaan") {
+      await db.query(
+        `
+        INSERT INTO routine_rotatie_aftekeningen (
+          rotatie_item_id,
+          routine_id,
+          datum,
+          afgetekend_door_naam,
+          afgetekend_op
+        )
+        VALUES ($1, $2, $3::date, $4, NOW())
+        ON CONFLICT (rotatie_item_id, datum)
+        DO UPDATE SET afgetekend_op = NOW()
+        `,
+        [rotatieItemId, routineId, datum, naam]
+      );
+
+      await schuifRotatieItemNaarAchter(rotatieItemId);
+      await updateHoofdritme(rotatieItemId);
+
+      await db.query(
+        `
+        DELETE FROM routine_rotatie_override
+        WHERE routine_id = $1
+          AND datum = $2::date
+        `,
+        [routineId, datum]
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
