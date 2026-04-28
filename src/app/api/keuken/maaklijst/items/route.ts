@@ -4,6 +4,18 @@ import { db } from "@/lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const AUTOMATISCHE_SCHOONMAAK_TAKEN: Record<
+  string,
+  { schoonmaakNaam: string }
+> = {
+  "melkmix maken": {
+    schoonmaakNaam: "kleppen en kranen pasteuriseerketel melk schoonmaken",
+  },
+  "vruchtenmix maken": {
+    schoonmaakNaam: "kleppen en kranen pasteuriseerketel vruchten schoonmaken",
+  },
+};
+
 async function getOrCreateMaaklijstId(datum: string, locatie: string) {
   const existing = await db.query(
     `
@@ -30,6 +42,54 @@ async function getOrCreateMaaklijstId(datum: string, locatie: string) {
   );
 
   return Number(created.rows[0].id);
+}
+
+async function maakAutomatischeSchoonmaakTaakIndienNodig(item: {
+  naam: string;
+  maaklijst_id: number;
+}) {
+  const itemNaam = String(item.naam || "").trim().toLowerCase();
+  const schoonmaakRegel = AUTOMATISCHE_SCHOONMAAK_TAKEN[itemNaam];
+
+  if (!schoonmaakRegel) return;
+
+  const tellerResult = await db.query(
+    `
+    SELECT COALESCE(SUM(aantal), 0)::int AS aantal
+    FROM maaklijst_items
+    WHERE LOWER(naam) = LOWER($1)
+    `,
+    [item.naam]
+  );
+
+  const aantal = Number(tellerResult.rows[0]?.aantal || 0);
+
+  if (aantal <= 0 || aantal % 6 !== 0) return;
+
+  const bestaandOpenResult = await db.query(
+    `
+    SELECT id
+    FROM maaklijst_items
+    WHERE LOWER(naam) = LOWER($1)
+      AND status = 'open'
+    LIMIT 1
+    `,
+    [schoonmaakRegel.schoonmaakNaam]
+  );
+
+  if (bestaandOpenResult.rowCount && bestaandOpenResult.rows[0]?.id) {
+    return;
+  }
+
+  await db.query(
+    `
+    INSERT INTO maaklijst_items
+      (maaklijst_id, recept_id, categorie, naam, maakvolgorde, aantal, status)
+    VALUES
+      ($1, NULL, 'Schoonmaak', $2, 999, 1, 'open')
+    `,
+    [item.maaklijst_id, schoonmaakRegel.schoonmaakNaam]
+  );
 }
 
 export async function POST(req: NextRequest) {
@@ -94,6 +154,11 @@ export async function POST(req: NextRequest) {
         [maaklijstId, receptId, categorie, naam, maakvolgorde, aantal]
       );
     }
+
+    await maakAutomatischeSchoonmaakTaakIndienNodig({
+      naam,
+      maaklijst_id: maaklijstId,
+    });
 
     await db.query(
       `
@@ -176,9 +241,20 @@ export async function PATCH(req: NextRequest) {
       );
     }
 
+    const item = result.rows[0];
+
+    await db.query(
+      `
+      UPDATE maaklijsten
+      SET bijgewerkt_op = NOW()
+      WHERE id = $1
+      `,
+      [item.maaklijst_id]
+    );
+
     return NextResponse.json({
       success: true,
-      item: result.rows[0],
+      item,
     });
   } catch (error) {
     return NextResponse.json(
