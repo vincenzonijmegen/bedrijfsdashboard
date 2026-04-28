@@ -92,7 +92,7 @@ const tellerResult = await db.query(
     INSERT INTO maaklijst_items
       (maaklijst_id, recept_id, categorie, naam, maakvolgorde, aantal, status)
     VALUES
-      ($1, NULL, 'Schoonmaak', $2, 999, 1, 'open')
+      ($1, 0, 'Schoonmaak', $2, 999, 1, 'open')
     `,
     [item.maaklijst_id, schoonmaakRegel.schoonmaakNaam]
   );
