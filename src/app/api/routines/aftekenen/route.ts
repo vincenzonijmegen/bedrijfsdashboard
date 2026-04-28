@@ -3,6 +3,65 @@ import { db } from "@/lib/db";
 
 export const runtime = "nodejs";
 
+async function schuifRotatieItemNaarAchter(rotatieItemId: number) {
+  const itemResult = await db.query(
+    `
+    SELECT id, rotatie_id
+    FROM routine_rotatie_items
+    WHERE id = $1
+    LIMIT 1
+    `,
+    [rotatieItemId]
+  );
+
+  const item = itemResult.rows[0];
+
+  if (!item) {
+    throw new Error("Rotatie-item niet gevonden");
+  }
+
+  const rotatieId = Number(item.rotatie_id);
+
+  const itemsResult = await db.query(
+    `
+    SELECT id
+    FROM routine_rotatie_items
+    WHERE rotatie_id = $1
+    ORDER BY sortering ASC, id ASC
+    `,
+    [rotatieId]
+  );
+
+  const items = itemsResult.rows;
+
+  const reordered = [
+    ...items.filter((row) => Number(row.id) !== rotatieItemId),
+    ...items.filter((row) => Number(row.id) === rotatieItemId),
+  ];
+
+  for (let i = 0; i < reordered.length; i++) {
+    await db.query(
+      `
+      UPDATE routine_rotatie_items
+      SET sortering = $1
+      WHERE id = $2
+      `,
+      [(i + 1) * 10, reordered[i].id]
+    );
+  }
+
+  await db.query(
+    `
+    UPDATE routine_rotaties
+    SET huidige_index = 0
+    WHERE id = $1
+    `,
+    [rotatieId]
+  );
+
+  return rotatieId;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -29,31 +88,53 @@ export async function POST(req: NextRequest) {
     if (isRotatie) {
       if (!rotatieItemId || !routineId) {
         return NextResponse.json(
-          { error: "rotatieItemId en routineId zijn verplicht voor rotatietaken" },
+          {
+            error:
+              "rotatieItemId en routineId zijn verplicht voor rotatietaken",
+          },
           { status: 400 }
         );
       }
 
       const result = await db.query(
-        `INSERT INTO routine_rotatie_aftekeningen (
-           rotatie_item_id,
-           routine_id,
-           datum,
-           afgetekend_door_shiftbase_user_id,
-           afgetekend_door_naam,
-           afgetekend_op
-         )
-         VALUES ($1, $2, $3::date, $4, $5, NOW())
-         ON CONFLICT (rotatie_item_id, datum)
-         DO UPDATE SET
-           afgetekend_door_shiftbase_user_id = EXCLUDED.afgetekend_door_shiftbase_user_id,
-           afgetekend_door_naam = EXCLUDED.afgetekend_door_naam,
-           afgetekend_op = NOW()
-         RETURNING id, rotatie_item_id, routine_id, datum, afgetekend_door_naam, afgetekend_op`,
+        `
+        INSERT INTO routine_rotatie_aftekeningen (
+          rotatie_item_id,
+          routine_id,
+          datum,
+          afgetekend_door_shiftbase_user_id,
+          afgetekend_door_naam,
+          afgetekend_op
+        )
+        VALUES ($1, $2, $3::date, $4, $5, NOW())
+        ON CONFLICT (rotatie_item_id, datum)
+        DO UPDATE SET
+          afgetekend_door_shiftbase_user_id = EXCLUDED.afgetekend_door_shiftbase_user_id,
+          afgetekend_door_naam = EXCLUDED.afgetekend_door_naam,
+          afgetekend_op = NOW()
+        RETURNING id, rotatie_item_id, routine_id, datum, afgetekend_door_naam, afgetekend_op
+        `,
         [rotatieItemId, routineId, vandaag, medewerkerId || null, medewerkerNaam]
       );
 
-      return NextResponse.json({ ok: true, aftekening: result.rows[0] });
+      const rotatieId = await schuifRotatieItemNaarAchter(rotatieItemId);
+
+      await db.query(
+        `
+        DELETE FROM routine_rotatie_override
+        WHERE routine_id = $1
+          AND datum = $2::date
+        `,
+        [routineId, vandaag]
+      );
+
+      return NextResponse.json({
+        ok: true,
+        aftekening: result.rows[0],
+        rotatieDoorgeschoven: true,
+        rotatieId,
+        rotatieItemId,
+      });
     }
 
     // GEWONE TAAK
@@ -65,22 +146,24 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await db.query(
-      `INSERT INTO routine_aftekeningen (
-         routine_taak_id,
-         datum,
-         afgetekend_door_shiftbase_user_id,
-         afgetekend_door_naam,
-         opmerking,
-         afgetekend_op
-       )
-       VALUES ($1, $2::date, $3, $4, $5, NOW())
-       ON CONFLICT (routine_taak_id, datum)
-       DO UPDATE SET
-         afgetekend_door_shiftbase_user_id = EXCLUDED.afgetekend_door_shiftbase_user_id,
-         afgetekend_door_naam = EXCLUDED.afgetekend_door_naam,
-         opmerking = EXCLUDED.opmerking,
-         afgetekend_op = NOW()
-       RETURNING id, routine_taak_id, datum, afgetekend_door_naam, afgetekend_op`,
+      `
+      INSERT INTO routine_aftekeningen (
+        routine_taak_id,
+        datum,
+        afgetekend_door_shiftbase_user_id,
+        afgetekend_door_naam,
+        opmerking,
+        afgetekend_op
+      )
+      VALUES ($1, $2::date, $3, $4, $5, NOW())
+      ON CONFLICT (routine_taak_id, datum)
+      DO UPDATE SET
+        afgetekend_door_shiftbase_user_id = EXCLUDED.afgetekend_door_shiftbase_user_id,
+        afgetekend_door_naam = EXCLUDED.afgetekend_door_naam,
+        opmerking = EXCLUDED.opmerking,
+        afgetekend_op = NOW()
+      RETURNING id, routine_taak_id, datum, afgetekend_door_naam, afgetekend_op
+      `,
       [routineTaakId, vandaag, medewerkerId || null, medewerkerNaam, opmerking]
     );
 
