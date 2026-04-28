@@ -14,24 +14,21 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const rotatie = await db.query(
-      `SELECT id
-       FROM routine_rotaties
-       WHERE routine_id = $1 AND actief = true
-       LIMIT 1`,
-      [routineId]
-    );
-
-    if (!rotatie.rows[0]) {
-      return NextResponse.json({ items: [] });
-    }
-
     const items = await db.query(
-      `SELECT id, naam, sortering
-       FROM routine_rotatie_items
-       WHERE rotatie_id = $1
-       ORDER BY sortering ASC`,
-      [rotatie.rows[0].id]
+      `
+      SELECT
+        i.id,
+        i.naam,
+        i.sortering,
+        i.rotatie_id AS "rotatieId",
+        r.naam AS "rotatieNaam"
+      FROM routine_rotaties r
+      JOIN routine_rotatie_items i ON i.rotatie_id = r.id
+      WHERE r.routine_id = $1
+        AND r.actief = true
+      ORDER BY r.id ASC, i.sortering ASC, i.id ASC
+      `,
+      [routineId]
     );
 
     return NextResponse.json({ items: items.rows });

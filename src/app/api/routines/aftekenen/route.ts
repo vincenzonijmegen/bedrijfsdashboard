@@ -6,9 +6,10 @@ export const runtime = "nodejs";
 async function schuifRotatieItemNaarAchter(rotatieItemId: number) {
   const itemResult = await db.query(
     `
-    SELECT id, rotatie_id
-    FROM routine_rotatie_items
-    WHERE id = $1
+    SELECT i.id, i.rotatie_id, r.naam AS rotatie_naam, r.routine_id
+    FROM routine_rotatie_items i
+    JOIN routine_rotaties r ON r.id = i.rotatie_id
+    WHERE i.id = $1
     LIMIT 1
     `,
     [rotatieItemId]
@@ -21,6 +22,8 @@ async function schuifRotatieItemNaarAchter(rotatieItemId: number) {
   }
 
   const rotatieId = Number(item.rotatie_id);
+  const routineId = Number(item.routine_id);
+  const rotatieNaam = String(item.rotatie_naam);
 
   const itemsResult = await db.query(
     `
@@ -59,7 +62,50 @@ async function schuifRotatieItemNaarAchter(rotatieItemId: number) {
     [rotatieId]
   );
 
-  return rotatieId;
+  return { rotatieId, routineId, rotatieNaam };
+}
+
+async function updateHoofdritmeStatus(routineId: number, rotatieNaam: string) {
+  if (rotatieNaam === "Bewaarkasten") {
+    await db.query(
+      `
+      INSERT INTO routine_rotatie_status (
+        routine_id,
+        vitrines_sinds_bewaarkast,
+        updated_at
+      )
+      VALUES ($1, 0, NOW())
+      ON CONFLICT (routine_id)
+      DO UPDATE SET
+        vitrines_sinds_bewaarkast = 0,
+        updated_at = NOW()
+      `,
+      [routineId]
+    );
+
+    return;
+  }
+
+  if (rotatieNaam === "Vitrines") {
+    await db.query(
+      `
+      INSERT INTO routine_rotatie_status (
+        routine_id,
+        vitrines_sinds_bewaarkast,
+        updated_at
+      )
+      VALUES ($1, 1, NOW())
+      ON CONFLICT (routine_id)
+      DO UPDATE SET
+        vitrines_sinds_bewaarkast = LEAST(
+          routine_rotatie_status.vitrines_sinds_bewaarkast + 1,
+          3
+        ),
+        updated_at = NOW()
+      `,
+      [routineId]
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -84,7 +130,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ROTATIETAAK
     if (isRotatie) {
       if (!rotatieItemId || !routineId) {
         return NextResponse.json(
@@ -117,7 +162,12 @@ export async function POST(req: NextRequest) {
         [rotatieItemId, routineId, vandaag, medewerkerId || null, medewerkerNaam]
       );
 
-      const rotatieId = await schuifRotatieItemNaarAchter(rotatieItemId);
+      const rotatieInfo = await schuifRotatieItemNaarAchter(rotatieItemId);
+
+      await updateHoofdritmeStatus(
+        rotatieInfo.routineId,
+        rotatieInfo.rotatieNaam
+      );
 
       await db.query(
         `
@@ -132,12 +182,12 @@ export async function POST(req: NextRequest) {
         ok: true,
         aftekening: result.rows[0],
         rotatieDoorgeschoven: true,
-        rotatieId,
+        rotatieId: rotatieInfo.rotatieId,
+        rotatieNaam: rotatieInfo.rotatieNaam,
         rotatieItemId,
       });
     }
 
-    // GEWONE TAAK
     if (!routineTaakId) {
       return NextResponse.json(
         { error: "routineTaakId is verplicht" },

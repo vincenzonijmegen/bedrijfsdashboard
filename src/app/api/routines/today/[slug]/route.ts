@@ -47,36 +47,34 @@ function taakIsVandaagZichtbaar(taak: TaakRow, vandaag: Date) {
 }
 
 async function getActieveRotatieTaak(routineId: number) {
-  const rotatie = await db.query(
+  const status = await db.query(
     `
-    SELECT *
-    FROM routine_rotaties
+    SELECT vitrines_sinds_bewaarkast
+    FROM routine_rotatie_status
     WHERE routine_id = $1
-      AND actief = true
     LIMIT 1
     `,
     [routineId]
   );
 
-  if (!rotatie.rows[0]) return null;
+  const teller = Number(status.rows[0]?.vitrines_sinds_bewaarkast ?? 0);
+  const gewensteRotatieNaam = teller >= 3 ? "Bewaarkasten" : "Vitrines";
 
-  const r = rotatie.rows[0];
-
-  const items = await db.query(
+  const item = await db.query(
     `
-    SELECT *
-    FROM routine_rotatie_items
-    WHERE rotatie_id = $1
-    ORDER BY sortering ASC
+    SELECT i.*
+    FROM routine_rotaties r
+    JOIN routine_rotatie_items i ON i.rotatie_id = r.id
+    WHERE r.routine_id = $1
+      AND r.actief = true
+      AND r.naam = $2
+    ORDER BY i.sortering ASC, i.id ASC
+    LIMIT 1
     `,
-    [r.id]
+    [routineId, gewensteRotatieNaam]
   );
 
-  if (items.rows.length === 0) return null;
-
-  const index = r.huidige_index % items.rows.length;
-
-  return items.rows[index];
+  return item.rows[0] ?? null;
 }
 
 export async function GET(
