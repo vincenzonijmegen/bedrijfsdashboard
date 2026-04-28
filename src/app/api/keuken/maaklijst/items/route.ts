@@ -8,10 +8,10 @@ const AUTOMATISCHE_SCHOONMAAK_TAKEN: Record<
   string,
   { schoonmaakNaam: string }
 > = {
-  "melkmix maken": {
+  "melkmix": {
     schoonmaakNaam: "kleppen en kranen pasteuriseerketel melk schoonmaken",
   },
-  "vruchtenmix maken": {
+  "vruchtenmix": {
     schoonmaakNaam: "kleppen en kranen pasteuriseerketel vruchten schoonmaken",
   },
 };
@@ -49,18 +49,24 @@ async function maakAutomatischeSchoonmaakTaakIndienNodig(item: {
   maaklijst_id: number;
 }) {
   const itemNaam = String(item.naam || "").trim().toLowerCase();
-  const schoonmaakRegel = AUTOMATISCHE_SCHOONMAAK_TAKEN[itemNaam];
 
-  if (!schoonmaakRegel) return;
+const sleutel = itemNaam.includes("melkmix")
+  ? "melkmix"
+  : itemNaam.includes("vruchtenmix")
+    ? "vruchtenmix"
+    : null;
 
-  const tellerResult = await db.query(
-    `
-    SELECT COALESCE(SUM(aantal), 0)::int AS aantal
-    FROM maaklijst_items
-    WHERE LOWER(naam) = LOWER($1)
-    `,
-    [item.naam]
-  );
+if (!sleutel) return;
+
+const schoonmaakRegel = AUTOMATISCHE_SCHOONMAAK_TAKEN[sleutel];
+const tellerResult = await db.query(
+  `
+  SELECT COALESCE(SUM(aantal), 0)::int AS aantal
+  FROM maaklijst_items
+  WHERE LOWER(naam) LIKE $1
+  `,
+  [`%${sleutel}%`]
+);
 
   const aantal = Number(tellerResult.rows[0]?.aantal || 0);
 
