@@ -35,15 +35,33 @@ function taakIsVandaagZichtbaar(taak: TaakRow, vandaag: Date) {
   const weekdagen = Array.isArray(taak.weekdagen) ? taak.weekdagen : [];
   const vandaagCode = WEEKDAGEN[vandaag.getDay()];
 
-  if (weekdagen.length > 0 && !weekdagen.includes(vandaagCode)) {
-    return false;
-  }
+  if (weekdagen.length > 0 && !weekdagen.includes(vandaagCode)) return false;
 
   if (taak.frequentie === "2D") {
     return dagenVerschil(vandaag, ISO_EVEN_REFERENCE) % 2 === 0;
   }
 
   return true;
+}
+
+async function getVandaagAfgetekendeRotatieTaak(
+  routineId: number,
+  vandaag: string
+) {
+  const result = await db.query(
+    `
+    SELECT i.*
+    FROM routine_rotatie_aftekeningen a
+    JOIN routine_rotatie_items i ON i.id = a.rotatie_item_id
+    WHERE a.routine_id = $1
+      AND a.datum = $2::date
+    ORDER BY a.afgetekend_op DESC
+    LIMIT 1
+    `,
+    [routineId, vandaag]
+  );
+
+  return result.rows[0] ?? null;
 }
 
 async function getActieveRotatieTaak(routineId: number) {
@@ -138,38 +156,43 @@ export async function GET(
       taakIsVandaagZichtbaar(taak, datum)
     );
 
-    const override = await db.query(
-      `
-      SELECT rotatie_item_id
-      FROM routine_rotatie_override
-      WHERE routine_id = $1
-        AND datum = $2::date
-      LIMIT 1
-      `,
-      [routine.id, vandaag]
+    let rotatieTaak = await getVandaagAfgetekendeRotatieTaak(
+      Number(routine.id),
+      vandaag
     );
 
-    let rotatieTaak = null;
+    if (!rotatieTaak) {
+      const override = await db.query(
+        `
+        SELECT rotatie_item_id
+        FROM routine_rotatie_override
+        WHERE routine_id = $1
+          AND datum = $2::date
+        LIMIT 1
+        `,
+        [routine.id, vandaag]
+      );
 
-    if (override.rows.length > 0) {
-      const overrideItemId = override.rows[0].rotatie_item_id;
+      if (override.rows.length > 0) {
+        const overrideItemId = override.rows[0].rotatie_item_id;
 
-      if (overrideItemId) {
-        const item = await db.query(
-          `
-          SELECT *
-          FROM routine_rotatie_items
-          WHERE id = $1
-          `,
-          [overrideItemId]
-        );
+        if (overrideItemId) {
+          const item = await db.query(
+            `
+            SELECT *
+            FROM routine_rotatie_items
+            WHERE id = $1
+            `,
+            [overrideItemId]
+          );
 
-        rotatieTaak = item.rows[0] ?? null;
+          rotatieTaak = item.rows[0] ?? null;
+        } else {
+          rotatieTaak = null;
+        }
       } else {
-        rotatieTaak = null;
+        rotatieTaak = await getActieveRotatieTaak(Number(routine.id));
       }
-    } else {
-      rotatieTaak = await getActieveRotatieTaak(routine.id);
     }
 
     const rotatieAftekeningResult = rotatieTaak
