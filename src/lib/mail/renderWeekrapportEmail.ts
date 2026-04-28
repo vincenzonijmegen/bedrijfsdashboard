@@ -77,6 +77,24 @@ function getWeerLabel(
 
   return delen.join(" · ");
 }
+function getOmzetHeatStyle(omzet: number, min: number, max: number) {
+  if (max <= 0) {
+    return { bg: "#f8fafc", color: "#0f172a" };
+  }
+
+  if (max === min) {
+    return { bg: "#dbeafe", color: "#1e3a8a" };
+  }
+
+  const ratio = (omzet - min) / (max - min);
+
+  if (ratio >= 0.85) return { bg: "#1d4ed8", color: "#ffffff" };
+  if (ratio >= 0.65) return { bg: "#60a5fa", color: "#0f172a" };
+  if (ratio >= 0.45) return { bg: "#93c5fd", color: "#0f172a" };
+  if (ratio >= 0.25) return { bg: "#bfdbfe", color: "#0f172a" };
+
+  return { bg: "#eff6ff", color: "#334155" };
+}
 
 export function renderWeekrapportEmail(data: WeekrapportResponse) {
   const periode = `${formatDatum(data.startDatum)} t/m ${formatDatum(
@@ -111,49 +129,81 @@ export function renderWeekrapportEmail(data: WeekrapportResponse) {
     .join("");
 
   const uurVerdelingHtml = data.dagen
-    .map((dag) => {
-      const urenHtml = dag.omzetPerUur.length
-        ? dag.omzetPerUur
-            .map(
-              (item) => `
-                <tr>
-                  <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:13px;color:#0f172a;">
-                    ${escapeHtml(item.uur)}
-                  </td>
-                  <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:13px;font-weight:800;color:#0f172a;text-align:right;">
-                    ${escapeHtml(formatEuro(item.omzet))}
-                  </td>
-                </tr>
-              `
-            )
-            .join("")
-        : `
-          <tr>
-            <td colspan="2" style="padding:10px;font-size:13px;color:#64748b;">
-              Geen omzetgegevens.
-            </td>
-          </tr>
-        `;
+  .map((dag) => {
+    const waarden = dag.omzetPerUur.map((u) => u.omzet);
+    const min = waarden.length ? Math.min(...waarden) : 0;
+    const max = waarden.length ? Math.max(...waarden) : 0;
 
-      return `
-        <div style="margin:0 0 18px 0;padding:16px;border:1px solid #e5e7eb;border-radius:16px;background:#ffffff;">
-          <div style="margin-bottom:4px;font-size:18px;font-weight:800;color:#0f172a;">
-            ${escapeHtml(formatDatum(dag.datum))}
-          </div>
-          <div style="margin-bottom:12px;font-size:13px;color:#475569;">
-            ${escapeHtml(getWeerLabel(dag.weer))}
-          </div>
+    const urenHtml = dag.omzetPerUur.length
+      ? dag.omzetPerUur
+          .map((item) => {
+            let bg = "#eff6ff";
+            let color = "#334155";
 
-          <table style="width:100%;border-collapse:collapse;">
-            <tbody>
-              ${urenHtml}
-            </tbody>
-          </table>
-        </div>
+            if (max > 0 && max !== min) {
+              const ratio = (item.omzet - min) / (max - min);
+
+              if (ratio >= 0.85) {
+                bg = "#1d4ed8";
+                color = "#ffffff";
+              } else if (ratio >= 0.65) {
+                bg = "#60a5fa";
+                color = "#0f172a";
+              } else if (ratio >= 0.45) {
+                bg = "#93c5fd";
+                color = "#0f172a";
+              } else if (ratio >= 0.25) {
+                bg = "#bfdbfe";
+                color = "#0f172a";
+              }
+            }
+
+            return `
+              <tr>
+                <td style="padding:8px 10px;border-bottom:1px solid #e5e7eb;font-size:13px;color:#0f172a;">
+                  ${escapeHtml(item.uur)}
+                </td>
+                <td style="
+                  padding:8px 10px;
+                  border-bottom:1px solid #e5e7eb;
+                  font-size:13px;
+                  font-weight:800;
+                  text-align:right;
+                  background:${bg};
+                  color:${color};
+                ">
+                  ${escapeHtml(formatEuro(item.omzet))}
+                </td>
+              </tr>
+            `;
+          })
+          .join("")
+      : `
+        <tr>
+          <td colspan="2" style="padding:10px;font-size:13px;color:#64748b;">
+            Geen omzetgegevens.
+          </td>
+        </tr>
       `;
-    })
-    .join("");
 
+    return `
+      <div style="margin:0 0 18px 0;padding:16px;border:1px solid #e5e7eb;border-radius:16px;background:#ffffff;">
+        <div style="margin-bottom:4px;font-size:18px;font-weight:800;color:#0f172a;">
+          ${escapeHtml(formatDatum(dag.datum))}
+        </div>
+        <div style="margin-bottom:12px;font-size:13px;color:#475569;">
+          ${escapeHtml(getWeerLabel(dag.weer))}
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;">
+          <tbody>
+            ${urenHtml}
+          </tbody>
+        </table>
+      </div>
+    `;
+  })
+  .join("");
   const html = `
     <!DOCTYPE html>
     <html lang="nl">
