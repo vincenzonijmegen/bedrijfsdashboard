@@ -17,6 +17,13 @@ type Sollicitatie = {
   aangemaakt_op: string | null;
 };
 
+type AfwijsTemplate = {
+  id: number;
+  naam: string;
+  onderwerp: string;
+  html: string;
+};
+
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 const statussen = [
@@ -41,9 +48,7 @@ const statusStyle: Record<string, string> = {
 
 function formatDateTime(value: string | null) {
   if (!value) return "-";
-  const d = new Date(value);
-
-  return d.toLocaleString("nl-NL", {
+  return new Date(value).toLocaleString("nl-NL", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -54,16 +59,29 @@ function formatDateTime(value: string | null) {
 
 function formatDate(value: string | null) {
   if (!value) return "-";
-  const d = new Date(value);
+  return new Date(value).toLocaleDateString("nl-NL");
+}
 
-  return d.toLocaleDateString("nl-NL");
+function vulNaam(html: string, naam: string) {
+  return html.replaceAll("{{naam}}", naam);
 }
 
 export default function SollicitatiesPage() {
   const { data, mutate } = useSWR<Sollicitatie[]>("/api/sollicitaties", fetcher);
+  const { data: templates } = useSWR<AfwijsTemplate[]>(
+    "/api/sollicitaties/templates",
+    fetcher
+  );
+
   const [statusFilter, setStatusFilter] = useState("alle");
   const [zoekterm, setZoekterm] = useState("");
   const [savingId, setSavingId] = useState<number | null>(null);
+
+  const [afwijsModal, setAfwijsModal] = useState<Sollicitatie | null>(null);
+  const [templateId, setTemplateId] = useState<number | "">("");
+  const [onderwerp, setOnderwerp] = useState("");
+  const [mailtekst, setMailtekst] = useState("");
+  const [reden, setReden] = useState("");
 
   async function updateStatus(id: number, status: string) {
     try {
@@ -89,6 +107,90 @@ export default function SollicitatiesPage() {
     }
   }
 
+  function openAfwijsModal(s: Sollicitatie) {
+    setAfwijsModal(s);
+    setTemplateId("");
+    setOnderwerp("Je sollicitatie bij IJssalon Vincenzo");
+    setReden("");
+    setMailtekst("");
+  }
+
+  function kiesTemplate(idValue: string) {
+    const id = Number(idValue);
+    const template = templates?.find((t) => t.id === id);
+
+    if (!template || !afwijsModal) {
+      setTemplateId("");
+      setOnderwerp("");
+      setReden("");
+      setMailtekst("");
+      return;
+    }
+
+    const naam = `${afwijsModal.voornaam} ${afwijsModal.achternaam}`.trim();
+
+    setTemplateId(template.id);
+    setOnderwerp(template.onderwerp);
+    setReden(template.naam);
+    setMailtekst(vulNaam(template.html, naam));
+  }
+
+  async function verstuurAfwijzing() {
+    if (!afwijsModal) return;
+
+    if (!onderwerp.trim()) {
+      alert("Vul een onderwerp in.");
+      return;
+    }
+
+    if (!mailtekst.trim()) {
+      alert("Vul een mailtekst in.");
+      return;
+    }
+
+    if (
+      !confirm(
+        "Weet je zeker dat je deze afwijsmail wilt versturen? Dit kan niet ongedaan worden gemaakt."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setSavingId(afwijsModal.id);
+
+      const res = await fetch("/api/sollicitaties/afwijzen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: afwijsModal.id,
+          template_id: templateId || null,
+          reden,
+          onderwerp,
+          mailtekst,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        throw new Error(json?.error || "Afwijzen mislukt");
+      }
+
+      setAfwijsModal(null);
+      setTemplateId("");
+      setOnderwerp("");
+      setMailtekst("");
+      setReden("");
+
+      await mutate();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Afwijzen mislukt");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
   const sollicitaties = data || [];
 
   const gefilterd = useMemo(() => {
@@ -96,7 +198,6 @@ export default function SollicitatiesPage() {
 
     return sollicitaties.filter((s) => {
       const status = s.status || "nieuw";
-
       const statusOk = statusFilter === "alle" || status === statusFilter;
 
       const zoekOk =
@@ -244,6 +345,7 @@ export default function SollicitatiesPage() {
                       <option value="gesprek gepland">Gesprek gepland</option>
                       <option value="in de wacht">In de wacht</option>
                       <option value="aangenomen">Aangenomen</option>
+                      <option value="wacht op gegevens">Wacht op gegevens</option>
                       <option value="afgewezen">Afgewezen</option>
                     </select>
 
@@ -257,7 +359,7 @@ export default function SollicitatiesPage() {
 
                       {status !== "afgewezen" && (
                         <button
-                          onClick={() => updateStatus(s.id, "afgewezen")}
+                          onClick={() => openAfwijsModal(s)}
                           disabled={savingId === s.id}
                           className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
                         >
@@ -272,6 +374,94 @@ export default function SollicitatiesPage() {
           })
         )}
       </section>
+
+      {afwijsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-3xl rounded-2xl bg-white p-5 shadow-xl">
+            <div className="mb-4">
+              <h2 className="text-lg font-bold text-slate-900">
+                Afwijsmail versturen
+              </h2>
+              <p className="text-sm text-slate-500">
+                Kandidaat: {afwijsModal.voornaam} {afwijsModal.achternaam}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Reden / sjabloon
+                </label>
+                <select
+                  value={templateId}
+                  onChange={(e) => kiesTemplate(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Kies een reden...</option>
+                  {(templates || []).map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.naam}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Onderwerp
+                </label>
+                <input
+                  value={onderwerp}
+                  onChange={(e) => setOnderwerp(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  Mailtekst
+                </label>
+                <textarea
+                  value={mailtekst}
+                  onChange={(e) => setMailtekst(e.target.value)}
+                  className="h-64 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-mono"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  HTML is toegestaan. De tekst wordt exact zo opgeslagen en
+                  verstuurd.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAfwijsModal(null);
+                  setTemplateId("");
+                  setOnderwerp("");
+                  setMailtekst("");
+                  setReden("");
+                }}
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Annuleren
+              </button>
+
+              <button
+                type="button"
+                onClick={verstuurAfwijzing}
+                disabled={savingId === afwijsModal.id}
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {savingId === afwijsModal.id
+                  ? "Versturen..."
+                  : "Afwijsmail versturen"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
