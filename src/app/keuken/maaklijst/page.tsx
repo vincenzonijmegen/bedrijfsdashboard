@@ -64,6 +64,7 @@ export default function MaaklijstPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [activeItem, setActiveItem] = useState<ReceptItem | null>(null);
   const [aantal, setAantal] = useState(1);
+  const [toevoegenBezig, setToevoegenBezig] = useState(false);
   const [showDeleteId, setShowDeleteId] = useState<number | null>(null);
   const [selectieSortering, setSelectieSortering] = useState<
     "alfabetisch" | "maakvolgorde"
@@ -212,47 +213,53 @@ const {
   }
 
   function closeDialog() {
-    setDialogOpen(false);
-    setActiveItem(null);
-    setAantal(1);
-  }
+  if (toevoegenBezig) return;
 
-  async function addToMaaklijst() {
-    if (!activeItem) return;
+  setDialogOpen(false);
+  setActiveItem(null);
+  setAantal(1);
+}
 
-    try {
-      setError("");
+async function addToMaaklijst() {
+  if (!activeItem) return;
+  if (toevoegenBezig) return;
 
-      const res = await fetch("/api/keuken/maaklijst/items", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          datum,
-          locatie,
-          recept_id: activeItem.id,
-          categorie: activeItem.categorie,
-          naam: activeItem.naam,
-          maakvolgorde: activeItem.maakvolgorde ?? 50,
-          aantal,
-        }),
-      });
+  try {
+    setToevoegenBezig(true);
+    setError("");
 
-      const data = await res.json();
+    const res = await fetch("/api/keuken/maaklijst/items", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        datum,
+        locatie,
+        recept_id: activeItem.id,
+        categorie: activeItem.categorie,
+        naam: activeItem.naam,
+        maakvolgorde: activeItem.maakvolgorde ?? 50,
+        aantal,
+      }),
+    });
 
-      if (!res.ok || !data.success) {
-        setError(data.error || "Toevoegen mislukt");
-        return;
-      }
+    const data = await res.json();
 
-      closeDialog();
-      await mutate();
-    } catch (err) {
-      console.error(err);
-      setError("Toevoegen mislukt");
+    if (!res.ok || !data.success) {
+      setError(data.error || "Toevoegen mislukt");
+      return;
     }
+
+    closeDialog();
+    await mutate();
+  } catch (err) {
+    console.error(err);
+    setError("Toevoegen mislukt");
+  } finally {
+    setToevoegenBezig(false);
   }
+}
 
   async function removeFromMaaklijst(id: number) {
     try {
@@ -631,20 +638,22 @@ const {
 
             <div className="mt-8 flex gap-3">
               <button
-                type="button"
-                onClick={closeDialog}
-                className="flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-700"
-              >
-                Annuleren
-              </button>
+  type="button"
+  onClick={closeDialog}
+  disabled={toevoegenBezig}
+  className="flex-1 rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base font-medium text-slate-700 disabled:opacity-50"
+>
+  Annuleren
+</button>
 
-              <button
-                type="button"
-                onClick={addToMaaklijst}
-                className="flex-1 rounded-2xl bg-emerald-600 px-4 py-3 text-base font-semibold text-white"
-              >
-                Toevoegen
-              </button>
+<button
+  type="button"
+  onClick={addToMaaklijst}
+  disabled={toevoegenBezig}
+  className="flex-1 rounded-2xl bg-emerald-600 px-4 py-3 text-base font-semibold text-white disabled:bg-slate-300 disabled:text-slate-600"
+>
+  {toevoegenBezig ? "Toevoegen..." : "Toevoegen"}
+</button>
             </div>
           </div>
         </div>
