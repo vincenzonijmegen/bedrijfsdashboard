@@ -120,20 +120,26 @@ export async function POST(req: NextRequest) {
 
     await sendAfwijsMail(sollicitant.email, finalSubject, finalHtml);
 
-    await db.query(
-      `
-      UPDATE sollicitaties
-      SET
-        status = 'afgewezen',
-        afgewezen_op = NOW(),
-        afwijzing_verzonden_op = NOW(),
-        afwijzing_mail_tekst = $2,
-        afwijzingsreden = $3,
-        afwijzing_template_id = $4
-      WHERE id = $1
-      `,
-      [id, finalHtml, finalReden, finalTemplateId]
-    );
+
+const nieuweStatus =
+  finalReden?.toLowerCase().includes("achter de hand")
+    ? "in de wacht"
+    : "afgewezen";
+
+await db.query(
+  `
+  UPDATE sollicitaties
+  SET
+    status = $2,
+    afgewezen_op = NOW(),
+    afwijzing_verzonden_op = NOW(),
+    afwijzing_mail_tekst = $3,
+    afwijzingsreden = $4,
+    afwijzing_template_id = $5
+  WHERE id = $1
+  `,
+  [id, nieuweStatus, finalHtml, finalReden, finalTemplateId]
+);
 
     return NextResponse.json({ success: true });
   } catch (error) {
