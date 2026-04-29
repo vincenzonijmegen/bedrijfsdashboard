@@ -39,36 +39,45 @@ export async function POST(req: NextRequest) {
 
     const result = await db.query(
       `
-      SELECT id, naam, email, afwijzing_verzonden_op
-      FROM sollicitatie_afspraken
+      SELECT
+        id,
+        voornaam,
+        achternaam,
+        email,
+        afwijzing_verzonden_op
+      FROM sollicitaties
       WHERE id = $1
       LIMIT 1
       `,
       [id]
     );
 
-    const afspraak = result.rows[0];
+    const sollicitant = result.rows[0];
 
-    if (!afspraak) {
+    if (!sollicitant) {
       return NextResponse.json(
-        { error: "Sollicitatieafspraak niet gevonden" },
+        { error: "Sollicitant niet gevonden" },
         { status: 404 }
       );
     }
 
-    if (afspraak.afwijzing_verzonden_op) {
+    if (sollicitant.afwijzing_verzonden_op) {
       return NextResponse.json(
         { error: "Afwijzing is al verstuurd" },
         { status: 400 }
       );
     }
 
-    if (!afspraak.email) {
+    if (!sollicitant.email) {
       return NextResponse.json(
         { error: "Geen emailadres gevonden" },
         { status: 400 }
       );
     }
+
+    const naam = `${sollicitant.voornaam || ""} ${
+      sollicitant.achternaam || ""
+    }`.trim();
 
     let finalSubject = onderwerp || "Je sollicitatie bij IJssalon Vincenzo";
     let finalHtml = mailtekst || "";
@@ -97,7 +106,7 @@ export async function POST(req: NextRequest) {
       }
 
       finalSubject = template.onderwerp;
-      finalHtml = vulTemplate(template.html, afspraak.naam || "");
+      finalHtml = vulTemplate(template.html, naam);
       finalReden = reden || template.naam;
       finalTemplateId = template.id;
     }
@@ -109,11 +118,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await sendAfwijsMail(afspraak.email, finalSubject, finalHtml);
+    await sendAfwijsMail(sollicitant.email, finalSubject, finalHtml);
 
     await db.query(
       `
-      UPDATE sollicitatie_afspraken
+      UPDATE sollicitaties
       SET
         status = 'afgewezen',
         afgewezen_op = NOW(),
@@ -129,9 +138,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Fout bij afwijzen sollicitant:", error);
-    return NextResponse.json(
-      { error: "Afwijzen mislukt" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Afwijzen mislukt" }, { status: 500 });
   }
 }
