@@ -123,43 +123,79 @@ export async function POST(req: NextRequest) {
     const maaklijstId = await getOrCreateMaaklijstId(datum, locatie);
 
     const existing = await db.query(
+  `
+  SELECT id, aantal, bijgewerkt_op
+  FROM maaklijst_items
+  WHERE maaklijst_id = $1
+    AND recept_id = $2
+    AND status = 'open'
+  LIMIT 1
+  `,
+  [maaklijstId, receptId]
+);
+
+let result;
+
+if (existing.rowCount && existing.rows[0]?.id) {
+  const laatsteWijziging = existing.rows[0].bijgewerkt_op
+    ? new Date(existing.rows[0].bijgewerkt_op).getTime()
+    : 0;
+
+  const nu = Date.now();
+  const isWaarschijnlijkDubbelklik = nu - laatsteWijziging < 3000;
+
+  if (isWaarschijnlijkDubbelklik) {
+    result = await db.query(
       `
-      SELECT id, aantal
+      SELECT *
       FROM maaklijst_items
-      WHERE maaklijst_id = $1
-        AND recept_id = $2
-        AND status = 'open'
-      LIMIT 1
+      WHERE id = $1
       `,
-      [maaklijstId, receptId]
+      [existing.rows[0].id]
     );
-
-    let result;
-
-    if (existing.rowCount && existing.rows[0]?.id) {
+  } else {
+    result = await db.query(
+      `
+      UPDATE maaklijst_items
+      SET
+        aantal = aantal + $1,
+        bijgewerkt_op = NOW()
+      WHERE id = $2
+      RETURNING *
+      `,
+      [aantal, existing.rows[0].id]
+    );
+  }
+} else {
+  try {
+    result = await db.query(
+      `
+      INSERT INTO maaklijst_items
+        (maaklijst_id, recept_id, categorie, naam, maakvolgorde, aantal, status)
+      VALUES
+        ($1, $2, $3, $4, $5, $6, 'open')
+      RETURNING *
+      `,
+      [maaklijstId, receptId, categorie, naam, maakvolgorde, aantal]
+    );
+  } catch (error: any) {
+    if (error?.code === "23505") {
       result = await db.query(
         `
-        UPDATE maaklijst_items
-        SET
-          aantal = aantal + $1,
-          bijgewerkt_op = NOW()
-        WHERE id = $2
-        RETURNING *
+        SELECT *
+        FROM maaklijst_items
+        WHERE maaklijst_id = $1
+          AND recept_id = $2
+          AND status = 'open'
+        LIMIT 1
         `,
-        [aantal, existing.rows[0].id]
+        [maaklijstId, receptId]
       );
     } else {
-      result = await db.query(
-        `
-        INSERT INTO maaklijst_items
-          (maaklijst_id, recept_id, categorie, naam, maakvolgorde, aantal, status)
-        VALUES
-          ($1, $2, $3, $4, $5, $6, 'open')
-        RETURNING *
-        `,
-        [maaklijstId, receptId, categorie, naam, maakvolgorde, aantal]
-      );
+      throw error;
     }
+  }
+}
 
     await maakAutomatischeSchoonmaakTaakIndienNodig({
       naam,
