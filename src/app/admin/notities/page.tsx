@@ -5,6 +5,7 @@ import useSWR from "swr";
 import dynamic from "next/dynamic";
 import {
   BookOpenText,
+  CalendarDays,
   Pencil,
   Plus,
   Save,
@@ -29,7 +30,24 @@ interface Notitie {
   rubriek_id: number;
   tekst: string;
   volgorde: number;
+  datum: string | null;
 }
+
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
+const dateInputValue = (value?: string | null) => {
+  if (!value) return todayKey();
+  return value.slice(0, 10);
+};
+
+const formatDatum = (value?: string | null) => {
+  if (!value) return "Geen datum";
+  return new Date(value).toLocaleDateString("nl-NL", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+};
 
 const stripHTML = (html: string) => {
   if (typeof document === "undefined") return "";
@@ -52,16 +70,25 @@ function NotitieRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [html, setHtml] = useState<string>(n.tekst);
+  const [datum, setDatum] = useState<string>(dateInputValue(n.datum));
 
   useEffect(() => {
-    if (!editing) setHtml(n.tekst);
-  }, [n.tekst, editing]);
+    if (!editing) {
+      setHtml(n.tekst);
+      setDatum(dateInputValue(n.datum));
+    }
+  }, [n.tekst, n.datum, editing]);
 
   const handleSave = async () => {
     await fetch("/api/notities", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: n.id, tekst: html, type: "notitie" }),
+      body: JSON.stringify({
+        id: n.id,
+        tekst: html,
+        datum,
+        type: "notitie",
+      }),
     });
 
     setEditing(false);
@@ -70,14 +97,25 @@ function NotitieRow({
 
   const handleCancel = () => {
     setHtml(n.tekst);
+    setDatum(dateInputValue(n.datum));
     setEditing(false);
   };
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-blue-200 hover:shadow-md">
       <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
-        <div className="text-sm font-medium text-slate-600">
-          {editing ? "Notitie bewerken" : "Notitie"}
+        <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
+          <CalendarDays className="h-4 w-4 text-blue-600" />
+          {editing ? (
+            <input
+              type="date"
+              value={datum}
+              onChange={(e) => setDatum(e.target.value)}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+            />
+          ) : (
+            <span>{formatDatum(n.datum)}</span>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -171,8 +209,21 @@ export default function NotitieblokPagina() {
     }
   );
 
+  const sortedNotities = useMemo(
+    () =>
+      [...notities].sort((a, b) => {
+        const aTime = a.datum ? new Date(a.datum).getTime() : 0;
+        const bTime = b.datum ? new Date(b.datum).getTime() : 0;
+
+        if (bTime !== aTime) return bTime - aTime;
+        return (b.volgorde ?? 0) - (a.volgorde ?? 0);
+      }),
+    [notities]
+  );
+
   const [newRubriekName, setNewRubriekName] = useState("");
   const [newNotitieHtml, setNewNotitieHtml] = useState("");
+  const [newNotitieDatum, setNewNotitieDatum] = useState(todayKey());
 
   useEffect(() => {
     if (sortedRubrieken.length && !selRubriek) {
@@ -237,10 +288,12 @@ export default function NotitieblokPagina() {
       body: JSON.stringify({
         rubriek_id: selRubriek.id,
         tekst: newNotitieHtml,
+        datum: newNotitieDatum,
       }),
     });
 
     setNewNotitieHtml("");
+    setNewNotitieDatum(todayKey());
     await mutateNotities();
   };
 
@@ -390,7 +443,7 @@ export default function NotitieblokPagina() {
               </div>
 
               <div className="space-y-4">
-                {notities.map((n) => (
+                {sortedNotities.map((n) => (
                   <NotitieRow
                     key={n.id}
                     n={n}
@@ -419,10 +472,17 @@ export default function NotitieblokPagina() {
                   </p>
                 </div>
 
+                <input
+                  type="date"
+                  value={newNotitieDatum}
+                  onChange={(e) => setNewNotitieDatum(e.target.value)}
+                  className="ml-auto rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                />
+
                 <button
                   onClick={addNotitie}
                   disabled={!selRubriek}
-                  className="ml-auto inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
                   <Plus size={16} />
                   Notitie
