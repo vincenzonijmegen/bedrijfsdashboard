@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import Link from "next/link";
 import { handleLogout } from "@/utils/auth";
+import { BookOpen, LogOut } from "lucide-react";
 
 interface Instructie {
   id: string;
@@ -31,6 +32,7 @@ interface Status {
 const fetcher = async (url: string): Promise<Instructie[]> => {
   const res = await fetch(url);
   const data: RawInstructie[] = await res.json();
+
   return data.map((i) => ({
     ...i,
     functies: Array.isArray(i.functies)
@@ -49,113 +51,143 @@ const fetcher = async (url: string): Promise<Instructie[]> => {
 };
 
 export default function InstructieOverzicht() {
-  const gebruiker = typeof window !== "undefined"
-    ? JSON.parse(localStorage.getItem("gebruiker") || "{}")
-    : {};
-  const isAdmin = gebruiker?.functie?.toLowerCase() === "beheerder";
+  const gebruiker =
+    typeof window !== "undefined"
+      ? JSON.parse(localStorage.getItem("gebruiker") || "{}")
+      : {};
+
+  const isAdmin =
+    gebruiker?.functie?.toLowerCase() === "beheerder";
+
   const email = gebruiker?.email || "";
 
-  const { data: instructies, error } = useSWR<Instructie[]>("/api/instructies", fetcher);
+  const { data: instructies, error } = useSWR<Instructie[]>(
+    "/api/instructies",
+    fetcher
+  );
 
   const { data: status } = useSWR<Status[]>(
     email ? `/api/instructiestatus?email=${email}` : null,
-    (url: string) => fetch(url).then(res => res.json())
+    (url: string) => fetch(url).then((res) => res.json())
   );
 
-  if (error) return <div>Fout bij laden</div>;
-  if (!instructies) return <div>Laden...</div>;
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-100 p-6">
+        <div className="max-w-5xl mx-auto bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
+          Fout bij laden instructies
+        </div>
+      </div>
+    );
+  }
+
+  if (!instructies) {
+    return (
+      <div className="min-h-screen bg-slate-100 p-6">
+        <div className="max-w-5xl mx-auto bg-white p-6 rounded-xl shadow-sm text-center">
+          Laden...
+        </div>
+      </div>
+    );
+  }
 
   const gesorteerd = [...instructies]
     .filter((i) => {
       if (!i.functies || i.functies.length === 0) return true;
-      return isAdmin || !gebruiker?.functie || i.functies.map(f => f.toLowerCase()).includes(gebruiker.functie.toLowerCase());
+      return (
+        isAdmin ||
+        !gebruiker?.functie ||
+        i.functies
+          .map((f) => f.toLowerCase())
+          .includes(gebruiker.functie.toLowerCase())
+      );
     })
-    .sort((a, b) => {
-      const na = a.nummer || "";
-      const nb = b.nummer || "";
-      return na.localeCompare(nb);
-    });
+    .sort((a, b) => (a.nummer || "").localeCompare(b.nummer || ""));
 
   const getStatus = (slug: string) => {
     const s = status?.find((x) => x.slug === slug);
-    if (!s) return <span className="text-gray-400">⏳ Nog niet gelezen</span>;
+
+    if (!s) {
+      return (
+        <span className="text-xs text-slate-400">
+          Niet gelezen
+        </span>
+      );
+    }
 
     if (s.score != null && s.totaal != null && s.juist != null) {
-      const kleur = s.score < 100 ? "text-red-600" : "text-green-600";
-      const datum = s.gelezen_op
-        ? new Date(s.gelezen_op).toLocaleDateString("nl-NL", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-        : null;
+      const kleur =
+        s.score < 100
+          ? "bg-red-50 text-red-700"
+          : "bg-emerald-50 text-emerald-700";
+
       return (
-        <span className={kleur}>
-          🧐 {s.juist}/{s.totaal}
-          {datum && <span className="ml-2 text-blue-600">👁 {datum}</span>}
+        <span
+          className={`text-xs px-2 py-0.5 rounded-full font-medium ${kleur}`}
+        >
+          {s.juist}/{s.totaal}
         </span>
       );
     }
 
     if (s.gelezen_op) {
-      const datum = new Date(s.gelezen_op).toLocaleDateString("nl-NL", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-      return <span className="text-blue-600">👁 {datum}</span>;
+      return (
+        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium">
+          Gelezen
+        </span>
+      );
     }
 
-    return <span className="text-blue-600">👁 Gelezen</span>;
+    return null;
   };
 
   return (
-  <main className="max-w-5xl mx-auto p-4">
-    <div className="flex justify-between items-center mb-6">
-      <div className="flex items-center gap-4">
-        <img src="/logo.png" alt="Logo" className="h-10 w-auto" />
-        <h1 className="text-3xl font-bold text-slate-800">
-          <Link href="/medewerker" className="text-sm text-blue-600 underline mt-1">
-  ⬅ Terug naar dashboard
-</Link>
+    <main className="min-h-screen bg-slate-100 px-4 py-6">
+      <div className="max-w-5xl mx-auto">
 
-        Werkinstructies – {gebruiker?.naam || "..."}
-        </h1>
-
-      </div>
-
-
-<button
-  onClick={handleLogout}
-  className="text-sm text-red-600 underline"
->
-  Uitloggen
-</button>
-
-    </div>
-
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {gesorteerd.map((i, index) => {
-        const kleuren = ["bg-pink-200", "bg-purple-200", "bg-green-200", "bg-yellow-200", "bg-blue-200"];
-        const kleur = kleuren[index % kleuren.length];
-
-        return (
-          <Link
-            key={i.id}
-            href={`/instructies/${i.slug}`}
-            className={`rounded-lg shadow px-4 py-3 hover:shadow-md transition border ${kleur}`}
-          >
-            <div className="flex justify-between items-center">
-              <div className="font-semibold text-slate-800">
-                {i.nummer ? `${i.nummer}. ` : ""}
-                {i.titel}
-              </div>
-              <div className="text-sm">{getStatus(i.slug)}</div>
+        {/* HEADER */}
+        <div className="mb-6 bg-white border border-slate-200 rounded-2xl px-6 py-4 shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <BookOpen className="text-blue-600" />
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">
+                Werkinstructies
+              </h1>
+              <p className="text-sm text-slate-500">
+                {gebruiker?.naam || ""}
+              </p>
             </div>
-          </Link>
-        );
-      })}
-    </div>
-  </main>
-);
+          </div>
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 text-sm text-red-600 hover:underline"
+          >
+            <LogOut size={16} />
+            Uitloggen
+          </button>
+        </div>
+
+        {/* GRID */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {gesorteerd.map((i) => (
+            <Link
+              key={i.id}
+              href={`/instructies/${i.slug}`}
+              className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="font-semibold text-slate-900">
+                  {i.nummer ? `${i.nummer}. ` : ""}
+                  {i.titel}
+                </div>
+
+                {getStatus(i.slug)}
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </main>
+  );
 }
