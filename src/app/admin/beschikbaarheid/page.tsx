@@ -1,11 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import {
   CalendarDays,
   CheckCircle2,
+  Download,
   Loader2,
   Plus,
   Trash2,
@@ -54,6 +55,53 @@ export default function BeschikbaarheidOverzicht() {
 
     await fetch(`/api/beschikbaarheid?id=${id}`, { method: "DELETE" });
     mutate();
+  };
+
+  const totalen = useMemo(() => {
+    const result: Record<string, { s1: number; s2: number }> = {};
+
+    dagen.forEach((dag) => {
+      result[dag] = { s1: 0, s2: 0 };
+    });
+
+    (data || []).forEach((regel) => {
+      dagen.forEach((dag) => {
+        if (regel[`${dag}_1`]) result[dag].s1 += 1;
+        if (regel[`${dag}_2`]) result[dag].s2 += 1;
+      });
+    });
+
+    return result;
+  }, [data]);
+
+  const exportToPDF = async () => {
+    // @ts-expect-error: html2pdf.js heeft geen types
+    const html2pdf = (await import("html2pdf.js")).default;
+    const element = document.getElementById("pdf-content");
+    if (!element) return;
+
+    html2pdf()
+      .set({
+        margin: [0.35, 0.35, 0.35, 0.35],
+        filename: "Beschikbaarheid-per-medewerker.pdf",
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          scrollY: 0,
+        },
+        jsPDF: {
+          unit: "in",
+          format: "a4",
+          orientation: "landscape",
+        },
+        pagebreak: {
+          mode: ["css", "legacy"],
+          avoid: ["tr", "table"],
+        },
+      })
+      .from(element)
+      .save();
   };
 
   if (error) {
@@ -119,6 +167,14 @@ export default function BeschikbaarheidOverzicht() {
                 </div>
               </div>
 
+              <button
+                onClick={exportToPDF}
+                className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                <Download size={16} />
+                PDF
+              </button>
+
               <Link
                 href="/admin/beschikbaarheid/nieuw"
                 className="inline-flex h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
@@ -130,7 +186,10 @@ export default function BeschikbaarheidOverzicht() {
           </div>
         </div>
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <section
+          id="pdf-content"
+          className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+        >
           <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100">
@@ -153,7 +212,7 @@ export default function BeschikbaarheidOverzicht() {
               Nog geen beschikbaarheid opgegeven.
             </div>
           ) : (
-            <div className="w-full">
+            <div className="w-full bg-white">
               <table className="w-full table-fixed text-[11px]">
                 <colgroup>
                   <col className="w-[16%]" />
@@ -189,7 +248,7 @@ export default function BeschikbaarheidOverzicht() {
                       </React.Fragment>
                     ))}
 
-                    <th className="border-b border-slate-200 px-1 py-2 text-center">
+                    <th className="border-b border-slate-200 px-1 py-2 text-center print:hidden">
                       Actie
                     </th>
                   </tr>
@@ -254,7 +313,7 @@ export default function BeschikbaarheidOverzicht() {
                         </React.Fragment>
                       ))}
 
-                      <td className="px-1 py-2 text-center">
+                      <td className="px-1 py-2 text-center print:hidden">
                         <button
                           onClick={() => handleDelete(regel.id)}
                           className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
@@ -265,6 +324,25 @@ export default function BeschikbaarheidOverzicht() {
                       </td>
                     </tr>
                   ))}
+
+                  <tr className="bg-blue-50 font-bold text-blue-950">
+                    <td className="px-3 py-2">Totaal beschikbaar</td>
+                    <td className="px-2 py-2 text-slate-500">Per shift</td>
+                    <td className="px-1 py-2 text-center">—</td>
+
+                    {dagen.map((dag) => (
+                      <React.Fragment key={`totaal-${dag}`}>
+                        <td className="px-1 py-2 text-center">
+                          {totalen[dag].s1}
+                        </td>
+                        <td className="px-1 py-2 text-center">
+                          {totalen[dag].s2}
+                        </td>
+                      </React.Fragment>
+                    ))}
+
+                    <td className="px-1 py-2 print:hidden" />
+                  </tr>
                 </tbody>
               </table>
             </div>
