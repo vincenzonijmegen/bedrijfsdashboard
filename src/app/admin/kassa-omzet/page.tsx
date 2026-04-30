@@ -1,116 +1,164 @@
-// src/app/admin/kassa-omzet/page.tsx
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from "react";
+import { DatabaseZap, Loader2, Play, RefreshCw } from "lucide-react";
 
 export default function KassaOmzetImportPage() {
   const today = new Date().toISOString().substring(0, 10);
   const [startDate, setStartDate] = useState<string>(today);
   const [endDate, setEndDate] = useState<string>(today);
-  const [status, setStatus] = useState<string>('');
+  const [status, setStatus] = useState<string>("");
   const [lastImport, setLastImport] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Fetch last imported date
   useEffect(() => {
-    fetch('/api/rapportage/omzet/last-import')
-      .then(res => {
-        if (!res.ok) {
-          console.error('Last-import API error:', res.status);
-          throw new Error(`Status ${res.status}`);
-        }
+    fetch("/api/rapportage/omzet/last-import")
+      .then((res) => {
+        if (!res.ok) throw new Error(`Status ${res.status}`);
         return res.json();
       })
-      .then(data => {
-        console.log('Last-import data:', data);
-        if (data.lastImported) {
-          setLastImport(data.lastImported);
-        } else {
-          console.warn('lastImported ontbreekt in response');
-        }
+      .then((data) => {
+        if (data.lastImported) setLastImport(data.lastImported);
       })
-      .catch(err => {
-        console.error('Fout bij ophalen lastImport:', err);
+      .catch((err) => {
+        console.error("Fout bij ophalen lastImport:", err);
       });
   }, []);
 
   const handleImport = async () => {
-  setStatus("Importeren...");
-  try {
-    const res = await fetch(
-      `/api/rapportage/omzet/import?start=${startDate}&einde=${endDate}`,
-      { method: "POST" }
-    );
+    setLoading(true);
+    setStatus("Importeren...");
 
-    // Lees altijd als tekst, zodat we ook bij HTML/500 een nette melding tonen
-    const ct = res.headers.get("content-type") || "";
-    const body = await res.text();
+    try {
+      const res = await fetch(
+        `/api/rapportage/omzet/import?start=${startDate}&einde=${endDate}`,
+        { method: "POST" }
+      );
 
-    if (!res.ok) {
-      setStatus(`❌ Fout bij import (HTTP ${res.status}): ${body.slice(0, 400)}`);
-      return;
-    }
+      const ct = res.headers.get("content-type") || "";
+      const body = await res.text();
 
-    // Probeer JSON te parsen (onze route hoort JSON te geven)
-    const json = ct.includes("application/json") ? JSON.parse(body) : { raw: body };
+      if (!res.ok) {
+        setStatus(`❌ Fout bij import (HTTP ${res.status}): ${body.slice(0, 400)}`);
+        return;
+      }
 
-    const imported = json?.imported ?? 0;
-    const upserts = json?.profiel_refresh?.upserts ?? 0;
-    const range =
-      json?.profiel_refresh?.range
+      const json = ct.includes("application/json")
+        ? JSON.parse(body)
+        : { raw: body };
+
+      const imported = json?.imported ?? 0;
+      const upserts = json?.profiel_refresh?.upserts ?? 0;
+      const range = json?.profiel_refresh?.range
         ? `${json.profiel_refresh.range.from}—${json.profiel_refresh.range.to}`
         : `${startDate}—${endDate}`;
 
-    setStatus(`✅ Import OK • records: ${imported} • profiel upserts: ${upserts} • range: ${range}`);
+      setStatus(
+        `✅ Import OK • records: ${imported} • profiel upserts: ${upserts} • range: ${range}`
+      );
 
-    // Last import opnieuw ophalen
-    const r2 = await fetch("/api/rapportage/omzet/last-import");
-    if (r2.ok) {
-      const d2 = await r2.json();
-      if (d2.lastImported) setLastImport(d2.lastImported);
+      const r2 = await fetch("/api/rapportage/omzet/last-import");
+      if (r2.ok) {
+        const d2 = await r2.json();
+        if (d2.lastImported) setLastImport(d2.lastImported);
+      }
+    } catch (err: any) {
+      setStatus(`Fout bij import: ${err?.message || err}`);
+    } finally {
+      setLoading(false);
     }
-  } catch (err: any) {
-    setStatus(`Fout bij import: ${err?.message || err}`);
-  }
-};
-
+  };
 
   return (
-    <div className="p-6 max-w-md mx-auto">
-      <h1 className="text-2xl font-bold mt-4 mb-4">Import Omzet</h1>
-      {lastImport && (
-        <p className="mb-4 text-sm text-gray-600">
-          Laatst geïmporteerd op: <strong>{new Date(lastImport).toLocaleDateString('nl-NL')}</strong>
-        </p>
-      )}
-      <div className="mb-4">
-        <label htmlFor="start" className="block mb-1">Startdatum</label>
-        <input
-          id="start"
-          type="date"
-          value={startDate}
-          onChange={e => setStartDate(e.target.value)}
-          className="w-full border px-3 py-2 rounded"
-        />
+    <main className="min-h-screen bg-slate-100 px-6 py-6">
+      <div className="mx-auto max-w-4xl">
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+          <div className="mb-1 flex items-center gap-2 text-sm font-medium text-blue-600">
+            <DatabaseZap className="h-4 w-4" />
+            Rapportage / Omzetimport
+          </div>
+
+          <h1 className="text-2xl font-bold tracking-tight text-slate-950">
+            Import omzet
+          </h1>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Haal omzetgegevens uit de kassa op en werk rapportages bij.
+          </p>
+        </div>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          {lastImport && (
+            <div className="mb-5 rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-800 ring-1 ring-blue-100">
+              Laatst geïmporteerd op:{" "}
+              <strong>{new Date(lastImport).toLocaleDateString("nl-NL")}</strong>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <label>
+              <span className="mb-1 block text-sm font-semibold text-slate-700">
+                Startdatum
+              </span>
+              <input
+                id="start"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+              />
+            </label>
+
+            <label>
+              <span className="mb-1 block text-sm font-semibold text-slate-700">
+                Einddatum
+              </span>
+              <input
+                id="end"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+              />
+            </label>
+          </div>
+
+          <button
+            onClick={handleImport}
+            disabled={loading}
+            className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 md:w-auto"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Importeren...
+              </>
+            ) : (
+              <>
+                <Play className="h-4 w-4" />
+                Start import
+              </>
+            )}
+          </button>
+
+          {status && (
+            <div
+              className={`mt-5 rounded-xl px-4 py-3 text-sm whitespace-pre-wrap ring-1 ${
+                status.startsWith("✅")
+                  ? "bg-emerald-50 text-emerald-800 ring-emerald-100"
+                  : status.startsWith("❌") || status.startsWith("Fout")
+                  ? "bg-red-50 text-red-700 ring-red-100"
+                  : "bg-slate-50 text-slate-700 ring-slate-200"
+              }`}
+            >
+              <div className="flex items-start gap-2">
+                <RefreshCw className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>{status}</span>
+              </div>
+            </div>
+          )}
+        </section>
       </div>
-      <div className="mb-6">
-        <label htmlFor="end" className="block mb-1">Einddatum</label>
-        <input
-          id="end"
-          type="date"
-          value={endDate}
-          onChange={e => setEndDate(e.target.value)}
-          className="w-full border px-3 py-2 rounded"
-        />
-      </div>
-      <button
-        onClick={handleImport}
-        className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
-      >
-        Start Import
-      </button>
-      {status && (
-        <p className="mt-4 text-sm text-gray-800 whitespace-pre-wrap">{status}</p>
-      )}
-    </div>
+    </main>
   );
 }
