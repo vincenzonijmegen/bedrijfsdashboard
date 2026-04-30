@@ -3,6 +3,13 @@
 import Link from "next/link";
 import useSWR from "swr";
 import { useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  BarChart3,
+  CalendarDays,
+  IceCreamBowl,
+  Loader2,
+} from "lucide-react";
 
 type RapportRow = {
   recept_id: number;
@@ -109,7 +116,6 @@ export default function KeukenProductieLogPage() {
     0
   );
 
-  // Alleen relevante batchcategorieën meenemen voor gemiddelde batchgrootte
   const batchCategorieen = ["melksmaken", "vruchtensmaken"];
 
   const batchRows = rows.filter((row) =>
@@ -132,9 +138,7 @@ export default function KeukenProductieLogPage() {
       : "0.0";
 
   const groupedRows = useMemo(() => {
-    if (categorieen.length === 0) {
-      return [];
-    }
+    if (categorieen.length === 0) return [];
 
     return categorieen
       .map((categorie) => ({
@@ -163,176 +167,221 @@ export default function KeukenProductieLogPage() {
   }
 
   return (
-    <main className="max-w-6xl mx-auto p-6">
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-slate-500">
-            Admin
-          </p>
-          <h1 className="text-3xl font-bold text-slate-900">
-            Productie rapportage keuken
-          </h1>
-          <p className="mt-2 text-slate-600">
-            Overzicht van hoe vaak smaken en producten zijn gemaakt.
-          </p>
-        </div>
-
-        <Link
-          href="/admin"
-          className="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
-        >
-          ← Terug naar dashboard
-        </Link>
-      </div>
-
-      <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="grid gap-4 lg:grid-cols-[220px_220px_1fr] lg:items-end">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Startdatum
-            </label>
-            <input
-              type="date"
-              value={start}
-              onChange={(e) => setStart(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-500"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Einddatum
-            </label>
-            <input
-              type="date"
-              value={einde}
-              onChange={(e) => setEinde(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-500"
-            />
-          </div>
-
-          <div className="flex flex-wrap gap-2 lg:justify-end">
-            <button
-              type="button"
-              onClick={setVandaag}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Vandaag
-            </button>
-            <button
-              type="button"
-              onClick={setDezeWeek}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Deze week
-            </button>
-            <button
-              type="button"
-              onClick={setDezeMaand}
-              className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            >
-              Deze maand
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl bg-slate-100 px-4 py-3">
-            <div className="text-xs uppercase tracking-wide text-slate-500">
-              Batches
-            </div>
-            <div className="mt-1 text-2xl font-bold text-slate-900">
-              {totaalBatches}
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-slate-100 px-4 py-3">
-            <div className="text-xs uppercase tracking-wide text-slate-500">
-              Totaal gemaakt
-            </div>
-            <div className="mt-1 text-2xl font-bold text-slate-900">
-              {totaalItems}
-            </div>
-          </div>
-
-          <div className="rounded-xl bg-slate-100 px-4 py-3">
-            <div className="text-xs uppercase tracking-wide text-slate-500">
-              Gem. batchgrootte ijs
-            </div>
-            <div className="mt-1 text-2xl font-bold text-slate-900">
-              {gemiddeldeBatchgrootteIJs}
-            </div>
-            <p className="mt-1 text-xs text-slate-500">
-              Alleen melksmaken en vruchtensmaken
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {isLoading ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 text-slate-500 shadow-sm">
-          Rapportage laden...
-        </div>
-      ) : error || !data?.success ? (
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-700 shadow-sm">
-          Fout bij laden van rapportage.
-        </div>
-      ) : rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-5 text-slate-500 shadow-sm">
-          Geen productiegegevens gevonden in deze periode.
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {groupedRows.map((groep) => (
-            <section
-              key={groep.categorie}
-              className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-            >
-              <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
-                <h2 className="text-lg font-semibold text-slate-900">
-                  {groep.titel}
-                </h2>
+    <main className="min-h-screen bg-slate-100 px-6 py-6">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="mb-1 flex items-center gap-2 text-sm font-medium text-blue-600">
+                <BarChart3 className="h-4 w-4" />
+                Keuken / Productie rapportage
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="bg-white text-slate-700">
-                    <tr>
-                      <th className="px-4 py-3 font-semibold">Recept</th>
-                      <th className="px-4 py-3 font-semibold">Keren gemaakt</th>
-                      <th className="px-4 py-3 font-semibold">Totaal aantal</th>
-                      <th className="px-4 py-3 font-semibold">Laatste keer</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {groep.items.map((row, index) => (
-                      <tr
-                        key={`${row.recept_id}-${row.recept_naam}`}
-                        className={`border-t border-slate-100 ${
-                          index < 3 ? "bg-amber-50/40" : ""
-                        }`}
-                      >
-                        <td className="px-4 py-3 font-medium text-slate-900">
-                          {row.recept_naam}
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">
-                          {row.keren_gemaakt}
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">
-                          {row.totaal_aantal}
-                        </td>
-                        <td className="px-4 py-3 text-slate-600">
-                          {formatLaatsteKeer(row.laatste_keer)}
-                        </td>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-950">
+                Productie rapportage keuken
+              </h1>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Overzicht van hoe vaak smaken en producten zijn gemaakt.
+              </p>
+            </div>
+
+            <Link
+              href="/admin"
+              className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            >
+              <ArrowLeft size={16} />
+              Terug naar dashboard
+            </Link>
+          </div>
+        </div>
+
+        <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100">
+              <CalendarDays size={20} />
+            </div>
+
+            <div>
+              <h2 className="text-lg font-bold text-slate-950">
+                Periode selecteren
+              </h2>
+              <p className="text-sm text-slate-500">
+                Kies een datumrange of gebruik een snelle selectie.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[220px_220px_1fr] lg:items-end">
+            <label>
+              <span className="mb-1 block text-sm font-semibold text-slate-700">
+                Startdatum
+              </span>
+              <input
+                type="date"
+                value={start}
+                onChange={(e) => setStart(e.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+              />
+            </label>
+
+            <label>
+              <span className="mb-1 block text-sm font-semibold text-slate-700">
+                Einddatum
+              </span>
+              <input
+                type="date"
+                value={einde}
+                onChange={(e) => setEinde(e.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+              />
+            </label>
+
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              <button
+                type="button"
+                onClick={setVandaag}
+                className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Vandaag
+              </button>
+              <button
+                type="button"
+                onClick={setDezeWeek}
+                className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Deze week
+              </button>
+              <button
+                type="button"
+                onClick={setDezeMaand}
+                className="h-11 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              >
+                Deze maand
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="rounded-xl bg-blue-50 px-4 py-3 ring-1 ring-blue-100">
+              <div className="text-xs font-medium uppercase tracking-wide text-blue-600">
+                Batches
+              </div>
+              <div className="text-2xl font-bold text-blue-950">
+                {totaalBatches}
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100">
+              <div className="text-xs font-medium uppercase tracking-wide text-emerald-600">
+                Totaal gemaakt
+              </div>
+              <div className="text-2xl font-bold text-emerald-950">
+                {totaalItems}
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200">
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Gem. batchgrootte ijs
+              </div>
+              <div className="text-2xl font-bold text-slate-950">
+                {gemiddeldeBatchgrootteIJs}
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                Alleen melksmaken en vruchtensmaken
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {isLoading ? (
+          <div className="rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-sm">
+            <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-blue-600" />
+            <p className="text-sm text-slate-500">Rapportage laden…</p>
+          </div>
+        ) : error || !data?.success ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-700 shadow-sm">
+            Fout bij laden van rapportage.
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500 shadow-sm">
+            Geen productiegegevens gevonden in deze periode.
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {groupedRows.map((groep) => (
+              <section
+                key={groep.categorie}
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+              >
+                <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100">
+                      <IceCreamBowl size={20} />
+                    </div>
+
+                    <div>
+                      <h2 className="text-lg font-bold text-slate-950">
+                        {groep.titel}
+                      </h2>
+                      <p className="text-sm text-slate-500">
+                        {groep.items.length} item
+                        {groep.items.length === 1 ? "" : "s"} in deze categorie.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[720px] text-left text-sm">
+                    <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                      <tr>
+                        <th className="border-b border-slate-200 px-4 py-3">
+                          Recept
+                        </th>
+                        <th className="border-b border-slate-200 px-4 py-3">
+                          Keren gemaakt
+                        </th>
+                        <th className="border-b border-slate-200 px-4 py-3">
+                          Totaal aantal
+                        </th>
+                        <th className="border-b border-slate-200 px-4 py-3">
+                          Laatste keer
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
+                    </thead>
+
+                    <tbody className="divide-y divide-slate-100">
+                      {groep.items.map((row, index) => (
+                        <tr
+                          key={`${row.recept_id}-${row.recept_naam}`}
+                          className={`transition hover:bg-slate-50 ${
+                            index < 3 ? "bg-amber-50/50" : ""
+                          }`}
+                        >
+                          <td className="px-4 py-3 font-semibold text-slate-950">
+                            {row.recept_naam}
+                          </td>
+                          <td className="px-4 py-3 text-slate-700">
+                            {row.keren_gemaakt}
+                          </td>
+                          <td className="px-4 py-3 text-slate-700">
+                            {row.totaal_aantal}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-slate-600">
+                            {formatLaatsteKeer(row.laatste_keer)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
     </main>
   );
 }
