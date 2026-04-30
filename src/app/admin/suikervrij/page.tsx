@@ -122,7 +122,7 @@ export default function SuikervrijPage() {
     html2pdf()
       .from(element)
       .set({
-        margin: [36, 36, 36, 36],
+        margin: [18, 18, 18, 18],
         filename: "suikervrij-producties.pdf",
         jsPDF: {
           unit: "pt",
@@ -384,8 +384,8 @@ export default function SuikervrijPage() {
           </div>
         </section>
 
-        <div className="print-area mt-8 bg-white p-6 text-slate-900">
-          <h2 className="mb-4 text-xl font-bold">
+        <div className="print-area mt-8 bg-white p-3 text-slate-900 text-xs">
+          <h2 className="mb-2 text-base font-bold">
             Print – laatste 4 producties per smaak
           </h2>
 
@@ -401,25 +401,25 @@ export default function SuikervrijPage() {
             if (!items.length) return null;
 
             return (
-              <div key={smaakNaam} className="mb-5 break-inside-avoid">
-                <h3 className="mb-2 font-bold">{smaakNaam}</h3>
+              <div key={smaakNaam} className="mb-2 break-inside-avoid">
+                <h3 className="mb-1 font-bold">{smaakNaam}</h3>
 
                 <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr>
-                      <th className="border px-2 py-1 text-left">Datum</th>
-                      <th className="border px-2 py-1 text-left">Aantal</th>
-                      <th className="border px-2 py-1 text-left">Kleur</th>
+                      <th className="border px-2 py-0.5 text-left">Datum</th>
+                      <th className="border px-2 py-0.5 text-left">Aantal</th>
+                      <th className="border px-2 py-0.5 text-left">Kleur</th>
                     </tr>
                   </thead>
                   <tbody>
                     {items.map((p) => (
                       <tr key={p.id}>
-                        <td className="border px-2 py-1">
+                        <td className="border px-2 py-0.5">
                           {new Date(p.datum).toLocaleDateString("nl-NL")}
                         </td>
-                        <td className="border px-2 py-1">{p.aantal}</td>
-                        <td className="border px-2 py-1">
+                        <td className="border px-2 py-0.5">{p.aantal}</td>
+                        <td className="border px-2 py-0.5">
                           <span
                             className="mr-2 inline-block h-4 w-4 rounded-full align-middle"
                             style={{ backgroundColor: kleurHex(p.kleur) }}
