@@ -82,11 +82,11 @@ export default function BeschikbaarheidOverzicht() {
 
     html2pdf()
       .set({
-        margin: [0.35, 0.35, 0.35, 0.35],
+        margin: [0.25, 0.25, 0.25, 0.25],
         filename: "Beschikbaarheid-per-medewerker.pdf",
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: {
-          scale: 2,
+          scale: 1.5,
           useCORS: true,
           scrollY: 0,
         },
@@ -186,9 +186,9 @@ export default function BeschikbaarheidOverzicht() {
           </div>
         </div>
 
-        <section
+       <section
           id="pdf-content"
-          className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+          className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm [&_.pdf-hide]:hidden"
         >
           <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
             <div className="flex items-center gap-3">
@@ -248,7 +248,7 @@ export default function BeschikbaarheidOverzicht() {
                       </React.Fragment>
                     ))}
 
-                    <th className="border-b border-slate-200 px-1 py-2 text-center print:hidden">
+                    <th className="pdf-hide border-b border-slate-200 px-1 py-2 text-center">
                       Actie
                     </th>
                   </tr>
@@ -266,11 +266,6 @@ export default function BeschikbaarheidOverzicht() {
                         }
                       >
                         <div className="truncate">{regel.naam}</div>
-                        {regel.opmerkingen && (
-                          <div className="mt-0.5 truncate text-[10px] font-normal text-slate-500">
-                            {regel.opmerkingen}
-                          </div>
-                        )}
                       </td>
 
                       <td className="whitespace-nowrap px-2 py-2 text-slate-700">
