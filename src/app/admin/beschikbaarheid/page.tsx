@@ -300,7 +300,7 @@ export default function BeschikbaarheidOverzicht() {
 
                           <td className="px-1 py-2 text-center">
                             {regel[`${dag}_2`] ? (
-                              <CheckCircle2 className="mx-auto h-4 w-4 text-emerald-600" />
+                              <span className="text-emerald-600 font-bold">✓</span>
                             ) : (
                               <span className="text-slate-300">—</span>
                             )}
