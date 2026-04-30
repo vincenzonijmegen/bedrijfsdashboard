@@ -215,7 +215,7 @@ export default function BeschikbaarheidOverzicht() {
             <div className="w-full bg-white">
               <table className="w-full table-fixed text-[11px]">
                 <colgroup>
-                  <col className="w-[16%]" />
+                  <col className="w-[20%]" />
                   <col className="w-[17%]" />
                   <col className="w-[5%]" />
                   {dagen.flatMap((dag) => [
@@ -265,7 +265,7 @@ export default function BeschikbaarheidOverzicht() {
                             : regel.naam
                         }
                       >
-                        <div className="truncate">{regel.naam}</div>
+                        <div className="whitespace-normal leading-tight">{regel.naam}</div>
                       </td>
 
                       <td className="whitespace-nowrap px-2 py-2 text-slate-700">
@@ -282,7 +282,7 @@ export default function BeschikbaarheidOverzicht() {
                         })}
                       </td>
 
-                      <td className="px-1 py-2 text-center">
+                      <td className="px-1 py-2 text-center whitespace-nowrap">
                         <span className="inline-flex min-w-6 justify-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 ring-1 ring-blue-100">
                           {regel.max_shifts_per_week}
                         </span>
@@ -292,7 +292,7 @@ export default function BeschikbaarheidOverzicht() {
                         <React.Fragment key={`${regel.id}-${dag}`}>
                           <td className="px-1 py-2 text-center">
                             {regel[`${dag}_1`] ? (
-                              <CheckCircle2 className="mx-auto h-4 w-4 text-emerald-600" />
+                              <span className="text-emerald-600 font-bold">✓</span>
                             ) : (
                               <span className="text-slate-300">—</span>
                             )}
