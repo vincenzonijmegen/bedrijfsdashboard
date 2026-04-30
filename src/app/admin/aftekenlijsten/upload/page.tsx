@@ -1,9 +1,13 @@
-// src/app/admin/aftekenlijsten/upload/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Camera } from "lucide-react";
+import {
+  Camera,
+  FileUp,
+  Loader2,
+  UploadCloud,
+} from "lucide-react";
 
 const categorieOpties = [
   { label: "Winkel – begin", value: "winkel-begin" },
@@ -32,248 +36,278 @@ export default function UploadAftekenlijst() {
   const [jaar, setJaar] = useState<number>(new Date().getFullYear());
   const [bestand, setBestand] = useState<File | null>(null);
   const [opmerking, setOpmerking] = useState("");
-  const [templateNaam, setTemplateNaam] = useState(""); // optionele naam bij template
+  const [templateNaam, setTemplateNaam] = useState("");
   const [uploading, setUploading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
-    }
+    setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
   }, []);
 
   const handleUpload = async () => {
-  // Validatie
-  if (!categorie) {
-    alert("Kies een categorie.");
-    return;
-  }
-  if (soort === "ingevuld") {
-    if (!week || !jaar) {
-      alert("Vul de week en het jaar in.");
-      return;
+    if (!categorie) return alert("Kies een categorie.");
+    if (soort === "ingevuld" && (!week || !jaar)) {
+      return alert("Vul de week en het jaar in.");
     }
-  }
-  if (!bestand) {
-    alert("Kies een bestand om te uploaden.");
-    return;
-  }
+    if (!bestand) return alert("Kies een bestand om te uploaden.");
 
-  // Extensie en eenvoudige check
-  const rawName = (bestand as any).name || "bestand";
-  const ext = (rawName.split(".").pop() || "").toLowerCase();
-  const allowedTemplateExt = ["pdf", "doc", "docx", "xls", "xlsx"];
-  if (soort === "template" && !allowedTemplateExt.includes(ext)) {
-    alert("Alleen PDF, DOC, DOCX, XLS of XLSX toegestaan voor lege formulieren.");
-    return;
-  }
+    const rawName = bestand.name || "bestand";
+    const ext = (rawName.split(".").pop() || "").toLowerCase();
+    const allowedTemplateExt = ["pdf", "doc", "docx", "xls", "xlsx"];
 
-  setUploading(true);
-
-  try {
-    // Pad
-    let path = "";
-    if (soort === "ingevuld") {
-      const e = ext || "pdf"; // desktop = pdf, mobiel = image/*
-      path = `aftekenlijsten/${jaar}/week-${week}-${categorie}.${e}`;
-    } else {
-      const base = templateNaam.trim() || rawName.replace(/\.[^.]+$/, "");
-      const safeBase = slug(base) || "formulier";
-      path = `aftekenlijsten/templates/${categorie}/${safeBase}-${Date.now()}.${ext}`;
+    if (soort === "template" && !allowedTemplateExt.includes(ext)) {
+      return alert("Alleen PDF, DOC, DOCX, XLS of XLSX toegestaan.");
     }
 
-    // 1) upload naar storage
-    const fd = new FormData();
-    fd.append("file", bestand);
-    fd.append("path", path);
+    setUploading(true);
 
-    const uploadRes = await fetch("/api/upload", { method: "POST", body: fd });
-    if (!uploadRes.ok) {
-      const t = await uploadRes.text();
-      throw new Error(t || "Upload mislukt");
+    try {
+      let path = "";
+
+      if (soort === "ingevuld") {
+        const e = ext || "pdf";
+        path = `aftekenlijsten/${jaar}/week-${week}-${categorie}.${e}`;
+      } else {
+        const base = templateNaam.trim() || rawName.replace(/\.[^.]+$/, "");
+        const safeBase = slug(base) || "formulier";
+        path = `aftekenlijsten/templates/${categorie}/${safeBase}-${Date.now()}.${ext}`;
+      }
+
+      const fd = new FormData();
+      fd.append("file", bestand);
+      fd.append("path", path);
+
+      const uploadRes = await fetch("/api/upload", {
+        method: "POST",
+        body: fd,
+      });
+
+      if (!uploadRes.ok) {
+        const t = await uploadRes.text();
+        throw new Error(t || "Upload mislukt");
+      }
+
+      const { url } = await uploadRes.json();
+
+      const payload: any = {
+        categorie,
+        week: soort === "template" ? 0 : week,
+        jaar,
+        bestand_url: url,
+        opmerking,
+      };
+
+      if (soort === "template") {
+        payload.is_template = true;
+        payload.template_naam = templateNaam.trim() || rawName;
+        payload.ext = ext;
+      }
+
+      const saveRes = await fetch("/api/aftekenlijsten", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!saveRes.ok) {
+        const t = await saveRes.text();
+        throw new Error(t || "Opslaan mislukt");
+      }
+
+      router.push("/admin/aftekenlijsten");
+    } catch (err: any) {
+      alert(err?.message || "Er ging iets mis bij uploaden.");
+    } finally {
+      setUploading(false);
     }
-    const { url } = await uploadRes.json();
+  };
 
-    // ✅ Belangrijk: week/jaar altijd meesturen voor de server
-    const effectiveWeek = soort === "template" ? 0 : week;
-    const effectiveJaar = jaar; // huidig jaar of ingevuld
-
-    // 2) opslaan in DB via bestaande endpoint
-    const payload: any = {
-      categorie,
-      week: effectiveWeek,
-      jaar: effectiveJaar,
-      bestand_url: url,
-      opmerking,
-    };
-
-    // Extra metainfo (server mag negeren)
-    if (soort === "template") {
-      payload.is_template = true;
-      payload.template_naam = templateNaam.trim() || rawName;
-      payload.ext = ext;
-    }
-
-    const saveRes = await fetch("/api/aftekenlijsten", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!saveRes.ok) {
-      const t = await saveRes.text();
-      throw new Error(t || "Opslaan mislukt");
-    }
-
-    // Klaar
-    router.push("/admin/aftekenlijsten");
-  } catch (err: any) {
-    alert(err?.message || "Er ging iets mis bij uploaden.");
-  } finally {
-    setUploading(false);
-  }
-};
-
-  // Accept-strings per modus
   const acceptTemplate =
     ".pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-  const acceptIngevuldDesktop = "application/pdf";
-
   return (
-    <div className="max-w-xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Formulier uploaden</h1>
-
-      {/* Soort */}
-      <label className="block mb-2">Soort</label>
-      <select
-        value={soort}
-        onChange={(e) => setSoort(e.target.value as Soort)}
-        className="w-full border px-3 py-2 rounded mb-4"
-      >
-        <option value="ingevuld">Ingevuld formulier</option>
-        <option value="template">Leeg formulier (template)</option>
-      </select>
-
-      {/* Categorie */}
-      <label className="block mb-2">Categorie</label>
-      <select
-        value={categorie}
-        onChange={(e) => setCategorie(e.target.value)}
-        className="w-full border px-3 py-2 rounded mb-4"
-      >
-        <option value="">-- Kies categorie --</option>
-        {categorieOpties.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-
-      {/* Week/Jaar alleen bij ingevuld */}
-      {soort === "ingevuld" && (
-        <div className="flex gap-4 mb-4">
-          <div className="flex-1">
-            <label className="block mb-2">Week</label>
-            <input
-              type="number"
-              value={week || ""}
-              onChange={(e) => setWeek(Number(e.target.value))}
-              min={1}
-              max={53}
-              className="w-full border px-3 py-2 rounded"
-            />
+    <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-6">
+      <div className="mx-auto max-w-3xl">
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+          <div className="mb-1 flex items-center gap-2 text-sm font-medium text-blue-600">
+            <UploadCloud className="h-4 w-4" />
+            HACCP / Aftekenlijsten
           </div>
-          <div className="flex-1">
-            <label className="block mb-2">Jaar</label>
-            <input
-              type="number"
-              value={jaar}
-              onChange={(e) => setJaar(Number(e.target.value))}
-              min={2020}
-              max={2100}
-              className="w-full border px-3 py-2 rounded"
-            />
-          </div>
+
+          <h1 className="text-2xl font-bold tracking-tight text-slate-950">
+            Formulier uploaden
+          </h1>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Upload ingevulde formulieren of lege templates voor aftekenlijsten.
+          </p>
         </div>
-      )}
 
-      {/* Uploadopties */}
-      <label className="block mb-2">Bestand</label>
-      <div className="flex flex-col gap-4 mb-4">
-        {soort === "ingevuld" ? (
-          isMobile ? (
-            <label className="flex items-center justify-center gap-2 border px-3 py-2 rounded bg-gray-50 cursor-pointer">
-              <Camera className="w-5 h-5 text-gray-600" />
-              <span className="text-gray-700">Foto maken</span>
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={(e) => setBestand(e.target.files?.[0] || null)}
-                className="hidden"
-              />
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="space-y-4">
+            <label>
+              <span className="mb-1 block text-sm font-semibold text-slate-700">
+                Soort
+              </span>
+              <select
+                value={soort}
+                onChange={(e) => setSoort(e.target.value as Soort)}
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+              >
+                <option value="ingevuld">Ingevuld formulier</option>
+                <option value="template">Leeg formulier (template)</option>
+              </select>
             </label>
-          ) : (
-            <label className="flex flex-col gap-1 border px-3 py-2 rounded bg-gray-50">
-              PDF uploaden:
-              <input
-                type="file"
-                accept={acceptIngevuldDesktop}
-                onChange={(e) => setBestand(e.target.files?.[0] || null)}
-                className="block"
-              />
+
+            <label>
+              <span className="mb-1 block text-sm font-semibold text-slate-700">
+                Categorie
+              </span>
+              <select
+                value={categorie}
+                onChange={(e) => setCategorie(e.target.value)}
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+              >
+                <option value="">-- Kies categorie --</option>
+                {categorieOpties.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </label>
-          )
-        ) : (
-          // soort === "template"
-          <>
-            <label className="flex flex-col gap-1 border px-3 py-2 rounded bg-gray-50">
-              Leeg formulier uploaden (PDF/DOC/DOCX/XLS/XLSX):
-              <input
-                type="file"
-                accept={acceptTemplate}
-                onChange={(e) => setBestand(e.target.files?.[0] || null)}
-                className="block"
-              />
-            </label>
+
+            {soort === "ingevuld" && (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <label>
+                  <span className="mb-1 block text-sm font-semibold text-slate-700">
+                    Week
+                  </span>
+                  <input
+                    type="number"
+                    value={week || ""}
+                    onChange={(e) => setWeek(Number(e.target.value))}
+                    min={1}
+                    max={53}
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                  />
+                </label>
+
+                <label>
+                  <span className="mb-1 block text-sm font-semibold text-slate-700">
+                    Jaar
+                  </span>
+                  <input
+                    type="number"
+                    value={jaar}
+                    onChange={(e) => setJaar(Number(e.target.value))}
+                    min={2020}
+                    max={2100}
+                    className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                  />
+                </label>
+              </div>
+            )}
+
             <div>
-              <label className="block mb-1 text-sm text-gray-700">
-                Bestandsnaam (optioneel, zonder extensie)
-              </label>
-              <input
-                type="text"
-                value={templateNaam}
-                onChange={(e) => setTemplateNaam(e.target.value)}
-                placeholder="bv. daglijst-keuken"
-                className="w-full border px-3 py-2 rounded"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Laat leeg om de bestandsnaam van het geüploade bestand te gebruiken.
-              </p>
+              <span className="mb-1 block text-sm font-semibold text-slate-700">
+                Bestand
+              </span>
+
+              {soort === "ingevuld" && isMobile ? (
+                <label className="flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center transition hover:bg-slate-100">
+                  <Camera className="h-6 w-6 text-blue-600" />
+                  <span className="text-sm font-semibold text-slate-700">
+                    Foto maken
+                  </span>
+                  <span className="text-xs text-slate-500">
+                    Gebruik de camera van je telefoon.
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => setBestand(e.target.files?.[0] || null)}
+                    className="hidden"
+                  />
+                </label>
+              ) : (
+                <label className="block rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 transition hover:bg-slate-100">
+                  <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
+                    <FileUp className="h-5 w-5 text-blue-600" />
+                    {soort === "template"
+                      ? "Leeg formulier uploaden"
+                      : "PDF uploaden"}
+                  </div>
+
+                  <input
+                    type="file"
+                    accept={soort === "template" ? acceptTemplate : "application/pdf"}
+                    onChange={(e) => setBestand(e.target.files?.[0] || null)}
+                    className="block w-full text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
+                  />
+                </label>
+              )}
+
+              {bestand && (
+                <div className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 ring-1 ring-emerald-100">
+                  Geselecteerd: {bestand.name}
+                </div>
+              )}
             </div>
-          </>
-        )}
+
+            {soort === "template" && (
+              <label>
+                <span className="mb-1 block text-sm font-semibold text-slate-700">
+                  Bestandsnaam template
+                </span>
+                <input
+                  type="text"
+                  value={templateNaam}
+                  onChange={(e) => setTemplateNaam(e.target.value)}
+                  placeholder="bv. daglijst-keuken"
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  Laat leeg om de oorspronkelijke bestandsnaam te gebruiken.
+                </p>
+              </label>
+            )}
+
+            <label>
+              <span className="mb-1 block text-sm font-semibold text-slate-700">
+                Opmerking
+              </span>
+              <textarea
+                value={opmerking}
+                onChange={(e) => setOpmerking(e.target.value)}
+                rows={3}
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+              />
+            </label>
+
+            <button
+              disabled={uploading}
+              onClick={handleUpload}
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Uploaden...
+                </>
+              ) : (
+                <>
+                  <UploadCloud className="h-4 w-4" />
+                  {soort === "template"
+                    ? "Leeg formulier uploaden"
+                    : "Ingevuld formulier uploaden"}
+                </>
+              )}
+            </button>
+          </div>
+        </section>
       </div>
-
-      <label className="block mb-2">Opmerking (optioneel)</label>
-      <textarea
-        value={opmerking}
-        onChange={(e) => setOpmerking(e.target.value)}
-        className="w-full border px-3 py-2 rounded mb-4"
-      />
-
-      <button
-        disabled={uploading}
-        onClick={handleUpload}
-        className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
-      >
-        {uploading
-          ? "Bezig met uploaden..."
-          : soort === "template"
-          ? "Leeg formulier uploaden"
-          : "Ingevuld formulier uploaden"}
-      </button>
-    </div>
+    </main>
   );
 }
