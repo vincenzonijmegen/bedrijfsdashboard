@@ -53,7 +53,6 @@ export default function BeschikbaarheidOverzicht() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Weet je zeker dat je deze periode wilt verwijderen?")) return;
-
     await fetch(`/api/beschikbaarheid?id=${id}`, { method: "DELETE" });
     mutate();
   };
@@ -227,46 +226,44 @@ export default function BeschikbaarheidOverzicht() {
             </div>
           ) : (
             <div className="w-full bg-white">
-              <table className="w-full table-fixed text-[11px]">
+              <table className="w-full table-fixed text-[11px] leading-tight">
                 <colgroup>
-                  <col className={isExporting ? "w-[22%]" : "w-[20%]"} />
+                  <col className="w-[20%]" />
                   <col className="w-[17%]" />
                   <col className="w-[5%]" />
                   {dagen.flatMap((dag) => [
                     <col key={`${dag}-1`} className="w-[4%]" />,
                     <col key={`${dag}-2`} className="w-[4%]" />,
                   ])}
-                  {!isExporting && <col className="w-[6%]" />}
+                  <col className="w-[6%]" />
                 </colgroup>
 
                 <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
                   <tr>
-                    <th className="border-b border-slate-200 px-3 py-1.5 text-left">
+                    <th className="border-b border-slate-200 px-3 py-1 text-left">
                       Naam
                     </th>
-                    <th className="border-b border-slate-200 px-2 py-1.5 text-left">
+                    <th className="border-b border-slate-200 px-2 py-1 text-left">
                       Periode
                     </th>
-                    <th className="border-b border-slate-200 px-1 py-1.5 text-center">
+                    <th className="border-b border-slate-200 px-1 py-1 text-center">
                       Max
                     </th>
 
                     {dagen.map((dag) => (
                       <React.Fragment key={dag}>
-                        <th className="border-b border-slate-200 px-1 py-1.5 text-center">
+                        <th className="border-b border-slate-200 px-1 py-1 text-center">
                           {dagLabels[dag]}1
                         </th>
-                        <th className="border-b border-slate-200 px-1 py-1.5 text-center">
+                        <th className="border-b border-slate-200 px-1 py-1 text-center">
                           {dagLabels[dag]}2
                         </th>
                       </React.Fragment>
                     ))}
 
-                    {!isExporting && (
-                      <th className="border-b border-slate-200 px-1 py-1.5 text-center">
-                        Actie
-                      </th>
-                    )}
+                    <th className="border-b border-slate-200 px-1 py-1 text-center">
+                      Actie
+                    </th>
                   </tr>
                 </thead>
 
@@ -274,19 +271,19 @@ export default function BeschikbaarheidOverzicht() {
                   {data.map((regel) => (
                     <tr key={regel.id} className="hover:bg-slate-50">
                       <td
-                        className="px-3 py-1.5 font-semibold leading-none text-slate-950"
+                        className="px-3 py-1 font-semibold text-slate-950"
                         title={
                           regel.opmerkingen
                             ? `${regel.naam} – ${regel.opmerkingen}`
                             : regel.naam
                         }
                       >
-                        <div className="whitespace-normal leading-none">
+                        <div className="whitespace-nowrap leading-tight">
                           {regel.naam}
                         </div>
                       </td>
 
-                      <td className="whitespace-nowrap px-2 py-1.5 leading-none text-slate-700">
+                      <td className="whitespace-nowrap px-2 py-1 text-slate-700">
                         {new Date(regel.startdatum).toLocaleDateString("nl-NL", {
                           day: "numeric",
                           month: "numeric",
@@ -300,7 +297,7 @@ export default function BeschikbaarheidOverzicht() {
                         })}
                       </td>
 
-                      <td className="px-1 py-1.5 text-center leading-none">
+                      <td className="px-1 py-1 text-center">
                         <span className="inline-flex min-w-6 justify-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 ring-1 ring-blue-100">
                           {regel.max_shifts_per_week}
                         </span>
@@ -308,17 +305,21 @@ export default function BeschikbaarheidOverzicht() {
 
                       {dagen.map((dag) => (
                         <React.Fragment key={`${regel.id}-${dag}`}>
-                          <td className="whitespace-nowrap px-1 py-1.5 text-center leading-none">
+                          <td className="whitespace-nowrap px-1 py-1 text-center">
                             {regel[`${dag}_1`] ? (
-                              <span className="font-bold text-emerald-600">✓</span>
+                              <span className="text-xs font-bold text-emerald-600">
+                                ✓
+                              </span>
                             ) : (
                               <span className="text-slate-300">—</span>
                             )}
                           </td>
 
-                          <td className="whitespace-nowrap px-1 py-1.5 text-center leading-none">
+                          <td className="whitespace-nowrap px-1 py-1 text-center">
                             {regel[`${dag}_2`] ? (
-                              <span className="font-bold text-emerald-600">✓</span>
+                              <span className="text-xs font-bold text-emerald-600">
+                                ✓
+                              </span>
                             ) : (
                               <span className="text-slate-300">—</span>
                             )}
@@ -326,8 +327,8 @@ export default function BeschikbaarheidOverzicht() {
                         </React.Fragment>
                       ))}
 
-                      {!isExporting && (
-                        <td className="px-1 py-1.5 text-center">
+                      <td className="px-1 py-1 text-center">
+                        {!isExporting && (
                           <button
                             onClick={() => handleDelete(regel.id)}
                             className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
@@ -335,32 +336,28 @@ export default function BeschikbaarheidOverzicht() {
                           >
                             <Trash2 size={15} />
                           </button>
-                        </td>
-                      )}
+                        )}
+                      </td>
                     </tr>
                   ))}
 
                   <tr className="bg-blue-50 font-bold text-blue-950">
-                    <td className="px-3 py-1.5 leading-none">
-                      Totaal beschikbaar
-                    </td>
-                    <td className="px-2 py-1.5 leading-none text-slate-500">
-                      Per shift
-                    </td>
-                    <td className="px-1 py-1.5 text-center leading-none">—</td>
+                    <td className="px-3 py-1">Totaal beschikbaar</td>
+                    <td className="px-2 py-1 text-slate-500">Per shift</td>
+                    <td className="px-1 py-1 text-center">—</td>
 
                     {dagen.map((dag) => (
                       <React.Fragment key={`totaal-${dag}`}>
-                        <td className="px-1 py-1.5 text-center leading-none">
+                        <td className="px-1 py-1 text-center">
                           {totalen[dag].s1}
                         </td>
-                        <td className="px-1 py-1.5 text-center leading-none">
+                        <td className="px-1 py-1 text-center">
                           {totalen[dag].s2}
                         </td>
                       </React.Fragment>
                     ))}
 
-                    {!isExporting && <td className="px-1 py-1.5" />}
+                    <td className="px-1 py-1" />
                   </tr>
                 </tbody>
               </table>
