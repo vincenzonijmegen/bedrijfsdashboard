@@ -381,7 +381,6 @@ export default function AdminDashboard() {
       <Section id="management" title="📘 Management" color="blue" activeSection={activeSection} setActiveSection={setActiveSection}>
         <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} breadcrumb="Management – Actielijsten" />
         <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} breadcrumb="Management – Notities" />
-        <LinkCard href="/admin/vragen" label="Vragen" color="blue" Icon={CheckSquare} breadcrumb="Management – Vragen" />
         <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} breadcrumb="Management – Schoonmaakroutines" />
         <LinkCard href="/admin/contacten" label="Relaties" color="blue" Icon={Folder} breadcrumb="Management – Relaties" />
         <LinkCard href="/admin/routines" label="Routines HACCP" color="blue" Icon={Folder} breadcrumb="Management – Routines HACCP" />
@@ -410,7 +409,7 @@ export default function AdminDashboard() {
         <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} breadcrumb="Medewerkers – Medewerkers beheren" />
         <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="green" Icon={Users} breadcrumb="Medewerkers – Gegevens medewerkers" />
         <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="green" Icon={FileText} breadcrumb="Medewerkers – Sollicitatiemails" />
-        <LinkCard href="/admin/sollicitaties" label="Sollicitaties" color="blue" Icon={UserPlus} breadcrumb="Medewerkers – Sollicitaties"
+        <LinkCard href="/admin/sollicitaties" label="Sollicitaties" color="green" Icon={UserPlus} breadcrumb="Medewerkers – Sollicitaties"
 />      <LinkCard href="/admin/sollicitaties/afspraken" label="Sollicitatiegesprekken" color="green" Icon={CalendarDays} breadcrumb="Medewerkers – Sollicitatiegesprekken" />
         <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} breadcrumb="Medewerkers – Functies" />
         <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} breadcrumb="Medewerkers – Dossiers" />
