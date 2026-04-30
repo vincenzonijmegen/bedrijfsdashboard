@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import {
   CalendarDays,
-  CheckCircle2,
   Download,
   Loader2,
   Plus,
@@ -45,6 +44,8 @@ const dagLabels: Record<string, string> = {
 };
 
 export default function BeschikbaarheidOverzicht() {
+  const [isExporting, setIsExporting] = useState(false);
+
   const { data, error, mutate } = useSWR<Regel[]>(
     "/api/beschikbaarheid",
     (url: string) => fetch(url).then((res) => res.json())
@@ -75,12 +76,22 @@ export default function BeschikbaarheidOverzicht() {
   }, [data]);
 
   const exportToPDF = async () => {
+    setIsExporting(true);
+
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+
     // @ts-expect-error: html2pdf.js heeft geen types
     const html2pdf = (await import("html2pdf.js")).default;
     const element = document.getElementById("pdf-content");
-    if (!element) return;
 
-    html2pdf()
+    if (!element) {
+      setIsExporting(false);
+      return;
+    }
+
+    await html2pdf()
       .set({
         margin: [0.25, 0.25, 0.25, 0.25],
         filename: "Beschikbaarheid-per-medewerker.pdf",
@@ -102,6 +113,8 @@ export default function BeschikbaarheidOverzicht() {
       })
       .from(element)
       .save();
+
+    setIsExporting(false);
   };
 
   if (error) {
@@ -169,10 +182,11 @@ export default function BeschikbaarheidOverzicht() {
 
               <button
                 onClick={exportToPDF}
-                className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                disabled={isExporting}
+                className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
               >
                 <Download size={16} />
-                PDF
+                {isExporting ? "PDF maken..." : "PDF"}
               </button>
 
               <Link
@@ -186,9 +200,9 @@ export default function BeschikbaarheidOverzicht() {
           </div>
         </div>
 
-       <section
+        <section
           id="pdf-content"
-          className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm [&_.pdf-hide]:hidden"
+          className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
         >
           <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
             <div className="flex items-center gap-3">
@@ -215,42 +229,44 @@ export default function BeschikbaarheidOverzicht() {
             <div className="w-full bg-white">
               <table className="w-full table-fixed text-[11px]">
                 <colgroup>
-                  <col className="w-[20%]" />
+                  <col className={isExporting ? "w-[22%]" : "w-[20%]"} />
                   <col className="w-[17%]" />
                   <col className="w-[5%]" />
                   {dagen.flatMap((dag) => [
                     <col key={`${dag}-1`} className="w-[4%]" />,
                     <col key={`${dag}-2`} className="w-[4%]" />,
                   ])}
-                  <col className="w-[6%]" />
+                  {!isExporting && <col className="w-[6%]" />}
                 </colgroup>
 
                 <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
                   <tr>
-                    <th className="border-b border-slate-200 px-3 py-2 text-left">
+                    <th className="border-b border-slate-200 px-3 py-1.5 text-left">
                       Naam
                     </th>
-                    <th className="border-b border-slate-200 px-2 py-2 text-left">
+                    <th className="border-b border-slate-200 px-2 py-1.5 text-left">
                       Periode
                     </th>
-                    <th className="border-b border-slate-200 px-1 py-2 text-center">
+                    <th className="border-b border-slate-200 px-1 py-1.5 text-center">
                       Max
                     </th>
 
                     {dagen.map((dag) => (
                       <React.Fragment key={dag}>
-                        <th className="border-b border-slate-200 px-1 py-2 text-center">
+                        <th className="border-b border-slate-200 px-1 py-1.5 text-center">
                           {dagLabels[dag]}1
                         </th>
-                        <th className="border-b border-slate-200 px-1 py-2 text-center">
+                        <th className="border-b border-slate-200 px-1 py-1.5 text-center">
                           {dagLabels[dag]}2
                         </th>
                       </React.Fragment>
                     ))}
 
-                    <th className="pdf-hide border-b border-slate-200 px-1 py-2 text-center">
-                      Actie
-                    </th>
+                    {!isExporting && (
+                      <th className="border-b border-slate-200 px-1 py-1.5 text-center">
+                        Actie
+                      </th>
+                    )}
                   </tr>
                 </thead>
 
@@ -258,17 +274,19 @@ export default function BeschikbaarheidOverzicht() {
                   {data.map((regel) => (
                     <tr key={regel.id} className="hover:bg-slate-50">
                       <td
-                        className="px-3 py-2 font-semibold text-slate-950"
+                        className="px-3 py-1.5 font-semibold leading-none text-slate-950"
                         title={
                           regel.opmerkingen
                             ? `${regel.naam} – ${regel.opmerkingen}`
                             : regel.naam
                         }
                       >
-                        <div className="whitespace-normal leading-tight">{regel.naam}</div>
+                        <div className="whitespace-normal leading-none">
+                          {regel.naam}
+                        </div>
                       </td>
 
-                      <td className="whitespace-nowrap px-2 py-2 text-slate-700">
+                      <td className="whitespace-nowrap px-2 py-1.5 leading-none text-slate-700">
                         {new Date(regel.startdatum).toLocaleDateString("nl-NL", {
                           day: "numeric",
                           month: "numeric",
@@ -282,7 +300,7 @@ export default function BeschikbaarheidOverzicht() {
                         })}
                       </td>
 
-                      <td className="px-1 py-2 text-center whitespace-nowrap">
+                      <td className="px-1 py-1.5 text-center leading-none">
                         <span className="inline-flex min-w-6 justify-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 ring-1 ring-blue-100">
                           {regel.max_shifts_per_week}
                         </span>
@@ -290,17 +308,17 @@ export default function BeschikbaarheidOverzicht() {
 
                       {dagen.map((dag) => (
                         <React.Fragment key={`${regel.id}-${dag}`}>
-                          <td className="px-1 py-2 text-center">
+                          <td className="whitespace-nowrap px-1 py-1.5 text-center leading-none">
                             {regel[`${dag}_1`] ? (
-                              <span className="text-emerald-600 font-bold">✓</span>
+                              <span className="font-bold text-emerald-600">✓</span>
                             ) : (
                               <span className="text-slate-300">—</span>
                             )}
                           </td>
 
-                          <td className="px-1 py-2 text-center">
+                          <td className="whitespace-nowrap px-1 py-1.5 text-center leading-none">
                             {regel[`${dag}_2`] ? (
-                              <span className="text-emerald-600 font-bold">✓</span>
+                              <span className="font-bold text-emerald-600">✓</span>
                             ) : (
                               <span className="text-slate-300">—</span>
                             )}
@@ -308,35 +326,41 @@ export default function BeschikbaarheidOverzicht() {
                         </React.Fragment>
                       ))}
 
-                      <td className="px-1 py-2 text-center print:hidden">
-                        <button
-                          onClick={() => handleDelete(regel.id)}
-                          className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-                          title="Verwijderen"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </td>
+                      {!isExporting && (
+                        <td className="px-1 py-1.5 text-center">
+                          <button
+                            onClick={() => handleDelete(regel.id)}
+                            className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                            title="Verwijderen"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
 
                   <tr className="bg-blue-50 font-bold text-blue-950">
-                    <td className="px-3 py-2">Totaal beschikbaar</td>
-                    <td className="px-2 py-2 text-slate-500">Per shift</td>
-                    <td className="px-1 py-2 text-center">—</td>
+                    <td className="px-3 py-1.5 leading-none">
+                      Totaal beschikbaar
+                    </td>
+                    <td className="px-2 py-1.5 leading-none text-slate-500">
+                      Per shift
+                    </td>
+                    <td className="px-1 py-1.5 text-center leading-none">—</td>
 
                     {dagen.map((dag) => (
                       <React.Fragment key={`totaal-${dag}`}>
-                        <td className="px-1 py-2 text-center">
+                        <td className="px-1 py-1.5 text-center leading-none">
                           {totalen[dag].s1}
                         </td>
-                        <td className="px-1 py-2 text-center">
+                        <td className="px-1 py-1.5 text-center leading-none">
                           {totalen[dag].s2}
                         </td>
                       </React.Fragment>
                     ))}
 
-                    <td className="px-1 py-2 print:hidden" />
+                    {!isExporting && <td className="px-1 py-1.5" />}
                   </tr>
                 </tbody>
               </table>
