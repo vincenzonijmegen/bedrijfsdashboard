@@ -213,7 +213,7 @@ export default function OpenDienstenPerWeek() {
                         <th className="border-b border-slate-200 px-4 py-3 text-left">
                           Eindtijd
                         </th>
-                        <th className="border-b border-slate-200 px-4 py-3 text-left">
+                        <th className="border-b border-slate-200 px-4 py-3 text-center">
                           Dienst
                         </th>
                       </tr>
@@ -246,16 +246,16 @@ export default function OpenDienstenPerWeek() {
                               {d.endtime?.slice(0, 5)}
                             </td>
 
-                            <td className="px-4 py-3">
-                              <span
-                                className="inline-flex rounded-full px-3 py-1 text-xs font-semibold text-white shadow-sm"
-                                style={{
-                                  backgroundColor: d.shift?.color || "#999",
-                                }}
-                              >
-                                {d.description || d.shift?.long_name}
-                              </span>
-                            </td>
+                            <td className="px-4 py-3 text-center">
+                            <span
+                              className="inline-flex min-w-[92px] justify-center rounded-full px-3 py-1 text-xs font-semibold text-white shadow-sm"
+                              style={{
+                                backgroundColor: d.shift?.color || "#999",
+                              }}
+                            >
+                              {d.description || d.shift?.long_name}
+                            </span>
+                          </td>
                           </tr>
                         ))}
                     </tbody>
