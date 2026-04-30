@@ -1,8 +1,16 @@
-// src/app/admin/beschikbaarheid/page.tsx
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import useSWR from "swr";
+import {
+  CalendarDays,
+  CheckCircle2,
+  Loader2,
+  Plus,
+  Trash2,
+  Users,
+} from "lucide-react";
 
 interface Regel {
   id: number;
@@ -15,17 +23,25 @@ interface Regel {
   [key: string]: any;
 }
 
-const dagen = ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag", "zondag"];
-// Define softer background colors
-const kleuren = [
-  "bg-blue-50",
-  "bg-green-50",
-  "bg-yellow-50",
-  "bg-red-50",
-  "bg-purple-50",
-  "bg-pink-50",
-  "bg-teal-50",
+const dagen = [
+  "maandag",
+  "dinsdag",
+  "woensdag",
+  "donderdag",
+  "vrijdag",
+  "zaterdag",
+  "zondag",
 ];
+
+const dagLabels: Record<string, string> = {
+  maandag: "Ma",
+  dinsdag: "Di",
+  woensdag: "Wo",
+  donderdag: "Do",
+  vrijdag: "Vr",
+  zaterdag: "Za",
+  zondag: "Zo",
+};
 
 export default function BeschikbaarheidOverzicht() {
   const { data, error, mutate } = useSWR<Regel[]>(
@@ -35,73 +51,207 @@ export default function BeschikbaarheidOverzicht() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Weet je zeker dat je deze periode wilt verwijderen?")) return;
+
     await fetch(`/api/beschikbaarheid?id=${id}`, { method: "DELETE" });
     mutate();
   };
 
-  if (error) return <div className="p-4 text-red-600">Fout bij laden</div>;
-  if (!data) return <div className="p-4">Laden…</div>;
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-100 px-6 py-6">
+        <div className="mx-auto max-w-7xl rounded-2xl border border-red-200 bg-red-50 px-6 py-5 text-red-700">
+          Fout bij laden beschikbaarheid.
+        </div>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="min-h-screen bg-slate-100 px-6 py-6">
+        <div className="mx-auto max-w-7xl rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-sm">
+          <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-blue-600" />
+          <p className="text-sm text-slate-500">Beschikbaarheid laden…</p>
+        </div>
+      </div>
+    );
+  }
+
+  const totaalRegels = data.length;
+  const medewerkers = new Set(data.map((r) => r.medewerker_id)).size;
 
   return (
-    <div className="p-4 overflow-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Beschikbaarheid per medewerker</h1>
-        <a href="/admin/beschikbaarheid/nieuw" className="text-blue-600 underline">
-          ➕ Nieuwe beschikbaarheid opgeven
-        </a>
-      </div>
-      <table className="w-full border-collapse border text-sm">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="border px-2 py-1 text-left">Naam</th>
-            <th className="border px-2 py-1 text-left">Periode</th>
-            <th className="border px-2 py-1 text-center">Max</th>
-            {dagen.map((dag, idx) => (
-              <React.Fragment key={dag}>
-                <th className={`border px-2 py-1 text-center ${kleuren[idx]}`}>{dag.charAt(0)}1</th>
-                <th className={`border px-2 py-1 text-center ${kleuren[idx]}`}>{dag.charAt(0)}2</th>
-              </React.Fragment>
-            ))}
-            <th className="border px-2 py-1 text-left">Actie</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((regel) => (
-            <tr key={regel.id}>
-              <td
-                className="border px-2 py-1 max-w-[100px] truncate"
-                title={
-                  regel.opmerkingen
-                    ? `${regel.naam} – ${regel.opmerkingen}`
-                    : regel.naam
-                }
+    <div className="min-h-screen bg-slate-100 px-6 py-6">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="mb-1 flex items-center gap-2 text-sm font-medium text-blue-600">
+                <CalendarDays className="h-4 w-4" />
+                Planning / Beschikbaarheid
+              </div>
+
+              <h1 className="text-2xl font-bold tracking-tight text-slate-950">
+                Beschikbaarheid per medewerker
+              </h1>
+
+              <p className="mt-1 text-sm text-slate-500">
+                Overzicht van opgegeven beschikbaarheid per periode en per shift.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="rounded-xl bg-blue-50 px-4 py-3 ring-1 ring-blue-100">
+                <div className="text-xs font-medium uppercase tracking-wide text-blue-600">
+                  Regels
+                </div>
+                <div className="text-2xl font-bold text-blue-950">
+                  {totaalRegels}
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100">
+                <div className="text-xs font-medium uppercase tracking-wide text-emerald-600">
+                  Medewerkers
+                </div>
+                <div className="text-2xl font-bold text-emerald-950">
+                  {medewerkers}
+                </div>
+              </div>
+
+              <Link
+                href="/admin/beschikbaarheid/nieuw"
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
               >
-                {regel.naam}
-              </td>
-              <td className="border px-2 py-1 whitespace-nowrap">
-                {new Date(regel.startdatum).toLocaleDateString("nl-NL")} –{' '}
-                {new Date(regel.einddatum).toLocaleDateString("nl-NL")}
-              </td>
-              <td className="border px-2 py-1 text-center">{regel.max_shifts_per_week}</td>
-              {dagen.map((dag, idx) => (
-                <React.Fragment key={`${regel.id}-${dag}`}> 
-                  <td className={`border px-2 py-1 text-center ${kleuren[idx]}`}>{regel[`${dag}_1`] ? "✓" : ""}</td>
-                  <td className={`border px-2 py-1 text-center ${kleuren[idx]}`}>{regel[`${dag}_2`] ? "✓" : ""}</td>
-                </React.Fragment>
-              ))}
-              <td className="border px-2 py-1">
-                <button
-                  onClick={() => handleDelete(regel.id)}
-                  className="text-red-600 hover:text-red-800"
-                  title="Verwijderen"
-                >
-                  ✖
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                <Plus size={16} />
+                Nieuwe beschikbaarheid
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100">
+                <Users size={20} />
+              </div>
+
+              <div>
+                <h2 className="text-lg font-bold text-slate-950">
+                  Beschikbaarheidsregels
+                </h2>
+                <p className="text-sm text-slate-500">
+                  Groene vinkjes betekenen beschikbaar voor die shift.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {data.length === 0 ? (
+            <div className="px-4 py-10 text-center text-sm text-slate-500">
+              Nog geen beschikbaarheid opgegeven.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1100px] text-sm">
+                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="border-b border-slate-200 px-4 py-3 text-left">
+                      Naam
+                    </th>
+                    <th className="border-b border-slate-200 px-4 py-3 text-left">
+                      Periode
+                    </th>
+                    <th className="border-b border-slate-200 px-4 py-3 text-center">
+                      Max
+                    </th>
+
+                    {dagen.map((dag) => (
+                      <React.Fragment key={dag}>
+                        <th className="border-b border-slate-200 px-2 py-3 text-center">
+                          {dagLabels[dag]} 1
+                        </th>
+                        <th className="border-b border-slate-200 px-2 py-3 text-center">
+                          {dagLabels[dag]} 2
+                        </th>
+                      </React.Fragment>
+                    ))}
+
+                    <th className="border-b border-slate-200 px-4 py-3 text-right">
+                      Actie
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-slate-100">
+                  {data.map((regel) => (
+                    <tr key={regel.id} className="hover:bg-slate-50">
+                      <td
+                        className="max-w-[180px] px-4 py-3 font-semibold text-slate-950"
+                        title={
+                          regel.opmerkingen
+                            ? `${regel.naam} – ${regel.opmerkingen}`
+                            : regel.naam
+                        }
+                      >
+                        <div className="truncate">{regel.naam}</div>
+                        {regel.opmerkingen && (
+                          <div className="mt-1 truncate text-xs font-normal text-slate-500">
+                            {regel.opmerkingen}
+                          </div>
+                        )}
+                      </td>
+
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-700">
+                        {new Date(regel.startdatum).toLocaleDateString("nl-NL")}{" "}
+                        –{" "}
+                        {new Date(regel.einddatum).toLocaleDateString("nl-NL")}
+                      </td>
+
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex min-w-8 justify-center rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-100">
+                          {regel.max_shifts_per_week}
+                        </span>
+                      </td>
+
+                      {dagen.map((dag) => (
+                        <React.Fragment key={`${regel.id}-${dag}`}>
+                          <td className="px-2 py-3 text-center">
+                            {regel[`${dag}_1`] ? (
+                              <CheckCircle2 className="mx-auto h-5 w-5 text-emerald-600" />
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </td>
+
+                          <td className="px-2 py-3 text-center">
+                            {regel[`${dag}_2`] ? (
+                              <CheckCircle2 className="mx-auto h-5 w-5 text-emerald-600" />
+                            ) : (
+                              <span className="text-slate-300">—</span>
+                            )}
+                          </td>
+                        </React.Fragment>
+                      ))}
+
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => handleDelete(regel.id)}
+                          className="inline-flex items-center justify-center rounded-xl p-2 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                          title="Verwijderen"
+                        >
+                          <Trash2 size={17} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }
