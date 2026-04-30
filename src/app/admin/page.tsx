@@ -12,6 +12,7 @@ import {
   FileText,
   Folder,
   Eye,
+  EyeOff,
   BarChart2,
   CheckSquare,
   IceCream,
@@ -30,7 +31,6 @@ import {
   ClipboardList,
   Truck,
 } from "lucide-react";
-import { EyeOff } from "lucide-react";
 import { registerRoute } from "./_components/routeRegistry";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -45,19 +45,19 @@ type SollicitatieAfspraakVandaag = {
 };
 
 const bgColorMap: Record<string, string> = {
-  green: "bg-green-100 text-green-900 hover:bg-green-200",
-  pink: "bg-pink-100 text-pink-900 hover:bg-pink-200",
-  purple: "bg-purple-100 text-purple-900 hover:bg-purple-200",
-  blue: "bg-sky-100 text-sky-900 hover:bg-sky-200",
-  red: "bg-rose-100 text-rose-900 hover:bg-rose-200",
-  slate: "bg-slate-100 text-slate-900 hover:bg-slate-200",
-  orange: "bg-orange-100 text-orange-900 hover:bg-orange-200",
-  gray: "bg-gray-100 text-gray-900 hover:bg-gray-200",
-  yellow: "bg-yellow-100 text-yellow-900 hover:bg-yellow-200",
-  amber: "bg-amber-100 text-amber-900 hover:bg-amber-200",
-  teal: "bg-teal-100 text-teal-900 hover:bg-teal-200",
-  indigo: "bg-indigo-100 text-indigo-900 hover:bg-indigo-200",
-  emerald: "bg-emerald-100 text-emerald-900 hover:bg-emerald-200",
+  green: "bg-emerald-50 text-emerald-800 ring-emerald-100 hover:bg-emerald-100",
+  pink: "bg-pink-50 text-pink-800 ring-pink-100 hover:bg-pink-100",
+  purple: "bg-purple-50 text-purple-800 ring-purple-100 hover:bg-purple-100",
+  blue: "bg-blue-50 text-blue-800 ring-blue-100 hover:bg-blue-100",
+  red: "bg-red-50 text-red-800 ring-red-100 hover:bg-red-100",
+  slate: "bg-slate-50 text-slate-800 ring-slate-200 hover:bg-slate-100",
+  orange: "bg-orange-50 text-orange-800 ring-orange-100 hover:bg-orange-100",
+  gray: "bg-slate-50 text-slate-800 ring-slate-200 hover:bg-slate-100",
+  yellow: "bg-yellow-50 text-yellow-800 ring-yellow-100 hover:bg-yellow-100",
+  amber: "bg-amber-50 text-amber-800 ring-amber-100 hover:bg-amber-100",
+  teal: "bg-teal-50 text-teal-800 ring-teal-100 hover:bg-teal-100",
+  indigo: "bg-indigo-50 text-indigo-800 ring-indigo-100 hover:bg-indigo-100",
+  emerald: "bg-emerald-50 text-emerald-800 ring-emerald-100 hover:bg-emerald-100",
 };
 
 type LinkCardProps = {
@@ -77,10 +77,12 @@ function useVragenTeller(intervalMs = 10000) {
     try {
       const res = await fetch("/api/admin/vragen", { credentials: "include" });
       if (!res.ok) return;
+
       const data = await res.json();
       const open = Array.isArray(data)
         ? data.filter((v: any) => !v.antwoord).length
         : 0;
+
       setTeller(open);
     } catch {
       setTeller(null);
@@ -112,12 +114,13 @@ const LinkCard = ({
       href={href}
       target={target}
       rel={rel}
-      className={`flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium shadow transition ${
-        bgColorMap[color] || "bg-gray-200 text-gray-900"
+      className={`flex items-center justify-center rounded-xl px-3 py-2.5 text-sm font-semibold shadow-sm ring-1 transition ${
+        bgColorMap[color] ||
+        "bg-slate-50 text-slate-800 ring-slate-200 hover:bg-slate-100"
       }`}
     >
-      <Icon className="mr-2 h-5 w-5" />
-      {label}
+      <Icon className="mr-2 h-5 w-5 shrink-0" />
+      <span className="truncate">{label}</span>
     </Link>
   );
 };
@@ -142,24 +145,24 @@ const Section = ({
   const open = id === activeSection;
 
   return (
-    <section className="mb-6 border rounded-xl overflow-hidden shadow-sm">
+    <section className="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       <button
         onClick={() => setActiveSection(open ? "" : id)}
-        className={`w-full flex items-center justify-between px-6 py-3 font-semibold tracking-tight transition ${
+        className={`flex w-full items-center justify-between px-5 py-4 text-left font-bold tracking-tight ring-1 transition ${
           bgColorMap[color || ""] ||
-          "bg-gray-100 text-gray-900 hover:bg-gray-200"
+          "bg-slate-50 text-slate-800 ring-slate-200 hover:bg-slate-100"
         }`}
       >
         <span>{title}</span>
         {open ? (
-          <ChevronDown className="w-5 h-5 opacity-70" />
+          <ChevronDown className="h-5 w-5 opacity-70" />
         ) : (
-          <ChevronRight className="w-5 h-5 opacity-70" />
+          <ChevronRight className="h-5 w-5 opacity-70" />
         )}
       </button>
 
       {open && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-white">
+        <div className="grid grid-cols-1 gap-3 bg-white p-4 sm:grid-cols-2 md:grid-cols-3">
           {children}
         </div>
       )}
@@ -179,23 +182,23 @@ const SubSection = ({
   const [open, setOpen] = React.useState(false);
 
   return (
-    <div className="col-span-full border rounded-md mb-2">
+    <div className="col-span-full overflow-hidden rounded-xl border border-slate-200 bg-white">
       <button
         onClick={() => setOpen(!open)}
-        className={`w-full flex items-center justify-between px-3 py-2 font-semibold text-sm tracking-tight ${
+        className={`flex w-full items-center justify-between px-4 py-3 text-left text-sm font-bold tracking-tight ring-1 transition ${
           bgColorMap[color || "gray"]
         }`}
       >
         <span>{title}</span>
         {open ? (
-          <ChevronDown className="w-4 h-4 opacity-70" />
+          <ChevronDown className="h-4 w-4 opacity-70" />
         ) : (
-          <ChevronRight className="w-4 h-4 opacity-70" />
+          <ChevronRight className="h-4 w-4 opacity-70" />
         )}
       </button>
 
       {open && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3 bg-white">
+        <div className="grid grid-cols-1 gap-3 bg-white p-3 sm:grid-cols-2 md:grid-cols-3">
           {children}
         </div>
       )}
@@ -205,7 +208,10 @@ const SubSection = ({
 
 function DailyTotalDisplay({ mask = false }: { mask?: boolean }) {
   const today = new Date().toISOString().slice(0, 10).split("-").reverse().join("-");
-  const { data } = useSWR("/api/kassa/omzet?start=" + today + "&totalen=1", fetcher);
+  const { data } = useSWR(
+    "/api/kassa/omzet?start=" + today + "&totalen=1",
+    fetcher
+  );
 
   const record = Array.isArray(data) ? data[0] : null;
   const cash = record ? parseFloat(record.Cash) || 0 : 0;
@@ -215,14 +221,14 @@ function DailyTotalDisplay({ mask = false }: { mask?: boolean }) {
 
   if (mask) {
     return (
-      <span className="text-lg font-semibold tracking-widest select-none">
+      <span className="text-lg font-bold tracking-widest text-slate-950 select-none">
         ••••••
       </span>
     );
   }
 
   return (
-    <span className="text-lg font-semibold">
+    <span className="text-lg font-bold text-slate-950">
       €{" "}
       {total.toLocaleString("nl-NL", {
         minimumFractionDigits: 2,
@@ -284,170 +290,184 @@ export default function AdminDashboard() {
   };
 
   return (
-    <main className="max-w-6xl mx-auto p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
-        <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
+    <main className="min-h-screen bg-slate-100 px-6 py-6">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="mb-1 text-sm font-medium text-blue-600">
+                IJssalon Vincenzo / Beheer
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-950">
+                Dashboard
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Snel naar de belangrijkste onderdelen van het bedrijfsdashboard.
+              </p>
+            </div>
 
-        <div className="mt-2 sm:mt-0 flex items-center gap-2">
-          <Link
-            href="/admin/dashboard"
-            className="px-4 py-2 bg-gray-100 rounded hover:bg-gray-200"
-          >
-            <DailyTotalDisplay mask={hideOmzet} />
-          </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/admin/dashboard"
+                className="inline-flex h-11 items-center rounded-xl bg-blue-50 px-4 text-sm font-semibold text-blue-950 ring-1 ring-blue-100 transition hover:bg-blue-100"
+              >
+                <DailyTotalDisplay mask={hideOmzet} />
+              </Link>
 
-          <button
-            type="button"
-            onClick={() => setHideOmzet((v) => !v)}
-            className="p-2 rounded bg-gray-100 hover:bg-gray-200"
-            title={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
-            aria-label={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
-          >
-            {hideOmzet ? (
-              <Eye className="w-5 h-5" />
-            ) : (
-              <EyeOff className="w-5 h-5" />
-            )}
-          </button>
+              <button
+                type="button"
+                onClick={() => setHideOmzet((v) => !v)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50"
+                title={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
+                aria-label={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
+              >
+                {hideOmzet ? (
+                  <Eye className="h-5 w-5" />
+                ) : (
+                  <EyeOff className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {afsprakenVandaag && afsprakenVandaag.length > 0 && (
-        <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="font-semibold text-green-900">
-              Sollicitatiegesprekken vandaag
-            </h2>
+        {afsprakenVandaag && afsprakenVandaag.length > 0 && (
+          <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="font-bold text-emerald-950">
+                Sollicitatiegesprekken vandaag
+              </h2>
 
-            <Link
-              href="/admin/sollicitaties/afspraken"
-              className="text-sm underline text-green-800"
-            >
-              Bekijk alles
+              <Link
+                href="/admin/sollicitaties/afspraken"
+                className="text-sm font-semibold text-emerald-800 underline"
+              >
+                Bekijk alles
+              </Link>
+            </div>
+
+            <div className="space-y-2">
+              {afsprakenVandaag.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex flex-col rounded-xl border border-emerald-100 bg-white px-4 py-3 text-sm shadow-sm sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div>
+                    <div className="font-semibold text-slate-950">{a.naam}</div>
+                    <div className="text-slate-500">{a.email}</div>
+                  </div>
+
+                  <div className="mt-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-bold text-emerald-700 ring-1 ring-emerald-100 sm:mt-0">
+                    {new Date(a.starttijd).toLocaleTimeString("nl-NL", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {openVragenTeller !== null && openVragenTeller > 0 && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 shadow-sm">
+            📬 {openVragenTeller} onbeantwoorde vraag
+            {openVragenTeller > 1 ? "en" : ""}.
+            <Link href="/admin/vragen" className="ml-2 text-blue-700 underline">
+              Bekijk nu
             </Link>
           </div>
+        )}
 
-          <div className="space-y-2">
-            {afsprakenVandaag.map((a) => (
-              <div
-                key={a.id}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-lg bg-white px-3 py-2 text-sm border"
-              >
-                <div>
-                  <div className="font-medium text-slate-900">{a.naam}</div>
-                  <div className="text-slate-500">{a.email}</div>
-                </div>
+        <Section
+          id="meest"
+          title="👥 Meest gebruikte onderdelen"
+          color="slate"
+          activeSection={activeSection}
+          setActiveSection={setActiveSection}
+        >
+          <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} breadcrumb="Management – Actielijsten" />
+          <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} breadcrumb="Management – Notities" />
+          <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} breadcrumb="Management – Schoonmaakroutines" />
+          <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} breadcrumb="Planning – Rooster" />
+          <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} breadcrumb="Planning – Open Shifts" />
+          <LinkCard href="/admin/dossier" label="Dossiers" color="orange" Icon={Folder} breadcrumb="Medewerkers – Dossiers" />
+          <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ShoppingCart} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Bestel-app" />
+          <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} breadcrumb="Import / Invoer – Kasstaat invullen" />
+          <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Kasboek bijwerken" />
+        </Section>
 
-                <div className="mt-1 sm:mt-0 font-semibold text-slate-800">
-                  {new Date(a.starttijd).toLocaleTimeString("nl-NL", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        <Section id="management" title="📘 Management" color="blue" activeSection={activeSection} setActiveSection={setActiveSection}>
+          <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} breadcrumb="Management – Actielijsten" />
+          <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} breadcrumb="Management – Notities" />
+          <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} breadcrumb="Management – Schoonmaakroutines" />
+          <LinkCard href="/admin/contacten" label="Relaties" color="blue" Icon={Folder} breadcrumb="Management – Relaties" />
+          <LinkCard href="/admin/routines" label="Routines HACCP" color="blue" Icon={Folder} breadcrumb="Management – Routines HACCP" />
+          <LinkCard href="/keuken/login" label="Keuken-app openen" color="blue" Icon={Wrench} breadcrumb="Keuken-app" target="_blank" rel="noopener noreferrer" />
+          <LinkCard href="/winkel/login" label="Winkel-app openen" color="blue" Icon={Wrench} breadcrumb="Winkel-app" target="_blank" rel="noopener noreferrer" />
+        </Section>
 
-      {openVragenTeller !== null && openVragenTeller > 0 && (
-        <div className="mb-6 text-sm text-red-700 font-semibold">
-          📬 {openVragenTeller} onbeantwoorde vragen
-          {openVragenTeller > 1 ? "en" : ""}.
-          <Link href="/admin/vragen" className="ml-2 underline text-blue-600">
-            Bekijk nu
-          </Link>
-        </div>
-      )}
+        <Section id="planning" title="📅 Planning" color="orange" activeSection={activeSection} setActiveSection={setActiveSection}>
+          <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} breadcrumb="Planning – Rooster" />
+          <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} breadcrumb="Planning – Open Shifts" />
+          <LinkCard href="/admin/rapportages/timesheets" label="Klokuren" color="orange" Icon={Clock} breadcrumb="Planning – Klokuren" />
+          <LinkCard href="/admin/beschikbaarheid/nieuw" label="Beschikbaarheid ingeven" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid ingeven" />
+          <LinkCard href="/admin/beschikbaarheid" label="Beschikbaarheid per medewerker" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid per medewerker" />
+          <LinkCard href="/admin/beschikbaarheid/periode" label="Beschikbaarheid per periode" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid per periode" />
+        </Section>
 
-      <Section
-        id="meest"
-        title="👥 Meest gebruikte onderdelen"
-        color="slate"
-        activeSection={activeSection}
-        setActiveSection={setActiveSection}
-      >
-        <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} breadcrumb="Management – Actielijsten" />
-        <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} breadcrumb="Management – Notities" />
-        <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} breadcrumb="Management – Schoonmaakroutines" />
-        <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} breadcrumb="Planning – Rooster" />
-        <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} breadcrumb="Planning – Open Shifts" />
-        <LinkCard href="/admin/dossier" label="Dossiers" color="orange" Icon={Folder} breadcrumb="Medewerkers – Dossiers" />
-        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ShoppingCart} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Bestel-app" />
-        <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} breadcrumb="Import / Invoer – Kasstaat invullen" />
-        <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Kasboek bijwerken" />
-      </Section>
+        <Section id="rapportages" title="📊 Rapportages" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
+          <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages – Financiële Rapporten" />
+          <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers Rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages – Medewerkers Rapporten" />
+          <LinkCard href="/admin/aftekenlijsten" label="Overzicht formulieren/rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages – Formulieren/-rapporten" />
+          <LinkCard href="/admin/rapportage/haccp" label="HACCP Rapportage" color="purple" Icon={BarChart2} breadcrumb="Rapportages – HACCP" />
+        </Section>
 
-      <Section id="management" title="📘 Management" color="blue" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} breadcrumb="Management – Actielijsten" />
-        <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} breadcrumb="Management – Notities" />
-        <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} breadcrumb="Management – Schoonmaakroutines" />
-        <LinkCard href="/admin/contacten" label="Relaties" color="blue" Icon={Folder} breadcrumb="Management – Relaties" />
-        <LinkCard href="/admin/routines" label="Routines HACCP" color="blue" Icon={Folder} breadcrumb="Management – Routines HACCP" />
-        <LinkCard href="/keuken/login" label="Keuken-app openen" color="blue" Icon={Wrench} breadcrumb="Keuken-app" target="_blank" rel="noopener noreferrer" />
-        <LinkCard href="/winkel/login" label="winkel-app openen" color="blue" Icon={Wrench} breadcrumb="Winkel-app" target="_blank" rel="noopener noreferrer" />
-      </Section>
+        <Section id="medewerkers" title="👥 Medewerkers" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
+          <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} breadcrumb="Medewerkers – Medewerkers beheren" />
+          <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="green" Icon={Users} breadcrumb="Medewerkers – Gegevens medewerkers" />
+          <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="green" Icon={FileText} breadcrumb="Medewerkers – Sollicitatiemails" />
+          <LinkCard href="/admin/sollicitaties" label="Sollicitaties" color="green" Icon={UserPlus} breadcrumb="Medewerkers – Sollicitaties" />
+          <LinkCard href="/admin/sollicitaties/afspraken" label="Sollicitatiegesprekken" color="green" Icon={CalendarDays} breadcrumb="Medewerkers – Sollicitatiegesprekken" />
+          <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} breadcrumb="Medewerkers – Functies" />
+          <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} breadcrumb="Medewerkers – Dossiers" />
 
-      <Section id="planning" title="📅 Planning" color="orange" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} breadcrumb="Planning – Rooster" />
-        <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} breadcrumb="Planning – Open Shifts" />
-        <LinkCard href="/admin/rapportages/timesheets" label="Klokuren" color="orange" Icon={Clock} breadcrumb="Planning – Klokuren" />
-        <LinkCard href="/admin/beschikbaarheid/nieuw" label="Beschikbaarheid ingeven" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid ingeven" />
-        <LinkCard href="/admin/beschikbaarheid" label="Beschikbaarheid per medewerker" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid per medewerker" />
-        <LinkCard href="/admin/beschikbaarheid/periode" label="Beschikbaarheid per periode" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid per periode" />
-      </Section>
+          <SubSection title="📘 Instructies" color="blue">
+            <LinkCard href="/admin/instructies" label="Instructies beheren" color="blue" Icon={FileText} breadcrumb="Medewerkers – Instructies beheren" />
+            <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" Icon={Eye} breadcrumb="Medewerkers – Instructies medewerkers" />
+          </SubSection>
 
-      <Section id="rapportages" title="📊 Rapportages" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages – Financiële Rapporten" />
-        <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers Rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages – Medewerkers Rapporten" />
-        <LinkCard href="/admin/aftekenlijsten" label="Overzicht formulieren/rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages – Formulieren/-rapporten" />
-        <LinkCard href="/admin/rapportage/haccp" label="HACCP Rapportage" color="purple" Icon={BarChart2} breadcrumb="Rapportages – HACCP" />
-      </Section>
+          <SubSection title="🧠 Skills" color="amber">
+            <LinkCard href="/admin/skills/categorieen" label="Beheer categorieën" color="amber" Icon={Tag} breadcrumb="Medewerkers – Beheer categorieën" />
+            <LinkCard href="/admin/skills" label="Skills beheer" color="amber" Icon={Layers} breadcrumb="Medewerkers – Skills beheer" />
+            <LinkCard href="/admin/skills/toewijzen" label="Skills toewijzen" color="amber" Icon={Activity} breadcrumb="Medewerkers – Skills toewijzen" />
+            <LinkCard href="/skills" label="Skills medewerkers" color="amber" Icon={Layers} breadcrumb="Medewerkers – Skills medewerkers" />
+          </SubSection>
+        </Section>
 
-      <Section id="medewerkers" title="👥 Medewerkers" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/medewerkers" label="Medewerkers beheren" color="green" Icon={User} breadcrumb="Medewerkers – Medewerkers beheren" />
-        <LinkCard href="/admin/medewerkers/overzicht" label="Gegevens medewerkers" color="green" Icon={Users} breadcrumb="Medewerkers – Gegevens medewerkers" />
-        <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="green" Icon={FileText} breadcrumb="Medewerkers – Sollicitatiemails" />
-        <LinkCard href="/admin/sollicitaties" label="Sollicitaties" color="green" Icon={UserPlus} breadcrumb="Medewerkers – Sollicitaties"
-/>      <LinkCard href="/admin/sollicitaties/afspraken" label="Sollicitatiegesprekken" color="green" Icon={CalendarDays} breadcrumb="Medewerkers – Sollicitatiegesprekken" />
-        <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} breadcrumb="Medewerkers – Functies" />
-        <LinkCard href="/admin/dossier" label="Dossiers" color="green" Icon={Folder} breadcrumb="Medewerkers – Dossiers" />
+        <Section id="voorraad" title="📦 Voorraadbeheer, Recepturen & Allergenen" color="pink" activeSection={activeSection} setActiveSection={setActiveSection}>
+          <LinkCard href="/admin/leveranciers" label="Leveranciers beheren" color="pink" Icon={CreditCard} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Leveranciers beheren" />
+          <LinkCard href="/admin/suikervrij" label="Suikervrij productie" color="pink" Icon={IceCream} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Suikervrij productie" />
+          <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="pink" Icon={Box} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Artikelen beheren" />
+          <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ClipboardList} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Bestel-app" />
+          <LinkCard href="/admin/recepten" label="Receptprijs" color="pink" Icon={Truck} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Receptprijs" />
+          <LinkCard href="/admin/recepturen" label="Recepturen keuken" color="pink" Icon={List} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Recepturen keuken" />
+          <LinkCard href="/admin/keuken/productie-log" label="Productie keuken" color="pink" Icon={BarChart2} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Productie keuken" />
+          <LinkCard href="/admin/keuken/categorieen" label="Categorie Keuken" color="pink" Icon={Folder} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Categorieen" />
+          <LinkCard href="/admin/producten/allergenen" label="Allergenenregistratie" color="pink" Icon={List} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Allergenenregistratie" />
+          <LinkCard href="/admin/recepten/allergenen" label="Allergenenkaart" color="pink" Icon={List} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Allergenenkaart" />
+        </Section>
 
-        <SubSection title="📘 Instructies" color="blue">
-          <LinkCard href="/admin/instructies" label="Instructies beheren" color="blue" Icon={FileText} breadcrumb="Medewerkers – Instructies beheren" />
-          <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" Icon={Eye} breadcrumb="Medewerkers – Instructies medewerkers" />
-        </SubSection>
-
-        <SubSection title="🧠 Skills" color="amber">
-          <LinkCard href="/admin/skills/categorieen" label="Beheer categorieën" color="amber" Icon={Tag} breadcrumb="Medewerkers – Beheer categorieën" />
-          <LinkCard href="/admin/skills" label="Skills beheer" color="amber" Icon={Layers} breadcrumb="Medewerkers – Skills beheer" />
-          <LinkCard href="/admin/skills/toewijzen" label="Skills toewijzen" color="amber" Icon={Activity} breadcrumb="Medewerkers – Skills toewijzen" />
-          <LinkCard href="/skills" label="Skills medewerkers" color="amber" Icon={Layers} breadcrumb="Medewerkers – Skills medewerkers" />
-        </SubSection>
-      </Section>
-
-      <Section id="voorraad" title="📦 Voorraadbeheer, Recepturen & Allergenen" color="pink" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/leveranciers" label="Leveranciers beheren" color="pink" Icon={CreditCard} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Leveranciers beheren" />
-        <LinkCard href="/admin/suikervrij" label="Suikervrij productie" color="pink" Icon={IceCream} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Suikervrij productie" />
-        <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="pink" Icon={Box} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Artikelen beheren" />
-        <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ClipboardList} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Bestel-app" />
-        <LinkCard href="/admin/recepten" label="Receptprijs" color="pink" Icon={Truck} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Receptprijs" />
-        <LinkCard href="/admin/recepturen" label="Recepturen keuken" color="pink" Icon={List} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Recepturen keuken" />
-        <LinkCard href="/admin/keuken/productie-log" label="Productie keuken" color="pink" Icon={BarChart2} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Productie keuken" />
-        <LinkCard href="/admin/keuken/categorieen" label="Categorie Keuken" color="pink" Icon={Folder} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Categorieen" />
-        <LinkCard href="/admin/producten/allergenen" label="Allergenenregistratie" color="pink" Icon={List} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Allergenenregistratie" />
-        <LinkCard href="/admin/recepten/allergenen" label="Allergenenkaart" color="pink" Icon={List} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Allergenenkaart" />
-      </Section>
-
-      <Section id="import_invoer" title="📊 Import / Invoer" color="teal" activeSection={activeSection} setActiveSection={setActiveSection}>
-        <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Omzet inlezen" />
-        <LinkCard href="/admin/mypos" label="Inlezen myPOS (maand)" color="teal" Icon={Archive} breadcrumb="Import / Invoer – Inlezen myPOS (maand)" />
-        <LinkCard href="/admin/omzet/loonkosten" label="Invoeren loonkosten" color="teal" Icon={Archive} breadcrumb="Import / Invoer – Invoeren loonkosten" />
-        <LinkCard href="/admin/aftekenlijsten/upload" label="Upload formulieren" color="teal" Icon={Archive} breadcrumb="Import / Invoer – Upload formulieren" />
-        <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} breadcrumb="Import / Invoer – Kasstaat invullen" />
-        <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Kasboek bijwerken" />
-        <LinkCard href="/admin/omzet/omzetdagen" label="Omzetdagen aanpassen" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Omzetdagen aanpassen" />
-      </Section>
+        <Section id="import_invoer" title="📊 Import / Invoer" color="teal" activeSection={activeSection} setActiveSection={setActiveSection}>
+          <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Omzet inlezen" />
+          <LinkCard href="/admin/mypos" label="Inlezen myPOS (maand)" color="teal" Icon={Archive} breadcrumb="Import / Invoer – Inlezen myPOS (maand)" />
+          <LinkCard href="/admin/omzet/loonkosten" label="Invoeren loonkosten" color="teal" Icon={Archive} breadcrumb="Import / Invoer – Invoeren loonkosten" />
+          <LinkCard href="/admin/aftekenlijsten/upload" label="Upload formulieren" color="teal" Icon={Archive} breadcrumb="Import / Invoer – Upload formulieren" />
+          <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} breadcrumb="Import / Invoer – Kasstaat invullen" />
+          <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Kasboek bijwerken" />
+          <LinkCard href="/admin/omzet/omzetdagen" label="Omzetdagen aanpassen" color="teal" Icon={Wrench} breadcrumb="Import / Invoer – Omzetdagen aanpassen" />
+        </Section>
+      </div>
     </main>
   );
 }
