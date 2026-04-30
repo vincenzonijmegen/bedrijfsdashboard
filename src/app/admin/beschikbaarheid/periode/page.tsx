@@ -232,21 +232,29 @@ export default function BeschikbaarheidWeek() {
               Geen beschikbaarheid gevonden voor deze week.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px] text-sm">
-                <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <div className="w-full">
+              <table className="w-full table-fixed text-[11px]">
+                <colgroup>
+                  <col className="w-[20%]" />
+                  {weekDates.flatMap((d) => [
+                    <col key={`${d.toISOString()}-1`} className="w-[5.7%]" />,
+                    <col key={`${d.toISOString()}-2`} className="w-[5.7%]" />,
+                  ])}
+                </colgroup>
+
+                <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
                   <tr>
-                    <th className="sticky left-0 z-10 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left">
+                    <th className="border-b border-slate-200 px-3 py-2 text-left">
                       Naam
                     </th>
 
                     {weekDates.map((d, idx) => (
                       <React.Fragment key={d.toISOString()}>
-                        <th className="border-b border-slate-200 px-2 py-3 text-center">
-                          {dagKort[idx]} {d.getDate()} S1
+                        <th className="border-b border-slate-200 px-1 py-2 text-center">
+                          {dagKort[idx]}{d.getDate()} 1
                         </th>
-                        <th className="border-b border-slate-200 px-2 py-3 text-center">
-                          {dagKort[idx]} {d.getDate()} S2
+                        <th className="border-b border-slate-200 px-1 py-2 text-center">
+                          {dagKort[idx]}{d.getDate()} 2
                         </th>
                       </React.Fragment>
                     ))}
@@ -260,12 +268,12 @@ export default function BeschikbaarheidWeek() {
                     return (
                       <tr key={regels[0].medewerker_id} className="hover:bg-slate-50">
                         <td
-                          className="sticky left-0 z-10 max-w-[190px] bg-white px-4 py-3 font-semibold text-slate-950"
+                          className="px-3 py-2 font-semibold text-slate-950"
                           title={naam}
                         >
                           <div className="truncate">{naam}</div>
                           {regels[0].opmerkingen && (
-                            <div className="mt-1 truncate text-xs font-normal text-slate-500">
+                            <div className="mt-0.5 truncate text-[10px] font-normal text-slate-500">
                               {regels[0].opmerkingen}
                             </div>
                           )}
@@ -289,17 +297,17 @@ export default function BeschikbaarheidWeek() {
 
                           return (
                             <React.Fragment key={d.toISOString()}>
-                              <td className="px-2 py-3 text-center">
+                              <td className="px-1 py-2 text-center">
                                 {a1 ? (
-                                  <CheckCircle2 className="mx-auto h-5 w-5 text-emerald-600" />
+                                  <CheckCircle2 className="mx-auto h-4 w-4 text-emerald-600" />
                                 ) : (
                                   <span className="text-slate-300">—</span>
                                 )}
                               </td>
 
-                              <td className="px-2 py-3 text-center">
+                              <td className="px-1 py-2 text-center">
                                 {a2 ? (
-                                  <CheckCircle2 className="mx-auto h-5 w-5 text-emerald-600" />
+                                  <CheckCircle2 className="mx-auto h-4 w-4 text-emerald-600" />
                                 ) : (
                                   <span className="text-slate-300">—</span>
                                 )}
