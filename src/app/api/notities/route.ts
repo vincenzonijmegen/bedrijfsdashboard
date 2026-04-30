@@ -10,10 +10,17 @@ export async function GET(req: Request) {
   if (rubriekId) {
     const res = await dbRapportage.query(
       `
-      SELECT id, rubriek_id, tekst, volgorde, datum
+      SELECT
+        id,
+        rubriek_id,
+        tekst,
+        volgorde,
+        datum
       FROM rapportage.notities
       WHERE rubriek_id = $1
-      ORDER BY datum DESC NULLS LAST, volgorde ASC
+      ORDER BY
+        COALESCE(datum, DATE '1900-01-01') DESC,
+        volgorde ASC
       `,
       [rubriekId]
     );

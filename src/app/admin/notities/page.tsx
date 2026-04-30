@@ -210,16 +210,17 @@ export default function NotitieblokPagina() {
   );
 
   const sortedNotities = useMemo(
-    () =>
-      [...notities].sort((a, b) => {
-        const aTime = a.datum ? new Date(a.datum).getTime() : 0;
-        const bTime = b.datum ? new Date(b.datum).getTime() : 0;
+  () =>
+    [...notities].sort((a, b) => {
+      const aTime = a.datum ? new Date(a.datum).getTime() : 0;
+      const bTime = b.datum ? new Date(b.datum).getTime() : 0;
 
-        if (bTime !== aTime) return bTime - aTime;
-        return (b.volgorde ?? 0) - (a.volgorde ?? 0);
-      }),
-    [notities]
-  );
+      if (bTime !== aTime) return bTime - aTime;
+
+      return (a.volgorde ?? 0) - (b.volgorde ?? 0);
+    }),
+  [notities]
+);
 
   const [newRubriekName, setNewRubriekName] = useState("");
   const [newNotitieHtml, setNewNotitieHtml] = useState("");
