@@ -78,8 +78,10 @@ export default function BeschikbaarheidOverzicht() {
     setIsExporting(true);
 
     await new Promise<void>((resolve) => {
-      requestAnimationFrame(() => resolve());
-    });
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => resolve());
+  });
+});
 
     // @ts-expect-error: html2pdf.js heeft geen types
     const html2pdf = (await import("html2pdf.js")).default;
@@ -235,7 +237,7 @@ export default function BeschikbaarheidOverzicht() {
                     <col key={`${dag}-1`} className="w-[4%]" />,
                     <col key={`${dag}-2`} className="w-[4%]" />,
                   ])}
-                  <col className="w-[6%]" />
+                  {!isExporting && <col className="w-[6%]" />}
                 </colgroup>
 
                 <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
@@ -261,9 +263,11 @@ export default function BeschikbaarheidOverzicht() {
                       </React.Fragment>
                     ))}
 
-                    <th className="border-b border-slate-200 px-1 py-1 text-center">
-                      Actie
-                    </th>
+                   {!isExporting && (
+                      <th className="border-b border-slate-200 px-1 py-1 text-center">
+                        Actie
+                      </th>
+                    )}
                   </tr>
                 </thead>
 
@@ -327,17 +331,17 @@ export default function BeschikbaarheidOverzicht() {
                         </React.Fragment>
                       ))}
 
+                      {!isExporting && (
                       <td className="px-1 py-1 text-center">
-                        {!isExporting && (
-                          <button
-                            onClick={() => handleDelete(regel.id)}
-                            className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
-                            title="Verwijderen"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleDelete(regel.id)}
+                          className="inline-flex items-center justify-center rounded-lg p-1.5 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                          title="Verwijderen"
+                        >
+                          <Trash2 size={15} />
+                        </button>
                       </td>
+                    )}
                     </tr>
                   ))}
 
@@ -357,7 +361,7 @@ export default function BeschikbaarheidOverzicht() {
                       </React.Fragment>
                     ))}
 
-                    <td className="px-1 py-1" />
+                    {!isExporting && <td className="px-1 py-1" />}
                   </tr>
                 </tbody>
               </table>
