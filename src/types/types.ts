@@ -23,5 +23,6 @@ export interface Medewerker {
   id: number;
   naam: string;
   email: string;
+  geboortedatum?: string | null;
   functie: string;
 }
