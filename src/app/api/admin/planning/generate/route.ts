@@ -7,11 +7,27 @@ export const dynamic = "force-dynamic";
 type Medewerker = {
   email: string;
   naam: string;
-  geboortedatum: string | null;
   kan_scheppen: boolean;
   kan_voorbereiden: boolean;
   kan_ijsbereiden: boolean;
+  geboortedatum: string | null;
 };
+
+function berekenLeeftijd(geboortedatum: string | null): number | null {
+  if (!geboortedatum) return null;
+
+  const d = new Date(geboortedatum);
+  const vandaag = new Date();
+
+  let leeftijd = vandaag.getFullYear() - d.getFullYear();
+  const m = vandaag.getMonth() - d.getMonth();
+
+  if (m < 0 || (m === 0 && vandaag.getDate() < d.getDate())) {
+    leeftijd--;
+  }
+
+  return leeftijd;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,10 +48,10 @@ export async function POST(req: NextRequest) {
       SELECT
         email,
         naam,
-        geboortedatum,
         kan_scheppen,
         kan_voorbereiden,
-        kan_ijsbereiden
+        kan_ijsbereiden,
+        geboortedatum
       FROM medewerkers
     `);
 
@@ -63,12 +79,18 @@ export async function POST(req: NextRequest) {
     const afwezigSet = new Set(
       afwezig.map(
         (a) =>
-          `${a.medewerker_email}_${new Date(a.datum).toISOString().slice(0, 10)}`
+          `${a.medewerker_email}_${new Date(a.datum)
+            .toISOString()
+            .slice(0, 10)}`
       )
     );
 
     const uniekeDatums = Array.from(
-      new Set(behoefte.map((b) => new Date(b.datum).toISOString().slice(0, 10)))
+      new Set(
+        behoefte.map((b) =>
+          new Date(b.datum).toISOString().slice(0, 10)
+        )
+      )
     );
 
     const beschikbareDagenCount: Record<string, number> = {};
@@ -95,6 +117,13 @@ export async function POST(req: NextRequest) {
 
       for (let i = 0; i < Number(b.aantal || 0); i++) {
         const kandidaten = medewerkers.filter((m) => {
+          const leeftijd = berekenLeeftijd(m.geboortedatum);
+
+          // ❗ NIEUWE REGEL
+          if (b.shift_nr === 2 && leeftijd !== null && leeftijd < 16) {
+            return false;
+          }
+
           if (b.functie === "scheppen" && !m.kan_scheppen) return false;
           if (b.functie === "voorbereiden" && !m.kan_voorbereiden) return false;
           if (b.functie === "ijsbereiden" && !m.kan_ijsbereiden) return false;
@@ -120,18 +149,6 @@ export async function POST(req: NextRequest) {
         if (beschikbareKandidaten.length === 0) continue;
 
         beschikbareKandidaten.sort((aMedewerker, bMedewerker) => {
-          const beschikbaarA = beschikbareDagenCount[aMedewerker.email] || 99;
-          const beschikbaarB = beschikbareDagenCount[bMedewerker.email] || 99;
-
-          // Mensen met weinig beschikbare dagen krijgen voorrang,
-          // maar alleen als het verschil duidelijk is.
-          if (
-            beschikbaarA !== beschikbaarB &&
-            Math.abs(beschikbaarA - beschikbaarB) >= 3
-          ) {
-            return beschikbaarA - beschikbaarB;
-          }
-
           const totaalA = shiftCount[aMedewerker.email] || 0;
           const totaalB = shiftCount[bMedewerker.email] || 0;
 
@@ -151,6 +168,11 @@ export async function POST(req: NextRequest) {
             return huidigeShiftA - huidigeShiftB;
           }
 
+          const beschikbaarA =
+            beschikbareDagenCount[aMedewerker.email] || 99;
+          const beschikbaarB =
+            beschikbareDagenCount[bMedewerker.email] || 99;
+
           if (beschikbaarA !== beschikbaarB) {
             return beschikbaarA - beschikbaarB;
           }
@@ -169,12 +191,15 @@ export async function POST(req: NextRequest) {
           [periode_id, gekozen.email, datum, b.shift_nr, b.functie]
         );
 
-        shiftCount[gekozen.email] = (shiftCount[gekozen.email] || 0) + 1;
+        shiftCount[gekozen.email] =
+          (shiftCount[gekozen.email] || 0) + 1;
 
         if (b.shift_nr === 1) {
-          shift1Count[gekozen.email] = (shift1Count[gekozen.email] || 0) + 1;
+          shift1Count[gekozen.email] =
+            (shift1Count[gekozen.email] || 0) + 1;
         } else {
-          shift2Count[gekozen.email] = (shift2Count[gekozen.email] || 0) + 1;
+          shift2Count[gekozen.email] =
+            (shift2Count[gekozen.email] || 0) + 1;
         }
 
         geplandPerDag.add(`${gekozen.email}_${datum}`);
@@ -184,6 +209,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("Fout bij genereren planning:", e);
-    return NextResponse.json({ error: "Genereren mislukt" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Genereren mislukt" },
+      { status: 500 }
+    );
   }
 }
