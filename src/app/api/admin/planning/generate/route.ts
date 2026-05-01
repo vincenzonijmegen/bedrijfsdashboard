@@ -7,27 +7,12 @@ export const dynamic = "force-dynamic";
 type Medewerker = {
   email: string;
   naam: string;
-  geboortedatum: string | null;
   kan_scheppen: boolean;
   kan_voorbereiden: boolean;
   kan_ijsbereiden: boolean;
 };
 
-function berekenLeeftijd(datum: string | null): number {
-  if (!datum) return 99;
 
-  const d = new Date(datum);
-  const now = new Date();
-
-  let leeftijd = now.getFullYear() - d.getFullYear();
-  const m = now.getMonth() - d.getMonth();
-
-  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) {
-    leeftijd--;
-  }
-
-  return leeftijd;
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,7 +29,9 @@ export async function POST(req: NextRequest) {
     );
 
     const { rows } = await db.query(`
-  SELECT email, naam, geboortedatum,
+  SELECT
+    email,
+    naam,
     kan_scheppen,
     kan_voorbereiden,
     kan_ijsbereiden
