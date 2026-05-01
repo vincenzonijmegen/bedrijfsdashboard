@@ -100,6 +100,13 @@ export default function ZomerfeestenPlanning() {
     return arr;
   }, [geselecteerde]);
 
+const { data: medewerkersData } = useSWR(
+  "/api/admin/medewerkers",
+  fetcher
+);
+
+
+
   useEffect(() => {
     if (!behoefte?.items) return;
 
@@ -465,43 +472,60 @@ const { data: overzicht } = useSWR(
             </div>
           </section>
         )}
-        {overzicht?.length > 0 && (
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-950">
-                  Verdeling medewerkers
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Overzicht aantal diensten per persoon
-                </p>
-              </div>
+        {planning?.items?.length > 0 && (
+  <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="mb-5">
+      <h2 className="text-xl font-bold text-slate-950">
+        Verdeling medewerkers
+      </h2>
+      <p className="text-sm text-slate-500">
+        Aantal diensten per persoon
+      </p>
+    </div>
+
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {Object.values(
+        planning.items.reduce((acc: any, item: any) => {
+          if (!acc[item.medewerker_email]) {
+            acc[item.medewerker_email] = {
+              naam: item.naam,
+              totaal: 0,
+              shift1: 0,
+              shift2: 0,
+            };
+          }
+
+          acc[item.medewerker_email].totaal++;
+
+          if (item.shift_nr === 1) acc[item.medewerker_email].shift1++;
+          if (item.shift_nr === 2) acc[item.medewerker_email].shift2++;
+
+          return acc;
+        }, {})
+      )
+        .sort((a: any, b: any) => b.totaal - a.totaal)
+        .map((m: any) => (
+          <div
+            key={m.naam}
+            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+          >
+            <div className="flex items-center justify-between">
+              <span className="truncate font-semibold text-slate-800">
+                {m.naam}
+              </span>
+              <span className="text-sm font-bold text-slate-900">
+                {m.totaal}
+              </span>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {overzicht.map((m: any) => (
-                <div
-                  key={m.naam}
-                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="truncate font-semibold text-slate-800">
-                      {m.naam}
-                    </span>
-                    <span className="text-sm font-bold text-slate-900">
-                      {m.totaal}
-                    </span>
-                  </div>
-
-                  <div className="mt-1 text-xs text-slate-500">
-                    Dag: {m.shift_1} · Avond: {m.shift_2}
-                  </div>
-                </div>
-              ))}
+            <div className="mt-1 text-xs text-slate-500">
+              Dag: {m.shift1} · Avond: {m.shift2}
             </div>
-          </section>
-        )}
-
+          </div>
+        ))}
+    </div>
+  </section>
+)}
         
 
 
