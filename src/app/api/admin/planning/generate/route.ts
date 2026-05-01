@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       SELECT datum, shift_nr, functie, aantal
       FROM planning_shiftbehoefte
       WHERE periode_id = $1
-      ORDER BY datum, shift_nr
+      ORDER BY datum, shift_nr, functie
       `,
       [periode_id]
     );
@@ -65,6 +65,24 @@ export async function POST(req: NextRequest) {
       )
     );
 
+    const uniekeDatums = Array.from(
+      new Set(behoefte.map((b) => new Date(b.datum).toISOString().slice(0, 10)))
+    );
+
+    const beschikbareDagenCount: Record<string, number> = {};
+
+    for (const m of medewerkers) {
+      let count = 0;
+
+      for (const datum of uniekeDatums) {
+        if (!afwezigSet.has(`${m.email}_${datum}`)) {
+          count++;
+        }
+      }
+
+      beschikbareDagenCount[m.email] = count;
+    }
+
     const shiftCount: Record<string, number> = {};
     const geplandPerDag = new Set<string>();
 
@@ -73,38 +91,42 @@ export async function POST(req: NextRequest) {
 
       for (let i = 0; i < Number(b.aantal || 0); i++) {
         const kandidaten = medewerkers.filter((m) => {
-  if (b.functie === "scheppen" && !m.kan_scheppen) return false;
-  if (b.functie === "voorbereiden" && !m.kan_voorbereiden) return false;
-  if (b.functie === "ijsbereiden" && !m.kan_ijsbereiden) return false;
+          if (b.functie === "scheppen" && !m.kan_scheppen) return false;
+          if (b.functie === "voorbereiden" && !m.kan_voorbereiden) return false;
+          if (b.functie === "ijsbereiden" && !m.kan_ijsbereiden) return false;
 
-  if (afwezigSet.has(`${m.email}_${datum}`)) return false;
-  if (geplandPerDag.has(`${m.email}_${datum}`)) return false;
+          if (afwezigSet.has(`${m.email}_${datum}`)) return false;
+          if (geplandPerDag.has(`${m.email}_${datum}`)) return false;
 
-  return true;
-});
+          return true;
+        });
 
-if (kandidaten.length === 0) continue;
+        if (kandidaten.length === 0) continue;
 
-// Eerst max 4 proberen
-let beschikbareKandidaten = kandidaten.filter(
-  (m) => (shiftCount[m.email] || 0) < 4
-);
+        let beschikbareKandidaten = kandidaten.filter(
+          (m) => (shiftCount[m.email] || 0) < 4
+        );
 
-// Als dat niet lukt, max 5 toestaan
-if (beschikbareKandidaten.length === 0) {
-  beschikbareKandidaten = kandidaten.filter(
-    (m) => (shiftCount[m.email] || 0) < 5
-  );
-}
+        if (beschikbareKandidaten.length === 0) {
+          beschikbareKandidaten = kandidaten.filter(
+            (m) => (shiftCount[m.email] || 0) < 5
+          );
+        }
 
-// Als zelfs dat niet lukt, sla deze plek over
-if (beschikbareKandidaten.length === 0) continue;
+        if (beschikbareKandidaten.length === 0) continue;
 
-beschikbareKandidaten.sort(
-  (a, b) => (shiftCount[a.email] || 0) - (shiftCount[b.email] || 0)
-);
+        beschikbareKandidaten.sort((a, b) => {
+          const beschikbaarA = beschikbareDagenCount[a.email] || 99;
+          const beschikbaarB = beschikbareDagenCount[b.email] || 99;
 
-const gekozen = beschikbareKandidaten[0];
+          if (beschikbaarA !== beschikbaarB) {
+            return beschikbaarA - beschikbaarB;
+          }
+
+          return (shiftCount[a.email] || 0) - (shiftCount[b.email] || 0);
+        });
+
+        const gekozen = beschikbareKandidaten[0];
 
         await db.query(
           `
