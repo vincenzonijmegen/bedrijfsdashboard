@@ -218,7 +218,7 @@ export default function ZomerfeestenPlanning() {
 
   return (
     <div className="min-h-screen bg-slate-100 px-6 py-6">
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="mx-auto max-w-[1600px] space-y-6">
         <section className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div>
