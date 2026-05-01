@@ -117,7 +117,19 @@ export async function POST(req: NextRequest) {
 
         if (beschikbareKandidaten.length === 0) continue;
 
-beschikbareKandidaten.sort((aMedewerker, bMedewerker) => {
+        beschikbareKandidaten.sort((aMedewerker, bMedewerker) => {
+          const beschikbaarA = beschikbareDagenCount[aMedewerker.email] || 99;
+          const beschikbaarB = beschikbareDagenCount[bMedewerker.email] || 99;
+
+          // Mensen met weinig beschikbare dagen krijgen voorrang,
+          // maar alleen als het verschil duidelijk is.
+          if (
+            beschikbaarA !== beschikbaarB &&
+            Math.abs(beschikbaarA - beschikbaarB) >= 3
+          ) {
+            return beschikbaarA - beschikbaarB;
+          }
+
           const totaalA = shiftCount[aMedewerker.email] || 0;
           const totaalB = shiftCount[bMedewerker.email] || 0;
 
@@ -136,9 +148,6 @@ beschikbareKandidaten.sort((aMedewerker, bMedewerker) => {
           if (huidigeShiftA !== huidigeShiftB) {
             return huidigeShiftA - huidigeShiftB;
           }
-
-          const beschikbaarA = beschikbareDagenCount[aMedewerker.email] || 99;
-          const beschikbaarB = beschikbareDagenCount[bMedewerker.email] || 99;
 
           if (beschikbaarA !== beschikbaarB) {
             return beschikbaarA - beschikbaarB;
