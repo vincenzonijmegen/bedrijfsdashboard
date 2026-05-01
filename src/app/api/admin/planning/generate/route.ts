@@ -149,56 +149,48 @@ export async function POST(req: NextRequest) {
 
         if (beschikbareKandidaten.length === 0) continue;
 
-        beschikbareKandidaten.sort((aMedewerker, bMedewerker) => {
-          const beschikbaarA = beschikbareDagenCount[aMedewerker.email] || 99;
-          const beschikbaarB = beschikbareDagenCount[bMedewerker.email] || 99;
+        beschikbareKandidaten.sort((a, b) => {
+  const totaalA = shiftCount[a.email] || 0;
+  const totaalB = shiftCount[b.email] || 0;
 
-          if (
-            beschikbaarA !== beschikbaarB &&
-            Math.abs(beschikbaarA - beschikbaarB) >= 3
-          ) {
-            return beschikbaarA - beschikbaarB;
-          }
+  const shift1A = shift1Count[a.email] || 0;
+  const shift1B = shift1Count[b.email] || 0;
 
-          const totaalA = shiftCount[aMedewerker.email] || 0;
-          const totaalB = shiftCount[bMedewerker.email] || 0;
+  const shift2A = shift2Count[a.email] || 0;
+  const shift2B = shift2Count[b.email] || 0;
 
-          if (totaalA !== totaalB) {
-            return totaalA - totaalB;
-          }
+  // 🔥 NIEUW: hoe scheef is iemand verdeeld?
+  const balansA = Math.abs(shift1A - shift2A);
+  const balansB = Math.abs(shift1B - shift2B);
 
-          const shift1A = shift1Count[aMedewerker.email] || 0;
-          const shift1B = shift1Count[bMedewerker.email] || 0;
-          const shift2A = shift2Count[aMedewerker.email] || 0;
-          const shift2B = shift2Count[bMedewerker.email] || 0;
+  // 🔥 1. Eerst balans fixen (belangrijkste!)
+  if (balansA !== balansB) {
+    return balansA - balansB;
+  }
 
-          const balansNaA =
-            shiftNr === 1
-              ? Math.abs(shift1A + 1 - shift2A)
-              : Math.abs(shift1A - (shift2A + 1));
+  // 🔥 2. Dan specifiek deze shift balanceren
+  const huidigeShiftA = shiftNr === 1 ? shift1A : shift2A;
+  const huidigeShiftB = shiftNr === 1 ? shift1B : shift2B;
 
-          const balansNaB =
-            shiftNr === 1
-              ? Math.abs(shift1B + 1 - shift2B)
-              : Math.abs(shift1B - (shift2B + 1));
+  if (huidigeShiftA !== huidigeShiftB) {
+    return huidigeShiftA - huidigeShiftB;
+  }
 
-          if (balansNaA !== balansNaB) {
-            return balansNaA - balansNaB;
-          }
+  // 🔥 3. Daarna totaal aantal diensten
+  if (totaalA !== totaalB) {
+    return totaalA - totaalB;
+  }
 
-          const huidigeShiftA = shiftNr === 1 ? shift1A : shift2A;
-          const huidigeShiftB = shiftNr === 1 ? shift1B : shift2B;
+  // 🔥 4. Pas daarna beschikbaarheid
+  const beschikbaarA = beschikbareDagenCount[a.email] || 99;
+  const beschikbaarB = beschikbareDagenCount[b.email] || 99;
 
-          if (huidigeShiftA !== huidigeShiftB) {
-            return huidigeShiftA - huidigeShiftB;
-          }
+  if (beschikbaarA !== beschikbaarB) {
+    return beschikbaarA - beschikbaarB;
+  }
 
-          if (beschikbaarA !== beschikbaarB) {
-            return beschikbaarA - beschikbaarB;
-          }
-
-          return aMedewerker.naam.localeCompare(bMedewerker.naam);
-        });
+  return a.naam.localeCompare(b.naam);
+});
 
         const gekozen = beschikbareKandidaten[0];
 
