@@ -84,6 +84,8 @@ export async function POST(req: NextRequest) {
     }
 
     const shiftCount: Record<string, number> = {};
+    const shift1Count: Record<string, number> = {};
+    const shift2Count: Record<string, number> = {};
     const geplandPerDag = new Set<string>();
 
     for (const b of behoefte) {
@@ -115,15 +117,34 @@ export async function POST(req: NextRequest) {
 
         if (beschikbareKandidaten.length === 0) continue;
 
-        beschikbareKandidaten.sort((a, b) => {
-          const beschikbaarA = beschikbareDagenCount[a.email] || 99;
-          const beschikbaarB = beschikbareDagenCount[b.email] || 99;
+beschikbareKandidaten.sort((aMedewerker, bMedewerker) => {
+          const totaalA = shiftCount[aMedewerker.email] || 0;
+          const totaalB = shiftCount[bMedewerker.email] || 0;
+
+          if (totaalA !== totaalB) {
+            return totaalA - totaalB;
+          }
+
+          const shift1A = shift1Count[aMedewerker.email] || 0;
+          const shift1B = shift1Count[bMedewerker.email] || 0;
+          const shift2A = shift2Count[aMedewerker.email] || 0;
+          const shift2B = shift2Count[bMedewerker.email] || 0;
+
+          const huidigeShiftA = b.shift_nr === 1 ? shift1A : shift2A;
+          const huidigeShiftB = b.shift_nr === 1 ? shift1B : shift2B;
+
+          if (huidigeShiftA !== huidigeShiftB) {
+            return huidigeShiftA - huidigeShiftB;
+          }
+
+          const beschikbaarA = beschikbareDagenCount[aMedewerker.email] || 99;
+          const beschikbaarB = beschikbareDagenCount[bMedewerker.email] || 99;
 
           if (beschikbaarA !== beschikbaarB) {
             return beschikbaarA - beschikbaarB;
           }
 
-          return (shiftCount[a.email] || 0) - (shiftCount[b.email] || 0);
+          return aMedewerker.naam.localeCompare(bMedewerker.naam);
         });
 
         const gekozen = beschikbareKandidaten[0];
@@ -138,6 +159,13 @@ export async function POST(req: NextRequest) {
         );
 
         shiftCount[gekozen.email] = (shiftCount[gekozen.email] || 0) + 1;
+
+        if (b.shift_nr === 1) {
+          shift1Count[gekozen.email] = (shift1Count[gekozen.email] || 0) + 1;
+        } else {
+          shift2Count[gekozen.email] = (shift2Count[gekozen.email] || 0) + 1;
+        }
+
         geplandPerDag.add(`${gekozen.email}_${datum}`);
       }
     }
