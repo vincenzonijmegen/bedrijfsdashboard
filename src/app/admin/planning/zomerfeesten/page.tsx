@@ -36,6 +36,15 @@ export default function ZomerfeestenPlanning() {
     fetcher
   );
 
+const { data: planning, mutate: mutatePlanning } = useSWR(
+  periodeId
+    ? `/api/admin/planning/toewijzingen?periode_id=${periodeId}`
+    : null,
+  fetcher
+);
+
+
+
   const geselecteerde = periodes?.periodes?.find(
     (p: Periode) => p.id === periodeId
   );
@@ -141,11 +150,12 @@ export default function ZomerfeestenPlanning() {
       body: JSON.stringify({ periode_id: periodeId }),
     });
 
-    if (res.ok) {
-      alert("Planning gegenereerd");
-    } else {
-      alert("Fout bij genereren");
-    }
+if (res.ok) {
+  await mutatePlanning();
+  alert("Planning gegenereerd");
+} else {
+  alert("Fout bij genereren");
+}
   }
 
   return (
@@ -236,6 +246,46 @@ export default function ZomerfeestenPlanning() {
           </button>
         </div>
       )}
+      {planning?.items?.length > 0 && (
+  <div className="overflow-auto rounded-xl border bg-white">
+    <div className="border-b bg-slate-100 px-4 py-3">
+      <h2 className="font-semibold text-slate-900">Gegenereerde planning</h2>
+    </div>
+
+    <table className="min-w-full text-sm">
+      <thead className="bg-slate-50">
+        <tr>
+          <th className="p-2 text-left">Datum</th>
+          <th className="p-2 text-center">Shift</th>
+          <th className="p-2 text-left">Functie</th>
+          <th className="p-2 text-left">Medewerker</th>
+        </tr>
+      </thead>
+      <tbody>
+        {planning.items.map(
+          (item: {
+            id: number;
+            datum: string;
+            shift_nr: number;
+            functie: string;
+            naam: string;
+          }) => (
+            <tr key={item.id} className="border-t">
+              <td className="p-2">
+                {new Date(item.datum).toLocaleDateString("nl-NL")}
+              </td>
+              <td className="p-2 text-center font-semibold">
+                {item.shift_nr}
+              </td>
+              <td className="p-2 capitalize">{item.functie}</td>
+              <td className="p-2">{item.naam}</td>
+            </tr>
+          )
+        )}
+      </tbody>
+    </table>
+  </div>
+)}
     </div>
   );
 }
