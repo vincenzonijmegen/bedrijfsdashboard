@@ -172,6 +172,20 @@ export async function POST(req: NextRequest) {
           const shift2A = shift2Count[aMedewerker.email] || 0;
           const shift2B = shift2Count[bMedewerker.email] || 0;
 
+          const balansNaA =
+            shiftNr === 1
+              ? Math.abs(shift1A + 1 - shift2A)
+              : Math.abs(shift1A - (shift2A + 1));
+
+          const balansNaB =
+            shiftNr === 1
+              ? Math.abs(shift1B + 1 - shift2B)
+              : Math.abs(shift1B - (shift2B + 1));
+
+          if (balansNaA !== balansNaB) {
+            return balansNaA - balansNaB;
+          }
+
           const huidigeShiftA = shiftNr === 1 ? shift1A : shift2A;
           const huidigeShiftB = shiftNr === 1 ? shift1B : shift2B;
 
