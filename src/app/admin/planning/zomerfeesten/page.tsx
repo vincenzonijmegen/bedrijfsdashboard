@@ -472,7 +472,7 @@ const { data: overzicht } = useSWR(
             </div>
           </section>
         )}
-        {planning?.items?.length > 0 && (
+       {planning?.items?.length > 0 && (
   <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
     <div className="mb-5">
       <h2 className="text-xl font-bold text-slate-950">
@@ -486,43 +486,108 @@ const { data: overzicht } = useSWR(
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {Object.values(
         planning.items.reduce((acc: any, item: any) => {
-          if (!acc[item.medewerker_email]) {
-            acc[item.medewerker_email] = {
+          const key = item.medewerker_email;
+
+          if (!acc[key]) {
+            const medewerker = medewerkersData?.items?.find(
+              (m: any) => m.email === item.medewerker_email
+            );
+
+            // 👇 veilige defaults
+            const kanIJs = medewerker?.kan_ijsbereiden ?? false;
+            const kanVoor = medewerker?.kan_voorbereiden ?? false;
+
+            let leeftijd: number | null = null;
+            if (medewerker?.geboortedatum) {
+              const g = new Date(medewerker.geboortedatum);
+              const v = new Date();
+              leeftijd = v.getFullYear() - g.getFullYear();
+            }
+
+            acc[key] = {
               naam: item.naam,
               totaal: 0,
               shift1: 0,
               shift2: 0,
+              kan_ijsbereiden: kanIJs,
+              kan_voorbereiden: kanVoor,
+              leeftijd,
             };
           }
 
-          acc[item.medewerker_email].totaal++;
+          acc[key].totaal++;
 
-          if (item.shift_nr === 1) acc[item.medewerker_email].shift1++;
-          if (item.shift_nr === 2) acc[item.medewerker_email].shift2++;
+          if (item.shift_nr === 1) acc[key].shift1++;
+          if (item.shift_nr === 2) acc[key].shift2++;
 
           return acc;
         }, {})
       )
-        .sort((a: any, b: any) => b.totaal - a.totaal)
-        .map((m: any) => (
-          <div
-            key={m.naam}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
-          >
-            <div className="flex items-center justify-between">
-              <span className="truncate font-semibold text-slate-800">
-                {m.naam}
-              </span>
-              <span className="text-sm font-bold text-slate-900">
-                {m.totaal}
-              </span>
-            </div>
+        .sort((a: any, b: any) => {
+          // 🔝 functie prioriteit
+          const rank = (m: any) => {
+            if (m.kan_ijsbereiden) return 1;
+            if (m.kan_voorbereiden) return 2;
+            return 3;
+          };
 
-            <div className="mt-1 text-xs text-slate-500">
-              Dag: {m.shift1} · Avond: {m.shift2}
+          if (rank(a) !== rank(b)) {
+            return rank(a) - rank(b);
+          }
+
+          // daarna op totaal
+          return b.totaal - a.totaal;
+        })
+        .map((m: any) => {
+          // 🎨 kleur
+          let kleur = "bg-slate-100 border-slate-200";
+
+          if (m.kan_ijsbereiden) {
+            kleur = "bg-purple-50 border-purple-200";
+          } else if (m.kan_voorbereiden) {
+            kleur = "bg-orange-50 border-orange-200";
+          } else {
+            kleur = "bg-blue-50 border-blue-200";
+          }
+
+          const isJong = m.leeftijd !== null && m.leeftijd < 16;
+
+          return (
+            <div
+              key={m.naam}
+              className={`rounded-xl border px-3 py-2 ${kleur} ${
+                isJong ? "ring-2 ring-red-400" : ""
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="truncate font-semibold text-slate-800">
+                  {m.naam}
+                </span>
+                <span className="text-sm font-bold text-slate-900">
+                  {m.totaal}
+                </span>
+              </div>
+
+              <div className="mt-1 text-xs text-slate-500">
+                Dag: {m.shift1} · Avond: {m.shift2}
+              </div>
+
+              <div className="mt-1 text-[10px] font-semibold text-slate-600">
+                {m.kan_ijsbereiden
+                  ? "IJsbereider"
+                  : m.kan_voorbereiden
+                  ? "Voorbereider"
+                  : "Schepper"}
+              </div>
+
+              {isJong && (
+                <div className="mt-1 text-[10px] font-bold text-red-600">
+                  &lt;16
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
     </div>
   </section>
 )}
