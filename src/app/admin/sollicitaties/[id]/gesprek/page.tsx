@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 const dagenKort = ["zo", "ma", "di", "wo", "do", "vr", "za"];
+
 const weekdagen = [
   "Maandag",
   "Dinsdag",
@@ -65,6 +66,7 @@ function getJaarVoorFeestdagen(data: any) {
 function formatDateTimeNl(value: string | null) {
   if (!value) return "";
   const d = new Date(value);
+
   return d.toLocaleString("nl-NL", {
     day: "numeric",
     month: "numeric",
@@ -93,21 +95,6 @@ function groepeerFeestdagen(rows: { naam: string; datum: string }[]) {
     });
   };
 
-  const addRange = (naam: string, label = naam) => {
-    const datums = byNaam[naam];
-    if (!datums?.length) return;
-
-    regels.push({
-      label,
-      waarde:
-        datums.length === 1
-          ? formatDateShort(datums[0])
-          : `${formatDateShort(datums[0])} t/m ${formatDateShort(
-              datums[datums.length - 1]
-            )}`,
-    });
-  };
-
   const pasen = rows.filter((r) => r.naam.toLowerCase().includes("paas"));
   if (pasen.length) {
     regels.push({
@@ -117,7 +104,6 @@ function groepeerFeestdagen(rows: { naam: string; datum: string }[]) {
   }
 
   addSingle("Koningsdag", "Koningsdag", true);
-  addRange("Meivakantie", "Meivakantie");
   addSingle("Bevrijdingsdag", "Bevrijdingsdag", true);
   addSingle("Moederdag", "Moederdag", false);
   addSingle("Hemelvaartsdag", "Hemelvaartsdag", true);
@@ -125,6 +111,7 @@ function groepeerFeestdagen(rows: { naam: string; datum: string }[]) {
   const pinksteren = rows.filter((r) =>
     r.naam.toLowerCase().includes("pinkster")
   );
+
   if (pinksteren.length) {
     regels.push({
       label: "Pinksteren",
@@ -133,37 +120,37 @@ function groepeerFeestdagen(rows: { naam: string; datum: string }[]) {
   }
 
   addSingle("Vaderdag", "Vaderdag", false);
+
+  const meivakantie = rows.filter((r) =>
+    r.naam.toLowerCase().includes("meivakantie dag")
+  );
+
+  if (meivakantie.length) {
+    regels.push({
+      label: "Meivakantie",
+      waarde: `${formatDateShort(meivakantie[0].datum)} t/m ${formatDateShort(
+        meivakantie[meivakantie.length - 1].datum
+      )}`,
+    });
+  }
+
   const zomerfeesten = rows.filter(
-  (r) =>
-    r.naam.toLowerCase().includes("zomerfeesten dag") ||
-    r.naam.toLowerCase() === "dag voor zomerfeesten"
-);
+    (r) =>
+      r.naam.toLowerCase().includes("zomerfeesten dag") ||
+      r.naam.toLowerCase() === "dag voor zomerfeesten"
+  );
 
-const meivakantie = rows.filter((r) =>
-  r.naam.toLowerCase().includes("meivakantie dag")
-);
-
-if (meivakantie.length) {
-  regels.push({
-    label: "Meivakantie",
-    waarde: `${formatDateShort(meivakantie[0].datum)} t/m ${formatDateShort(
-      meivakantie[meivakantie.length - 1].datum
-    )}`,
-  });
-}
-
-
-if (zomerfeesten.length) {
-  regels.push({
-    label: "Zomerfeesten Nijmegen",
-    waarde:
-      zomerfeesten.length === 1
-        ? formatDateShort(zomerfeesten[0].datum)
-        : `${formatDateShort(zomerfeesten[0].datum)} t/m ${formatDateShort(
-            zomerfeesten[zomerfeesten.length - 1].datum
-          )}`,
-  });
-}
+  if (zomerfeesten.length) {
+    regels.push({
+      label: "Zomerfeesten Nijmegen",
+      waarde:
+        zomerfeesten.length === 1
+          ? formatDateShort(zomerfeesten[0].datum)
+          : `${formatDateShort(zomerfeesten[0].datum)} t/m ${formatDateShort(
+              zomerfeesten[zomerfeesten.length - 1].datum
+            )}`,
+    });
+  }
 
   return regels;
 }
@@ -175,11 +162,12 @@ export default function GespreksdocumentPage({
 }) {
   const [id, setId] = useState<string | null>(null);
 
-  useMemo(() => {
+  useEffect(() => {
     params.then((p) => setId(p.id));
   }, [params]);
 
   const { data } = useSWR(id ? `/api/sollicitaties/${id}` : null, fetcher);
+
   const jaar = data ? getJaarVoorFeestdagen(data) : new Date().getFullYear();
 
   const { data: feestdagenData } = useSWR(
@@ -187,9 +175,20 @@ export default function GespreksdocumentPage({
     fetcher
   );
 
-  if (!data) return <div className="p-6">Laden...</div>;
+  const feestdagen = useMemo(
+    () => groepeerFeestdagen(feestdagenData?.feestdagen || []),
+    [feestdagenData]
+  );
 
-  const feestdagen = groepeerFeestdagen(feestdagenData?.feestdagen || []);
+  if (!data) {
+    return (
+      <main className="min-h-screen bg-slate-100 p-6">
+        <div className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
+          Laden...
+        </div>
+      </main>
+    );
+  }
 
   return (
     <>
@@ -226,215 +225,248 @@ export default function GespreksdocumentPage({
             border: none !important;
             padding: 0 !important;
             margin: 0 !important;
+            border-radius: 0 !important;
           }
         }
       `}</style>
 
-      <main className="mx-auto max-w-5xl space-y-4 p-6">
-        <div className="no-print flex gap-2">
-          <Link
-            href={`/admin/sollicitaties/${id}`}
-            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
-          >
-            ← Terug
-          </Link>
-
-          <button
-            onClick={() => window.print()}
-            className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-          >
-            Print gespreksdocument
-          </button>
-        </div>
-
-        <div className="print-document">
-          <div className="print-page rounded-xl border bg-white p-6 text-sm">
-            <div className="mb-4 flex items-start justify-between gap-4">
+      <main className="min-h-screen bg-slate-100">
+        <div className="mx-auto max-w-5xl space-y-4 p-6">
+          <div className="no-print rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <h1 className="text-xl font-bold">
-                  Sollicitatieformulier IJssalon Vincenzo
+                <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                  Sollicitaties
+                </p>
+                <h1 className="text-xl font-bold text-slate-900">
+                  Gespreksdocument
                 </h1>
-                <p className="text-slate-500">Gespreksdocument</p>
+                <p className="text-sm text-slate-500">
+                  {data.voornaam} {data.achternaam}
+                </p>
               </div>
-              <div className="min-w-56 border-b border-slate-400 pb-1">
-                Datum gesprek: {formatDateTimeNl(data.gesprek_datum)}
+
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href={`/admin/sollicitaties/${id}`}
+                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  ← Terug
+                </Link>
+
+                <button
+                  onClick={() => window.print()}
+                  className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+                >
+                  Print gespreksdocument
+                </button>
               </div>
             </div>
+          </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <section className="rounded-lg border p-3">
-                <h2 className="mb-2 font-bold">Gegevens</h2>
-                <table className="w-full text-sm">
-                  <tbody>
-                    <tr>
-                      <td className="w-36 font-semibold">Voornaam</td>
-                      <td>{data.voornaam || ""}</td>
-                    </tr>
-                    <tr>
-                      <td className="font-semibold">Achternaam</td>
-                      <td>{data.achternaam || ""}</td>
-                    </tr>
-                    <tr>
-                      <td className="font-semibold">Adres</td>
-                      <td>
-                        {data.adres || ""} {data.huisnummer || ""}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="font-semibold">PC/Woonplaats</td>
-                      <td>
-                        {data.postcode || ""} {data.woonplaats || ""}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="font-semibold">Geboortedatum</td>
-                      <td>
-                        {formatDateNl(data.geboortedatum)}
-                        {data.geboortedatum
-                          ? ` (${berekenLeeftijd(data.geboortedatum)} jaar)`
-                          : ""}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="font-semibold">Geslacht</td>
-                      <td>{data.geslacht || ""}</td>
-                    </tr>
-                    <tr>
-                      <td className="font-semibold">E-mailadres</td>
-                      <td>{data.email || ""}</td>
-                    </tr>
-                    <tr>
-                      <td className="font-semibold">Telefoonnummer</td>
-                      <td>{data.telefoon || ""}</td>
-                    </tr>
-                    <tr>
-                      <td className="font-semibold">Startdatum</td>
-                      <td>{formatDateNl(data.beschikbaar_vanaf)}</td>
-                    </tr>
-                    <tr>
-                      <td className="font-semibold">Einddatum</td>
-                      <td>{formatDateNl(data.beschikbaar_tot)}</td>
-                    </tr>
-                    <tr>
-                      <td className="font-semibold">Andere bijbaan</td>
-                      <td>{data.bijbaan || ""}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </section>
-
-              <section className="rounded-lg border p-3">
-                <h2 className="mb-2 font-bold">Beschikbaar</h2>
-                <table className="w-full border-collapse text-center text-sm">
-                  <thead>
-                    <tr className="bg-slate-900 text-white">
-                      <th className="border p-1 text-left">Dag</th>
-                      <th className="border p-1">Shift 1</th>
-                      <th className="border p-1">Shift 2</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {weekdagen.map((dag) => {
-                      const momenten: string[] =
-                        data.beschikbaar_momenten || [];
-                      const s1 = momenten.some(
-                        (m) => m.startsWith(dag) && m.includes("11:30")
-                      );
-                      const s2 = momenten.some(
-                        (m) => m.startsWith(dag) && m.includes("17:30")
-                      );
-
-                      return (
-                        <tr key={dag}>
-                          <td className="border p-1 text-left">{dag}</td>
-                          <td
-                            className={`border p-1 ${
-                              s1 ? "bg-green-100 font-semibold text-green-800" : ""
-                            }`}
-                          >
-                            {s1 ? "JA" : ""}
-                          </td>
-
-                          <td
-                            className={`border p-1 ${
-                              s2 ? "bg-green-100 font-semibold text-green-800" : ""
-                            }`}
-                          >
-                            {s2 ? "JA" : ""}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                    <tr>
-                      <td className="border p-1 text-left font-semibold">
-                        Shifts per week
-                      </td>
-                      <td className="border p-1" colSpan={2}>
-                        {data.shifts_per_week || ""}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="border p-1 text-left font-semibold">
-                        Afd. voorkeur
-                      </td>
-                      <td className="border p-1" colSpan={2}>
-                        {data.voorkeur_functie || ""}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </section>
-            </div>
-
-            <section className="mt-4 rounded-lg border p-3">
-              <h2 className="mb-2 font-bold">Gesprek</h2>
-              <div className="grid grid-cols-2 gap-3">
-              {[
-                ["ervaring", "Werkervaring"],
-                ["opleiding", "Opleiding"],
-                ["rekenen", "Rekenvaardigheid"],
-                ["kassa", "Kassa-ervaring"],
-                ["duits", "Duits"],
-                ["extra", "Extra"],
-              ].map(([veld, label]) => (
-                <div key={veld}>
-                  <div className="font-semibold">{label}</div>
-                  <textarea
-                    defaultValue={data[veld] || ""}
-                    onBlur={async (e) => {
-                      await fetch(`/api/sollicitaties/${id}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          [veld]: e.target.value,
-                        }),
-                      });
-                    }}
-                    rows={2}
-                    className="mt-1 w-full rounded border border-slate-300 p-2 text-sm print:border-0 print:p-0"
-                  />
+          <div className="print-document">
+            <div className="print-page rounded-2xl border border-slate-200 bg-white p-6 text-sm shadow-sm">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <div>
+                  <h1 className="text-xl font-bold">
+                    Sollicitatieformulier IJssalon Vincenzo
+                  </h1>
+                  <p className="text-slate-500">Gespreksdocument</p>
                 </div>
-              ))}
-              </div>
 
-              <div className="mt-3">
-                <div className="font-semibold">Opmerking / Motivatie</div>
-                <div className="mt-1 whitespace-pre-wrap rounded border p-2 text-sm">
-                  {data.motivatie || ""}
+                <div className="min-w-56 border-b border-slate-400 pb-1">
+                  Datum gesprek: {formatDateTimeNl(data.gesprek_datum)}
                 </div>
               </div>
-            </section>
 
-            <section className="mt-4 rounded-lg border p-3">
-              <h2 className="mb-2 font-bold">Feestdagen seizoen {jaar}</h2>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-                {feestdagen.map((f) => (
-                  <div key={f.label}>
-                    <strong>{f.label}:</strong> {f.waarde}
+              <div className="grid grid-cols-2 gap-4">
+                <section className="rounded-lg border p-3">
+                  <h2 className="mb-2 font-bold">Gegevens</h2>
+                  <table className="w-full text-sm">
+                    <tbody>
+                      <tr>
+                        <td className="w-36 font-semibold">Voornaam</td>
+                        <td>{data.voornaam || ""}</td>
+                      </tr>
+                      <tr>
+                        <td className="font-semibold">Achternaam</td>
+                        <td>{data.achternaam || ""}</td>
+                      </tr>
+                      <tr>
+                        <td className="font-semibold">Adres</td>
+                        <td>
+                          {data.adres || ""} {data.huisnummer || ""}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="font-semibold">PC/Woonplaats</td>
+                        <td>
+                          {data.postcode || ""} {data.woonplaats || ""}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="font-semibold">Geboortedatum</td>
+                        <td>
+                          {formatDateNl(data.geboortedatum)}
+                          {data.geboortedatum
+                            ? ` (${berekenLeeftijd(data.geboortedatum)} jaar)`
+                            : ""}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="font-semibold">Geslacht</td>
+                        <td>{data.geslacht || ""}</td>
+                      </tr>
+                      <tr>
+                        <td className="font-semibold">E-mailadres</td>
+                        <td>{data.email || ""}</td>
+                      </tr>
+                      <tr>
+                        <td className="font-semibold">Telefoonnummer</td>
+                        <td>{data.telefoon || ""}</td>
+                      </tr>
+                      <tr>
+                        <td className="font-semibold">Startdatum</td>
+                        <td>{formatDateNl(data.beschikbaar_vanaf)}</td>
+                      </tr>
+                      <tr>
+                        <td className="font-semibold">Einddatum</td>
+                        <td>{formatDateNl(data.beschikbaar_tot)}</td>
+                      </tr>
+                      <tr>
+                        <td className="font-semibold">Vakantie</td>
+                        <td>{data.vakantie || ""}</td>
+                      </tr>
+                      <tr>
+                        <td className="font-semibold">Andere bijbaan</td>
+                        <td>{data.bijbaan || ""}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </section>
+
+                <section className="rounded-lg border p-3">
+                  <h2 className="mb-2 font-bold">Beschikbaar</h2>
+                  <table className="w-full border-collapse text-center text-sm">
+                    <thead>
+                      <tr className="bg-slate-900 text-white">
+                        <th className="border p-1 text-left">Dag</th>
+                        <th className="border p-1">Shift 1</th>
+                        <th className="border p-1">Shift 2</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {weekdagen.map((dag) => {
+                        const momenten: string[] =
+                          data.beschikbaar_momenten || [];
+
+                        const s1 = momenten.some(
+                          (m) => m.startsWith(dag) && m.includes("11:30")
+                        );
+
+                        const s2 = momenten.some(
+                          (m) => m.startsWith(dag) && m.includes("17:30")
+                        );
+
+                        return (
+                          <tr key={dag}>
+                            <td className="border p-1 text-left">{dag}</td>
+                            <td
+                              className={`border p-1 ${
+                                s1
+                                  ? "bg-green-100 font-semibold text-green-800"
+                                  : ""
+                              }`}
+                            >
+                              {s1 ? "JA" : ""}
+                            </td>
+                            <td
+                              className={`border p-1 ${
+                                s2
+                                  ? "bg-green-100 font-semibold text-green-800"
+                                  : ""
+                              }`}
+                            >
+                              {s2 ? "JA" : ""}
+                            </td>
+                          </tr>
+                        );
+                      })}
+
+                      <tr>
+                        <td className="border p-1 text-left font-semibold">
+                          Shifts per week
+                        </td>
+                        <td className="border p-1" colSpan={2}>
+                          {data.shifts_per_week || ""}
+                        </td>
+                      </tr>
+
+                      <tr>
+                        <td className="border p-1 text-left font-semibold">
+                          Afd. voorkeur
+                        </td>
+                        <td className="border p-1" colSpan={2}>
+                          {data.voorkeur_functie || ""}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </section>
+              </div>
+
+              <section className="mt-4 rounded-lg border p-3">
+                <h2 className="mb-2 font-bold">Gesprek</h2>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    ["ervaring", "Werkervaring"],
+                    ["opleiding", "Opleiding"],
+                    ["rekenen", "Rekenvaardigheid"],
+                    ["kassa", "Kassa-ervaring"],
+                    ["duits", "Duits"],
+                    ["extra", "Extra"],
+                  ].map(([veld, label]) => (
+                    <div key={veld}>
+                      <div className="font-semibold">{label}</div>
+                      <textarea
+                        defaultValue={data[veld] || ""}
+                        onBlur={async (e) => {
+                          await fetch(`/api/sollicitaties/${id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              [veld]: e.target.value,
+                            }),
+                          });
+                        }}
+                        rows={2}
+                        className="mt-1 w-full rounded border border-slate-300 p-2 text-sm print:border-0 print:p-0"
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3">
+                  <div className="font-semibold">Opmerking / Motivatie</div>
+                  <div className="mt-1 whitespace-pre-wrap rounded border p-2 text-sm">
+                    {data.motivatie || ""}
                   </div>
-                ))}
-              </div>
-            </section>
+                </div>
+              </section>
+
+              <section className="mt-4 rounded-lg border p-3">
+                <h2 className="mb-2 font-bold">Feestdagen seizoen {jaar}</h2>
+
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                  {feestdagen.map((f) => (
+                    <div key={f.label}>
+                      <strong>{f.label}:</strong> {f.waarde}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
           </div>
         </div>
       </main>
