@@ -502,6 +502,61 @@ const { data: overzicht } = useSWR(
           </section>
         )}
 
+        {planning?.items?.length > 0 && (
+  <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="mb-5">
+      <h2 className="text-xl font-bold text-slate-950">
+        Verdeling medewerkers
+      </h2>
+      <p className="text-sm text-slate-500">
+        Aantal diensten per persoon
+      </p>
+    </div>
+
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {Object.values(
+        planning.items.reduce((acc: any, item: any) => {
+          if (!acc[item.naam]) {
+            acc[item.naam] = {
+              naam: item.naam,
+              totaal: 0,
+              shift1: 0,
+              shift2: 0,
+            };
+          }
+
+          acc[item.naam].totaal++;
+
+          if (item.shift_nr === 1) acc[item.naam].shift1++;
+          if (item.shift_nr === 2) acc[item.naam].shift2++;
+
+          return acc;
+        }, {})
+      )
+        .sort((a: any, b: any) => b.totaal - a.totaal)
+        .map((m: any) => (
+          <div
+            key={m.naam}
+            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+          >
+            <div className="flex items-center justify-between">
+              <span className="truncate font-semibold text-slate-800">
+                {m.naam}
+              </span>
+              <span className="text-sm font-bold text-slate-900">
+                {m.totaal}
+              </span>
+            </div>
+
+            <div className="mt-1 text-xs text-slate-500">
+              Dag: {m.shift1} · Avond: {m.shift2}
+            </div>
+          </div>
+        ))}
+    </div>
+  </section>
+)}
+
 
 
       </div>
