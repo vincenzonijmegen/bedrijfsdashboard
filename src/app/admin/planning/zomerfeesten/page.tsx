@@ -74,6 +74,13 @@ export default function ZomerfeestenPlanning() {
     fetcher
   );
 
+  const { data: overzicht } = useSWR(
+    periodeId
+      ? `/api/admin/planning/overzicht?periode_id=${periodeId}`
+      : null,
+    fetcher
+  );
+
   const geselecteerde = periodes?.periodes?.find(
     (p: Periode) => p.id === periodeId
   );
@@ -164,25 +171,15 @@ export default function ZomerfeestenPlanning() {
       }
     }
 
-    const res = await fetch("/api/admin/planning/shiftbehoefte", {
+    await fetch("/api/admin/planning/shiftbehoefte", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        periode_id: periodeId,
-        items,
-      }),
+      body: JSON.stringify({ periode_id: periodeId, items }),
     });
 
     setSaving(false);
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => null);
-      alert(data?.error || "Opslaan mislukt");
-      return;
-    }
-
     await mutate();
     alert("Opgeslagen");
   }
@@ -205,36 +202,24 @@ export default function ZomerfeestenPlanning() {
     if (res.ok) {
       await mutatePlanning();
       alert("Planning gegenereerd");
-    } else {
-      alert("Fout bij genereren");
     }
   }
 
   return (
     <div className="min-h-screen bg-slate-100 px-6 py-6">
       <div className="mx-auto max-w-[1700px] space-y-6">
+
+        {/* HEADER */}
         <section className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex justify-between">
             <div>
-              <div className="mb-1 flex items-center gap-2 text-sm font-medium text-blue-600">
-                <CalendarDays className="h-4 w-4" />
-                Planning / Zomerfeesten
-              </div>
-
-              <h1 className="text-2xl font-bold tracking-tight text-slate-950">
-                Zomerfeesten planning
-              </h1>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Vul de behoefte in, registreer afwezigheid en genereer daarna
-                het conceptrooster.
-              </p>
+              <h1 className="text-2xl font-bold">Zomerfeesten planning</h1>
             </div>
 
             <select
               value={periodeId ?? ""}
               onChange={(e) => setPeriodeId(Number(e.target.value))}
-              className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+              className="h-11 rounded-xl border px-3"
             >
               <option value="">Kies periode</option>
               {periodes?.periodes?.map((p: Periode) => (
@@ -246,208 +231,72 @@ export default function ZomerfeestenPlanning() {
           </div>
         </section>
 
-        {dagen.length > 0 && (
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-4">
-              <h2 className="text-lg font-bold text-slate-950">
-                Behoefte per shift
-              </h2>
-              <p className="text-sm text-slate-500">
-                Aantal medewerkers per dag, shift en functie.
-              </p>
-            </div>
-
-            <div className="overflow-auto rounded-xl border border-slate-200">
-              <table className="min-w-full text-sm">
-                <thead className="bg-slate-100">
-                  <tr>
-                    <th className="p-2 text-left">Datum</th>
-                    <th className="p-2">Shift</th>
-                    <th className="p-2">Scheppen</th>
-                    <th className="p-2">Voorbereiden</th>
-                    <th className="p-2">IJsbereiden</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dagen.map((datum) =>
-                    [1, 2].map((shift) => (
-                      <tr key={`${datum}_${shift}`} className="border-t">
-                        <td className="p-2 font-medium text-slate-800">
-                          {formatDateNl(datum)}
-                        </td>
-                        <td className="p-2 text-center font-semibold">
-                          Shift {shift}
-                        </td>
-
-                        {functies.map((f) => {
-                          const key = `${datum}_${shift}_${f}`;
-
-                          return (
-                            <td key={f} className="p-2 text-center">
-                              <input
-                                type="number"
-                                min={0}
-                                value={matrix[key] ?? 0}
-                                onChange={(e) =>
-                                  setValue(
-                                    datum,
-                                    shift,
-                                    f,
-                                    Number(e.target.value)
-                                  )
-                                }
-                                className="w-16 rounded-lg border border-slate-200 bg-slate-50 px-1 py-1 text-center outline-none focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
-                              />
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="mt-5 flex flex-wrap gap-3">
-              <button
-                onClick={opslaan}
-                disabled={saving}
-                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
-              >
-                <Save size={16} />
-                {saving ? "Opslaan..." : "Opslaan"}
-              </button>
-
-              <Link
-                href={`/admin/planning/afwezigheid?periode_id=${periodeId}`}
-                className="inline-flex items-center gap-2 rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-600"
-              >
-                <UserX size={16} />
-                Afwezigheid invoeren
-              </Link>
-
-              <button
-                onClick={genereerPlanning}
-                disabled={generating}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
-              >
-                <RefreshCw size={16} />
-                {generating ? "Genereren..." : "Genereer planning"}
-              </button>
-            </div>
-          </section>
-        )}
-
+        {/* PLANNING GRID */}
         {planning?.items?.length > 0 && (
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="mb-5 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-950">
-                  Gegenereerde planning
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  {planning.items.length} geplande diensten
-                </p>
-              </div>
-
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 ring-1 ring-blue-100">
-                <Users size={20} />
-              </div>
-            </div>
-
-            <div className="grid min-w-0 grid-cols-7 gap-3">
+          <section className="rounded-2xl border bg-white p-5 shadow-sm">
+            <div className="grid grid-cols-7 gap-3">
               {dagen.map((datum) => {
                 const dag = planningPerDag[datum] || {};
-                const totaalDag = Object.values(dag).reduce(
-                  (sum, shifts) =>
-                    sum +
-                    Object.values(shifts).reduce(
-                      (s, items) => s + items.length,
-                      0
-                    ),
-                  0
-                );
 
                 return (
-                  <div
-                    key={datum}
-                    className="min-w-0 rounded-2xl border border-slate-200 bg-white p-3 text-xs leading-tight shadow-sm"
-                  >
-                    <div className="mb-3 flex items-start justify-between gap-2">
-                      <h3 className="text-[12px] font-bold leading-tight text-slate-950">
-                        {formatDateNl(datum)}
-                      </h3>
-
-                      <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 ring-1 ring-blue-100">
-                        {totaalDag}
-                      </span>
-                    </div>
+                  <div key={datum} className="border p-3 rounded-xl">
+                    <strong>{formatDateNl(datum)}</strong>
 
                     {[1, 2].map((shift) => {
                       const shiftData = dag[shift] || {};
-                      const totaalShift = Object.values(shiftData).reduce(
-                        (s, items) => s + items.length,
-                        0
-                      );
 
                       return (
-                        <div key={shift} className="mb-4 min-w-0">
-                          <div className="mb-2 rounded-lg bg-slate-800 px-2 py-1 text-[11px] font-bold text-white">
-                            Shift {shift} · {totaalShift}
-                          </div>
+                        <div key={shift}>
+                          <div className="font-bold mt-2">Shift {shift}</div>
 
-                          <div className="space-y-2">
-                            {functies.map((functie) => {
-                              const items = shiftData[functie] || [];
-                              const nodig =
-                                matrix[`${datum}_${shift}_${functie}`] || 0;
-                              const tekort = Math.max(0, nodig - items.length);
+                          {functies.map((f) => {
+                            const items = shiftData[f] || [];
 
-                              if (nodig === 0 && items.length === 0) {
-                                return null;
-                              }
+                            return (
+                              <div key={f}>
+                                <div className="text-xs">{f}</div>
 
-                              return (
-                                <div key={functie} className="min-w-0">
+                                {items.map((item) => (
                                   <div
-                                    className={`mb-1 rounded-lg px-2 py-1 text-[11px] font-bold text-white ${functieKleur[functie]}`}
+                                    key={item.id}
+                                    className="truncate text-sm"
                                   >
-                                    {functieLabels[functie]} ({items.length}/
-                                    {nodig})
+                                    {item.naam}
                                   </div>
-
-                                  <ul className="overflow-hidden rounded-lg bg-white">
-                                    {items.map((item) => (
-                                      <li
-                                        key={item.id}
-                                        title={item.naam}
-                                        className="block max-w-full truncate border-b border-slate-100 px-1 py-1 text-[12px] font-semibold text-slate-800 last:border-b-0"
-                                      >
-                                        {item.naam}
-                                      </li>
-                                    ))}
-
-                                    {Array.from({ length: tekort }).map(
-                                      (_, i) => (
-                                        <li
-                                          key={`tekort-${functie}-${i}`}
-                                          className="rounded-lg border border-red-200 bg-red-50 px-2 py-1.5 font-semibold text-red-700"
-                                        >
-                                          Tekort
-                                        </li>
-                                      )
-                                    )}
-                                  </ul>
-                                </div>
-                              );
-                            })}
-                          </div>
+                                ))}
+                              </div>
+                            );
+                          })}
                         </div>
                       );
                     })}
                   </div>
                 );
               })}
+            </div>
+          </section>
+        )}
+
+        {/* OVERZICHT */}
+        {overzicht?.length > 0 && (
+          <section className="rounded-2xl border bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-bold mb-3">
+              Verdeling medewerkers
+            </h2>
+
+            <div className="grid grid-cols-4 gap-3">
+              {overzicht.map((m: any) => (
+                <div key={m.naam} className="border p-3 rounded-xl">
+                  <div className="flex justify-between">
+                    <span className="truncate">{m.naam}</span>
+                    <strong>{m.totaal}</strong>
+                  </div>
+
+                  <div className="text-xs mt-2">
+                    Dag: {m.shift_1} | Avond: {m.shift_2}
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
         )}
