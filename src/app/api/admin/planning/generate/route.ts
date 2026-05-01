@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
 type Medewerker = {
   email: string;
   naam: string;
+  geboortedatum: string | null;
   kan_scheppen: boolean;
   kan_voorbereiden: boolean;
   kan_ijsbereiden: boolean;
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
       SELECT
         email,
         naam,
+        geboortedatum,
         kan_scheppen,
         kan_voorbereiden,
         kan_ijsbereiden

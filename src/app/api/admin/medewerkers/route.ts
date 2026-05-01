@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
       email, 
       naam, 
       functie,
+      geboortedatum,
       kan_scheppen,
       kan_voorbereiden,
       kan_ijsbereiden

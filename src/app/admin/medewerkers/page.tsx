@@ -12,6 +12,7 @@ interface Medewerker {
   naam: string;
   email: string;
   functie: string;
+  geboortedatum: string | null;
 }
 
 interface FunctieOptie {
@@ -19,8 +20,12 @@ interface FunctieOptie {
   naam: string;
 }
 
-export default function MedewerkersBeheer() {
+function formatDateNl(value: string | null) {
+  if (!value) return "-";
+  return new Date(value).toLocaleDateString("nl-NL");
+}
 
+export default function MedewerkersBeheer() {
   const [medewerkers, setMedewerkers] = useState<Medewerker[]>([]);
   const [functies, setFuncties] = useState<FunctieOptie[]>([]);
   const [form, setForm] = useState({
@@ -28,26 +33,29 @@ export default function MedewerkersBeheer() {
     email: "",
     functie: "",
     wachtwoord: "",
+    geboortedatum: "",
   });
   const [fout, setFout] = useState<string | null>(null);
   const [succes, setSucces] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [geselecteerde, setGeselecteerde] = useState<Medewerker | null>(null);
 
-useEffect(() => {
-  const params = new URLSearchParams(window.location.search);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
 
-  const naam = params.get("naam") || "";
-  const email = params.get("email") || "";
+    const naam = params.get("naam") || "";
+    const email = params.get("email") || "";
+    const geboortedatum = params.get("geboortedatum") || "";
 
-  if (naam || email) {
-    setForm((prev) => ({
-      ...prev,
-      naam,
-      email,
-    }));
-  }
-}, []);
+    if (naam || email || geboortedatum) {
+      setForm((prev) => ({
+        ...prev,
+        naam,
+        email,
+        geboortedatum: geboortedatum.slice(0, 10),
+      }));
+    }
+  }, []);
 
   useEffect(() => {
     fetch("/api/medewerkers")
@@ -67,14 +75,23 @@ useEffect(() => {
     const res = await fetch("/api/medewerkers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        ...form,
+        geboortedatum: form.geboortedatum || null,
+      }),
     });
 
     const data = await res.json();
 
     if (res.ok) {
       setSucces(true);
-      setForm({ naam: "", email: "", functie: "", wachtwoord: "" });
+      setForm({
+        naam: "",
+        email: "",
+        functie: "",
+        wachtwoord: "",
+        geboortedatum: "",
+      });
     } else {
       setFout(data.error || "Onbekende fout");
     }
@@ -91,18 +108,18 @@ useEffect(() => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6 p-6">
       <h1 className="text-2xl font-bold">👥 Medewerkersbeheer</h1>
 
       <form
         onSubmit={handleSubmit}
-        className="space-y-4 bg-gray-50 p-4 rounded shadow"
+        className="space-y-4 rounded bg-gray-50 p-4 shadow"
       >
         <div className="grid grid-cols-2 gap-4">
           <input
             type="text"
             placeholder="Naam"
-            className="border p-2 rounded"
+            className="rounded border p-2"
             value={form.naam}
             onChange={(e) => setForm({ ...form, naam: e.target.value })}
             required
@@ -111,14 +128,23 @@ useEffect(() => {
           <input
             type="email"
             placeholder="E-mailadres"
-            className="border p-2 rounded"
+            className="rounded border p-2"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             required
           />
 
+          <input
+            type="date"
+            className="rounded border p-2"
+            value={form.geboortedatum}
+            onChange={(e) =>
+              setForm({ ...form, geboortedatum: e.target.value })
+            }
+          />
+
           <select
-            className="border p-2 rounded"
+            className="rounded border p-2"
             value={form.functie}
             onChange={(e) => setForm({ ...form, functie: e.target.value })}
             required
@@ -134,7 +160,7 @@ useEffect(() => {
           <input
             type="text"
             placeholder="Tijdelijk wachtwoord"
-            className="border p-2 rounded"
+            className="rounded border p-2"
             value={form.wachtwoord}
             onChange={(e) => setForm({ ...form, wachtwoord: e.target.value })}
             required
@@ -143,7 +169,7 @@ useEffect(() => {
 
         <button
           type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
         >
           Medewerker toevoegen
         </button>
@@ -152,15 +178,16 @@ useEffect(() => {
         {succes && <p className="text-green-700">✅ Toegevoegd</p>}
       </form>
 
-      <div className="bg-white shadow rounded p-4">
-        <h2 className="text-lg font-semibold mb-2">Bestaande medewerkers</h2>
+      <div className="rounded bg-white p-4 shadow">
+        <h2 className="mb-2 text-lg font-semibold">Bestaande medewerkers</h2>
 
-        <table className="w-full text-sm border-collapse">
+        <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-gray-100">
               <th className="border p-2 text-left">Naam</th>
               <th className="border p-2 text-left">E-mail</th>
               <th className="border p-2 text-left">Functie</th>
+              <th className="border p-2 text-left">Geboortedatum</th>
               <th className="border p-2 text-center">Actie</th>
             </tr>
           </thead>
@@ -170,7 +197,8 @@ useEffect(() => {
                 <td className="border p-2">{m.naam}</td>
                 <td className="border p-2">{m.email}</td>
                 <td className="border p-2">{m.functie}</td>
-                <td className="border p-2 text-center space-x-2">
+                <td className="border p-2">{formatDateNl(m.geboortedatum)}</td>
+                <td className="space-x-2 border p-2 text-center">
                   <button
                     onClick={() => {
                       setGeselecteerde(m);

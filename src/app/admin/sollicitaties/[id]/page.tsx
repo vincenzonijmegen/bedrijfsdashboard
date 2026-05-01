@@ -279,7 +279,9 @@ export default function SollicitatieDetail({
               <Link
                 href={`/admin/medewerkers?naam=${encodeURIComponent(
                   `${data.voornaam} ${data.achternaam}`
-                )}&email=${encodeURIComponent(data.email || "")}`}
+                )}&email=${encodeURIComponent(data.email || "")}&geboortedatum=${encodeURIComponent(
+                  data.geboortedatum || ""
+                )}`}
                 className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
               >
                 Toevoegen aan app
