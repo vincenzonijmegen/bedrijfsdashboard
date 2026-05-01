@@ -57,6 +57,31 @@ function formatDateNl(value: string) {
   });
 }
 
+function berekenLeeftijdOpDatum(
+  geboortedatum: string | null | undefined,
+  peildatum: string
+) {
+  if (!geboortedatum) return null;
+
+  const geboorte = new Date(geboortedatum);
+  const datum = new Date(peildatum + "T12:00:00");
+
+  let leeftijd = datum.getFullYear() - geboorte.getFullYear();
+  const maandVerschil = datum.getMonth() - geboorte.getMonth();
+
+  if (
+    maandVerschil < 0 ||
+    (maandVerschil === 0 && datum.getDate() < geboorte.getDate())
+  ) {
+    leeftijd--;
+  }
+
+  return leeftijd;
+}
+
+
+
+
 export default function ZomerfeestenPlanning() {
   const [periodeId, setPeriodeId] = useState<number | null>(null);
   const [matrix, setMatrix] = useState<Record<string, number>>({});
@@ -497,12 +522,12 @@ const { data: overzicht } = useSWR(
             const kanIJs = medewerker?.kan_ijsbereiden ?? false;
             const kanVoor = medewerker?.kan_voorbereiden ?? false;
 
-            let leeftijd: number | null = null;
-            if (medewerker?.geboortedatum) {
-              const g = new Date(medewerker.geboortedatum);
-              const v = new Date();
-              leeftijd = v.getFullYear() - g.getFullYear();
-            }
+            const eersteDatum = dagen[0] || new Date().toISOString().slice(0, 10);
+
+            const leeftijd = berekenLeeftijdOpDatum(
+              medewerker?.geboortedatum,
+              eersteDatum
+            );
 
             acc[key] = {
               naam: item.naam,
