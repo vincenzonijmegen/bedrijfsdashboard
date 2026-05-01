@@ -67,9 +67,10 @@ export default function ZomerfeestenPlanning() {
     const m: Record<string, number> = {};
 
     for (const item of behoefte.items) {
-      const key = `${item.datum}_${item.shift_nr}_${item.functie}`;
-      m[key] = item.aantal;
-    }
+  const datum = String(item.datum).slice(0, 10);
+  const key = `${datum}_${item.shift_nr}_${item.functie}`;
+  m[key] = Number(item.aantal || 0);
+}
 
     setMatrix(m);
   }, [behoefte]);
@@ -83,41 +84,48 @@ export default function ZomerfeestenPlanning() {
   }
 
   async function opslaan() {
-    if (!periodeId) return;
+  if (!periodeId) return;
 
-    setSaving(true);
+  setSaving(true);
 
-    const items: Item[] = [];
+  const items: Item[] = [];
 
-    for (const datum of dagen) {
-      for (const shift of [1, 2]) {
-        for (const functie of functies) {
-          const key = `${datum}_${shift}_${functie}`;
-          items.push({
-            datum,
-            shift_nr: shift,
-            functie,
-            aantal: matrix[key] || 0,
-          });
-        }
+  for (const datum of dagen) {
+    for (const shift of [1, 2]) {
+      for (const functie of functies) {
+        const key = `${datum}_${shift}_${functie}`;
+        items.push({
+          datum,
+          shift_nr: shift,
+          functie,
+          aantal: Number(matrix[key] || 0),
+        });
       }
     }
-
-    await fetch("/api/admin/planning/shiftbehoefte", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        periode_id: periodeId,
-        items,
-      }),
-    });
-
-    setSaving(false);
-    mutate();
-    alert("Opgeslagen");
   }
+
+  const res = await fetch("/api/admin/planning/shiftbehoefte", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      periode_id: periodeId,
+      items,
+    }),
+  });
+
+  setSaving(false);
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    alert(data?.error || "Opslaan mislukt");
+    return;
+  }
+
+  await mutate();
+  alert("Opgeslagen");
+}
 
   return (
     <div className="p-6 space-y-6">
