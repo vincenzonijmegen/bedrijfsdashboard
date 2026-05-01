@@ -20,7 +20,7 @@ function berekenLeeftijdOpDatum(
   if (!geboortedatum) return null;
 
   const geboorte = new Date(geboortedatum);
-  const datum = new Date(peildatum);
+  const datum = new Date(peildatum + "T12:00:00");
 
   let leeftijd = datum.getFullYear() - geboorte.getFullYear();
   const maandVerschil = datum.getMonth() - geboorte.getMonth();
@@ -86,12 +86,16 @@ export async function POST(req: NextRequest) {
     const afwezigSet = new Set(
       afwezig.map(
         (a) =>
-          `${a.medewerker_email}_${new Date(a.datum).toISOString().slice(0, 10)}`
+          `${a.medewerker_email}_${new Date(a.datum)
+            .toISOString()
+            .slice(0, 10)}`
       )
     );
 
     const uniekeDatums = Array.from(
-      new Set(behoefte.map((b) => new Date(b.datum).toISOString().slice(0, 10)))
+      new Set(
+        behoefte.map((b) => new Date(b.datum).toISOString().slice(0, 10))
+      )
     );
 
     const beschikbareDagenCount: Record<string, number> = {};
@@ -121,6 +125,7 @@ export async function POST(req: NextRequest) {
         const kandidaten = medewerkers.filter((m) => {
           const leeftijd = berekenLeeftijdOpDatum(m.geboortedatum, datum);
 
+          // <16 mag nooit shift 2
           if (shiftNr === 2 && leeftijd !== null && leeftijd < 16) {
             return false;
           }
@@ -150,47 +155,58 @@ export async function POST(req: NextRequest) {
         if (beschikbareKandidaten.length === 0) continue;
 
         beschikbareKandidaten.sort((a, b) => {
-  const totaalA = shiftCount[a.email] || 0;
-  const totaalB = shiftCount[b.email] || 0;
+          const beschikbaarA = beschikbareDagenCount[a.email] || 99;
+          const beschikbaarB = beschikbareDagenCount[b.email] || 99;
 
-  const shift1A = shift1Count[a.email] || 0;
-  const shift1B = shift1Count[b.email] || 0;
+          const totaalA = shiftCount[a.email] || 0;
+          const totaalB = shiftCount[b.email] || 0;
 
-  const shift2A = shift2Count[a.email] || 0;
-  const shift2B = shift2Count[b.email] || 0;
+          const shift1A = shift1Count[a.email] || 0;
+          const shift1B = shift1Count[b.email] || 0;
 
-  // 🔥 NIEUW: hoe scheef is iemand verdeeld?
-  const balansA = Math.abs(shift1A - shift2A);
-  const balansB = Math.abs(shift1B - shift2B);
+          const shift2A = shift2Count[a.email] || 0;
+          const shift2B = shift2Count[b.email] || 0;
 
-  // 🔥 1. Eerst balans fixen (belangrijkste!)
-  if (balansA !== balansB) {
-    return balansA - balansB;
-  }
+          // 1. Beperkte beschikbaarheid eerst, maar alleen als het echt verschil maakt
+          // Zo krijgt iemand als Just met 2 beschikbare dagen zijn kansen.
+          if (
+            beschikbaarA !== beschikbaarB &&
+            Math.abs(beschikbaarA - beschikbaarB) >= 3
+          ) {
+            return beschikbaarA - beschikbaarB;
+          }
 
-  // 🔥 2. Dan specifiek deze shift balanceren
-  const huidigeShiftA = shiftNr === 1 ? shift1A : shift2A;
-  const huidigeShiftB = shiftNr === 1 ? shift1B : shift2B;
+          // 2. Daarna totaal aantal diensten eerlijk verdelen
+          if (totaalA !== totaalB) {
+            return totaalA - totaalB;
+          }
 
-  if (huidigeShiftA !== huidigeShiftB) {
-    return huidigeShiftA - huidigeShiftB;
-  }
+          // 3. Daarna dag/avond-balans na deze keuze
+          const balansNaA =
+            shiftNr === 1
+              ? Math.abs(shift1A + 1 - shift2A)
+              : Math.abs(shift1A - (shift2A + 1));
 
-  // 🔥 3. Daarna totaal aantal diensten
-  if (totaalA !== totaalB) {
-    return totaalA - totaalB;
-  }
+          const balansNaB =
+            shiftNr === 1
+              ? Math.abs(shift1B + 1 - shift2B)
+              : Math.abs(shift1B - (shift2B + 1));
 
-  // 🔥 4. Pas daarna beschikbaarheid
-  const beschikbaarA = beschikbareDagenCount[a.email] || 99;
-  const beschikbaarB = beschikbareDagenCount[b.email] || 99;
+          if (balansNaA !== balansNaB) {
+            return balansNaA - balansNaB;
+          }
 
-  if (beschikbaarA !== beschikbaarB) {
-    return beschikbaarA - beschikbaarB;
-  }
+          // 4. Daarna specifiek huidige shift niet te vaak geven
+          const huidigeShiftA = shiftNr === 1 ? shift1A : shift2A;
+          const huidigeShiftB = shiftNr === 1 ? shift1B : shift2B;
 
-  return a.naam.localeCompare(b.naam);
-});
+          if (huidigeShiftA !== huidigeShiftB) {
+            return huidigeShiftA - huidigeShiftB;
+          }
+
+          // 5. Stabiele volgorde
+          return a.naam.localeCompare(b.naam);
+        });
 
         const gekozen = beschikbareKandidaten[0];
 
