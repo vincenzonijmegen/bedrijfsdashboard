@@ -78,9 +78,7 @@ const medewerkers = rows as Medewerker[];
       for (let i = 0; i < b.aantal; i++) {
         // kandidaten filteren
         const kandidaten = medewerkers.filter((m) => {
-          const leeftijd = berekenLeeftijd(m.geboortedatum);
-
-          if (b.shift_nr === 2 && leeftijd < 16) return false;
+          // leeftijd check tijdelijk uit
 
           if (b.functie === "scheppen" && !m.kan_scheppen) return false;
           if (b.functie === "voorbereiden" && !m.kan_voorbereiden) return false;
