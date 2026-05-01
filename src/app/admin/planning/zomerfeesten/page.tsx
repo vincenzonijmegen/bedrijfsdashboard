@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 
@@ -26,10 +27,7 @@ export default function ZomerfeestenPlanning() {
   const [matrix, setMatrix] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
 
-  const { data: periodes } = useSWR(
-    "/api/admin/planning/periodes",
-    fetcher
-  );
+  const { data: periodes } = useSWR("/api/admin/planning/periodes", fetcher);
 
   const { data: behoefte, mutate } = useSWR(
     periodeId
@@ -42,7 +40,6 @@ export default function ZomerfeestenPlanning() {
     (p: Periode) => p.id === periodeId
   );
 
-  // genereer alle dagen
   const dagen = useMemo(() => {
     if (!geselecteerde) return [];
 
@@ -60,23 +57,28 @@ export default function ZomerfeestenPlanning() {
     return arr;
   }, [geselecteerde]);
 
-  // laad bestaande data in matrix
   useEffect(() => {
     if (!behoefte?.items) return;
 
     const m: Record<string, number> = {};
 
     for (const item of behoefte.items) {
-  const datum = String(item.datum).slice(0, 10);
-  const key = `${datum}_${item.shift_nr}_${item.functie}`;
-  m[key] = Number(item.aantal || 0);
-}
+      const datum = String(item.datum).slice(0, 10);
+      const key = `${datum}_${item.shift_nr}_${item.functie}`;
+      m[key] = Number(item.aantal || 0);
+    }
 
     setMatrix(m);
   }, [behoefte]);
 
-  function setValue(datum: string, shift: number, functie: string, value: number) {
+  function setValue(
+    datum: string,
+    shift: number,
+    functie: string,
+    value: number
+  ) {
     const key = `${datum}_${shift}_${functie}`;
+
     setMatrix((prev) => ({
       ...prev,
       [key]: value,
@@ -84,57 +86,76 @@ export default function ZomerfeestenPlanning() {
   }
 
   async function opslaan() {
-  if (!periodeId) return;
+    if (!periodeId) return;
 
-  setSaving(true);
+    setSaving(true);
 
-  const items: Item[] = [];
+    const items: Item[] = [];
 
-  for (const datum of dagen) {
-    for (const shift of [1, 2]) {
-      for (const functie of functies) {
-        const key = `${datum}_${shift}_${functie}`;
-        items.push({
-          datum,
-          shift_nr: shift,
-          functie,
-          aantal: Number(matrix[key] || 0),
-        });
+    for (const datum of dagen) {
+      for (const shift of [1, 2]) {
+        for (const functie of functies) {
+          const key = `${datum}_${shift}_${functie}`;
+
+          items.push({
+            datum,
+            shift_nr: shift,
+            functie,
+            aantal: Number(matrix[key] || 0),
+          });
+        }
       }
+    }
+
+    const res = await fetch("/api/admin/planning/shiftbehoefte", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        periode_id: periodeId,
+        items,
+      }),
+    });
+
+    setSaving(false);
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      alert(data?.error || "Opslaan mislukt");
+      return;
+    }
+
+    await mutate();
+    alert("Opgeslagen");
+  }
+
+  async function genereerPlanning() {
+    if (!periodeId) return;
+
+    const res = await fetch("/api/admin/planning/generate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ periode_id: periodeId }),
+    });
+
+    if (res.ok) {
+      alert("Planning gegenereerd");
+    } else {
+      alert("Fout bij genereren");
     }
   }
 
-  const res = await fetch("/api/admin/planning/shiftbehoefte", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      periode_id: periodeId,
-      items,
-    }),
-  });
-
-  setSaving(false);
-
-  if (!res.ok) {
-    const data = await res.json().catch(() => null);
-    alert(data?.error || "Opslaan mislukt");
-    return;
-  }
-
-  await mutate();
-  alert("Opgeslagen");
-}
-
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-6">
       <h1 className="text-2xl font-bold">Zomerfeesten planning</h1>
 
       <select
         value={periodeId ?? ""}
         onChange={(e) => setPeriodeId(Number(e.target.value))}
-        className="border rounded px-3 py-2"
+        className="rounded border px-3 py-2"
       >
         <option value="">Kies periode</option>
         {periodes?.periodes?.map((p: Periode) => (
@@ -145,7 +166,7 @@ export default function ZomerfeestenPlanning() {
       </select>
 
       {dagen.length > 0 && (
-        <div className="overflow-auto border rounded-xl">
+        <div className="overflow-auto rounded-xl border">
           <table className="min-w-full text-sm">
             <thead className="bg-slate-100">
               <tr>
@@ -163,26 +184,21 @@ export default function ZomerfeestenPlanning() {
                     <td className="p-2">
                       {new Date(datum).toLocaleDateString("nl-NL")}
                     </td>
-                    <td className="p-2 text-center font-semibold">
-                      {shift}
-                    </td>
+                    <td className="p-2 text-center font-semibold">{shift}</td>
 
                     {functies.map((f) => {
                       const key = `${datum}_${shift}_${f}`;
+
                       return (
                         <td key={f} className="p-2 text-center">
                           <input
                             type="number"
+                            min={0}
                             value={matrix[key] ?? 0}
                             onChange={(e) =>
-                              setValue(
-                                datum,
-                                shift,
-                                f,
-                                Number(e.target.value)
-                              )
+                              setValue(datum, shift, f, Number(e.target.value))
                             }
-                            className="w-16 border rounded px-1 py-0.5 text-center"
+                            className="w-16 rounded border px-1 py-0.5 text-center"
                           />
                         </td>
                       );
@@ -195,35 +211,26 @@ export default function ZomerfeestenPlanning() {
         </div>
       )}
 
-            {dagen.length > 0 && (
-        <div className="flex gap-3">
+      {dagen.length > 0 && (
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={opslaan}
             disabled={saving}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
+            className="rounded bg-blue-600 px-4 py-2 text-white"
           >
             {saving ? "Opslaan..." : "Opslaan"}
           </button>
 
+          <Link
+            href={`/admin/planning/afwezigheid?periode_id=${periodeId}`}
+            className="inline-flex items-center rounded bg-orange-500 px-4 py-2 text-white"
+          >
+            Afwezigheid invoeren
+          </Link>
+
           <button
-            onClick={async () => {
-              if (!periodeId) return;
-
-              const res = await fetch("/api/admin/planning/generate", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ periode_id: periodeId }),
-              });
-
-              if (res.ok) {
-                alert("Planning gegenereerd");
-              } else {
-                alert("Fout bij genereren");
-              }
-            }}
-            className="bg-green-600 text-white px-4 py-2 rounded"
+            onClick={genereerPlanning}
+            className="rounded bg-green-600 px-4 py-2 text-white"
           >
             Genereer planning
           </button>
