@@ -195,14 +195,39 @@ export default function ZomerfeestenPlanning() {
         </div>
       )}
 
-      {dagen.length > 0 && (
-        <button
-          onClick={opslaan}
-          disabled={saving}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-        >
-          {saving ? "Opslaan..." : "Opslaan"}
-        </button>
+            {dagen.length > 0 && (
+        <div className="flex gap-3">
+          <button
+            onClick={opslaan}
+            disabled={saving}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            {saving ? "Opslaan..." : "Opslaan"}
+          </button>
+
+          <button
+            onClick={async () => {
+              if (!periodeId) return;
+
+              const res = await fetch("/api/admin/planning/generate", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ periode_id: periodeId }),
+              });
+
+              if (res.ok) {
+                alert("Planning gegenereerd");
+              } else {
+                alert("Fout bij genereren");
+              }
+            }}
+            className="bg-green-600 text-white px-4 py-2 rounded"
+          >
+            Genereer planning
+          </button>
+        </div>
       )}
     </div>
   );
