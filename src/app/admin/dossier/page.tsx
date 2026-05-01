@@ -77,10 +77,14 @@ export default function DossierOverzicht() {
     fetcher
   );
 
-  const { data: medewerkers, mutate: mutateMedewerkers } = useSWR<Medewerker[]>(
-    "/api/admin/medewerkers",
-    fetcher
-  );
+  const { data: medewerkersData, mutate: mutateMedewerkers } = useSWR(
+  "/api/admin/medewerkers",
+  fetcher
+);
+
+const medewerkers: Medewerker[] = Array.isArray(medewerkersData)
+  ? medewerkersData
+  : medewerkersData?.items ?? [];
 
   const { data: documenten } = useSWR(
     email ? `/api/dossier/document?email=${email}` : null,
