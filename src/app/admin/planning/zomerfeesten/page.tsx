@@ -50,7 +50,7 @@ export default function ZomerfeestenPlanning() {
     const eind = new Date(geselecteerde.eind_datum);
 
     const arr: string[] = [];
-    let d = new Date(start);
+    const d = new Date(start);
 
     while (d <= eind) {
       arr.push(d.toISOString().slice(0, 10));
