@@ -429,12 +429,13 @@ export default function ZomerfeestenPlanning() {
                                   <ul className="space-y-1">
                                     {items.map((item) => (
                                       <li
-                                        key={item.id}
-                                        className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5 text-slate-800"
-                                      >
-                                        <strong className="truncate">
-                                          {item.naam}
-                                        </strong>
+                                            key={item.id}
+                                            title={item.naam}
+                                            className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5 text-slate-800"
+                                          >
+                                          <strong className="block w-full truncate text-[12px]">
+                                            {item.naam}
+                                          </strong>
                                       </li>
                                     ))}
 
