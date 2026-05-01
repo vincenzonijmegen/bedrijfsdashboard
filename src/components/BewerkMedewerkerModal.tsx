@@ -10,35 +10,54 @@ interface Props {
   onSave: (gewijzigd: Medewerker) => void;
 }
 
-export default function BewerkMedewerkerModal({ open, onClose, medewerker, functies, onSave }: Props) {
+function formatDateInput(value: string | null | undefined) {
+  if (!value) return "";
+  return String(value).slice(0, 10);
+}
+
+export default function BewerkMedewerkerModal({
+  open,
+  onClose,
+  medewerker,
+  functies,
+  onSave,
+}: Props) {
   const [naam, setNaam] = useState("");
   const [email, setEmail] = useState("");
-  const [functieId, setFunctieId] = useState<string>("");
+  const [functie, setFunctie] = useState("");
+  const [geboortedatum, setGeboortedatum] = useState("");
 
   useEffect(() => {
     if (medewerker) {
-      setNaam(medewerker.naam);
-      setEmail(medewerker.email);
-      setFunctieId(medewerker.functie); // kan string of ID zijn
+      setNaam(medewerker.naam || "");
+      setEmail(medewerker.email || "");
+      setFunctie(medewerker.functie || "");
+      setGeboortedatum(formatDateInput(medewerker.geboortedatum));
     }
   }, [medewerker]);
 
   const handleOpslaan = () => {
-    const functienaam = functies.find(f => f.id.toString() === functieId)?.naam || "";
     onSave({
       ...medewerker,
       naam,
       email,
-      functie: functienaam,
+      functie,
+      geboortedatum: geboortedatum || null,
     });
+
     onClose();
   };
 
   return (
-    <Dialog open={open} onClose={onClose} className="fixed z-50 inset-0 flex items-center justify-center">
-      
-      <div className="relative bg-white rounded-lg p-6 w-full max-w-md z-50 shadow-lg">
-        <Dialog.Title className="text-lg font-semibold mb-4">Bewerk medewerker</Dialog.Title>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center"
+    >
+      <div className="relative z-50 w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
+        <Dialog.Title className="mb-4 text-lg font-semibold">
+          Bewerk medewerker
+        </Dialog.Title>
 
         <div className="space-y-4">
           <div>
@@ -47,7 +66,7 @@ export default function BewerkMedewerkerModal({ open, onClose, medewerker, funct
               type="text"
               value={naam}
               onChange={(e) => setNaam(e.target.value)}
-              className="border rounded px-3 py-2 w-full"
+              className="w-full rounded border px-3 py-2"
             />
           </div>
 
@@ -57,28 +76,47 @@ export default function BewerkMedewerkerModal({ open, onClose, medewerker, funct
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="border rounded px-3 py-2 w-full"
+              className="w-full rounded border px-3 py-2"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium">Geboortedatum</label>
+            <input
+              type="date"
+              value={geboortedatum}
+              onChange={(e) => setGeboortedatum(e.target.value)}
+              className="w-full rounded border px-3 py-2"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium">Functie</label>
             <select
-              value={functieId}
-              onChange={(e) => setFunctieId(e.target.value)}
-              className="border rounded px-3 py-2 w-full"
+              value={functie}
+              onChange={(e) => setFunctie(e.target.value)}
+              className="w-full rounded border px-3 py-2"
             >
               <option value="">Kies een functie</option>
               {functies.map((f) => (
-                <option key={f.id} value={f.id}>{f.naam}</option>
+                <option key={f.id} value={f.naam}>
+                  {f.naam}
+                </option>
               ))}
             </select>
           </div>
         </div>
 
         <div className="mt-6 flex justify-end space-x-3">
-          <button onClick={onClose} className="px-4 py-2 bg-gray-200 rounded">Annuleren</button>
-          <button onClick={handleOpslaan} className="px-4 py-2 bg-blue-600 text-white rounded">Opslaan</button>
+          <button onClick={onClose} className="rounded bg-gray-200 px-4 py-2">
+            Annuleren
+          </button>
+          <button
+            onClick={handleOpslaan}
+            className="rounded bg-blue-600 px-4 py-2 text-white"
+          >
+            Opslaan
+          </button>
         </div>
       </div>
     </Dialog>
