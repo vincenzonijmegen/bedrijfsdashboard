@@ -13,16 +13,22 @@ type Medewerker = {
   geboortedatum: string | null;
 };
 
-function berekenLeeftijd(geboortedatum: string | null): number | null {
+function berekenLeeftijdOpDatum(
+  geboortedatum: string | null,
+  peildatum: string
+): number | null {
   if (!geboortedatum) return null;
 
-  const d = new Date(geboortedatum);
-  const vandaag = new Date();
+  const geboorte = new Date(geboortedatum);
+  const datum = new Date(peildatum);
 
-  let leeftijd = vandaag.getFullYear() - d.getFullYear();
-  const m = vandaag.getMonth() - d.getMonth();
+  let leeftijd = datum.getFullYear() - geboorte.getFullYear();
+  const maandVerschil = datum.getMonth() - geboorte.getMonth();
 
-  if (m < 0 || (m === 0 && vandaag.getDate() < d.getDate())) {
+  if (
+    maandVerschil < 0 ||
+    (maandVerschil === 0 && datum.getDate() < geboorte.getDate())
+  ) {
     leeftijd--;
   }
 
@@ -47,12 +53,13 @@ export async function POST(req: NextRequest) {
     const { rows } = await db.query(`
       SELECT
         email,
-        naam,
+        TRIM(naam) AS naam,
         kan_scheppen,
         kan_voorbereiden,
         kan_ijsbereiden,
         geboortedatum
       FROM medewerkers
+      ORDER BY naam
     `);
 
     const medewerkers = rows as Medewerker[];
@@ -79,18 +86,12 @@ export async function POST(req: NextRequest) {
     const afwezigSet = new Set(
       afwezig.map(
         (a) =>
-          `${a.medewerker_email}_${new Date(a.datum)
-            .toISOString()
-            .slice(0, 10)}`
+          `${a.medewerker_email}_${new Date(a.datum).toISOString().slice(0, 10)}`
       )
     );
 
     const uniekeDatums = Array.from(
-      new Set(
-        behoefte.map((b) =>
-          new Date(b.datum).toISOString().slice(0, 10)
-        )
-      )
+      new Set(behoefte.map((b) => new Date(b.datum).toISOString().slice(0, 10)))
     );
 
     const beschikbareDagenCount: Record<string, number> = {};
@@ -114,13 +115,13 @@ export async function POST(req: NextRequest) {
 
     for (const b of behoefte) {
       const datum = new Date(b.datum).toISOString().slice(0, 10);
+      const shiftNr = Number(b.shift_nr);
 
       for (let i = 0; i < Number(b.aantal || 0); i++) {
         const kandidaten = medewerkers.filter((m) => {
-          const leeftijd = berekenLeeftijd(m.geboortedatum);
+          const leeftijd = berekenLeeftijdOpDatum(m.geboortedatum, datum);
 
-          // ❗ NIEUWE REGEL
-          if (b.shift_nr === 2 && leeftijd !== null && leeftijd < 16) {
+          if (shiftNr === 2 && leeftijd !== null && leeftijd < 16) {
             return false;
           }
 
@@ -149,6 +150,16 @@ export async function POST(req: NextRequest) {
         if (beschikbareKandidaten.length === 0) continue;
 
         beschikbareKandidaten.sort((aMedewerker, bMedewerker) => {
+          const beschikbaarA = beschikbareDagenCount[aMedewerker.email] || 99;
+          const beschikbaarB = beschikbareDagenCount[bMedewerker.email] || 99;
+
+          if (
+            beschikbaarA !== beschikbaarB &&
+            Math.abs(beschikbaarA - beschikbaarB) >= 3
+          ) {
+            return beschikbaarA - beschikbaarB;
+          }
+
           const totaalA = shiftCount[aMedewerker.email] || 0;
           const totaalB = shiftCount[bMedewerker.email] || 0;
 
@@ -161,17 +172,12 @@ export async function POST(req: NextRequest) {
           const shift2A = shift2Count[aMedewerker.email] || 0;
           const shift2B = shift2Count[bMedewerker.email] || 0;
 
-          const huidigeShiftA = b.shift_nr === 1 ? shift1A : shift2A;
-          const huidigeShiftB = b.shift_nr === 1 ? shift1B : shift2B;
+          const huidigeShiftA = shiftNr === 1 ? shift1A : shift2A;
+          const huidigeShiftB = shiftNr === 1 ? shift1B : shift2B;
 
           if (huidigeShiftA !== huidigeShiftB) {
             return huidigeShiftA - huidigeShiftB;
           }
-
-          const beschikbaarA =
-            beschikbareDagenCount[aMedewerker.email] || 99;
-          const beschikbaarB =
-            beschikbareDagenCount[bMedewerker.email] || 99;
 
           if (beschikbaarA !== beschikbaarB) {
             return beschikbaarA - beschikbaarB;
@@ -188,18 +194,15 @@ export async function POST(req: NextRequest) {
             (periode_id, medewerker_email, datum, shift_nr, functie)
           VALUES ($1, $2, $3::date, $4, $5)
           `,
-          [periode_id, gekozen.email, datum, b.shift_nr, b.functie]
+          [periode_id, gekozen.email, datum, shiftNr, b.functie]
         );
 
-        shiftCount[gekozen.email] =
-          (shiftCount[gekozen.email] || 0) + 1;
+        shiftCount[gekozen.email] = (shiftCount[gekozen.email] || 0) + 1;
 
-        if (b.shift_nr === 1) {
-          shift1Count[gekozen.email] =
-            (shift1Count[gekozen.email] || 0) + 1;
+        if (shiftNr === 1) {
+          shift1Count[gekozen.email] = (shift1Count[gekozen.email] || 0) + 1;
         } else {
-          shift2Count[gekozen.email] =
-            (shift2Count[gekozen.email] || 0) + 1;
+          shift2Count[gekozen.email] = (shift2Count[gekozen.email] || 0) + 1;
         }
 
         geplandPerDag.add(`${gekozen.email}_${datum}`);
