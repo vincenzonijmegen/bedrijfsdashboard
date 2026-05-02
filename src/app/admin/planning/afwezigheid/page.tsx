@@ -17,23 +17,38 @@ type Periode = {
   eind_datum: string;
 };
 
+type AfwezigItem = {
+  medewerker_email: string;
+  datum: string;
+};
+
 export default function AfwezigheidPage() {
   const [periodeId, setPeriodeId] = useState<number | null>(null);
   const [matrix, setMatrix] = useState<Record<string, boolean>>({});
 
-  const { data: periodes } = useSWR("/api/admin/planning/periodes", fetcher);
-  const { data: medewerkers } = useSWR("/api/admin/medewerkers", fetcher);
+  const { data: periodesData } = useSWR("/api/admin/planning/periodes", fetcher);
+  const { data: medewerkersData } = useSWR("/api/admin/medewerkers", fetcher);
 
-  const { data: afwezig, mutate } = useSWR(
+  const { data: afwezigData, mutate } = useSWR(
     periodeId
       ? `/api/admin/planning/afwezigheid?periode_id=${periodeId}`
       : null,
     fetcher
   );
 
-  const geselecteerde = periodes?.periodes?.find(
-    (p: Periode) => p.id === periodeId
-  );
+  const periodes: Periode[] = Array.isArray(periodesData)
+    ? periodesData
+    : periodesData?.periodes ?? [];
+
+  const medewerkers: Medewerker[] = Array.isArray(medewerkersData)
+    ? medewerkersData
+    : medewerkersData?.items ?? [];
+
+  const afwezigItems: AfwezigItem[] = Array.isArray(afwezigData)
+    ? afwezigData
+    : afwezigData?.items ?? [];
+
+  const geselecteerde = periodes.find((p) => p.id === periodeId);
 
   const dagen = useMemo(() => {
     if (!geselecteerde) return [];
@@ -52,20 +67,17 @@ export default function AfwezigheidPage() {
     return arr;
   }, [geselecteerde]);
 
-  // laden
   useEffect(() => {
-    if (!afwezig?.items) return;
-
     const m: Record<string, boolean> = {};
 
-    for (const a of afwezig.items) {
+    for (const a of afwezigItems) {
       const datum = String(a.datum).slice(0, 10);
       const key = `${a.medewerker_email}_${datum}`;
       m[key] = true;
     }
 
     setMatrix(m);
-  }, [afwezig]);
+  }, [afwezigData]);
 
   function toggle(email: string, datum: string) {
     const key = `${email}_${datum}`;
@@ -78,7 +90,7 @@ export default function AfwezigheidPage() {
   async function opslaan() {
     if (!periodeId) return;
 
-    const items: any[] = [];
+    const items: { email: string; datum: string }[] = [];
 
     for (const key in matrix) {
       if (matrix[key]) {
@@ -87,7 +99,7 @@ export default function AfwezigheidPage() {
       }
     }
 
-    await fetch("/api/admin/planning/afwezigheid", {
+    const res = await fetch("/api/admin/planning/afwezigheid", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -98,81 +110,112 @@ export default function AfwezigheidPage() {
       }),
     });
 
+    if (!res.ok) {
+      alert("Opslaan mislukt.");
+      return;
+    }
+
     mutate();
     alert("Opgeslagen");
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Afwezigheid</h1>
+    <div className="min-h-screen bg-slate-100 px-4 py-6 text-slate-900">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-medium text-blue-700">Planning</p>
+          <h1 className="text-2xl font-bold tracking-tight">Afwezigheid</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Kruis per medewerker aan op welke dagen iemand niet beschikbaar is.
+          </p>
 
-      <select
-        value={periodeId ?? ""}
-        onChange={(e) => setPeriodeId(Number(e.target.value))}
-        className="border rounded px-3 py-2"
-      >
-        <option value="">Kies periode</option>
-        {periodes?.periodes?.map((p: Periode) => (
-          <option key={p.id} value={p.id}>
-            {p.naam}
-          </option>
-        ))}
-      </select>
-
-      {dagen.length > 0 && medewerkers && (
-        <div className="overflow-auto border rounded-xl">
-          <table className="text-sm">
-            <thead className="bg-slate-100">
-              <tr>
-                <th className="p-2 text-left">Medewerker</th>
-                {dagen.map((d) => (
-                  <th key={d} className="p-2">
-                    {new Date(d).toLocaleDateString("nl-NL", {
-                      day: "numeric",
-                      month: "numeric",
-                    })}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {medewerkers.map((m: Medewerker) => (
-                <tr key={m.email} className="border-t">
-                  <td className="p-2 font-medium">{m.naam}</td>
-
-                  {dagen.map((d) => {
-                    const key = `${m.email}_${d}`;
-                    const actief = matrix[key];
-
-                    return (
-                      <td
-                        key={d}
-                        onClick={() => toggle(m.email, d)}
-                        className={`p-2 text-center cursor-pointer ${
-                          actief
-                            ? "bg-red-200 text-red-800 font-bold"
-                            : "bg-white hover:bg-slate-100"
-                        }`}
-                      >
-                        {actief ? "X" : ""}
-                      </td>
-                    );
-                  })}
-                </tr>
+          <div className="mt-5 max-w-sm">
+            <label className="mb-1 block text-sm font-semibold text-slate-700">
+              Periode
+            </label>
+            <select
+              value={periodeId ?? ""}
+              onChange={(e) =>
+                setPeriodeId(e.target.value ? Number(e.target.value) : null)
+              }
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            >
+              <option value="">Kies periode</option>
+              {periodes.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.naam}
+                </option>
               ))}
-            </tbody>
-          </table>
+            </select>
+          </div>
         </div>
-      )}
 
-      {dagen.length > 0 && (
-        <button
-          onClick={opslaan}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-        >
-          Opslaan
-        </button>
-      )}
+        {dagen.length > 0 && (
+          <>
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="overflow-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="sticky left-0 z-10 border-b border-slate-200 bg-slate-50 px-4 py-3 text-left font-bold">
+                        Medewerker
+                      </th>
+                      {dagen.map((d) => (
+                        <th
+                          key={d}
+                          className="border-b border-slate-200 px-3 py-3 text-center font-bold"
+                        >
+                          {new Date(d).toLocaleDateString("nl-NL", {
+                            weekday: "short",
+                            day: "numeric",
+                            month: "numeric",
+                          })}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {medewerkers.map((m) => (
+                      <tr key={m.email} className="border-b border-slate-100">
+                        <td className="sticky left-0 z-10 bg-white px-4 py-3 font-semibold">
+                          {m.naam}
+                        </td>
+
+                        {dagen.map((d) => {
+                          const key = `${m.email}_${d}`;
+                          const actief = matrix[key];
+
+                          return (
+                            <td
+                              key={d}
+                              onClick={() => toggle(m.email, d)}
+                              className={`cursor-pointer px-3 py-3 text-center transition ${
+                                actief
+                                  ? "bg-red-100 font-bold text-red-700"
+                                  : "bg-white hover:bg-slate-100"
+                              }`}
+                            >
+                              {actief ? "Afwezig" : ""}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <button
+              onClick={opslaan}
+              className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700"
+            >
+              Opslaan
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
