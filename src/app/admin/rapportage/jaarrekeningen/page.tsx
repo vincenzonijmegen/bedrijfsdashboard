@@ -152,7 +152,7 @@ export default function JaarrekeningenPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <Link
-            href="/admin/rapportage"
+            href="/admin/rapportage/financieel"
             className="text-sm text-blue-700 hover:underline"
           >
             ← Terug naar rapportage
