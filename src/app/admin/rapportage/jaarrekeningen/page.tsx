@@ -6,27 +6,56 @@ import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+type Onderdeel = {
+  id: number;
+  code: "winst_en_verlies" | "balans_activa" | "balans_passiva";
+  naam: string;
+};
+
+type Rubriek = {
+  id: number;
+  onderdeel_id: number;
+  naam: string;
+};
+
 type Regel = {
   id: number;
-  type: "winst_en_verlies" | "balans";
-  sectie: string;
+  rubriek_id: number;
   naam: string;
-  niveau: number;
-  sortering: number;
+  is_totaal: boolean;
   bedragen: Record<string, string | number | null>;
 };
 
 export default function JaarrekeningenPage() {
   const { data, mutate, error } = useSWR("/api/admin/jaarrekeningen", fetcher);
 
-  const [type, setType] = useState<"winst_en_verlies" | "balans">("winst_en_verlies");
+  const [onderdeelCode, setOnderdeelCode] =
+    useState<Onderdeel["code"]>("winst_en_verlies");
+
   const [nieuwJaar, setNieuwJaar] = useState("");
-  const [nieuweRegel, setNieuweRegel] = useState({
-    sectie: "",
+
+  const [nieuweRubriek, setNieuweRubriek] = useState({
     naam: "",
-    niveau: 1,
     sortering: 0,
   });
+
+  const [nieuweRegel, setNieuweRegel] = useState({
+    rubriek_id: "",
+    naam: "",
+    sortering: 0,
+    is_totaal: false,
+  });
+
+  const onderdelen: Onderdeel[] = data?.onderdelen || [];
+  const rubrieken: Rubriek[] = data?.rubrieken || [];
+  const regels: Regel[] = data?.regels || [];
+
+  const actiefOnderdeel = onderdelen.find((o) => o.code === onderdeelCode);
+
+  const zichtbareRubrieken = useMemo(() => {
+    if (!actiefOnderdeel) return [];
+    return rubrieken.filter((r) => r.onderdeel_id === actiefOnderdeel.id);
+  }, [rubrieken, actiefOnderdeel]);
 
   const jaren = useMemo(() => {
     const basis = data?.jaren?.length ? data.jaren : [];
@@ -35,10 +64,6 @@ export default function JaarrekeningenPage() {
       .filter(Boolean)
       .sort((a, b) => a - b);
   }, [data, nieuwJaar]);
-
-  const regels: Regel[] = useMemo(() => {
-    return (data?.regels || []).filter((r: Regel) => r.type === type);
-  }, [data, type]);
 
   async function slaBedragOp(regelId: number, jaar: number, bedrag: string) {
     await fetch("/api/admin/jaarrekeningen", {
@@ -55,22 +80,69 @@ export default function JaarrekeningenPage() {
     mutate();
   }
 
+  async function voegRubriekToe() {
+    if (!actiefOnderdeel || !nieuweRubriek.naam.trim()) return;
+
+    await fetch("/api/admin/jaarrekeningen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actie: "rubriek_toevoegen",
+        onderdeel_id: actiefOnderdeel.id,
+        naam: nieuweRubriek.naam,
+        sortering: nieuweRubriek.sortering,
+      }),
+    });
+
+    setNieuweRubriek({ naam: "", sortering: 0 });
+    mutate();
+  }
+
   async function voegRegelToe() {
-    if (!nieuweRegel.sectie || !nieuweRegel.naam) return;
+    if (!nieuweRegel.rubriek_id || !nieuweRegel.naam.trim()) return;
 
     await fetch("/api/admin/jaarrekeningen", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         actie: "regel_toevoegen",
-        type,
-        ...nieuweRegel,
+        rubriek_id: Number(nieuweRegel.rubriek_id),
+        naam: nieuweRegel.naam,
+        sortering: nieuweRegel.sortering,
+        is_totaal: nieuweRegel.is_totaal,
       }),
     });
 
-    setNieuweRegel({ sectie: "", naam: "", niveau: 1, sortering: 0 });
+    setNieuweRegel({
+      rubriek_id: "",
+      naam: "",
+      sortering: 0,
+      is_totaal: false,
+    });
+
     mutate();
   }
+
+    function getBedragVoorRegel(regel: Regel, jaar: number) {
+    if (!regel.is_totaal) {
+      return regel.bedragen?.[jaar] ?? "";
+    }
+
+    const totaal = regels
+      .filter((r) => r.rubriek_id === regel.rubriek_id && !r.is_totaal)
+      .reduce((som, r) => {
+        const waarde = r.bedragen?.[jaar];
+        const getal =
+          waarde === null || waarde === undefined || waarde === ""
+            ? 0
+            : Number(waarde);
+
+        return som + getal;
+      }, 0);
+
+    return totaal;
+  }
+
 
   if (error) return <div className="p-6 text-red-600">Fout bij laden.</div>;
   if (!data) return <div className="p-6">Laden...</div>;
@@ -79,45 +151,45 @@ export default function JaarrekeningenPage() {
     <div className="min-h-screen bg-slate-100 p-6">
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <Link href="/admin/rapportage" className="text-sm text-blue-700 hover:underline">
+          <Link
+            href="/admin/rapportage"
+            className="text-sm text-blue-700 hover:underline"
+          >
             ← Terug naar rapportage
           </Link>
 
           <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">Jaarrekeningen</h1>
+              <h1 className="text-2xl font-bold text-slate-900">
+                Jaarrekeningen
+              </h1>
               <p className="text-sm text-slate-500">
-                Historische en nieuwe jaren beheren voor W&V en balans.
+                Beheer W&V, balans activa en balans passiva per jaar.
               </p>
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => setType("winst_en_verlies")}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-                  type === "winst_en_verlies"
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-100 text-slate-700"
-                }`}
-              >
-                Winst & verlies
-              </button>
-              <button
-                onClick={() => setType("balans")}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-                  type === "balans"
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-100 text-slate-700"
-                }`}
-              >
-                Balans
-              </button>
+            <div className="flex flex-wrap gap-2">
+              {onderdelen.map((onderdeel) => (
+                <button
+                  key={onderdeel.id}
+                  onClick={() => setOnderdeelCode(onderdeel.code)}
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                    onderdeelCode === onderdeel.code
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
+                >
+                  {onderdeel.naam}
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <label className="text-sm font-semibold text-slate-700">Nieuw jaar tonen/toevoegen</label>
+          <label className="text-sm font-semibold text-slate-700">
+            Nieuw jaar tonen/toevoegen
+          </label>
           <input
             value={nieuwJaar}
             onChange={(e) => setNieuwJaar(e.target.value)}
@@ -130,77 +202,179 @@ export default function JaarrekeningenPage() {
           <table className="min-w-full text-sm">
             <thead className="bg-slate-200">
               <tr>
-                <th className="sticky left-0 z-10 bg-slate-200 px-3 py-2 text-left">Regel</th>
-                <th className="px-3 py-2 text-left">Sectie</th>
+                <th className="sticky left-0 z-10 bg-slate-200 px-3 py-2 text-left">
+                  Rubriek / regel
+                </th>
                 {jaren.map((jaar: number) => (
-                  <th key={jaar} className="px-3 py-2 text-right">{jaar}</th>
+                  <th key={jaar} className="px-3 py-2 text-right">
+                    {jaar}
+                  </th>
                 ))}
               </tr>
             </thead>
+
             <tbody>
-              {regels.map((regel) => (
-                <tr key={regel.id} className="border-t border-slate-200">
-                  <td
-                    className={`sticky left-0 bg-white px-3 py-2 ${
-                      regel.niveau === 0 ? "font-bold italic text-slate-900" : "text-slate-800"
-                    }`}
-                  >
-                    {regel.naam}
-                  </td>
-                  <td className="px-3 py-2 text-slate-500">{regel.sectie}</td>
-                  {jaren.map((jaar: number) => (
-                    <td key={jaar} className="px-3 py-2 text-right">
-                      <input
-                        defaultValue={regel.bedragen?.[jaar] ?? ""}
-                        onBlur={(e) => slaBedragOp(regel.id, jaar, e.target.value)}
-                        className="w-28 rounded-lg border border-slate-300 px-2 py-1 text-right"
-                      />
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {zichtbareRubrieken.map((rubriek) => {
+                const regelsVanRubriek = regels.filter(
+                  (r) => r.rubriek_id === rubriek.id
+                );
+
+                return (
+                  <>
+                    <tr key={`rubriek-${rubriek.id}`} className="bg-slate-50">
+                      <td
+                        colSpan={jaren.length + 1}
+                        className="sticky left-0 px-3 py-3 text-sm font-bold text-slate-900"
+                      >
+                        {rubriek.naam}
+                      </td>
+                    </tr>
+
+                    {regelsVanRubriek.map((regel) => (
+                      <tr key={regel.id} className="border-t border-slate-200">
+                        <td
+                          className={`sticky left-0 bg-white px-3 py-2 ${
+                            regel.is_totaal
+                              ? "font-bold text-slate-900"
+                              : "text-slate-700"
+                          }`}
+                        >
+                          {regel.naam}
+                        </td>
+
+                        {jaren.map((jaar: number) => (
+                          <td key={jaar} className="px-3 py-2 text-right">
+                          {regel.is_totaal ? (
+                            <input
+                              value={getBedragVoorRegel(regel, jaar)}
+                              readOnly
+                              disabled
+                              className="w-28 rounded-lg border border-slate-300 bg-slate-100 px-2 py-1 text-right font-bold text-slate-900"
+                            />
+                          ) : (
+                            <input
+                              defaultValue={regel.bedragen?.[jaar] ?? ""}
+                              onBlur={(e) => slaBedragOp(regel.id, jaar, e.target.value)}
+                              className="w-28 rounded-lg border border-slate-300 px-2 py-1 text-right"
+                            />
+                          )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </>
+                );
+              })}
             </tbody>
           </table>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-lg font-bold text-slate-900">Regel toevoegen</h2>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-4 text-lg font-bold text-slate-900">
+              Rubriek toevoegen
+            </h2>
 
-          <div className="grid gap-3 md:grid-cols-5">
-            <input
-              value={nieuweRegel.sectie}
-              onChange={(e) => setNieuweRegel({ ...nieuweRegel, sectie: e.target.value })}
-              placeholder="Sectie"
-              className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-            />
-            <input
-              value={nieuweRegel.naam}
-              onChange={(e) => setNieuweRegel({ ...nieuweRegel, naam: e.target.value })}
-              placeholder="Naam"
-              className="rounded-xl border border-slate-300 px-3 py-2 text-sm md:col-span-2"
-            />
-            <input
-              type="number"
-              value={nieuweRegel.niveau}
-              onChange={(e) => setNieuweRegel({ ...nieuweRegel, niveau: Number(e.target.value) })}
-              placeholder="Niveau"
-              className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-            />
-            <input
-              type="number"
-              value={nieuweRegel.sortering}
-              onChange={(e) => setNieuweRegel({ ...nieuweRegel, sortering: Number(e.target.value) })}
-              placeholder="Sortering"
-              className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-            />
+            <div className="grid gap-3">
+              <input
+                value={nieuweRubriek.naam}
+                onChange={(e) =>
+                  setNieuweRubriek({ ...nieuweRubriek, naam: e.target.value })
+                }
+                placeholder="Bijv. Omzet, Afschrijvingen, Vaste activa"
+                className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              />
+
+              <input
+                type="number"
+                value={nieuweRubriek.sortering}
+                onChange={(e) =>
+                  setNieuweRubriek({
+                    ...nieuweRubriek,
+                    sortering: Number(e.target.value),
+                  })
+                }
+                placeholder="Sortering"
+                className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              />
+            </div>
+
+            <button
+              onClick={voegRubriekToe}
+              className="mt-4 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+            >
+              Rubriek toevoegen
+            </button>
           </div>
 
-          <button
-            onClick={voegRegelToe}
-            className="mt-4 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-          >
-            Regel toevoegen
-          </button>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-4 text-lg font-bold text-slate-900">
+              Regel toevoegen
+            </h2>
+
+            <div className="grid gap-3">
+              <select
+                value={nieuweRegel.rubriek_id}
+                onChange={(e) =>
+                  setNieuweRegel({
+                    ...nieuweRegel,
+                    rubriek_id: e.target.value,
+                  })
+                }
+                className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="">Kies rubriek</option>
+                {zichtbareRubrieken.map((rubriek) => (
+                  <option key={rubriek.id} value={rubriek.id}>
+                    {rubriek.naam}
+                  </option>
+                ))}
+              </select>
+
+              <input
+                value={nieuweRegel.naam}
+                onChange={(e) =>
+                  setNieuweRegel({ ...nieuweRegel, naam: e.target.value })
+                }
+                placeholder="Bijv. Omzet laag, Huur, Inventaris"
+                className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              />
+
+              <input
+                type="number"
+                value={nieuweRegel.sortering}
+                onChange={(e) =>
+                  setNieuweRegel({
+                    ...nieuweRegel,
+                    sortering: Number(e.target.value),
+                  })
+                }
+                placeholder="Sortering"
+                className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              />
+
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={nieuweRegel.is_totaal}
+                  onChange={(e) =>
+                    setNieuweRegel({
+                      ...nieuweRegel,
+                      is_totaal: e.target.checked,
+                    })
+                  }
+                />
+                Dit is een totaalregel
+              </label>
+            </div>
+
+            <button
+              onClick={voegRegelToe}
+              className="mt-4 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              Regel toevoegen
+            </button>
+          </div>
         </div>
       </div>
     </div>
