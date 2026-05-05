@@ -47,11 +47,11 @@ const jaarrekeningTegels = [
     beschrijving: "Beheer W&V, balans activa en balans passiva per jaar.",
     link: "/admin/rapportage/jaarrekeningen",
   },
-  {
-    titel: "Rapport jaarrekeningen",
-    beschrijving: "Bekijk jaarrekeningen overzichtelijk per jaar en onderdeel.",
-    link: "/admin/rapportage/jaarrekeningen/rapport",
-  },
+{
+  titel: "Meerjarenrapport jaarrekeningen",
+  beschrijving: "Bekijk alle jaren naast elkaar per hoofdrubriek, uitklapbaar naar regels.",
+  link: "/admin/rapportage/jaarrekeningen/meerjaren",
+},
   {
     titel: "Grafieken jaarrekeningen",
     beschrijving: "Analyseer omzet, kosten, winst, vermogen en schulden visueel.",
