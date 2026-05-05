@@ -75,17 +75,15 @@ export default function JaarrekeningenRapportPage() {
   const activaRubrieken = rubriekenVanOnderdeel(onderdeelActiva?.id);
   const passivaRubrieken = rubriekenVanOnderdeel(onderdeelPassiva?.id);
 
-  const omzetTotaal = useMemo(() => {
-    return wvRubrieken
-      .filter((r) => r.naam.toLowerCase().includes("omzet"))
-      .reduce((som, r) => som + rubriekTotaal(r.id), 0);
-  }, [wvRubrieken, regels, gekozenJaar]);
+  const omzetRubriek = wvRubrieken.find(
+  (r) => r.naam.trim().toLowerCase() === "omzet excl. btw"
+);
 
-  const kostenTotaal = useMemo(() => {
-    return wvRubrieken
-      .filter((r) => !r.naam.toLowerCase().includes("omzet"))
-      .reduce((som, r) => som + rubriekTotaal(r.id), 0);
-  }, [wvRubrieken, regels, gekozenJaar]);
+const omzetTotaal = omzetRubriek ? rubriekTotaal(omzetRubriek.id) : 0;
+
+const kostenTotaal = wvRubrieken
+  .filter((r) => r.id !== omzetRubriek?.id)
+  .reduce((som, r) => som + rubriekTotaal(r.id), 0);
 
   const saldoWinst = omzetTotaal - kostenTotaal;
 
