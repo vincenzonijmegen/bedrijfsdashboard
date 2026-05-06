@@ -6,6 +6,8 @@ import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+type Weergave = "bedragen" | "percentages";
+
 type Onderdeel = {
   id: number;
   code: "winst_en_verlies" | "balans_activa" | "balans_passiva";
@@ -40,9 +42,14 @@ function formatEuro(value: number) {
   }).format(value);
 }
 
+function formatPercentage(value: number) {
+  return `${value.toFixed(1)}%`;
+}
+
 export default function MeerjarenJaarrekeningPage() {
   const { data, error } = useSWR("/api/admin/jaarrekeningen", fetcher);
 
+  const [weergave, setWeergave] = useState<Weergave>("bedragen");
   const [openRubrieken, setOpenRubrieken] = useState<Record<number, boolean>>(
     {}
   );
@@ -87,25 +94,54 @@ export default function MeerjarenJaarrekeningPage() {
     (r) => r.naam.trim().toLowerCase() === "omzet excl. btw"
   );
 
+  function omzetVoorJaar(jaar: number) {
+    return omzetRubriek ? rubriekTotaal(omzetRubriek.id, jaar) : 0;
+  }
+
+  function totaalActivaVoorJaar(jaar: number) {
+    return activaRubrieken.reduce((som, r) => som + rubriekTotaal(r.id, jaar), 0);
+  }
+
+  function totaalPassivaVoorJaar(jaar: number) {
+    return passivaRubrieken.reduce(
+      (som, r) => som + rubriekTotaal(r.id, jaar),
+      0
+    );
+  }
+
+  function basisVoorPercentage(
+    jaar: number,
+    percentageBasis: "omzet" | "activa" | "passiva"
+  ) {
+    if (percentageBasis === "activa") return totaalActivaVoorJaar(jaar);
+    if (percentageBasis === "passiva") return totaalPassivaVoorJaar(jaar);
+    return omzetVoorJaar(jaar);
+  }
+
+  function formatWaarde(
+    value: number,
+    jaar: number,
+    percentageBasis: "omzet" | "activa" | "passiva"
+  ) {
+    if (weergave === "bedragen") return formatEuro(value);
+
+    const basis = basisVoorPercentage(jaar, percentageBasis);
+    if (!basis) return "-";
+
+    return formatPercentage((value / basis) * 100);
+  }
+
   const samenvatting = useMemo(() => {
     return jaren.map((jaar) => {
-      const omzet = omzetRubriek ? rubriekTotaal(omzetRubriek.id, jaar) : 0;
+      const omzet = omzetVoorJaar(jaar);
 
       const kosten = wvRubrieken
         .filter((r) => r.id !== omzetRubriek?.id)
         .reduce((som, r) => som + rubriekTotaal(r.id, jaar), 0);
 
       const winst = omzet - kosten;
-
-      const activa = activaRubrieken.reduce(
-        (som, r) => som + rubriekTotaal(r.id, jaar),
-        0
-      );
-
-      const passiva = passivaRubrieken.reduce(
-        (som, r) => som + rubriekTotaal(r.id, jaar),
-        0
-      );
+      const activa = totaalActivaVoorJaar(jaar);
+      const passiva = totaalPassivaVoorJaar(jaar);
 
       return { jaar, omzet, kosten, winst, activa, passiva };
     });
@@ -125,14 +161,40 @@ export default function MeerjarenJaarrekeningPage() {
             ← Terug naar financiële rapportages
           </Link>
 
-          <div className="mt-3">
-            <h1 className="text-2xl font-bold text-slate-900">
-              Meerjarenrapport jaarrekeningen
-            </h1>
-            <p className="text-sm text-slate-500">
-              Alle jaren naast elkaar per hoofdrubriek, uitklapbaar naar
-              onderliggende regels.
-            </p>
+          <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">
+                Meerjarenrapport jaarrekeningen
+              </h1>
+              <p className="text-sm text-slate-500">
+                Alle jaren naast elkaar per hoofdrubriek, uitklapbaar naar
+                onderliggende regels.
+              </p>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setWeergave("bedragen")}
+                className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                  weergave === "bedragen"
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                Bedragen
+              </button>
+
+              <button
+                onClick={() => setWeergave("percentages")}
+                className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                  weergave === "percentages"
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                Percentages
+              </button>
+            </div>
           </div>
         </div>
 
@@ -151,11 +213,47 @@ export default function MeerjarenJaarrekeningPage() {
               </tr>
             </thead>
             <tbody>
-              <SamenvattingRij label="Omzet totaal" jaren={jaren} data={samenvatting} veld="omzet" />
-              <SamenvattingRij label="Kosten totaal" jaren={jaren} data={samenvatting} veld="kosten" />
-              <SamenvattingRij label="Saldo winst" jaren={jaren} data={samenvatting} veld="winst" vet />
-              <SamenvattingRij label="Totaal activa" jaren={jaren} data={samenvatting} veld="activa" />
-              <SamenvattingRij label="Totaal passiva" jaren={jaren} data={samenvatting} veld="passiva" />
+              <SamenvattingRij
+                label="Omzet totaal"
+                jaren={jaren}
+                data={samenvatting}
+                veld="omzet"
+                formatWaarde={formatWaarde}
+                percentageBasis="omzet"
+              />
+              <SamenvattingRij
+                label="Kosten totaal"
+                jaren={jaren}
+                data={samenvatting}
+                veld="kosten"
+                formatWaarde={formatWaarde}
+                percentageBasis="omzet"
+              />
+              <SamenvattingRij
+                label="Saldo winst"
+                jaren={jaren}
+                data={samenvatting}
+                veld="winst"
+                formatWaarde={formatWaarde}
+                percentageBasis="omzet"
+                vet
+              />
+              <SamenvattingRij
+                label="Totaal activa"
+                jaren={jaren}
+                data={samenvatting}
+                veld="activa"
+                formatWaarde={formatWaarde}
+                percentageBasis="activa"
+              />
+              <SamenvattingRij
+                label="Totaal passiva"
+                jaren={jaren}
+                data={samenvatting}
+                veld="passiva"
+                formatWaarde={formatWaarde}
+                percentageBasis="passiva"
+              />
             </tbody>
           </table>
         </div>
@@ -168,6 +266,8 @@ export default function MeerjarenJaarrekeningPage() {
           openRubrieken={openRubrieken}
           toggleRubriek={toggleRubriek}
           rubriekTotaal={rubriekTotaal}
+          formatWaarde={formatWaarde}
+          percentageBasis="omzet"
         />
 
         <MeerjarenBlok
@@ -178,6 +278,8 @@ export default function MeerjarenJaarrekeningPage() {
           openRubrieken={openRubrieken}
           toggleRubriek={toggleRubriek}
           rubriekTotaal={rubriekTotaal}
+          formatWaarde={formatWaarde}
+          percentageBasis="activa"
         />
 
         <MeerjarenBlok
@@ -188,6 +290,8 @@ export default function MeerjarenJaarrekeningPage() {
           openRubrieken={openRubrieken}
           toggleRubriek={toggleRubriek}
           rubriekTotaal={rubriekTotaal}
+          formatWaarde={formatWaarde}
+          percentageBasis="passiva"
         />
       </div>
     </div>
@@ -199,12 +303,20 @@ function SamenvattingRij({
   jaren,
   data,
   veld,
+  formatWaarde,
+  percentageBasis,
   vet = false,
 }: {
   label: string;
   jaren: number[];
   data: Record<string, number>[];
   veld: "omzet" | "kosten" | "winst" | "activa" | "passiva";
+  formatWaarde: (
+    value: number,
+    jaar: number,
+    percentageBasis: "omzet" | "activa" | "passiva"
+  ) => string;
+  percentageBasis: "omzet" | "activa" | "passiva";
   vet?: boolean;
 }) {
   return (
@@ -227,7 +339,7 @@ function SamenvattingRij({
               vet ? "font-bold text-slate-900" : "text-slate-700"
             }`}
           >
-            {formatEuro(waarde)}
+            {formatWaarde(waarde, jaar, percentageBasis)}
           </td>
         );
       })}
@@ -243,6 +355,8 @@ function MeerjarenBlok({
   openRubrieken,
   toggleRubriek,
   rubriekTotaal,
+  formatWaarde,
+  percentageBasis,
 }: {
   titel: string;
   rubrieken: Rubriek[];
@@ -251,6 +365,12 @@ function MeerjarenBlok({
   openRubrieken: Record<number, boolean>;
   toggleRubriek: (rubriekId: number) => void;
   rubriekTotaal: (rubriekId: number, jaar: number) => number;
+  formatWaarde: (
+    value: number,
+    jaar: number,
+    percentageBasis: "omzet" | "activa" | "passiva"
+  ) => string;
+  percentageBasis: "omzet" | "activa" | "passiva";
 }) {
   return (
     <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -299,7 +419,11 @@ function MeerjarenBlok({
                       key={jaar}
                       className="px-4 py-3 text-right font-bold text-slate-900"
                     >
-                      {formatEuro(rubriekTotaal(rubriek.id, jaar))}
+                      {formatWaarde(
+                        rubriekTotaal(rubriek.id, jaar),
+                        jaar,
+                        percentageBasis
+                      )}
                     </td>
                   ))}
                 </tr>
@@ -316,7 +440,11 @@ function MeerjarenBlok({
                           key={jaar}
                           className="bg-slate-50 px-4 py-2 text-right text-slate-700"
                         >
-                          {formatEuro(bedrag(regel, jaar))}
+                          {formatWaarde(
+                            bedrag(regel, jaar),
+                            jaar,
+                            percentageBasis
+                          )}
                         </td>
                       ))}
                     </tr>
