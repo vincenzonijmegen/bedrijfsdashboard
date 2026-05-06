@@ -62,9 +62,9 @@ export default function JaarrekeningGrafiekenPage() {
   const regels: Regel[] = data?.regels || [];
   const jaren: number[] = data?.jaren || [];
 
-  const grafiekData = useMemo(() => {
+  function getWVData() {
     const onderdeelWV = onderdelen.find((o) => o.code === "winst_en_verlies");
-    if (!onderdeelWV) return [];
+    if (!onderdeelWV) return null;
 
     const wvRubrieken = rubrieken.filter(
       (r) => r.onderdeel_id === onderdeelWV.id
@@ -85,6 +85,15 @@ export default function JaarrekeningGrafiekenPage() {
       );
     }
 
+    return { wvRubrieken, omzetRubriek, rubriekTotaal };
+  }
+
+  const grafiekData = useMemo(() => {
+    const wvData = getWVData();
+    if (!wvData) return [];
+
+    const { wvRubrieken, omzetRubriek, rubriekTotaal } = wvData;
+
     return jaren.map((jaar) => {
       const omzet = omzetRubriek ? rubriekTotaal(omzetRubriek.id, jaar) : 0;
 
@@ -101,6 +110,49 @@ export default function JaarrekeningGrafiekenPage() {
         kosten,
         winst,
         winstmarge,
+      };
+    });
+  }, [onderdelen, rubrieken, regels, jaren]);
+
+  const kostenStructuurData = useMemo(() => {
+    const wvData = getWVData();
+    if (!wvData) return [];
+
+    const { wvRubrieken, omzetRubriek, rubriekTotaal } = wvData;
+
+    function totaalVoorRubriekNaam(naam: string, jaar: number) {
+      const rubriek = wvRubrieken.find(
+        (r) => r.naam.trim().toLowerCase() === naam
+      );
+
+      return rubriek ? rubriekTotaal(rubriek.id, jaar) : 0;
+    }
+
+    return jaren.map((jaar) => {
+      const omzet = omzetRubriek ? rubriekTotaal(omzetRubriek.id, jaar) : 0;
+
+      const inkoop = totaalVoorRubriekNaam("inkoopwaarde van de omzet", jaar);
+      const personeel = totaalVoorRubriekNaam("personeelskosten", jaar);
+      const huisvesting = totaalVoorRubriekNaam("huisvestingskosten", jaar);
+
+      const overigeKosten = wvRubrieken
+        .filter(
+          (r) =>
+            r.id !== omzetRubriek?.id &&
+            ![
+              "inkoopwaarde van de omzet",
+              "personeelskosten",
+              "huisvestingskosten",
+            ].includes(r.naam.trim().toLowerCase())
+        )
+        .reduce((som, r) => som + rubriekTotaal(r.id, jaar), 0);
+
+      return {
+        jaar,
+        inkoopPct: omzet ? (inkoop / omzet) * 100 : 0,
+        personeelPct: omzet ? (personeel / omzet) * 100 : 0,
+        huisvestingPct: omzet ? (huisvesting / omzet) * 100 : 0,
+        overigePct: omzet ? (overigeKosten / omzet) * 100 : 0,
       };
     });
   }, [onderdelen, rubrieken, regels, jaren]);
@@ -124,7 +176,8 @@ export default function JaarrekeningGrafiekenPage() {
               Grafieken jaarrekeningen
             </h1>
             <p className="text-sm text-slate-500">
-              Ontwikkeling van omzet, kosten, winst en winstmarge per jaar.
+              Ontwikkeling van omzet, kosten, winst, winstmarge en
+              kostenstructuur per jaar.
             </p>
           </div>
         </div>
@@ -158,7 +211,9 @@ export default function JaarrekeningGrafiekenPage() {
               <LineChart data={grafiekData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="jaar" />
-                <YAxis tickFormatter={(value) => `${Math.round(value / 1000)}k`} />
+                <YAxis
+                  tickFormatter={(value) => `${Math.round(value / 1000)}k`}
+                />
                 <Tooltip
                   formatter={(value) => formatEuro(Number(value))}
                   labelFormatter={(label) => `Jaar ${label}`}
@@ -216,6 +271,59 @@ export default function JaarrekeningGrafiekenPage() {
                   stroke="#7c3aed"
                   strokeWidth={3}
                   dot
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-4 text-lg font-bold text-slate-900">
+            Kostenstructuur als percentage van omzet
+          </h2>
+
+          <div className="h-[380px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={kostenStructuurData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="jaar" />
+                <YAxis tickFormatter={(value) => `${value}%`} />
+                <Tooltip
+                  formatter={(value) => formatPercentage(Number(value))}
+                  labelFormatter={(label) => `Jaar ${label}`}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="inkoopPct"
+                  name="Inkoop %"
+                  stroke="#0f766e"
+                  strokeWidth={3}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="personeelPct"
+                  name="Personeel %"
+                  stroke="#2563eb"
+                  strokeWidth={3}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="huisvestingPct"
+                  name="Huisvesting %"
+                  stroke="#f97316"
+                  strokeWidth={3}
+                  dot={false}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="overigePct"
+                  name="Overige kosten %"
+                  stroke="#64748b"
+                  strokeWidth={3}
+                  dot={false}
                 />
               </LineChart>
             </ResponsiveContainer>
