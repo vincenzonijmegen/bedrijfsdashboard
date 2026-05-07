@@ -64,13 +64,17 @@ function formatStatus(status: string) {
 
 function formatDateTime(value: string | null) {
   if (!value) return "-";
-  return new Date(value).toLocaleString("nl-NL", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+
+  // gesprek_datum is lokale Nederlandse tijd; niet via new Date() halen,
+  // anders krijg je UTC/tijdzone-verschuiving (+2 uur).
+  const clean = String(value).replace("T", " ");
+  const [datePart, timePartRaw = ""] = clean.split(" ");
+  const [yyyy, mm, dd] = datePart.split("-");
+  const timePart = timePartRaw.slice(0, 5);
+
+  if (!yyyy || !mm || !dd) return value;
+
+  return `${dd}-${mm}-${yyyy}${timePart ? ` ${timePart}` : ""}`;
 }
 
 function formatDate(value: string | null) {

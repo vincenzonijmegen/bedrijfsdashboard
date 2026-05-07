@@ -23,6 +23,7 @@ function formatEuro(value: string | number | null | undefined) {
   return new Intl.NumberFormat("nl-NL", {
     style: "currency",
     currency: "EUR",
+    maximumFractionDigits: 0,
   }).format(n);
 }
 
@@ -40,22 +41,18 @@ function formatDecimal(value: string | number | null | undefined) {
 
 function formatDateParts(iso: string) {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) {
-    return { dag: iso, maand: "", weekdag: "" };
-  }
+  if (Number.isNaN(d.getTime())) return { dag: iso, maand: "", weekdag: "" };
 
-  const dag = new Intl.DateTimeFormat("nl-NL", { day: "2-digit" }).format(d);
-  const maand = new Intl.DateTimeFormat("nl-NL", { month: "short" })
-    .format(d)
-    .replace(".", "")
-    .toUpperCase();
-  const weekdag = new Intl.DateTimeFormat("nl-NL", {
-    weekday: "short",
-  })
-    .format(d)
-    .replace(".", "");
-
-  return { dag, maand, weekdag };
+  return {
+    dag: new Intl.DateTimeFormat("nl-NL", { day: "2-digit" }).format(d),
+    maand: new Intl.DateTimeFormat("nl-NL", { month: "short" })
+      .format(d)
+      .replace(".", "")
+      .toUpperCase(),
+    weekdag: new Intl.DateTimeFormat("nl-NL", { weekday: "short" })
+      .format(d)
+      .replace(".", ""),
+  };
 }
 
 function weerIcoon(omschrijving?: string | null) {
@@ -97,22 +94,23 @@ export default function FeestdagOmzetPage() {
 
   const jaren = useMemo(() => {
     const lijst: number[] = [];
-    for (let y = huidigJaar; y >= 2024; y--) {
-      lijst.push(y);
-    }
+    for (let y = huidigJaar; y >= 2024; y--) lijst.push(y);
     return lijst;
   }, [huidigJaar]);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
 
     async function load() {
       try {
         setLoading(true);
         setError(null);
+        setRows([]);
 
         const res = await fetch(`/api/rapportage/feestdagomzet?jaar=${jaar}`, {
           cache: "no-store",
+          signal: controller.signal,
         });
 
         const json = await res.json();
@@ -121,25 +119,25 @@ export default function FeestdagOmzetPage() {
           throw new Error(json?.detail || json?.error || "Onbekende fout");
         }
 
-        if (!cancelled) {
-          setRows(Array.isArray(json) ? json : []);
-        }
+        setRows(Array.isArray(json) ? json : []);
       } catch (e: any) {
-        if (!cancelled) {
-          setRows([]);
+        if (e?.name === "AbortError") {
+          setError("Laden duurt te lang. Mogelijk loopt de API vast op dit jaar.");
+        } else {
           setError(e?.message ?? "Fout bij laden");
         }
+        setRows([]);
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        window.clearTimeout(timeout);
+        setLoading(false);
       }
     }
 
     load();
 
     return () => {
-      cancelled = true;
+      window.clearTimeout(timeout);
+      controller.abort();
     };
   }, [jaar]);
 
@@ -159,192 +157,213 @@ export default function FeestdagOmzetPage() {
     const metMin = rows.filter((r) => r.temp_min !== null && r.temp_min !== undefined);
     const metMax = rows.filter((r) => r.temp_max !== null && r.temp_max !== undefined);
 
-    const avgMin =
-      metMin.length > 0
+    return {
+      avgMin: metMin.length
         ? metMin.reduce((sum, r) => sum + Number(r.temp_min ?? 0), 0) / metMin.length
-        : null;
-
-    const avgMax =
-      metMax.length > 0
+        : null,
+      avgMax: metMax.length
         ? metMax.reduce((sum, r) => sum + Number(r.temp_max ?? 0), 0) / metMax.length
-        : null;
-
-    return { avgMin, avgMax };
+        : null,
+    };
   }, [rows]);
 
   return (
-    <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <Link
-              href="/admin/rapportage/financieel"
-              className="mb-3 inline-flex text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline"
-            >
-              ← Terug naar financieel
-            </Link>
+    <main className="min-h-screen bg-slate-100 p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <Link
+            href="/admin/rapportage/financieel"
+            className="text-sm text-blue-700 hover:underline"
+          >
+            ← Terug naar financiële rapportages
+          </Link>
 
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
-              Feestdagenomzet
-            </h1>
-            <p className="mt-2 text-base text-slate-600">
-              Omzet en bezoekers per feestdag inclusief historische weersituatie.
-            </p>
-          </div>
+          <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">
+                Feestdagenomzet
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Omzet en bezoekers per feestdag inclusief historische weersituatie.
+              </p>
+            </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <select
-              value={jaar}
-              onChange={(e) => setJaar(Number(e.target.value))}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-800 shadow-sm outline-none transition focus:border-blue-400"
-            >
-              {jaren.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Jaar
+              </label>
+              <select
+                value={jaar}
+                onChange={(e) => setJaar(Number(e.target.value))}
+                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+              >
+                {jaren.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
-        <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-xs text-slate-500">Feestdagen</div>
-            <div className="mt-2 text-2xl font-semibold text-slate-900">{rows.length}</div>
-            <div className="mt-1 text-sm text-slate-500">in {jaar}</div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-xs text-slate-500">Totale omzet</div>
-            <div className="mt-2 text-2xl font-semibold text-emerald-700">
-              {formatEuro(totalen.omzet)}
-            </div>
-            <div className="mt-1 text-sm text-slate-500">totaal</div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-xs text-slate-500">Totaal aantal</div>
-            <div className="mt-2 text-2xl font-semibold text-violet-700">
-              {formatInt(totalen.aantal)}
-            </div>
-            <div className="mt-1 text-sm text-slate-500">bezoekers</div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-xs text-slate-500">Gem. temperatuur</div>
-            <div className="mt-2 text-2xl font-semibold text-orange-600">
-              {gemiddeldeTemps.avgMin !== null && gemiddeldeTemps.avgMax !== null
+        <div className="grid gap-4 md:grid-cols-5">
+          <KpiCard titel="Feestdagen" waarde={String(rows.length)} subwaarde={`in ${jaar}`} />
+          <KpiCard
+            titel="Totale omzet"
+            waarde={formatEuro(totalen.omzet)}
+            className="border-emerald-200 bg-emerald-50 text-emerald-900"
+          />
+          <KpiCard
+            titel="Totaal aantal"
+            waarde={formatInt(totalen.aantal)}
+            subwaarde="bezoekers"
+            className="border-violet-200 bg-violet-50 text-violet-900"
+          />
+          <KpiCard
+            titel="Gem. temperatuur"
+            waarde={
+              gemiddeldeTemps.avgMin !== null && gemiddeldeTemps.avgMax !== null
                 ? `${formatDecimal(gemiddeldeTemps.avgMin)}° / ${formatDecimal(
                     gemiddeldeTemps.avgMax
                   )}°`
-                : "—"}
-            </div>
-            <div className="mt-1 text-sm text-slate-500">min / max</div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="text-xs text-slate-500">Totale neerslag</div>
-            <div className="mt-2 text-2xl font-semibold text-sky-600">
-              {formatDecimal(totalen.neerslag)} mm
-            </div>
-            <div className="mt-1 text-sm text-slate-500">totaal</div>
-          </div>
+                : "—"
+            }
+            subwaarde="min / max"
+            className="border-orange-200 bg-orange-50 text-orange-900"
+          />
+          <KpiCard
+            titel="Totale neerslag"
+            waarde={`${formatDecimal(totalen.neerslag)} mm`}
+            className="border-sky-200 bg-sky-50 text-sky-900"
+          />
         </div>
 
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 bg-slate-900 px-6 py-4 text-white">
-            <div className="grid grid-cols-[120px_1.5fr_1fr_0.8fr_1fr_0.8fr_0.8fr_0.9fr] gap-4 text-sm font-semibold">
-              <div>Datum</div>
-              <div>Feestdag</div>
-              <div>Omzet</div>
-              <div>Aantal</div>
-              <div>Weer</div>
-              <div>Min °C</div>
-              <div>Max °C</div>
-              <div>Neerslag</div>
-            </div>
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+            <h2 className="text-lg font-bold text-slate-900">
+              Overzicht feestdagen
+            </h2>
           </div>
 
           {loading ? (
-            <div className="px-6 py-8 text-sm text-slate-500">Gegevens laden...</div>
+            <div className="p-6 text-sm text-slate-500">Gegevens laden...</div>
           ) : error ? (
-            <div className="px-6 py-8 text-sm text-red-600">Fout: {error}</div>
+            <div className="p-6 text-sm text-red-700">{error}</div>
           ) : rows.length === 0 ? (
-            <div className="px-6 py-8 text-sm text-slate-500">Geen gegevens gevonden.</div>
+            <div className="p-6 text-sm text-slate-500">
+              Geen gegevens gevonden.
+            </div>
           ) : (
-            <div className="divide-y divide-slate-200">
-              {rows.map((row, index) => {
-                const datumInfo = formatDateParts(row.dag || row.datum);
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left">Datum</th>
+                    <th className="px-4 py-3 text-left">Feestdag</th>
+                    <th className="px-4 py-3 text-right">Omzet</th>
+                    <th className="px-4 py-3 text-right">Aantal</th>
+                    <th className="px-4 py-3 text-left">Weer</th>
+                    <th className="px-4 py-3 text-right">Min °C</th>
+                    <th className="px-4 py-3 text-right">Max °C</th>
+                    <th className="px-4 py-3 text-right">Neerslag</th>
+                  </tr>
+                </thead>
 
-                return (
-                  <div
-                    key={`${row.dag}-${row.naam}-${index}`}
-                    className="grid grid-cols-[120px_1.5fr_1fr_0.8fr_1fr_0.8fr_0.8fr_0.9fr] gap-4 px-6 py-3 transition hover:bg-slate-50"
-                  >
-                    <div className="flex items-center">
-                      <div className="inline-flex min-w-[68px] flex-col items-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                        <div className="w-full bg-blue-600 px-2 py-1 text-center text-[11px] font-bold tracking-wide text-white">
-                          {datumInfo.maand}
-                        </div>
-                        <div className="px-2 pt-2 text-xl font-semibold leading-none text-slate-900">
-                          {datumInfo.dag}
-                        </div>
-                        <div className="px-2 pb-2 pt-1 text-[11px] text-slate-500">
-                          {datumInfo.weekdag}
-                        </div>
-                      </div>
-                    </div>
+                <tbody>
+                  {rows.map((row, index) => {
+                    const datumInfo = formatDateParts(row.dag || row.datum);
 
-                    <div className="flex items-center">
-                      <div className="text-base font-semibold text-slate-900">
-                        {row.feestdag || row.naam}
-                      </div>
-                    </div>
+                    return (
+                      <tr
+                        key={`${row.dag}-${row.naam}-${index}`}
+                        className="border-t border-slate-200 hover:bg-slate-50"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="inline-flex min-w-[68px] flex-col items-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+                            <div className="w-full bg-blue-600 px-2 py-1 text-center text-[11px] font-bold tracking-wide text-white">
+                              {datumInfo.maand}
+                            </div>
+                            <div className="px-2 pt-2 text-xl font-bold leading-none text-slate-900">
+                              {datumInfo.dag}
+                            </div>
+                            <div className="px-2 pb-2 pt-1 text-[11px] text-slate-500">
+                              {datumInfo.weekdag}
+                            </div>
+                          </div>
+                        </td>
 
-                    <div className="flex items-center">
-                      <div className="text-lg font-semibold text-slate-900">
-                        {formatEuro(row.omzet)}
-                      </div>
-                    </div>
+                        <td className="px-4 py-3 font-semibold text-slate-900">
+                          {row.feestdag || row.naam}
+                        </td>
 
-                    <div className="flex items-center">
-                      <div className="text-lg font-semibold text-slate-900">
-                        {formatInt(row.aantal)}
-                      </div>
-                    </div>
+                        <td className="px-4 py-3 text-right text-lg font-bold text-slate-900">
+                          {formatEuro(row.omzet)}
+                        </td>
 
-                    <div className="flex items-center">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{weerIcoon(row.weer_omschrijving)}</span>
-                        <div className="text-sm text-slate-700">
-                          {row.weer_omschrijving || "—"}
-                        </div>
-                      </div>
-                    </div>
+                        <td className="px-4 py-3 text-right font-semibold text-slate-900">
+                          {formatInt(row.aantal)}
+                        </td>
 
-                    <div className="flex items-center text-lg font-semibold text-sky-500">
-                      {row.temp_min == null ? "—" : `${formatDecimal(row.temp_min)}°`}
-                    </div>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{weerIcoon(row.weer_omschrijving)}</span>
+                            <span className="text-slate-700">
+                              {row.weer_omschrijving || "—"}
+                            </span>
+                          </div>
+                        </td>
 
-                    <div className="flex items-center text-lg font-semibold text-orange-400">
-                      {row.temp_max == null ? "—" : `${formatDecimal(row.temp_max)}°`}
-                    </div>
+                        <td className="px-4 py-3 text-right font-semibold text-sky-600">
+                          {row.temp_min == null ? "—" : `${formatDecimal(row.temp_min)}°`}
+                        </td>
 
-                    <div className="flex items-center text-base font-semibold text-blue-600">
-                      {row.neerslag_mm == null ? "—" : `${formatDecimal(row.neerslag_mm)} mm`}
-                    </div>
-                  </div>
-                );
-              })}
+                        <td className="px-4 py-3 text-right font-semibold text-orange-600">
+                          {row.temp_max == null ? "—" : `${formatDecimal(row.temp_max)}°`}
+                        </td>
+
+                        <td className="px-4 py-3 text-right font-semibold text-blue-600">
+                          {row.neerslag_mm == null
+                            ? "—"
+                            : `${formatDecimal(row.neerslag_mm)} mm`}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
 
-        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-600">
-          Weergegevens afkomstig van Open-Meteo (historisch). Temperaturen in °C,
-          neerslag in mm.
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+          Weergegevens afkomstig van Open-Meteo. Temperaturen in °C, neerslag in mm.
         </div>
       </div>
     </main>
+  );
+}
+
+function KpiCard({
+  titel,
+  waarde,
+  subwaarde,
+  className = "",
+}: {
+  titel: string;
+  waarde: string;
+  subwaarde?: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border p-5 shadow-sm ${
+        className || "border-slate-200 bg-white text-slate-900"
+      }`}
+    >
+      <p className="text-sm font-medium opacity-70">{titel}</p>
+      <p className="mt-2 text-2xl font-bold">{waarde}</p>
+      {subwaarde && <p className="mt-1 text-sm font-medium opacity-80">{subwaarde}</p>}
+    </div>
   );
 }

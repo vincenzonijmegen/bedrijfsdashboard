@@ -60,20 +60,21 @@ function getJaarVoorFeestdagen(data: any) {
     data?.aangemaakt_op ||
     new Date().toISOString();
 
-  return new Date(basis).getFullYear();
+  return Number(String(basis).slice(0, 4)) || new Date().getFullYear();
 }
 
 function formatDateTimeNl(value: string | null) {
   if (!value) return "";
-  const d = new Date(value);
 
-  return d.toLocaleString("nl-NL", {
-    day: "numeric",
-    month: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  // Bewust geen new Date(), want gesprek_datum is lokale Nederlandse tijd.
+  const clean = String(value).replace("T", " ");
+  const [datePart, timePartRaw = ""] = clean.split(" ");
+  const [yyyy, mm, dd] = datePart.split("-");
+  const timePart = timePartRaw.slice(0, 5);
+
+  if (!yyyy || !mm || !dd) return value;
+
+  return `${Number(dd)}-${Number(mm)}-${yyyy}${timePart ? ` ${timePart}` : ""}`;
 }
 
 function groepeerFeestdagen(rows: { naam: string; datum: string }[]) {
