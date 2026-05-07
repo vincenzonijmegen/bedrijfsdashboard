@@ -177,25 +177,37 @@ export default function DagrapportenPage() {
                     </thead>
 
                     <tbody>
-                      {rapport.omzet_per_uur_json.map(
-                        (
-                          item: {
-                            uur: string;
-                            omzet: number;
-                          },
-                          index: number
-                        ) => (
+                      {(() => {
+                        const omzetUren = rapport.omzet_per_uur_json as {
+                          uur: string;
+                          omzet: number;
+                        }[];
+
+                        const maxOmzet = Math.max(
+                          ...omzetUren.map((item) => Number(item.omzet || 0)),
+                          0
+                        );
+
+                        return omzetUren.map((item, index: number) => (
                           <tr
                             key={index}
                             className="border-t border-slate-200"
+                            style={{
+                              backgroundColor:
+                                maxOmzet > 0
+                                  ? `rgba(37, 99, 235, ${
+                                      0.08 + (Number(item.omzet || 0) / maxOmzet) * 0.22
+                                    })`
+                                  : undefined,
+                            }}
                           >
                             <td className="px-3 py-2">{item.uur}</td>
                             <td className="px-3 py-2 text-right">
                               {formatEuro(item.omzet)}
                             </td>
                           </tr>
-                        )
-                      )}
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>
