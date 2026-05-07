@@ -202,6 +202,163 @@ export default function DagrapportenPage() {
               </div>
             )}
 
+            {Array.isArray(rapport.haccp_json) && (
+  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <h2 className="mb-4 text-lg font-bold text-slate-900">
+      HACCP routines
+    </h2>
+
+    <div className="space-y-4">
+      {rapport.haccp_json.map((routine: any, index: number) => (
+        <div
+          key={index}
+          className="rounded-xl border border-slate-200 p-4"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-semibold text-slate-900">
+                {routine.routineNaam}
+              </h3>
+
+              <p className="text-sm text-slate-500">
+                {routine.gedaanTaken} / {routine.totaalTaken} afgerond
+              </p>
+            </div>
+
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                routine.compleet
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-red-100 text-red-700"
+              }`}
+            >
+              {routine.compleet ? "Compleet" : "Incompleet"}
+            </span>
+          </div>
+
+          {!routine.compleet && (
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-semibold text-slate-700">
+                Openstaande taken
+              </p>
+
+              <div className="space-y-1">
+                {routine.taken
+                  .filter((taak: any) => !taak.afgetekend)
+                  .map((taak: any, taakIndex: number) => (
+                    <div
+                      key={taakIndex}
+                      className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+                    >
+                      {taak.taakNaam}
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+{Array.isArray(rapport.productie_json) &&
+  rapport.productie_json.length > 0 && (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 className="mb-4 text-lg font-bold text-slate-900">
+        Productie
+      </h2>
+
+      <div className="space-y-4">
+        {rapport.productie_json.map((categorie: any, index: number) => (
+          <div
+            key={index}
+            className="rounded-xl border border-slate-200 p-4"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-semibold text-slate-900">
+                {categorie.categorie}
+              </h3>
+
+              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                {categorie.totaal} totaal
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              {categorie.items.map((item: any, itemIndex: number) => (
+                <div
+                  key={itemIndex}
+                  className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm"
+                >
+                  <span>{item.naam}</span>
+                  <span className="font-semibold">
+                    {item.aantal}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+)}
+
+{Array.isArray(rapport.rotaties_json) &&
+  rapport.rotaties_json.length > 0 && (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 className="mb-4 text-lg font-bold text-slate-900">
+        Laatste rotaties
+      </h2>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead className="bg-slate-100">
+            <tr>
+              <th className="px-3 py-2 text-left">Datum</th>
+              <th className="px-3 py-2 text-left">Rotatie</th>
+              <th className="px-3 py-2 text-left">Taak</th>
+              <th className="px-3 py-2 text-left">Afgetekend door</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {rapport.rotaties_json.map(
+              (rotatie: any, index: number) => (
+                <tr
+                  key={index}
+                  className="border-t border-slate-200"
+                >
+                  <td className="px-3 py-2">
+                    {rotatie.datum}
+                  </td>
+
+                  <td className="px-3 py-2">
+                    {rotatie.rotatieNaam}
+                  </td>
+
+                  <td className="px-3 py-2">
+                    {rotatie.taakNaam}
+                  </td>
+
+                  <td className="px-3 py-2">
+                    {rotatie.afgetekendDoorNaam || "-"}
+                  </td>
+                </tr>
+              )
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+)}
+
+
+
+
+
+
+
             {rapport.html && (
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h2 className="mb-4 text-lg font-bold text-slate-900">
