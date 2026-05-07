@@ -455,17 +455,69 @@ export async function GET(req: NextRequest) {
       afgetekendOp: row.afgetekend_op,
     }));
 
+    
 
-    return NextResponse.json({
-      success: true,
-      datum,
-      dagomzet,
-      weer,
-      omzetPerUur,
-      haccp,
-      productie,
-      rotaties,
-    });
+const rapportData = {
+  datum,
+  dagomzet,
+  weer,
+  omzetPerUur,
+  haccp,
+  productie,
+  rotaties,
+};
+
+await db.query(
+  `
+  INSERT INTO dagrapporten (
+    datum,
+    dagomzet,
+    weer_json,
+    omzet_per_uur_json,
+    haccp_json,
+    productie_json,
+    rotaties_json,
+    rapport_json,
+    bijgewerkt_op
+  )
+  VALUES (
+    $1::date,
+    $2,
+    $3::jsonb,
+    $4::jsonb,
+    $5::jsonb,
+    $6::jsonb,
+    $7::jsonb,
+    $8::jsonb,
+    NOW()
+  )
+  ON CONFLICT (datum)
+  DO UPDATE SET
+    dagomzet = EXCLUDED.dagomzet,
+    weer_json = EXCLUDED.weer_json,
+    omzet_per_uur_json = EXCLUDED.omzet_per_uur_json,
+    haccp_json = EXCLUDED.haccp_json,
+    productie_json = EXCLUDED.productie_json,
+    rotaties_json = EXCLUDED.rotaties_json,
+    rapport_json = EXCLUDED.rapport_json,
+    bijgewerkt_op = NOW()
+  `,
+  [
+    datum,
+    dagomzet,
+    JSON.stringify(weer),
+    JSON.stringify(omzetPerUur),
+    JSON.stringify(haccp),
+    JSON.stringify(productie),
+    JSON.stringify(rotaties),
+    JSON.stringify(rapportData),
+  ]
+);
+
+return NextResponse.json({
+  success: true,
+  ...rapportData,
+});
   } catch (error) {
     return NextResponse.json(
       {
