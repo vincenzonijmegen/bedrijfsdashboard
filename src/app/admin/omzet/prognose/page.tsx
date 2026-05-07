@@ -2,6 +2,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 
 const maandNamen = [
   "maart",
@@ -14,12 +15,12 @@ const maandNamen = [
 ];
 
 interface MaandData {
-  maand: number;                 // 1..12 (bij jullie 3..9)
-  prognoseOmzet: number;         // geplande omzet voor de hele maand
-  prognoseDagen: number;         // geplande dagen in de maand
-  prognosePerDag: number;        // geplande omzet per dag
-  realisatieOmzet: number;       // realisatie t/m vandaag (als maand lopend is), of totale realisatie (als maand voltooid is)
-  realisatieDagen: number;       // gerealiseerde dagen t/m vandaag
+  maand: number;
+  prognoseOmzet: number;
+  prognoseDagen: number;
+  prognosePerDag: number;
+  realisatieOmzet: number;
+  realisatieDagen: number;
   realisatiePerDag: number | null;
   todoOmzet: number;
   todoDagen: number;
@@ -31,19 +32,34 @@ interface MaandData {
   cumulatiefRealisatie: number;
   voorAchterInDagen: number | null;
   procentueel: number | null;
-  jrPrognoseObvTotNu: number;    // niet gebruikt in rendering hieronder
+  jrPrognoseObvTotNu: number;
 }
 
 interface LoonkostenItem {
   jaar: number;
-  maand: number; // 3..9
+  maand: number;
   lonen: number;
   loonheffing: number;
   pensioenpremie: number;
 }
 
 const thisYear = new Date().getFullYear();
-const years = Array.from({ length: thisYear - 2022 + 1 }, (_, i) => thisYear - i);
+const years = Array.from(
+  { length: thisYear - 2022 + 1 },
+  (_, i) => thisYear - i
+);
+
+function formatEuro(value: number) {
+  return new Intl.NumberFormat("nl-NL", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatNumber(value: number) {
+  return value.toLocaleString("nl-NL", { maximumFractionDigits: 0 });
+}
 
 export default function PrognosePage() {
   const [selectedYear, setSelectedYear] = useState<number>(thisYear);
@@ -54,20 +70,16 @@ export default function PrognosePage() {
   const [loonkosten, setLoonkosten] = useState<LoonkostenItem[]>([]);
 
   useEffect(() => {
-    // Analyse voor gekozen jaar
     fetch(`/api/prognose/analyse?jaar=${selectedYear}`)
       .then((res) => res.json())
       .then((res) => {
         setData(res.resultaten ?? []);
         setJaaromzet(Number(res.jaaromzet ?? 0));
-        if (typeof res.vorigJaarOmzet === "number") {
-          setVorigJaarOmzet(res.vorigJaarOmzet);
-        } else {
-          setVorigJaarOmzet(0);
-        }
+        setVorigJaarOmzet(
+          typeof res.vorigJaarOmzet === "number" ? res.vorigJaarOmzet : 0
+        );
       });
 
-    // Loonkosten voor gekozen jaar (normaliseer response naar array)
     fetch(`/api/rapportage/loonkosten?jaar=${selectedYear}`)
       .then((res) => res.json())
       .then((res) => {
@@ -93,10 +105,9 @@ export default function PrognosePage() {
   }, [selectedYear]);
 
   const getLoonkosten = (maand: number) => {
-    const item = (Array.isArray(loonkosten) ? loonkosten : []).find(
-      (l) => Number(l.maand) === Number(maand)
-    );
+    const item = loonkosten.find((l) => Number(l.maand) === Number(maand));
     if (!item) return 0;
+
     return (
       Number(item.lonen) +
       Number(item.loonheffing) +
@@ -109,65 +120,86 @@ export default function PrognosePage() {
     return omzet > 0 ? (totaal / omzet) * 100 : 0;
   };
 
-  const totalRealisatieOmzet = data.reduce((sum, m) => sum + m.realisatieOmzet, 0);
-  const totalRealisatieDagen = data.reduce((sum, m) => sum + m.realisatieDagen, 0);
-  const totalPrognoseDagen = data.reduce((sum, m) => sum + m.prognoseDagen, 0);
-  const omzetPercent = jaaromzet > 0 ? Math.round((totalRealisatieOmzet / jaaromzet) * 100) : 0;
-  const dagenPercent = totalPrognoseDagen > 0 ? Math.round((totalRealisatieDagen / totalPrognoseDagen) * 100) : 0;
+  const totalRealisatieOmzet = data.reduce(
+    (sum, m) => sum + m.realisatieOmzet,
+    0
+  );
+  const totalRealisatieDagen = data.reduce(
+    (sum, m) => sum + m.realisatieDagen,
+    0
+  );
+  const totalPrognoseDagen = data.reduce(
+    (sum, m) => sum + m.prognoseDagen,
+    0
+  );
+
+  const omzetPercent =
+    jaaromzet > 0 ? Math.round((totalRealisatieOmzet / jaaromzet) * 100) : 0;
+
+  const dagenPercent =
+    totalPrognoseDagen > 0
+      ? Math.round((totalRealisatieDagen / totalPrognoseDagen) * 100)
+      : 0;
+
+  const verschilMetVorigJaar =
+    vorigJaarOmzet > 0 ? jaaromzet - vorigJaarOmzet : 0;
 
   const isHeaderLabel = (label: string) =>
-    ["PROGNOSE", "REALISATIE", "TO-DO", "PROGNOSES", "LONEN"].includes(label.toUpperCase());
+    ["PROGNOSE", "REALISATIE", "TO-DO", "PROGNOSES", "LONEN"].includes(
+      label.toUpperCase()
+    );
 
-  // =========================
-  // PROGNOSE O.B.V. OMZET TO DATE (per maandkolom)
-  // =========================
   const now = new Date();
   const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1; // 1..12
+  const currentMonth = now.getMonth() + 1;
 
-  // Snelhelpers
   const sumRealisatieTmt = (maand: number) =>
-    data.filter(x => x.maand <= maand).reduce((s, x) => s + (x.realisatieOmzet ?? 0), 0);
+    data
+      .filter((x) => x.maand <= maand)
+      .reduce((s, x) => s + (x.realisatieOmzet ?? 0), 0);
 
   const sumPrognoseNa = (maand: number) =>
-    data.filter(x => x.maand > maand).reduce((s, x) => s + (x.prognoseOmzet ?? 0), 0);
+    data
+      .filter((x) => x.maand > maand)
+      .reduce((s, x) => s + (x.prognoseOmzet ?? 0), 0);
 
   const projTodayForCurrentMonth = (() => {
-    if (selectedYear !== currentYear) {
-      // Voor niet-huidige jaren geen "to date"-projectie
-      return null;
-    }
-    const cur = data.find(x => x.maand === currentMonth);
+    if (selectedYear !== currentYear) return null;
+
+    const cur = data.find((x) => x.maand === currentMonth);
     const realizedUntilPrev = sumRealisatieTmt(currentMonth - 1);
     const realizedToDateThisMonth = cur?.realisatieOmzet ?? 0;
-    const remainingDays = Math.max(0, (cur?.prognoseDagen ?? 0) - (cur?.realisatieDagen ?? 0));
+    const remainingDays = Math.max(
+      0,
+      (cur?.prognoseDagen ?? 0) - (cur?.realisatieDagen ?? 0)
+    );
     const perDag = cur?.prognosePerDag ?? 0;
     const restOfThisMonth = remainingDays * perDag;
     const restOfYearAfterThisMonth = sumPrognoseNa(currentMonth);
-    return realizedUntilPrev + realizedToDateThisMonth + restOfThisMonth + restOfYearAfterThisMonth;
+
+    return (
+      realizedUntilPrev +
+      realizedToDateThisMonth +
+      restOfThisMonth +
+      restOfYearAfterThisMonth
+    );
   })();
 
-  // Let op: map met number | null, zodat we lege cellen kunnen tonen
   const prognoseObvToDateByMonth = new Map<number, number | null>();
+
   for (const m of data) {
     let val: number | null = 0;
 
     if (selectedYear < currentYear) {
-      // Verleden jaar → per kolom as-of einde van die maand
       val = sumRealisatieTmt(m.maand) + sumPrognoseNa(m.maand);
     } else if (selectedYear > currentYear) {
-      // Toekomstig jaar → leeg laten
       val = null;
     } else {
-      // Huidig jaar
       if (m.maand < currentMonth) {
-        // Voltooide maand: realisatie t/m die maand + geplande rest
         val = sumRealisatieTmt(m.maand) + sumPrognoseNa(m.maand);
       } else if (m.maand === currentMonth) {
-        // Lopende maand: realisatie to_date + (prognosePerDag × resterende dagen) + geplande rest van het jaar
         val = projTodayForCurrentMonth ?? null;
       } else {
-        // Toekomstige maanden in huidig jaar → leeg
         val = null;
       }
     }
@@ -191,181 +223,300 @@ export default function PrognosePage() {
     ["omzet/dag", (m) => m.todoPerDag],
     ["PROGNOSES", () => null],
     ["prognose obv huidig", (m) => m.prognoseHuidig],
-    // Jouw gevraagde berekening; toekomstige maanden nu leeg:
-    ["prognose obv omzet to date", (m) => prognoseObvToDateByMonth.get(m.maand) ?? null],
+    [
+      "prognose obv omzet to date",
+      (m) => prognoseObvToDateByMonth.get(m.maand) ?? null,
+    ],
     ["LONEN", () => null],
     ["Loonkosten", (m) => Number(getLoonkosten(m.maand))],
     ["% van omzet", (m) => getLoonkostenPercentage(m.maand, m.realisatieOmzet)],
   ];
 
   return (
-    <main className="p-6">
-      <a
-        href="/admin/rapportage/financieel"
-        className="text-sm underline text-blue-600 block mb-4"
-      >
-        ← Financiële Rapportages
-      </a>
+    <main className="min-h-screen bg-slate-100 p-6">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <Link
+            href="/admin/rapportage/financieel"
+            className="text-sm text-blue-700 hover:underline"
+          >
+            ← Terug naar financiële rapportages
+          </Link>
 
-      {/* Jaarselector */}
-      <div className="mb-4">
-        <label className="mr-2 text-sm text-gray-600">Jaar:</label>
-        <select
-          className="border rounded px-2 py-1"
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(Number(e.target.value))}
-        >
-          {years.map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </select>
-      </div>
+          <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-900">
+                Omzetprognose
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Prognose, realisatie, resterende omzet en loonkosten per maand.
+              </p>
+            </div>
 
-      <h1 className="text-2xl font-bold mb-6">Omzetprognose overzicht</h1>
-      <p className="mb-4 text-gray-600">
-        Prognose jaaromzet:&nbsp;
-        <strong>
-          € {jaaromzet.toLocaleString("nl-NL", { maximumFractionDigits: 0 })}
-        </strong>
-        {vorigJaarOmzet > 0 && (
-          <span className="text-gray-500">
-            {" "}
-            (Omzet vorig jaar: €{" "}
-            {vorigJaarOmzet.toLocaleString("nl-NL", {
-              maximumFractionDigits: 0,
-            })}
-            )
-          </span>
-        )}
-      </p>
-      <div className="overflow-auto">
-        <table className="table-auto border border-collapse w-full text-sm">
-          <tbody>
-            {rows.map(([label, fn], rowIdx) => (
-              <tr
-                key={label}
-                className={isHeaderLabel(label) ? "bg-gray-200" : "border-t"}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">
+                Jaar
+              </label>
+              <select
+                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
               >
-                <td
-                  className={`px-2 py-1 text-left whitespace-nowrap ${
-                    isHeaderLabel(label) ? "font-bold" : "font-medium"
-                  }`}
-                >
-                  {label}
-                </td>
-                {data.map((m) => {
-                  const raw = fn(m);
-                  let display = "";
-                  if (isHeaderLabel(label)) display = maandNamen[m.maand - 3];
-                  else if (raw === null) display = "";   // alleen null verbergen, 0 gewoon tonen
-                  else if (label === "dagen")
-                    display = Math.round(raw).toLocaleString("nl-NL");
-                  else if (label === "voor/achter in dagen")
-                    display = (raw as number).toLocaleString("nl-NL", {
-                      minimumFractionDigits: 1,
-                      maximumFractionDigits: 1,
-                    });
-                  else if (label === "% van omzet")
-                    display = (raw as number).toFixed(1) + "%";
-                  else
-                    display = (raw as number).toLocaleString("nl-NL", {
-                      maximumFractionDigits: 0,
-                    });
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
 
-                  let cellClass = "px-2 py-1 text-right font-mono border";
-                  if (isHeaderLabel(label))
-                    cellClass = "px-2 py-1 text-right font-bold border";
-                  if (label === "omzet/dag" && rowIdx === 7 && raw !== null)
-                    cellClass +=
-                      (raw as number) > (m.prognosePerDag || 0)
-                        ? " bg-green-100"
-                        : " bg-red-100";
-                  if (label === "prognose plusmin" && raw !== null)
-                    cellClass += (raw as number) > 0
-                      ? " bg-green-100"
-                      : " bg-red-100";
-                  if (label === "% van omzet" && raw !== null && (raw as number) > 25)
-                    cellClass += " bg-red-100";
+        <div className="grid gap-4 md:grid-cols-4">
+          <KpiCard
+            titel="Prognose jaaromzet"
+            waarde={formatEuro(jaaromzet)}
+            className="border-blue-200 bg-blue-50 text-blue-900"
+          />
+          <KpiCard
+            titel="Realisatie tot nu"
+            waarde={formatEuro(totalRealisatieOmzet)}
+            subwaarde={`${omzetPercent}% van jaarprognose`}
+            className="border-emerald-200 bg-emerald-50 text-emerald-900"
+          />
+          <KpiCard
+            titel="Dagen gerealiseerd"
+            waarde={`${totalRealisatieDagen} / ${totalPrognoseDagen}`}
+            subwaarde={`${dagenPercent}% van geplande dagen`}
+            className="border-slate-200 bg-white text-slate-900"
+          />
+          <KpiCard
+            titel="Vorig jaar"
+            waarde={vorigJaarOmzet > 0 ? formatEuro(vorigJaarOmzet) : "-"}
+            subwaarde={
+              vorigJaarOmzet > 0
+                ? `${verschilMetVorigJaar >= 0 ? "+" : ""}${formatEuro(
+                    verschilMetVorigJaar
+                  )} verschil`
+                : undefined
+            }
+            className={
+              verschilMetVorigJaar >= 0
+                ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                : "border-red-200 bg-red-50 text-red-900"
+            }
+          />
+        </div>
 
-                  if (label === "Loonkosten") {
-                    const item = loonkosten.find((l) => l.maand === m.maand);
-                    const incompleet =
-                      item &&
-                      (Number(item.lonen) === 0 ||
-                        Number(item.loonheffing) === 0 ||
-                        Number(item.pensioenpremie) === 0);
-                    if (incompleet) display += " 🔴";
-                  }
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">
+                Maandoverzicht
+              </h2>
+              <p className="text-sm text-slate-500">
+                Cijfers per maand met totalen aan de rechterzijde.
+              </p>
+            </div>
 
-                  return (
-                    <td key={m.maand + label} className={cellClass}>
-                      {display}
+            <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">
+              Gedaan: {omzetPercent}% omzet in {dagenPercent}% van de dagen
+            </div>
+          </div>
+
+          <div className="overflow-auto rounded-xl border border-slate-200">
+            <table className="min-w-full border-collapse text-sm">
+              <tbody>
+                {rows.map(([label, fn], rowIdx) => (
+                  <tr
+                    key={`${label}-${rowIdx}`}
+                    className={isHeaderLabel(label) ? "bg-slate-200" : ""}
+                  >
+                    <td
+                      className={`sticky left-0 z-10 border-b border-slate-200 px-3 py-2 text-left whitespace-nowrap ${
+                        isHeaderLabel(label)
+                          ? "bg-slate-200 font-bold text-slate-900"
+                          : "bg-white font-medium text-slate-700"
+                      }`}
+                    >
+                      {label}
                     </td>
-                  );
-                })}
-                <td className="px-2 py-1 text-right font-bold border">
-                  {label === "omzet"
-                    ? "€ " +
-                      data
-                        .reduce((sum, m) => sum + (fn(m) || 0), 0)
-                        .toLocaleString("nl-NL", { maximumFractionDigits: 0 })
-                    : label === "dagen"
-                    ? data
-                        .reduce((sum, m) => sum + (fn(m) || 0), 0)
-                        .toLocaleString("nl-NL")
-                    : label === "omzet/dag"
-                    ? (() => {
-                        let totOm = 0;
-                        let totDg = 0;
-                        if (rowIdx <= 3) {
-                          totOm = data.reduce((s, m) => s + m.prognoseOmzet, 0);
-                          totDg = data.reduce((s, m) => s + m.prognoseDagen, 0);
-                        } else if (rowIdx <= 7) {
-                          totOm = data.reduce((s, m) => s + m.realisatieOmzet, 0);
-                          totDg = data.reduce((s, m) => s + m.realisatieDagen, 0);
-                        } else if (rowIdx <= 12) {
-                          totOm = data.reduce((s, m) => s + m.todoOmzet, 0);
-                          totDg = data.reduce((s, m) => s + m.todoDagen, 0);
-                        } else return "";
-                        return totDg > 0
-                          ? Math.round(totOm / totDg).toLocaleString("nl-NL")
-                          : "";
-                      })()
-                    : label === "Loonkosten"
-                    ? "€ " +
-                      data
-                        .reduce((sum, m) => sum + Number(getLoonkosten(m.maand)), 0)
-                        .toLocaleString("nl-NL", { maximumFractionDigits: 0 })
-                    : label === "% van omzet"
-                    ? (() => {
-                        const totaalLoon = data.reduce(
-                          (s, m) => s + getLoonkosten(m.maand),
-                          0
-                        );
-                        const totaalOmzet = data.reduce(
-                          (s, m) => s + m.realisatieOmzet,
-                          0
-                        );
-                        return totaalOmzet > 0
-                          ? ((totaalLoon / totaalOmzet) * 100).toFixed(1) + "%"
-                          : "";
-                      })()
-                    : ""}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
 
-      <div className="mt-4 text-sm">
-        <p>
-          Gedaan <strong>{omzetPercent}%</strong> van de omzet in{" "}
-          <strong>{dagenPercent}%</strong> van de dagen
-        </p>
+                    {data.map((m) => {
+                      const raw = fn(m);
+                      let display = "";
+
+                      if (isHeaderLabel(label)) {
+                        display = maandNamen[m.maand - 3];
+                      } else if (raw === null) {
+                        display = "";
+                      } else if (label === "dagen") {
+                        display = Math.round(raw).toLocaleString("nl-NL");
+                      } else if (label === "voor/achter in dagen") {
+                        display = raw.toLocaleString("nl-NL", {
+                          minimumFractionDigits: 1,
+                          maximumFractionDigits: 1,
+                        });
+                      } else if (label === "% van omzet") {
+                        display = raw.toFixed(1) + "%";
+                      } else {
+                        display = formatNumber(raw);
+                      }
+
+                      let cellClass =
+                        "border-b border-l border-slate-200 px-3 py-2 text-right font-mono text-slate-700";
+
+                      if (isHeaderLabel(label)) {
+                        cellClass =
+                          "border-b border-l border-slate-300 bg-slate-200 px-3 py-2 text-right font-bold text-slate-900";
+                      }
+
+                      if (
+                        label === "omzet/dag" &&
+                        rowIdx === 7 &&
+                        raw !== null
+                      ) {
+                        cellClass +=
+                          raw > (m.prognosePerDag || 0)
+                            ? " bg-emerald-50 text-emerald-800"
+                            : " bg-red-50 text-red-800";
+                      }
+
+                      if (
+                        label === "% van omzet" &&
+                        raw !== null &&
+                        raw > 25
+                      ) {
+                        cellClass += " bg-red-50 text-red-800";
+                      }
+
+                      if (label === "Loonkosten") {
+                        const item = loonkosten.find(
+                          (l) => l.maand === m.maand
+                        );
+                        const incompleet =
+                          item &&
+                          (Number(item.lonen) === 0 ||
+                            Number(item.loonheffing) === 0 ||
+                            Number(item.pensioenpremie) === 0);
+
+                        if (incompleet) display += " 🔴";
+                      }
+
+                      return (
+                        <td key={`${m.maand}-${label}-${rowIdx}`} className={cellClass}>
+                          {display}
+                        </td>
+                      );
+                    })}
+
+                    <td className="border-b border-l border-slate-300 bg-slate-50 px-3 py-2 text-right font-bold text-slate-900">
+                      {label === "omzet"
+                        ? formatEuro(
+                            data.reduce((sum, m) => sum + (fn(m) || 0), 0)
+                          )
+                        : label === "dagen"
+                        ? data
+                            .reduce((sum, m) => sum + (fn(m) || 0), 0)
+                            .toLocaleString("nl-NL")
+                        : label === "omzet/dag"
+                        ? (() => {
+                            let totOm = 0;
+                            let totDg = 0;
+
+                            if (rowIdx <= 3) {
+                              totOm = data.reduce(
+                                (s, m) => s + m.prognoseOmzet,
+                                0
+                              );
+                              totDg = data.reduce(
+                                (s, m) => s + m.prognoseDagen,
+                                0
+                              );
+                            } else if (rowIdx <= 7) {
+                              totOm = data.reduce(
+                                (s, m) => s + m.realisatieOmzet,
+                                0
+                              );
+                              totDg = data.reduce(
+                                (s, m) => s + m.realisatieDagen,
+                                0
+                              );
+                            } else if (rowIdx <= 12) {
+                              totOm = data.reduce(
+                                (s, m) => s + m.todoOmzet,
+                                0
+                              );
+                              totDg = data.reduce((s, m) => s + m.todoDagen, 0);
+                            } else return "";
+
+                            return totDg > 0
+                              ? formatNumber(Math.round(totOm / totDg))
+                              : "";
+                          })()
+                        : label === "Loonkosten"
+                        ? formatEuro(
+                            data.reduce(
+                              (sum, m) =>
+                                sum + Number(getLoonkosten(m.maand)),
+                              0
+                            )
+                          )
+                        : label === "% van omzet"
+                        ? (() => {
+                            const totaalLoon = data.reduce(
+                              (s, m) => s + getLoonkosten(m.maand),
+                              0
+                            );
+                            const totaalOmzet = data.reduce(
+                              (s, m) => s + m.realisatieOmzet,
+                              0
+                            );
+
+                            return totaalOmzet > 0
+                              ? ((totaalLoon / totaalOmzet) * 100).toFixed(1) +
+                                  "%"
+                              : "";
+                          })()
+                        : ""}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            <strong className="text-slate-900">Status:</strong> gerealiseerd{" "}
+            <strong>{omzetPercent}%</strong> van de omzet in{" "}
+            <strong>{dagenPercent}%</strong> van de geplande dagen.
+          </div>
+        </div>
       </div>
     </main>
+  );
+}
+
+function KpiCard({
+  titel,
+  waarde,
+  subwaarde,
+  className = "",
+}: {
+  titel: string;
+  waarde: string;
+  subwaarde?: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border p-5 shadow-sm ${
+        className || "border-slate-200 bg-white text-slate-900"
+      }`}
+    >
+      <p className="text-sm font-medium opacity-70">{titel}</p>
+      <p className="mt-2 text-2xl font-bold">{waarde}</p>
+      {subwaarde && <p className="mt-1 text-sm font-medium opacity-80">{subwaarde}</p>}
+    </div>
   );
 }

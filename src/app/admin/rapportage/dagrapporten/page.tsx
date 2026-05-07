@@ -7,7 +7,7 @@ import useSWR from "swr";
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 function formatEuro(value: number | null) {
-  if (value === null || value === undefined) return "Gesloten";
+  if (value === null || value === undefined) return "Geen Omzet";
 
   return new Intl.NumberFormat("nl-NL", {
     style: "currency",
@@ -214,7 +214,7 @@ export default function DagrapportenPage() {
                   Omzet per uur
                 </h2>
                 <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  Gesloten / geen omzet geregistreerd voor deze datum.
+                  Gesloten / (nog) geen omzet voor deze datum.
                 </p>
               </div>
             )}
