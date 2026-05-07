@@ -87,7 +87,7 @@ export async function PATCH(
       UPDATE sollicitaties
       SET
         status = COALESCE($1, status),
-        gesprek_datum = COALESCE($2::timestamptz, gesprek_datum),
+        gesprek_datum = COALESCE($2::timestamp, gesprek_datum),
         gesprek_notities = COALESCE($3, gesprek_notities),
 
         ervaring = COALESCE($4, ervaring),

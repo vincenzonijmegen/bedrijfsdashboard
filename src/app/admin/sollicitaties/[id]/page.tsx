@@ -28,11 +28,25 @@ function formatDateNl(value: string | null) {
 
 function formatDateTimeLocal(value: string | null) {
   if (!value) return "";
-  const d = new Date(value);
-  const offset = d.getTimezoneOffset();
-  const local = new Date(d.getTime() - offset * 60000);
-  return local.toISOString().slice(0, 16);
+
+  // Pak datum/tijd letterlijk, zonder timezone-conversie.
+  // Werkt voor:
+  // 2026-05-07T14:30:00.000Z
+  // 2026-05-07T14:30:00
+  // 2026-05-07 14:30:00
+  return value.replace(" ", "T").slice(0, 16);
 }
+
+function normalizeDateTimeLocal(value: string) {
+  if (!value) return null;
+
+  // datetime-local geeft YYYY-MM-DDTHH:mm.
+  // We slaan dit bewust lokaal op als string, zonder timezone.
+  return value.replace("T", " ") + ":00";
+}
+
+
+
 
 function berekenLeeftijd(value: string | null) {
   if (!value) return null;
@@ -349,7 +363,7 @@ export default function SollicitatieDetail({
                   defaultValue={formatDateTimeLocal(data.gesprek_datum)}
                   onBlur={(e) =>
                     updateGesprek(
-                      e.target.value || null,
+                      normalizeDateTimeLocal(e.target.value),
                       data.gesprek_notities || null,
                       Boolean(e.target.value)
                     )
