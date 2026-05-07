@@ -137,29 +137,27 @@ export default function DagrapportenPage() {
 
         {rapport && (
           <>
-            <div className="grid gap-4 md:grid-cols-4">
-              <InfoCard titel="Datum" waarde={formatDatum(rapport.datum)} />
+            <div className="grid gap-4 md:grid-cols-3">
+              <InfoCard
+                titel="Datum"
+                waarde={formatDatum(rapport.datum)}
+                subwaarde={rapport.speciale_datum ? rapport.speciale_datum : undefined}
+                className={
+                  rapport.speciale_datum
+                    ? "border-purple-200 bg-purple-50 text-purple-900 md:col-span-2"
+                    : "border-slate-200 bg-white text-slate-900 md:col-span-2"
+                }
+              />
 
               <InfoCard
                 titel="Dagomzet"
                 waarde={formatEuro(rapport.dagomzet)}
+                groot
                 className={
                   rapport.dagomzet === null
                     ? "border-slate-200 bg-slate-50 text-slate-700"
                     : "border-emerald-200 bg-emerald-50 text-emerald-900"
                 }
-              />
-
-              <InfoCard
-                titel="Gemaakt op"
-                waarde={new Date(rapport.gemaakt_op).toLocaleString("nl-NL")}
-              />
-
-              <InfoCard
-                titel="Bijgewerkt op"
-                waarde={new Date(rapport.bijgewerkt_op).toLocaleString(
-                  "nl-NL"
-                )}
               />
             </div>
 
@@ -465,10 +463,14 @@ export default function DagrapportenPage() {
 function InfoCard({
   titel,
   waarde,
+  subwaarde,
+  groot = false,
   className = "",
 }: {
   titel: string;
   waarde: string;
+  subwaarde?: string;
+  groot?: boolean;
   className?: string;
 }) {
   return (
@@ -478,7 +480,20 @@ function InfoCard({
       }`}
     >
       <p className="text-sm font-medium opacity-70">{titel}</p>
-      <p className="mt-2 text-base font-semibold">{waarde}</p>
+
+      <p
+        className={`mt-2 font-semibold ${
+          groot ? "text-3xl" : "text-base"
+        }`}
+      >
+        {waarde}
+      </p>
+
+      {subwaarde && (
+        <p className="mt-2 inline-flex rounded-full bg-white/70 px-3 py-1 text-sm font-semibold">
+          {subwaarde}
+        </p>
+      )}
     </div>
   );
 }

@@ -264,10 +264,14 @@ export async function GET(req: NextRequest) {
 
     const haccpRows = haccpResult.rows as HaccpRow[];
 
-    const zichtbareHaccpRows = haccpRows.filter((row) =>
-      taakIsOpDatumZichtbaar(row, datumObj)
-    );
+      // HACCP is pas vanaf 1 april 2026 betrouwbaar historisch beschikbaar.
+      // Voor oudere dagrapporten slaan we daarom geen "alles incompleet" routines op.
+      const haccpBestondAl = datum >= "2026-04-01";
 
+      const zichtbareHaccpRows = haccpBestondAl
+        ? haccpRows.filter((row) => taakIsOpDatumZichtbaar(row, datumObj))
+        : [];
+        
     const haccpMap = new Map<
       string,
       {
@@ -414,6 +418,9 @@ export async function GET(req: NextRequest) {
       getWeerVanDag(datum),
     ]);
 
+
+
+    
     const dagomzetRows = dagomzetResult.rows as DagomzetRow[];
     const rawDagomzet = dagomzetRows[0]?.dagomzet;
     const dagomzet = rawDagomzet == null ? null : Number(rawDagomzet);

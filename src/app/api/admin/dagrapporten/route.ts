@@ -46,10 +46,25 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    const feestdagResult = await db.query(
+      `
+      SELECT naam
+      FROM feestdagen
+      WHERE datum = $1::date
+      LIMIT 1
+      `,
+      [datum]
+    );
+
+    const specialeDatum = feestdagResult.rows[0]?.naam || null;
+
     return NextResponse.json({
       success: true,
       gevonden: true,
-      rapport: result.rows[0],
+      rapport: {
+        ...result.rows[0],
+        speciale_datum: specialeDatum,
+      },
     });
   } catch (error) {
     console.error("Fout bij ophalen dagrapport:", error);
