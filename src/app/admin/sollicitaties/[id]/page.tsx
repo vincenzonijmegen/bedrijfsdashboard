@@ -360,6 +360,7 @@ export default function SollicitatieDetail({
                 </label>
                 <input
                   type="datetime-local"
+                  step="60"
                   defaultValue={formatDateTimeLocal(data.gesprek_datum)}
                   onBlur={(e) =>
                     updateGesprek(
