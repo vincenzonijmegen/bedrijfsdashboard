@@ -41,7 +41,7 @@ export async function GET(req: NextRequest) {
     for (const datum of datums) {
       try {
         const res = await fetch(
-          `${baseUrl}/api/admin/dagrapporten?datum=${datum}`,
+          `${baseUrl}/api/rapportage/dagrapport?datum=${datum}`,
           { cache: "no-store" }
         );
 
