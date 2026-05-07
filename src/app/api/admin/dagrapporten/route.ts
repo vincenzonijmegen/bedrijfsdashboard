@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     const feestdagResult = await db.query(
       `
       SELECT naam
-      FROM feestdagen
+      FROM rapportage.feestdagen
       WHERE datum = $1::date
       LIMIT 1
       `,
