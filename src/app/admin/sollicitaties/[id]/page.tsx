@@ -358,19 +358,44 @@ export default function SollicitatieDetail({
                 <label className="mb-1 block text-sm font-semibold text-slate-700">
                   Datum en tijd gesprek
                 </label>
-                <input
-                  type="datetime-local"
-                  step="60"
-                  defaultValue={formatDateTimeLocal(data.gesprek_datum)}
-                  onBlur={(e) =>
-                    updateGesprek(
-                      normalizeDateTimeLocal(e.target.value),
-                      data.gesprek_notities || null,
-                      Boolean(e.target.value)
-                    )
-                  }
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm outline-none focus:border-blue-300 focus:bg-white focus:ring-2 focus:ring-blue-100"
-                />
+
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="date"
+                    defaultValue={formatDateTimeLocal(data.gesprek_datum).slice(0, 10)}
+                    onBlur={(e) => {
+                      const huidigeTijd =
+                        formatDateTimeLocal(data.gesprek_datum).slice(11, 16) || "14:00";
+
+                      updateGesprek(
+                        `${e.target.value} ${huidigeTijd}:00`,
+                        data.gesprek_notities || null,
+                        Boolean(e.target.value)
+                      );
+                    }}
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
+                  />
+
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="14:00"
+                    defaultValue={formatDateTimeLocal(data.gesprek_datum).slice(11, 16)}
+                    onBlur={(e) => {
+                      const huidigeDatum =
+                        formatDateTimeLocal(data.gesprek_datum).slice(0, 10);
+
+                      if (!huidigeDatum || !e.target.value) return;
+
+                      updateGesprek(
+                        `${huidigeDatum} ${e.target.value}:00`,
+                        data.gesprek_notities || null,
+                        true
+                      );
+                    }}
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm"
+                  />
+                </div>
               </div>
 
               <div>
