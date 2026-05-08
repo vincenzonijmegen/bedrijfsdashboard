@@ -34,11 +34,30 @@ type RoutineRapport = {
   onderdelen: Onderdeel[];
 };
 
+type PeriodiekeTaak = {
+  routineId: number;
+  routineNaam: string;
+  locatie: string | null;
+  type: string | null;
+  taakId: number;
+  taakNaam: string;
+  frequentie: "M" | "Q" | "H" | "Y";
+  laatstUitgevoerd: string | null;
+  laatstAfgetekendOp: string | null;
+  laatstAfgetekendDoor: string | null;
+  volgendeVoor: string | null;
+  uitgevoerdOpDatum: boolean;
+  uitgevoerdOpDatumDoor: string | null;
+  uitgevoerdOpDatumOp: string | null;
+  dagenTeLaat: number | null;
+};
+
 type HaccpResponse = {
   success: boolean;
   datum: string;
   filters: FilterRoutine[];
   routines: RoutineRapport[];
+  periodiekeTaken: PeriodiekeTaak[];
 };
 
 const fetcher = (url: string) =>
@@ -57,6 +76,26 @@ function formatTijd(value: string | null) {
     minute: "2-digit",
   });
 }
+
+const frequentieLabelMap: Record<string, string> = {
+  M: "Maandelijks",
+  Q: "Per kwartaal",
+  H: "Halfjaarlijks",
+  Y: "Jaarlijks",
+};
+
+function formatDatum(value: string | null) {
+  if (!value) return "—";
+  const datum = new Date(value);
+  if (Number.isNaN(datum.getTime())) return "—";
+
+  return datum.toLocaleDateString("nl-NL", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 
 function todayString() {
   const now = new Date();
@@ -291,6 +330,129 @@ export default function HaccpRapportagePage() {
             );
           })}
         </div>
+
+{!isLoading && data?.periodiekeTaken?.length ? (
+  <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="text-lg font-bold text-slate-950">
+            Periodieke HACCP-taken
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Overzicht van maand-, kwartaal-, halfjaar- en jaartaken.
+          </p>
+        </div>
+
+        <div className="text-sm font-semibold text-slate-600">
+          {data.periodiekeTaken.length} taak
+          {data.periodiekeTaken.length === 1 ? "" : "en"}
+        </div>
+      </div>
+    </div>
+
+    <div className="divide-y divide-slate-100">
+      {data.periodiekeTaken.map((taak) => {
+        const teLaat =
+          typeof taak.dagenTeLaat === "number" && taak.dagenTeLaat > 0;
+
+        return (
+          <div
+            key={taak.taakId}
+            className="grid gap-4 px-5 py-4 transition hover:bg-slate-50 lg:grid-cols-[1.5fr_1fr_1fr_1fr]"
+          >
+            <div>
+              <div className="font-semibold text-slate-950">
+                {taak.taakNaam}
+              </div>
+              <div className="mt-1 text-sm text-slate-500">
+                {taak.routineNaam}
+                {[taak.locatie, taak.type].filter(Boolean).length
+                  ? ` · ${[taak.locatie, taak.type].filter(Boolean).join(" • ")}`
+                  : ""}
+              </div>
+            </div>
+
+            <div className="text-sm">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Frequentie
+              </div>
+              <div className="mt-1 font-medium text-slate-700">
+                {frequentieLabelMap[taak.frequentie] ?? taak.frequentie}
+              </div>
+            </div>
+
+            <div className="text-sm">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Laatst uitgevoerd
+              </div>
+              <div className="mt-1 font-medium text-slate-700">
+                {formatDatum(taak.laatstUitgevoerd)}
+              </div>
+              {taak.laatstAfgetekendDoor ? (
+                <div className="mt-1 text-xs text-slate-500">
+                  Door {taak.laatstAfgetekendDoor}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="text-sm lg:text-right">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Status
+              </div>
+
+              <div className="mt-1 space-y-1">
+                {taak.uitgevoerdOpDatum ? (
+                  <>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                      <CheckCircle2 size={13} />
+                      Uitgevoerd op deze datum
+                    </span>
+                    <div className="text-xs text-slate-500">
+                      Door {taak.uitgevoerdOpDatumDoor ?? "Onbekend"}
+                      {taak.uitgevoerdOpDatumOp
+                        ? ` om ${formatTijd(taak.uitgevoerdOpDatumOp)}`
+                        : ""}
+                    </div>
+                  </>
+                ) : taak.laatstUitgevoerd === null ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-100">
+                    <XCircle size={13} />
+                    Nog nooit uitgevoerd
+                  </span>
+                ) : teLaat ? (
+                  <>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-100">
+                      <XCircle size={13} />
+                      {taak.dagenTeLaat} dag
+                      {taak.dagenTeLaat === 1 ? "" : "en"} te laat
+                    </span>
+                    <div className="text-xs text-slate-500">
+                      Had vóór {formatDatum(taak.volgendeVoor)} moeten gebeuren
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                      <CheckCircle2 size={13} />
+                      Op tijd
+                    </span>
+                    <div className="text-xs text-slate-500">
+                      Volgende keer vóór {formatDatum(taak.volgendeVoor)}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </section>
+) : null}
+
+
+
       </div>
     </main>
   );
