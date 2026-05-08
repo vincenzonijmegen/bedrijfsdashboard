@@ -386,7 +386,6 @@ export default function AdminDashboard() {
         >
           <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} breadcrumb="Management – Actielijsten" />
           <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} breadcrumb="Management – Notities" />
-          <LinkCard href="/admin/schoonmaakroutines" label="Schoonmaakroutines" color="blue" Icon={Wrench} breadcrumb="Management – Schoonmaakroutines" />
           <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} breadcrumb="Planning – Rooster" />
           <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} breadcrumb="Planning – Open Shifts" />
           <LinkCard href="/admin/dossier" label="Dossiers" color="orange" Icon={Folder} breadcrumb="Medewerkers – Dossiers" />
