@@ -210,21 +210,22 @@ export default function NotitieblokPagina() {
   );
 
   const sortedNotities = useMemo(
-  () =>
-    [...notities].sort((a, b) => {
-      const aTime = a.datum ? new Date(a.datum).getTime() : 0;
-      const bTime = b.datum ? new Date(b.datum).getTime() : 0;
+    () =>
+      [...notities].sort((a, b) => {
+        const aTime = a.datum ? new Date(a.datum).getTime() : 0;
+        const bTime = b.datum ? new Date(b.datum).getTime() : 0;
 
-      if (bTime !== aTime) return bTime - aTime;
+        if (bTime !== aTime) return bTime - aTime;
 
-      return (a.volgorde ?? 0) - (b.volgorde ?? 0);
-    }),
-  [notities]
-);
+        return (a.volgorde ?? 0) - (b.volgorde ?? 0);
+      }),
+    [notities]
+  );
 
   const [newRubriekName, setNewRubriekName] = useState("");
   const [newNotitieHtml, setNewNotitieHtml] = useState("");
   const [newNotitieDatum, setNewNotitieDatum] = useState(todayKey());
+  const [newNotitieOpen, setNewNotitieOpen] = useState(false);
 
   useEffect(() => {
     if (sortedRubrieken.length && !selRubriek) {
@@ -295,7 +296,14 @@ export default function NotitieblokPagina() {
 
     setNewNotitieHtml("");
     setNewNotitieDatum(todayKey());
+    setNewNotitieOpen(false);
     await mutateNotities();
+  };
+
+  const closeNewNotitie = () => {
+    setNewNotitieOpen(false);
+    setNewNotitieHtml("");
+    setNewNotitieDatum(todayKey());
   };
 
   const deleteNotitie = async (id: number) => {
@@ -330,22 +338,33 @@ export default function NotitieblokPagina() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-blue-50 px-4 py-3 ring-1 ring-blue-100">
-                <div className="text-xs font-medium uppercase tracking-wide text-blue-600">
-                  Rubrieken
-                </div>
-                <div className="text-2xl font-bold text-blue-950">
-                  {rubrieken.length}
-                </div>
-              </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <button
+                onClick={() => setNewNotitieOpen(true)}
+                disabled={!selRubriek}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                <Plus size={17} />
+                Nieuwe notitie
+              </button>
 
-              <div className="rounded-xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100">
-                <div className="text-xs font-medium uppercase tracking-wide text-emerald-600">
-                  Notities
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-blue-50 px-4 py-3 ring-1 ring-blue-100">
+                  <div className="text-xs font-medium uppercase tracking-wide text-blue-600">
+                    Rubrieken
+                  </div>
+                  <div className="text-2xl font-bold text-blue-950">
+                    {rubrieken.length}
+                  </div>
                 </div>
-                <div className="text-2xl font-bold text-emerald-950">
-                  {notities.length}
+
+                <div className="rounded-xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100">
+                  <div className="text-xs font-medium uppercase tracking-wide text-emerald-600">
+                    Notities
+                  </div>
+                  <div className="text-2xl font-bold text-emerald-950">
+                    {notities.length}
+                  </div>
                 </div>
               </div>
             </div>
@@ -432,15 +451,26 @@ export default function NotitieblokPagina() {
 
           <main className="space-y-6">
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-4">
-                <h2 className="text-xl font-bold text-slate-950">
-                  Notities voor “{selRubriek?.naam ?? "—"}”
-                </h2>
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-950">
+                    Notities voor “{selRubriek?.naam ?? "—"}”
+                  </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
-                  {notities.length} notitie{notities.length === 1 ? "" : "s"} in
-                  deze rubriek.
-                </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {notities.length} notitie
+                    {notities.length === 1 ? "" : "s"} in deze rubriek.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setNewNotitieOpen(true)}
+                  disabled={!selRubriek}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  <Plus size={16} />
+                  Nieuwe notitie
+                </button>
               </div>
 
               <div className="space-y-4">
@@ -460,48 +490,73 @@ export default function NotitieblokPagina() {
                 )}
               </div>
             </section>
-
-            <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-5 py-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-900">
-                    Nieuwe notitie
-                  </h3>
-
-                  <p className="text-xs text-slate-500">
-                    Voeg een notitie toe aan de geselecteerde rubriek.
-                  </p>
-                </div>
-
-                <input
-                  type="date"
-                  value={newNotitieDatum}
-                  onChange={(e) => setNewNotitieDatum(e.target.value)}
-                  className="ml-auto rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
-                />
-
-                <button
-                  onClick={addNotitie}
-                  disabled={!selRubriek}
-                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-                >
-                  <Plus size={16} />
-                  Notitie
-                </button>
-              </div>
-
-              <div className="min-h-[170px]">
-                <NotitieEditor
-                  value={newNotitieHtml}
-                  onChange={setNewNotitieHtml}
-                  editable
-                  placeholder="Schrijf je notitie…"
-                />
-              </div>
-            </section>
           </main>
         </div>
       </div>
+
+      {newNotitieOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4">
+              <div>
+                <h3 className="text-lg font-bold text-slate-950">
+                  Nieuwe notitie
+                </h3>
+                <p className="text-sm text-slate-500">
+                  Rubriek: {selRubriek?.naam ?? "—"}
+                </p>
+              </div>
+
+              <button
+                onClick={closeNewNotitie}
+                className="rounded-xl p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                title="Sluiten"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-3 border-b border-slate-200 px-5 py-3">
+              <CalendarDays className="h-4 w-4 text-blue-600" />
+
+              <input
+                type="date"
+                value={newNotitieDatum}
+                onChange={(e) => setNewNotitieDatum(e.target.value)}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+              />
+            </div>
+
+            <div className="min-h-[360px] overflow-auto">
+              <NotitieEditor
+                value={newNotitieHtml}
+                onChange={setNewNotitieHtml}
+                editable
+                placeholder="Schrijf je notitie…"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
+              <button
+                onClick={closeNewNotitie}
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
+              >
+                <X size={16} />
+                Annuleren
+              </button>
+
+              <button
+                onClick={addNotitie}
+                disabled={!selRubriek || isHtmlEmpty(newNotitieHtml)}
+                className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                <Save size={16} />
+                Opslaan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
