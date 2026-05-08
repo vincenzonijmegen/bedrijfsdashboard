@@ -1,3 +1,5 @@
+//src/app/admin/routines/[id]/edit/page.tsx
+
 "use client";
 
 import Link from "next/link";
@@ -22,7 +24,7 @@ type Taak = {
   kleurcode: "roze" | "groen" | "geel" | null;
   reinigen: boolean;
   desinfecteren: boolean;
-  frequentie: "D" | "W" | "2D";
+  frequentie: "D" | "W" | "2D" | "M" | "Q" | "H" | "Y";
   weekdagen: string[];
   sortering: number;
   actief: boolean;
@@ -34,7 +36,7 @@ type FormTaak = {
   kleurcode: "roze" | "groen" | "geel" | "";
   reinigen: boolean;
   desinfecteren: boolean;
-  frequentie: "D" | "W" | "2D";
+  frequentie: "D" | "W" | "2D" | "M" | "Q" | "H" | "Y";
   weekdagen: string[];
   sortering: number;
   actief: boolean;
@@ -379,6 +381,10 @@ export default function AdminRoutineEditPage({
                 <option value="D">Dagelijks</option>
                 <option value="W">Wekelijks</option>
                 <option value="2D">Om de 2 dagen</option>
+                <option value="M">Maandelijks</option>
+                <option value="Q">Per kwartaal</option>
+                <option value="H">Halfjaarlijks</option>
+                <option value="Y">Jaarlijks</option>
               </select>
             </div>
 
@@ -614,6 +620,10 @@ function TaakRow({
             <option value="D">Dagelijks</option>
             <option value="W">Wekelijks</option>
             <option value="2D">Om de 2 dagen</option>
+            <option value="M">Maandelijks</option>
+            <option value="Q">Per kwartaal</option>
+            <option value="H">Halfjaarlijks</option>
+            <option value="Y">Jaarlijks</option>
           </select>
         </div>
 

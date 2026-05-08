@@ -1,3 +1,6 @@
+//src/app/api/admin/routines/[id]/taken/route.ts
+
+
 import { NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
@@ -49,6 +52,17 @@ export async function GET(_: Request, context: { params: Params }) {
   return NextResponse.json(result.rows);
 }
 
+function normalizeFrequentie(input: unknown) {
+  const value = String(input || "D");
+
+  if (["D", "W", "2D", "M", "Q", "H", "Y"].includes(value)) {
+    return value;
+  }
+
+  return "D";
+}
+
+
 export async function POST(request: Request, context: { params: Params }) {
   const { id } = await context.params;
   const routineId = Number(id);
@@ -65,10 +79,7 @@ export async function POST(request: Request, context: { params: Params }) {
       ? body.kleurcode
       : null;
 
-  const frequentie =
-    body?.frequentie === "D" || body?.frequentie === "W" || body?.frequentie === "2D"
-      ? body.frequentie
-      : "D";
+  const frequentie = normalizeFrequentie(body?.frequentie);
 
   const reinigen = toBool(body?.reinigen);
   const desinfecteren = toBool(body?.desinfecteren);
@@ -122,9 +133,7 @@ export async function PATCH(request: Request, context: { params: Params }) {
     body?.kleurcode === "roze" || body?.kleurcode === "groen" || body?.kleurcode === "geel"
       ? body.kleurcode
       : null;
-  const frequentie =
-    body?.frequentie === "D" || body?.frequentie === "W" || body?.frequentie === "2D"
-      ? body.frequentie
+  const frequentie = normalizeFrequentie(body?.frequentie);requentie
       : "D";
   const reinigen = toBool(body?.reinigen);
   const desinfecteren = toBool(body?.desinfecteren);

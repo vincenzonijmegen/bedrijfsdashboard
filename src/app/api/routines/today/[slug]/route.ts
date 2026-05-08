@@ -1,8 +1,12 @@
+//src/app/api/routines/today/[slug]/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+type Frequentie = "D" | "W" | "2D" | "M" | "Q" | "H" | "Y";
 
 type TaakRow = {
   id: number;
@@ -10,7 +14,7 @@ type TaakRow = {
   kleurcode: "roze" | "groen" | "geel" | null;
   reinigen: boolean;
   desinfecteren: boolean;
-  frequentie: "D" | "W" | "2D";
+  frequentie: Frequentie;
   weekdagen: string[] | null;
   sortering: number;
   afgetekend_door_naam: string | null;
@@ -18,6 +22,9 @@ type TaakRow = {
   status: "gedaan" | "overgeslagen" | null;
   bron: "medewerker" | "leiding" | null;
   overgeslagen_reden: string | null;
+  laatst_gedaan_datum: string | null;
+  isPeriodiek?: boolean;
+  vervaldatum?: string | null;
   isRotatie?: boolean;
   rotatieItemId?: number;
 };
@@ -25,16 +32,54 @@ type TaakRow = {
 const WEEKDAGEN = ["zo", "ma", "di", "wo", "do", "vr", "za"];
 const ISO_EVEN_REFERENCE = new Date("2026-01-05T00:00:00");
 
+const PERIODIEKE_FREQUENTIES: Frequentie[] = ["M", "Q", "H", "Y"];
+
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
 function dagenVerschil(a: Date, b: Date) {
   const utcA = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
   const utcB = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
   return Math.round((utcA - utcB) / 86400000);
 }
 
+function addFrequentieInterval(datum: Date, frequentie: Frequentie) {
+  const result = new Date(datum);
+
+  if (frequentie === "M") result.setMonth(result.getMonth() + 1);
+  if (frequentie === "Q") result.setMonth(result.getMonth() + 3);
+  if (frequentie === "H") result.setMonth(result.getMonth() + 6);
+  if (frequentie === "Y") result.setFullYear(result.getFullYear() + 1);
+
+  return startOfDay(result);
+}
+
+function taakIsPeriodiek(taak: TaakRow) {
+  return PERIODIEKE_FREQUENTIES.includes(taak.frequentie);
+}
+
 function taakIsVandaagZichtbaar(taak: TaakRow, vandaag: Date) {
   const weekdagen = Array.isArray(taak.weekdagen) ? taak.weekdagen : [];
   const vandaagCode = WEEKDAGEN[vandaag.getDay()];
 
+  // Als een periodieke taak vandaag al is afgetekend, moet hij vandaag zichtbaar blijven
+  // zodat de lijst netjes compleet/afgerond toont.
+  if (taakIsPeriodiek(taak) && taak.afgetekend_op) {
+    return true;
+  }
+
+  // Periodieke taken blijven zichtbaar vanaf vervaldatum totdat ze opnieuw gedaan zijn.
+  if (taakIsPeriodiek(taak)) {
+    if (!taak.laatst_gedaan_datum) return true;
+
+    const laatstGedaan = startOfDay(new Date(taak.laatst_gedaan_datum));
+    const vervaldatum = addFrequentieInterval(laatstGedaan, taak.frequentie);
+
+    return vervaldatum <= startOfDay(vandaag);
+  }
+
+  // Bestaande dag-/weeklogica blijft intact.
   if (weekdagen.length > 0 && !weekdagen.includes(vandaagCode)) return false;
 
   if (taak.frequentie === "2D") {
@@ -42,6 +87,18 @@ function taakIsVandaagZichtbaar(taak: TaakRow, vandaag: Date) {
   }
 
   return true;
+}
+
+function bepaalVervaldatum(taak: TaakRow) {
+  if (!taakIsPeriodiek(taak)) return null;
+  if (!taak.laatst_gedaan_datum) return null;
+
+  return addFrequentieInterval(
+    new Date(taak.laatst_gedaan_datum),
+    taak.frequentie
+  )
+    .toISOString()
+    .slice(0, 10);
 }
 
 async function getVandaagAfgetekendeRotatieTaak(
@@ -135,26 +192,48 @@ export async function GET(
         t.frequentie,
         COALESCE(t.weekdagen, '[]'::jsonb) AS weekdagen,
         t.sortering,
-        a.afgetekend_door_naam,
-        a.afgetekend_op,
-        a.status,
-        a.bron,
-        a.overgeslagen_reden
+
+        vandaag.afgetekend_door_naam,
+        vandaag.afgetekend_op,
+        vandaag.status,
+        vandaag.bron,
+        vandaag.overgeslagen_reden,
+
+        laatst.datum AS laatst_gedaan_datum
+
       FROM routine_taken t
-      LEFT JOIN routine_aftekeningen a
-        ON a.routine_taak_id = t.id
-       AND a.datum = $2::date
+
+      LEFT JOIN routine_aftekeningen vandaag
+        ON vandaag.routine_taak_id = t.id
+       AND vandaag.datum = $2::date
+
+      LEFT JOIN LATERAL (
+        SELECT a.datum
+        FROM routine_aftekeningen a
+        WHERE a.routine_taak_id = t.id
+          AND a.status = 'gedaan'
+          AND a.afgetekend_op IS NOT NULL
+        ORDER BY a.datum DESC, a.afgetekend_op DESC
+        LIMIT 1
+      ) laatst ON true
+
       WHERE t.routine_id = $1
         AND t.actief = true
+
       ORDER BY t.sortering ASC, t.id ASC
       `,
       [routine.id, vandaag]
     );
 
     const alleTaken = takenResult.rows as TaakRow[];
-    const zichtbareTaken = alleTaken.filter((taak) =>
-      taakIsVandaagZichtbaar(taak, datum)
-    );
+
+    const zichtbareTaken = alleTaken
+      .filter((taak) => taakIsVandaagZichtbaar(taak, datum))
+      .map((taak) => ({
+        ...taak,
+        isPeriodiek: taakIsPeriodiek(taak),
+        vervaldatum: bepaalVervaldatum(taak),
+      }));
 
     let rotatieTaak = await getVandaagAfgetekendeRotatieTaak(
       Number(routine.id),
@@ -226,6 +305,9 @@ export async function GET(
         status: null,
         bron: null,
         overgeslagen_reden: null,
+        laatst_gedaan_datum: null,
+        isPeriodiek: false,
+        vervaldatum: null,
         isRotatie: true,
         rotatieItemId: rotatieTaak.id,
       });

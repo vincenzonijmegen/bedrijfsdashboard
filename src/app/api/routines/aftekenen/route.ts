@@ -1,3 +1,5 @@
+//src/app/api/routines/aftekenen/route.ts
+
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
@@ -197,22 +199,26 @@ export async function POST(req: NextRequest) {
 
     const result = await db.query(
       `
-      INSERT INTO routine_aftekeningen (
-        routine_taak_id,
-        datum,
-        afgetekend_door_shiftbase_user_id,
-        afgetekend_door_naam,
-        opmerking,
-        afgetekend_op
-      )
-      VALUES ($1, $2::date, $3, $4, $5, NOW())
-      ON CONFLICT (routine_taak_id, datum)
-      DO UPDATE SET
-        afgetekend_door_shiftbase_user_id = EXCLUDED.afgetekend_door_shiftbase_user_id,
-        afgetekend_door_naam = EXCLUDED.afgetekend_door_naam,
-        opmerking = EXCLUDED.opmerking,
-        afgetekend_op = NOW()
-      RETURNING id, routine_taak_id, datum, afgetekend_door_naam, afgetekend_op
+        INSERT INTO routine_aftekeningen (
+          routine_taak_id,
+          datum,
+          afgetekend_door_shiftbase_user_id,
+          afgetekend_door_naam,
+          opmerking,
+          afgetekend_op,
+          status,
+          bron
+        )
+        VALUES ($1, $2::date, $3, $4, $5, NOW(), 'gedaan', 'medewerker')
+        ON CONFLICT (routine_taak_id, datum)
+        DO UPDATE SET
+          afgetekend_door_shiftbase_user_id = EXCLUDED.afgetekend_door_shiftbase_user_id,
+          afgetekend_door_naam = EXCLUDED.afgetekend_door_naam,
+          opmerking = EXCLUDED.opmerking,
+          afgetekend_op = NOW(),
+          status = 'gedaan',
+          bron = 'medewerker'
+        RETURNING id, routine_taak_id, datum, afgetekend_door_naam, afgetekend_op, status, bron
       `,
       [routineTaakId, vandaag, medewerkerId || null, medewerkerNaam, opmerking]
     );

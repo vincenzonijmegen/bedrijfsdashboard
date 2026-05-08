@@ -1,3 +1,5 @@
+//src/app/routines/[slug]/page.tsx
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -10,7 +12,7 @@ type Taak = {
   kleurcode: "roze" | "groen" | "geel" | null;
   reinigen: boolean;
   desinfecteren: boolean;
-  frequentie: "D" | "W" | "2D";
+  frequentie: "D" | "W" | "2D" | "M" | "Q" | "H" | "Y";
   weekdagen: string[];
   sortering: number;
   afgetekend_door_naam: string | null;
@@ -18,6 +20,9 @@ type Taak = {
   status?: "gedaan" | "overgeslagen";
   bron?: "medewerker" | "leiding";
   overgeslagen_reden?: string | null;
+  isPeriodiek?: boolean;
+  vervaldatum?: string | null;
+  laatst_gedaan_datum?: string | null;
   isRotatie?: boolean;
   rotatieItemId?: number;
 };
@@ -79,6 +84,26 @@ const kleurUitlegMap: Record<string, string> = {
   groen: "Groene doek · normale schoonmaak",
   geel: "Gele doek · vieze dingen zoals vloer/afval",
 };
+
+const frequentieLabelMap: Record<string, string> = {
+  D: "dagelijks",
+  W: "wekelijks",
+  "2D": "om de 2 dagen",
+  M: "maandelijks",
+  Q: "per kwartaal",
+  H: "halfjaarlijks",
+  Y: "jaarlijks",
+};
+
+function formatDateNl(value?: string | null) {
+  if (!value) return null;
+
+  return new Date(value).toLocaleDateString("nl-NL", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+}
 
 function ActieBadge({ actief, label }: { actief: boolean; label: string }) {
   return (
@@ -419,8 +444,15 @@ export default function RoutinePagina({
                         </span>
 
                         <span className="inline-flex rounded-full border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600">
-                          {taak.frequentie}
+                          {frequentieLabelMap[taak.frequentie] ?? taak.frequentie}
                         </span>
+
+                        {taak.isPeriodiek && (
+                          <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+                            🔁 periodiek
+                            {taak.vervaldatum ? ` · vanaf ${formatDateNl(taak.vervaldatum)}` : ""}
+                          </span>
+                        )}
 
                         {taak.isRotatie && (
                           <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
