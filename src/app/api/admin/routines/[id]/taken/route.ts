@@ -133,8 +133,7 @@ export async function PATCH(request: Request, context: { params: Params }) {
     body?.kleurcode === "roze" || body?.kleurcode === "groen" || body?.kleurcode === "geel"
       ? body.kleurcode
       : null;
-  const frequentie = normalizeFrequentie(body?.frequentie);requentie
-      : "D";
+  const frequentie = normalizeFrequentie(body?.frequentie);
   const reinigen = toBool(body?.reinigen);
   const desinfecteren = toBool(body?.desinfecteren);
   const weekdagen = normalizeWeekdagen(body?.weekdagen);
