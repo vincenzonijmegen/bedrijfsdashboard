@@ -345,8 +345,8 @@ export default function HaccpRapportagePage() {
         </div>
 
         <div className="text-sm font-semibold text-slate-600">
-          {data.periodiekeTaken.length} taak
-          {data.periodiekeTaken.length === 1 ? "" : "en"}
+            {data.periodiekeTaken.length}{" "}
+            {data.periodiekeTaken.length === 1 ? "taak" : "taken"}
         </div>
       </div>
     </div>
