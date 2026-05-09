@@ -1,9 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { uploadAfbeelding } from "@/utils/r2ClientUpload";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ArrowLeft, Save } from "lucide-react";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Image from "@tiptap/extension-image";
+import Placeholder from "@tiptap/extension-placeholder";
+import { ArrowLeft, ImagePlus, Save, Video } from "lucide-react";
 
 export default function NieuwInfotheekArtikelPage() {
   const router = useRouter();
@@ -11,14 +16,34 @@ export default function NieuwInfotheekArtikelPage() {
   const [titel, setTitel] = useState("");
   const [categorie, setCategorie] = useState("");
   const [samenvatting, setSamenvatting] = useState("");
-  const [inhoud, setInhoud] = useState("");
   const [zoekwoordenInput, setZoekwoordenInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [editorKey] = useState(() => Math.random().toString(36).substring(2));
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Image,
+      Placeholder.configure({
+        placeholder:
+          "Schrijf hier de handleiding. Gebruik koppen voor duidelijke hoofdstukken.",
+      }),
+    ],
+    content: "",
+  });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (!editor) {
+      setError("Editor is nog niet geladen.");
+      return;
+    }
+
+    const inhoud = editor.getHTML();
+
     setSaving(true);
 
     try {
@@ -53,6 +78,54 @@ export default function NieuwInfotheekArtikelPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function afbeeldingUploaden() {
+    if (!editor) return;
+
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      try {
+        const url = await uploadAfbeelding(file);
+        editor.commands.insertContent(
+          `<img src="${url}" style="width: 75%; display: block; margin: 1rem auto;" />`
+        );
+      } catch {
+        setError("Afbeelding uploaden mislukt.");
+      }
+    };
+
+    input.click();
+  }
+
+  function youtubeToevoegen() {
+    if (!editor) return;
+
+    const link = prompt(
+      "Plak hier de YouTube-link, bijvoorbeeld https://youtu.be/abc123"
+    );
+
+    if (!link) return;
+
+    let rawId = "";
+
+    if (link.includes("watch?v=")) {
+      rawId = link.split("watch?v=")[1].split("&")[0];
+    } else {
+      rawId = link.split("/").pop()?.split("?")[0] || "";
+    }
+
+    if (!rawId) return;
+
+    const iframe = `<iframe src="https://www.youtube.com/embed/${rawId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen class="w-full aspect-video rounded-xl my-4"></iframe>`;
+
+    editor.commands.insertContent(iframe);
   }
 
   return (
@@ -125,28 +198,83 @@ export default function NieuwInfotheekArtikelPage() {
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-semibold text-slate-700">
+              <label className="mb-2 block text-sm font-semibold text-slate-700">
                 Inhoud
               </label>
-              <textarea
-                value={inhoud}
-                onChange={(e) => setInhoud(e.target.value)}
-                className="min-h-[360px] w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-mono text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                placeholder={`<h2>Doel</h2>
-<p>Leg hier uit waar dit onderdeel voor bedoeld is.</p>
 
-<h2>Stap voor stap</h2>
-<ul>
-  <li>Stap 1...</li>
-  <li>Stap 2...</li>
-</ul>
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                <div className="flex flex-wrap gap-2 border-b border-slate-200 bg-slate-50 p-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      editor?.chain().focus().toggleHeading({ level: 2 }).run()
+                    }
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                  >
+                    Kop
+                  </button>
 
-<h2>Veelgemaakte fouten</h2>
-<p>Beschrijf waar je op moet letten.</p>`}
-                required
-              />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      editor?.chain().focus().toggleHeading({ level: 3 }).run()
+                    }
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                  >
+                    Subkop
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => editor?.chain().focus().toggleBold().run()}
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                  >
+                    Vet
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      editor?.chain().focus().toggleBulletList().run()
+                    }
+                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                  >
+                    Lijst
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={afbeeldingUploaden}
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                  >
+                    <ImagePlus className="h-4 w-4" />
+                    Afbeelding
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={youtubeToevoegen}
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                  >
+                    <Video className="h-4 w-4" />
+                    YouTube
+                  </button>
+                </div>
+
+                <div className="prose prose-slate min-h-[360px] max-w-none p-4 prose-headings:font-bold prose-p:leading-7 prose-li:leading-7">
+                  {!editor ? (
+                    <p className="text-sm text-slate-500">
+                      Editor wordt geladen...
+                    </p>
+                  ) : (
+                    <EditorContent key={editorKey} editor={editor} />
+                  )}
+                </div>
+              </div>
+
               <p className="mt-2 text-xs text-slate-500">
-                Gebruik HTML met h2/h3-koppen. Die verschijnen automatisch in de inhoudsopgave.
+                Gebruik koppen en subkoppen. Die verschijnen automatisch in de
+                inhoudsopgave van het artikel.
               </p>
             </div>
 
