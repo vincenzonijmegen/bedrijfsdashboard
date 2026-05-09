@@ -10,6 +10,7 @@ import {
   CalendarDays,
   Folder,
   Tag,
+  Pencil,
 } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -119,13 +120,23 @@ export default function InfotheekDetailPage() {
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-8">
       <div className="mx-auto max-w-6xl space-y-6">
-        <Link
-          href="/admin/infotheek"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:underline"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Terug naar Infotheek
-        </Link>
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            href="/admin/infotheek"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:underline"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Terug naar Infotheek
+          </Link>
+
+          <Link
+            href={`/admin/infotheek/${artikel.slug}/bewerken`}
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+          >
+            <Pencil className="h-4 w-4" />
+            Bewerken
+          </Link>
+        </div>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
           <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
