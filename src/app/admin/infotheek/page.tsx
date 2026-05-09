@@ -99,7 +99,7 @@ export default function InfotheekPage() {
                   <Link
                     key={artikel.id}
                     href={`/admin/infotheek/${artikel.slug}`}
-                    className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition hover:border-blue-200 hover:bg-blue-50"
+                    className="rounded-xl border border-slate-200 bg-slate-50 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:shadow-md cursor-pointer"
                   >
                     <h3 className="font-semibold text-slate-900">{artikel.titel}</h3>
                     {artikel.samenvatting && (
