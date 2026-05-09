@@ -44,14 +44,17 @@ function extractToc(html: string) {
 function addHeadingIds(html: string) {
   let index = 0;
 
-  return html.replace(/<h([23])([^>]*)>(.*?)<\/h[23]>/gi, (full, level, attrs, content) => {
-    const id = `kop-${index}`;
-    index += 1;
+  return html.replace(
+    /<h([23])([^>]*)>(.*?)<\/h[23]>/gi,
+    (full, level, attrs, content) => {
+      const id = `kop-${index}`;
+      index += 1;
 
-    if (String(attrs).includes("id=")) return full;
+      if (String(attrs).includes("id=")) return full;
 
-    return `<h${level}${attrs} id="${id}">${content}</h${level}>`;
-  });
+      return `<h${level}${attrs} id="${id}">${content}</h${level}>`;
+    }
+  );
 }
 
 export default function InfotheekDetailPage() {
@@ -180,7 +183,7 @@ export default function InfotheekDetailPage() {
                   {artikel.zoekwoorden.map((woord) => (
                     <span
                       key={woord}
-                      className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200"
+                      className="rounded-full bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-500 ring-1 ring-slate-200"
                     >
                       {woord}
                     </span>
@@ -202,7 +205,7 @@ export default function InfotheekDetailPage() {
                     <a
                       key={item.id}
                       href={`#${item.id}`}
-                      className={`block rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-700 ${
+                      className={`block rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-700 ${
                         item.level === 3 ? "ml-4" : ""
                       }`}
                     >
