@@ -94,6 +94,53 @@ async function refreshOmzetProfiel(fromISO: string, toISO: string) {
   return res.rowCount ?? 0;
 }
 
+function datesBetween(start: string, end: string) {
+  const dates: string[] = [];
+  const current = new Date(`${start}T00:00:00`);
+  const last = new Date(`${end}T00:00:00`);
+
+  while (current <= last) {
+    dates.push(current.toISOString().slice(0, 10));
+    current.setDate(current.getDate() + 1);
+  }
+
+  return dates;
+}
+
+async function herbouwDagrapporten(origin: string, start: string, end: string) {
+  const datums = datesBetween(start, end);
+  const resultaten: { datum: string; success: boolean; error?: string }[] = [];
+
+  for (const datum of datums) {
+    try {
+      const res = await fetch(
+        `${origin}/api/rapportage/dagrapport?datum=${encodeURIComponent(datum)}`,
+        { cache: "no-store" }
+      );
+
+      if (!res.ok) {
+        resultaten.push({
+          datum,
+          success: false,
+          error: `HTTP ${res.status}`,
+        });
+        continue;
+      }
+
+      resultaten.push({ datum, success: true });
+    } catch (error) {
+      resultaten.push({
+        datum,
+        success: false,
+        error: String(error),
+      });
+    }
+  }
+
+  return resultaten;
+}
+
+
 export async function POST(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const startParam = searchParams.get('start');
@@ -110,7 +157,7 @@ export async function POST(req: NextRequest) {
 
   const isoStart = normalizeDate(startParam);
   const isoEinde = normalizeDate(eindeParam);
-
+  const origin = req.nextUrl.origin;
   const baseUrl = process.env.KASSA_API_URL!;
   const username = process.env.KASSA_USER!;
   const password = process.env.KASSA_PASS!;
@@ -137,9 +184,22 @@ export async function POST(req: NextRequest) {
 
     await dbRapportage.query('DELETE FROM rapportage.omzet WHERE datum BETWEEN $1 AND $2', [isoStart, isoEinde]);
 
+
+
     if (clean.length === 0) {
-      return NextResponse.json({ success: true, imported: 0, profiel_refresh: { skipped: true } });
-    }
+  const dagrapportHerbouw = await herbouwDagrapporten(
+    origin,
+    isoStart,
+    isoEinde
+  );
+
+  return NextResponse.json({
+    success: true,
+    imported: 0,
+    profiel_refresh: { skipped: true },
+    dagrapport_herbouw: dagrapportHerbouw,
+  });
+}
 
     const placeholders = clean.map((_, i) => `($${i * 5 + 1}, $${i * 5 + 2}, $${i * 5 + 3}, $${i * 5 + 4}, $${i * 5 + 5})`).join(',');
     const values = clean.flatMap(r => [r.datum, r.tijdstip, r.product, r.aantal, r.eenheidsprijs]);
@@ -164,16 +224,26 @@ export async function POST(req: NextRequest) {
       console.error('Profiel-refresh fout:', e);
     }
 
+       const dagrapportHerbouw = await herbouwDagrapporten(
+      origin,
+      isoStart,
+      isoEinde
+    );
+
     return NextResponse.json({
       success: true,
       imported: clean.length,
       profiel_refresh: {
         range: { from: isoStart, to: isoEinde },
-        upserts: profielUpserts
-      }
+        upserts: profielUpserts,
+      },
+      dagrapport_herbouw: dagrapportHerbouw,
     });
   } catch (err: any) {
-    console.error('Import fout:', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    console.error("Import fout:", err);
+    return NextResponse.json(
+      { success: false, error: err.message },
+      { status: 500 }
+    );
   }
 }
