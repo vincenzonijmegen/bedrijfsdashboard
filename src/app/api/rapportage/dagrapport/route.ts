@@ -12,7 +12,7 @@ type HaccpRow = {
   type: string;
   taak_id: number;
   taak_naam: string;
-  frequentie: "D" | "W" | "2D";
+  frequentie: "D" | "W" | "2D" | "M" | "Q" | "H" | "Y";
   weekdagen: string[] | null;
   sortering: number;
   afgetekend_door_naam: string | null;
@@ -20,6 +20,7 @@ type HaccpRow = {
   status: "gedaan" | "overgeslagen" | null;
   bron: "medewerker" | "leiding" | null;
   overgeslagen_reden: string | null;
+  laatst_gedaan_datum: string | null;
 };
 
 type ProductieRow = {
@@ -77,13 +78,48 @@ function dagenVerschil(a: Date, b: Date) {
   const utcB = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
   return Math.round((utcA - utcB) / 86400000);
 }
+const PERIODIEKE_FREQUENTIES = ["M", "Q", "H", "Y"];
 
+function startOfDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function taakIsPeriodiek(frequentie: string) {
+  return PERIODIEKE_FREQUENTIES.includes(frequentie);
+}
+
+function addFrequentieInterval(
+  datum: Date,
+  frequentie: HaccpRow["frequentie"]
+) {
+  const result = new Date(datum);
+
+  if (frequentie === "M") result.setMonth(result.getMonth() + 1);
+  if (frequentie === "Q") result.setMonth(result.getMonth() + 3);
+  if (frequentie === "H") result.setMonth(result.getMonth() + 6);
+  if (frequentie === "Y") result.setFullYear(result.getFullYear() + 1);
+
+  return startOfDay(result);
+}
 function taakIsOpDatumZichtbaar(
-  taak: Pick<HaccpRow, "frequentie" | "weekdagen">,
+  taak: Pick<
+    HaccpRow,
+    "frequentie" | "weekdagen" | "afgetekend_op" | "laatst_gedaan_datum"
+  >,
   datum: Date
 ) {
   const weekdagen = Array.isArray(taak.weekdagen) ? taak.weekdagen : [];
   const vandaagCode = WEEKDAGEN[datum.getDay()];
+
+  if (taakIsPeriodiek(taak.frequentie)) {
+    if (taak.afgetekend_op) return true;
+    if (!taak.laatst_gedaan_datum) return true;
+
+    const laatstGedaan = startOfDay(new Date(taak.laatst_gedaan_datum));
+    const vervaldatum = addFrequentieInterval(laatstGedaan, taak.frequentie);
+
+    return vervaldatum <= startOfDay(datum);
+  }
 
   if (weekdagen.length > 0 && !weekdagen.includes(vandaagCode)) {
     return false;
@@ -243,7 +279,8 @@ export async function GET(req: NextRequest) {
         a.afgetekend_op,
         a.status,
         a.bron,
-        a.overgeslagen_reden
+        a.overgeslagen_reden,
+        laatst.datum AS laatst_gedaan_datum
       FROM routines r
       JOIN routine_taken t
         ON t.routine_id = r.id
@@ -251,6 +288,16 @@ export async function GET(req: NextRequest) {
       LEFT JOIN routine_aftekeningen a
         ON a.routine_taak_id = t.id
        AND a.datum = $1::date
+       LEFT JOIN LATERAL (
+        SELECT la.datum
+        FROM routine_aftekeningen la
+        WHERE la.routine_taak_id = t.id
+          AND la.status = 'gedaan'
+          AND la.afgetekend_op IS NOT NULL
+          AND la.datum <= $1::date
+        ORDER BY la.datum DESC, la.afgetekend_op DESC
+        LIMIT 1
+      ) laatst ON true
       WHERE r.actief = true
         AND r.slug = ANY($2::text[])
       ORDER BY
