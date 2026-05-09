@@ -197,86 +197,151 @@ export default function NieuwInfotheekArtikelPage() {
               />
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
-                Inhoud
-              </label>
 
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <div className="flex flex-wrap gap-2 border-b border-slate-200 bg-slate-50 p-3">
+                <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700">
+                  Inhoud
+                </label>
+
+                <div className="mb-3 flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() =>
-                      editor?.chain().focus().toggleHeading({ level: 2 }).run()
+                      editor?.commands.setContent(`
+                        <h2>Doel</h2>
+                        <p>Leg uit waarvoor dit onderdeel bedoeld is.</p>
+
+                        <h2>Wanneer gebruik je dit?</h2>
+                        <p>Beschrijf in welke situatie je deze handleiding nodig hebt.</p>
+
+                        <h2>Stap voor stap</h2>
+                        <ul>
+                          <li>Stap 1</li>
+                          <li>Stap 2</li>
+                          <li>Stap 3</li>
+                        </ul>
+
+                        <h2>Veelgemaakte fouten</h2>
+                        <p>Beschrijf waar je op moet letten.</p>
+
+                        <h2>Belangrijke aandachtspunten</h2>
+                        <p>Noem bijzonderheden, uitzonderingen of automatische gevolgen.</p>
+                      `)
                     }
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                    className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 ring-1 ring-blue-100 hover:bg-blue-100"
                   >
-                    Kop
+                    Template workflow
                   </button>
 
                   <button
                     type="button"
                     onClick={() =>
-                      editor?.chain().focus().toggleHeading({ level: 3 }).run()
+                      editor?.commands.setContent(`
+                        <h2>Wat gebeurt er automatisch?</h2>
+                        <p>Beschrijf welke automatische actie de app uitvoert.</p>
+
+                        <h2>Wanneer gebeurt dit?</h2>
+                        <p>Beschrijf de trigger of voorwaarde.</p>
+
+                        <h2>Waarom bestaat dit?</h2>
+                        <p>Leg uit waarom deze automatisering is gebouwd.</p>
+
+                        <h2>Waar moet je op letten?</h2>
+                        <p>Beschrijf uitzonderingen, risico's of controlepunten.</p>
+                      `)
                     }
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                    className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-100 hover:bg-emerald-100"
                   >
-                    Subkop
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => editor?.chain().focus().toggleBold().run()}
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-                  >
-                    Vet
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      editor?.chain().focus().toggleBulletList().run()
-                    }
-                    className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-                  >
-                    Lijst
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={afbeeldingUploaden}
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-                  >
-                    <ImagePlus className="h-4 w-4" />
-                    Afbeelding
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={youtubeToevoegen}
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-                  >
-                    <Video className="h-4 w-4" />
-                    YouTube
+                    Template automatisering
                   </button>
                 </div>
 
-                <div className="prose prose-slate min-h-[360px] max-w-none p-4 prose-headings:font-bold prose-p:leading-7 prose-li:leading-7">
-                  {!editor ? (
-                    <p className="text-sm text-slate-500">
-                      Editor wordt geladen...
-                    </p>
-                  ) : (
-                    <EditorContent key={editorKey} editor={editor} />
-                  )}
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                  <div className="flex flex-wrap gap-2 border-b border-slate-200 bg-slate-50 p-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        editor?.chain().focus().toggleHeading({ level: 2 }).run()
+                      }
+                      className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                        editor?.isActive("heading", { level: 2 })
+                          ? "border-blue-200 bg-blue-50 text-blue-700"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      Kop
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        editor?.chain().focus().toggleHeading({ level: 3 }).run()
+                      }
+                      className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                        editor?.isActive("heading", { level: 3 })
+                          ? "border-blue-200 bg-blue-50 text-blue-700"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      Subkop
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().toggleBold().run()}
+                      className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                        editor?.isActive("bold")
+                          ? "border-blue-200 bg-blue-50 text-blue-700"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      Vet
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => editor?.chain().focus().toggleBulletList().run()}
+                      className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                        editor?.isActive("bulletList")
+                          ? "border-blue-200 bg-blue-50 text-blue-700"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      Lijst
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={afbeeldingUploaden}
+                      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                    >
+                      <ImagePlus className="h-4 w-4" />
+                      Afbeelding
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={youtubeToevoegen}
+                      className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                    >
+                      <Video className="h-4 w-4" />
+                      YouTube
+                    </button>
+                  </div>
+
+                  <div className="prose prose-slate min-h-[360px] max-w-none p-4 transition focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 prose-headings:font-bold prose-p:leading-7 prose-li:leading-7">
+                    {!editor ? (
+                      <p className="text-sm text-slate-500">Editor wordt geladen...</p>
+                    ) : (
+                      <EditorContent key={editorKey} editor={editor} />
+                    )}
+                  </div>
                 </div>
+
+                <p className="mt-2 text-xs text-slate-500">
+                  Gebruik koppen en subkoppen. Die verschijnen automatisch in de inhoudsopgave van het artikel.
+                </p>
               </div>
-
-              <p className="mt-2 text-xs text-slate-500">
-                Gebruik koppen en subkoppen. Die verschijnen automatisch in de
-                inhoudsopgave van het artikel.
-              </p>
-            </div>
 
             <div>
               <label className="mb-1 block text-sm font-semibold text-slate-700">
