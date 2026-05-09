@@ -13,6 +13,7 @@ import {
   Folder,
   Eye,
   EyeOff,
+  Info,
   BarChart2,
   CheckSquare,
   IceCream,
@@ -305,27 +306,38 @@ export default function AdminDashboard() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Link
-                href="/admin/dashboard"
-                className="inline-flex h-11 items-center rounded-xl bg-blue-50 px-4 text-sm font-semibold text-blue-950 ring-1 ring-blue-100 transition hover:bg-blue-100"
-              >
-                <DailyTotalDisplay mask={hideOmzet} />
-              </Link>
+            <Link
+              href="/admin/infotheek"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm transition hover:bg-blue-700"
+              title="Infotheek openen"
+              aria-label="Infotheek openen"
+            >
+              <Info className="h-5 w-5" />
+            </Link>
 
-              <button
-                type="button"
-                onClick={() => setHideOmzet((v) => !v)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50"
-                title={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
-                aria-label={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
-              >
-                {hideOmzet ? (
-                  <Eye className="h-5 w-5" />
-                ) : (
-                  <EyeOff className="h-5 w-5" />
-                )}
-              </button>
-            </div>
+            <Link
+              href="/admin/dashboard"
+              className="inline-flex h-11 items-center rounded-xl bg-blue-50 px-4 text-sm font-semibold text-blue-950 ring-1 ring-blue-100 transition hover:bg-blue-100"
+            >
+              <DailyTotalDisplay mask={hideOmzet} />
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => setHideOmzet((v) => !v)}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50"
+              title={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
+              aria-label={hideOmzet ? "Omzet tonen" : "Omzet verbergen"}
+            >
+              {hideOmzet ? (
+                <Eye className="h-5 w-5" />
+              ) : (
+                <EyeOff className="h-5 w-5" />
+              )}
+            </button>
+          </div>
           </div>
         </div>
 
