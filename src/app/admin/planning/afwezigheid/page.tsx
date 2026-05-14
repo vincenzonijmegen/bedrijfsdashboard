@@ -5,6 +5,13 @@ import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+const maakKey = (email: string, datum: string) => `${email}||${datum}`;
+
+const leesKey = (key: string) => {
+  const [email, datum] = key.split("||");
+  return { email, datum };
+};
+
 type Medewerker = {
   email: string;
   naam: string;
@@ -72,7 +79,7 @@ export default function AfwezigheidPage() {
 
     for (const a of afwezigItems) {
       const datum = String(a.datum).slice(0, 10);
-      const key = `${a.medewerker_email}_${datum}`;
+      const key = maakKey(a.medewerker_email, datum);
       m[key] = true;
     }
 
@@ -80,7 +87,8 @@ export default function AfwezigheidPage() {
   }, [afwezigData]);
 
   function toggle(email: string, datum: string) {
-    const key = `${email}_${datum}`;
+    const key = maakKey(email, datum);
+
     setMatrix((prev) => ({
       ...prev,
       [key]: !prev[key],
@@ -94,7 +102,7 @@ export default function AfwezigheidPage() {
 
     for (const key in matrix) {
       if (matrix[key]) {
-        const [email, datum] = key.split("_");
+        const { email, datum } = leesKey(key);
         items.push({ email, datum });
       }
     }
@@ -183,7 +191,7 @@ export default function AfwezigheidPage() {
                         </td>
 
                         {dagen.map((d) => {
-                          const key = `${m.email}_${d}`;
+                          const key = maakKey(m.email, d);
                           const actief = matrix[key];
 
                           return (
