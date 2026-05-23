@@ -270,6 +270,32 @@ export default function RoosterPerMedewerkerPage() {
     return grouped;
   }, [diensten]);
 
+const weekStatistieken = useMemo(() => {
+  const aantallen = Object.values(dienstenPerWeek).map(
+    (weekDiensten) => weekDiensten.length
+  );
+
+  if (aantallen.length === 0) {
+    return {
+      minimum: 0,
+      maximum: 0,
+      gemiddeld: 0,
+    };
+  }
+
+  const minimum = Math.min(...aantallen);
+  const maximum = Math.max(...aantallen);
+  const gemiddeld =
+    aantallen.reduce((totaal, aantal) => totaal + aantal, 0) / aantallen.length;
+
+  return {
+    minimum,
+    maximum,
+    gemiddeld,
+  };
+}, [dienstenPerWeek]);
+
+
   const totaalUren = useMemo(() => {
     return diensten.reduce((totaal, dienst) => {
       if (!dienst.starttime || !dienst.endtime) return totaal;
@@ -409,6 +435,38 @@ export default function RoosterPerMedewerkerPage() {
 
             <div className="mt-2 text-sm font-semibold text-slate-900">
               {loadingRooster ? "Rooster laden…" : "Bijgewerkt"}
+            </div>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-sm font-medium text-slate-500">
+              Minimum diensten per week
+            </div>
+
+            <div className="mt-2 text-2xl font-bold text-slate-900">
+              {weekStatistieken.minimum}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-sm font-medium text-slate-500">
+              Maximum diensten per week
+            </div>
+
+            <div className="mt-2 text-2xl font-bold text-slate-900">
+              {weekStatistieken.maximum}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-sm font-medium text-slate-500">
+              Gemiddeld aantal diensten per week
+            </div>
+
+            <div className="mt-2 text-2xl font-bold text-slate-900">
+              {weekStatistieken.gemiddeld.toFixed(1)}
             </div>
           </div>
         </section>
