@@ -316,7 +316,7 @@ export default function RoosterPerMedewerkerPage() {
         return totaal;
       }
 
-      let start = startUur * 60 + startMinuut;
+      const start = startUur * 60 + startMinuut;
       let eind = eindUur * 60 + eindMinuut;
 
       if (eind < start) {
