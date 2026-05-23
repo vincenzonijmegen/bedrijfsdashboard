@@ -456,8 +456,8 @@ export default function RoosterPerMedewerkerPage() {
 
                       <div>
                         <div className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
-                          {formatTijd(dienst.starttime)} – {formatTijd(dienst.endtime)}
-                        </div>
+                        {formatTijd(dienst.starttime)} – {formatTijd(dienst.endtime)}
+                      </div>
                       </div>
 
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
