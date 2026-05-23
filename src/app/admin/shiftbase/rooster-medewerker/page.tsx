@@ -265,9 +265,13 @@ export default function RoosterPerMedewerkerPage() {
           return a.starttime.localeCompare(b.starttime);
         });
 
-        if (actief) {
-          setDiensten(genormaliseerd);
-        }
+      console.log("ShiftBase rooster raw:", ruweData);
+      console.log("ShiftBase rooster genormaliseerd:", genormaliseerd);
+      console.log("Geselecteerde medewerkerId:", medewerkerId);
+
+      if (actief) {
+        setDiensten(genormaliseerd);
+      }
       } catch (err) {
         if (actief) {
           setDiensten([]);
