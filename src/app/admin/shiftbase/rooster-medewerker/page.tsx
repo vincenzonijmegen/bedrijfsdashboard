@@ -585,7 +585,7 @@ export default function RoosterPerMedewerkerPage() {
                   {weekDiensten.map((dienst) => (
                     <div
                       key={dienst.id}
-                      className="rooster-regel grid grid-cols-1 gap-3 px-4 py-3 md:grid-cols-[180px_140px_1fr_24px] print:grid-cols-[115px_85px_1fr_10px] print:gap-2 print:px-2 print:py-1"
+                      className="rooster-regel grid grid-cols-1 gap-3 px-4 py-3 md:grid-cols-[180px_140px_1fr_24px] print:grid-cols-[130px_95px_1fr_24px] print:gap-2 print:px-2 print:py-1"
                     >
                       <div>
                         <div className="text-sm font-semibold capitalize text-slate-900">
@@ -758,13 +758,13 @@ export default function RoosterPerMedewerkerPage() {
           }
 
           .text-sm {
-            font-size: 9.5px !important;
-            line-height: 12px !important;
+            font-size: 11px !important;
+            line-height: 14px !important;
           }
 
           .text-xs {
-            font-size: 8.5px !important;
-            line-height: 11px !important;
+            font-size: 9.5px !important;
+            line-height: 12px !important;
           }
 
           .font-bold {
@@ -775,8 +775,8 @@ export default function RoosterPerMedewerkerPage() {
             border-top-width: 1px !important;
           }
 
-          .print\\:grid-cols-\\[115px_85px_1fr_10px\\] {
-            grid-template-columns: 115px 85px 1fr 10px !important;
+          .print\\:grid-cols-\\[130px_95px_1fr_24px\\] {
+            grid-template-columns: 130px 95px 1fr 24px !important;
           }
 
           .print\\:gap-2 {
@@ -811,8 +811,8 @@ export default function RoosterPerMedewerkerPage() {
           }
 
           .h-4.w-4.rounded-full {
-            width: 6px !important;
-            height: 6px !important;
+            width: 12px !important;
+            height: 12px !important;
           }
         }
       `}</style>
