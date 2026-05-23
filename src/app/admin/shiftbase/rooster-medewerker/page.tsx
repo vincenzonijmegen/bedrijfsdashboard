@@ -618,11 +618,20 @@ export default function RoosterPerMedewerkerPage() {
 
                       <div className="flex items-center justify-end">
                         {dienst.color && (
-                          <span
-                            className="h-4 w-4 rounded-full border border-slate-200"
-                            style={{ backgroundColor: dienst.color }}
-                            title="ShiftBase-kleur"
-                          />
+                          <svg
+                            viewBox="0 0 12 12"
+                            className="h-4 w-4 print:h-3 print:w-3"
+                            aria-label="ShiftBase-kleur"
+                          >
+                            <circle
+                              cx="6"
+                              cy="6"
+                              r="5"
+                              fill={dienst.color}
+                              stroke="#cbd5e1"
+                              strokeWidth="1"
+                            />
+                          </svg>
                         )}
                       </div>
                     </div>
@@ -810,10 +819,6 @@ export default function RoosterPerMedewerkerPage() {
             padding-right: 0 !important;
           }
 
-          .h-4.w-4.rounded-full {
-            width: 12px !important;
-            height: 12px !important;
-          }
         }
       `}</style>
     </main>
