@@ -178,6 +178,67 @@ function normaliseerDienst(item: unknown): Dienst | null {
   };
 }
 
+type ShiftCategorie = "vol" | "deel" | "standby" | "keuken";
+
+type ShiftCategorieStats = Record<ShiftCategorie, number>;
+
+function legeShiftCategorieStats(): ShiftCategorieStats {
+  return {
+    vol: 0,
+    deel: 0,
+    standby: 0,
+    keuken: 0,
+  };
+}
+
+function bepaalShiftCategorieen(dienst: Dienst): ShiftCategorie[] {
+  const naam = `${dienst.description ?? ""} ${dienst.shift_name ?? ""}`
+    .toLowerCase()
+    .trim();
+
+  const categorieen: ShiftCategorie[] = [];
+
+  if (naam.includes("keuken")) {
+    categorieen.push("keuken");
+  }
+
+  if (naam.includes("standby") || naam.includes("stand by")) {
+    categorieen.push("standby");
+    return categorieen;
+  }
+
+  if (naam.includes("laat")) {
+    categorieen.push("deel");
+    return categorieen;
+  }
+
+  if (
+    naam.includes("shift 1 zondag") ||
+    naam === "shift 1" ||
+    naam === "shift 2" ||
+    naam.includes("shift 1 ") ||
+    naam.includes("shift 2 ")
+  ) {
+    categorieen.push("vol");
+  }
+
+  return categorieen;
+}
+
+function telShiftCategorieen(diensten: Dienst[]): ShiftCategorieStats {
+  const stats = legeShiftCategorieStats();
+
+  for (const dienst of diensten) {
+    const categorieen = bepaalShiftCategorieen(dienst);
+
+    for (const categorie of categorieen) {
+      stats[categorie] += 1;
+    }
+  }
+
+  return stats;
+}
+
 export default function RoosterPerMedewerkerPage() {
   const periode = useMemo(() => {
     const jaar = new Date().getFullYear();
@@ -347,6 +408,20 @@ export default function RoosterPerMedewerkerPage() {
     };
   }, [dienstenPerWeek]);
 
+          const shiftCategorieTotalen = useMemo(() => {
+          return telShiftCategorieen(diensten);
+        }, [diensten]);
+
+        const shiftCategoriePerWeek = useMemo(() => {
+          const perWeek: Record<string, ShiftCategorieStats> = {};
+
+          for (const [week, weekDiensten] of Object.entries(dienstenPerWeek)) {
+            perWeek[week] = telShiftCategorieen(weekDiensten);
+          }
+
+          return perWeek;
+        }, [dienstenPerWeek]);
+
   const totaalUren = useMemo(() => {
     return diensten.reduce((totaal, dienst) => {
       if (!dienst.starttime || !dienst.endtime) return totaal;
@@ -440,6 +515,12 @@ export default function RoosterPerMedewerkerPage() {
             Totaal diensten: {diensten.length} · Totaal uren:{" "}
             {totaalUren.toFixed(1)} · Gemiddeld per week:{" "}
             {weekStatistieken.gemiddeld.toFixed(1)}
+          </p>
+
+          <p className="mt-1 text-xs text-slate-500">
+            Vol: {shiftCategorieTotalen.vol} · Deel: {shiftCategorieTotalen.deel} ·
+            Standby: {shiftCategorieTotalen.standby} · Keuken:{" "}
+            {shiftCategorieTotalen.keuken}
           </p>
         </section>
 
@@ -555,6 +636,45 @@ export default function RoosterPerMedewerkerPage() {
           </div>
         </section>
 
+        <section className="grid grid-cols-2 gap-4 md:grid-cols-4 print:hidden">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-sm font-medium text-slate-500">
+              Volle shifts
+            </div>
+            <div className="mt-2 text-2xl font-bold text-slate-900">
+              {shiftCategorieTotalen.vol}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-sm font-medium text-slate-500">
+              Deelshifts
+            </div>
+            <div className="mt-2 text-2xl font-bold text-slate-900">
+              {shiftCategorieTotalen.deel}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-sm font-medium text-slate-500">
+              Standby-shifts
+            </div>
+            <div className="mt-2 text-2xl font-bold text-slate-900">
+              {shiftCategorieTotalen.standby}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="text-sm font-medium text-slate-500">
+              Keukenshifts
+            </div>
+            <div className="mt-2 text-2xl font-bold text-slate-900">
+              {shiftCategorieTotalen.keuken}
+            </div>
+          </div>
+        </section>
+
+
         <section className="space-y-5 print:space-y-1">
           {loadingRooster && (
             <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm print:hidden">
@@ -576,9 +696,18 @@ export default function RoosterPerMedewerkerPage() {
                 className="rooster-week overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
               >
                 <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 print:px-2 print:py-1">
-                  <h2 className="text-sm font-bold text-slate-900">
-                    Week {week.split("-W")[1]}
-                  </h2>
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <h2 className="text-sm font-bold text-slate-900">
+                      Week {week.split("-W")[1]}
+                    </h2>
+
+                    <div className="flex flex-wrap gap-2 text-xs font-medium text-slate-600">
+                      <span>Vol: {shiftCategoriePerWeek[week]?.vol ?? 0}</span>
+                      <span>Deel: {shiftCategoriePerWeek[week]?.deel ?? 0}</span>
+                      <span>Standby: {shiftCategoriePerWeek[week]?.standby ?? 0}</span>
+                      <span>Keuken: {shiftCategoriePerWeek[week]?.keuken ?? 0}</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="divide-y divide-slate-100">
