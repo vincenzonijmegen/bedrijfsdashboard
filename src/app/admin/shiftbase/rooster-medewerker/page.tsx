@@ -219,21 +219,18 @@ export default function RoosterPerMedewerkerPage() {
           : [];
 
         const genormaliseerd: Dienst[] = ruweData
-        .map((item) => normaliseerDienst(item))
-        .filter((d): d is Dienst => Boolean(d))
-        .sort((a: Dienst, b: Dienst) => {
-          const datumVergelijking = a.date.localeCompare(b.date);
-          if (datumVergelijking !== 0) return datumVergelijking;
-          return a.starttime.localeCompare(b.starttime);
-        });
+          .map((item) => normaliseerDienst(item))
+          .filter((d): d is Dienst => Boolean(d))
+          .filter((d) => String(d.user_id) === String(medewerkerId))
+          .sort((a: Dienst, b: Dienst) => {
+            const datumVergelijking = a.date.localeCompare(b.date);
+            if (datumVergelijking !== 0) return datumVergelijking;
+            return a.starttime.localeCompare(b.starttime);
+          });
 
-      console.log("ShiftBase rooster raw:", ruweData);
-      console.log("ShiftBase rooster genormaliseerd:", genormaliseerd);
-      console.log("Geselecteerde medewerkerId:", medewerkerId);
-
-      if (actief) {
-        setDiensten(genormaliseerd);
-      }
+        if (actief) {
+          setDiensten(genormaliseerd);
+        }
       } catch (err) {
         if (actief) {
           setDiensten([]);
