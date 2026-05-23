@@ -379,29 +379,32 @@ export default function RoosterPerMedewerkerPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 px-4 py-6">
+    <main
+      id="printable-rooster"
+      className="min-h-screen bg-slate-100 px-4 py-6"
+    >
       <div className="mx-auto max-w-6xl space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
           <div>
             <Link
               href="/admin"
-              className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-blue-700 hover:text-blue-900 print:hidden"
+              className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-blue-700 hover:text-blue-900"
             >
               <ArrowLeft className="h-4 w-4" />
               Terug naar management portaal
             </Link>
 
-            <h1 className="text-2xl font-bold text-slate-900 print:hidden">
+            <h1 className="text-2xl font-bold text-slate-900">
               Rooster per medewerker
             </h1>
 
-            <p className="mt-1 text-sm text-slate-600 print:hidden">
+            <p className="mt-1 text-sm text-slate-600">
               Selecteer een medewerker om het ShiftBase-rooster vanaf vandaag
               tot het einde van het jaar te bekijken.
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:items-end print:hidden">
+          <div className="flex flex-col gap-3 sm:items-end">
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
               <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
                 Geselecteerd
@@ -428,8 +431,15 @@ export default function RoosterPerMedewerkerPage() {
           <h1 className="text-xl font-bold text-slate-900">
             Rooster {geselecteerdeMedewerker?.fullName || ""}
           </h1>
+
           <p className="mt-1 text-sm text-slate-600">
             Vanaf vandaag t/m 31 december {periode.jaar}
+          </p>
+
+          <p className="mt-1 text-xs text-slate-500">
+            Totaal diensten: {diensten.length} · Totaal uren:{" "}
+            {totaalUren.toFixed(1)} · Gemiddeld per week:{" "}
+            {weekStatistieken.gemiddeld.toFixed(1)}
           </p>
         </section>
 
@@ -563,7 +573,7 @@ export default function RoosterPerMedewerkerPage() {
             Object.entries(dienstenPerWeek).map(([week, weekDiensten]) => (
               <div
                 key={week}
-                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                className="rooster-week overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
               >
                 <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 print:px-2 print:py-1">
                   <h2 className="text-sm font-bold text-slate-900">
@@ -575,7 +585,7 @@ export default function RoosterPerMedewerkerPage() {
                   {weekDiensten.map((dienst) => (
                     <div
                       key={dienst.id}
-                      className="grid grid-cols-1 gap-3 px-4 py-3 md:grid-cols-[180px_140px_1fr_24px] print:grid-cols-[120px_95px_1fr_12px] print:gap-2 print:px-2 print:py-1"
+                      className="rooster-regel grid grid-cols-1 gap-3 px-4 py-3 md:grid-cols-[180px_140px_1fr_24px] print:grid-cols-[115px_85px_1fr_10px] print:gap-2 print:px-2 print:py-1"
                     >
                       <div>
                         <div className="text-sm font-semibold capitalize text-slate-900">
@@ -627,7 +637,7 @@ export default function RoosterPerMedewerkerPage() {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 10mm;
+            margin: 8mm;
           }
 
           html,
@@ -635,89 +645,126 @@ export default function RoosterPerMedewerkerPage() {
             background: white !important;
           }
 
-          main {
+          body * {
+            visibility: hidden !important;
+          }
+
+          #printable-rooster,
+          #printable-rooster * {
+            visibility: visible !important;
+          }
+
+          #printable-rooster {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
             background: white !important;
             padding: 0 !important;
+            margin: 0 !important;
             min-height: auto !important;
           }
 
-          .mx-auto {
+          #printable-rooster .mx-auto {
             max-width: none !important;
+            width: 100% !important;
+            margin: 0 !important;
           }
 
           .print\\:hidden {
             display: none !important;
+            visibility: hidden !important;
           }
 
           .print\\:block {
             display: block !important;
           }
 
+          section {
+            break-inside: auto !important;
+            page-break-inside: auto !important;
+          }
+
+          .rooster-week {
+            break-inside: auto !important;
+            page-break-inside: auto !important;
+            margin-top: 5px !important;
+          }
+
+          .rooster-regel {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+
           .rounded-2xl {
-            border-radius: 6px !important;
+            border-radius: 5px !important;
           }
 
           .shadow-sm {
             box-shadow: none !important;
           }
 
-          section {
-            break-inside: avoid;
-          }
-
           .space-y-6 > :not([hidden]) ~ :not([hidden]) {
-            margin-top: 8px !important;
+            margin-top: 5px !important;
           }
 
           .space-y-5 > :not([hidden]) ~ :not([hidden]) {
-            margin-top: 6px !important;
-          }
-
-          .print\\:space-y-1 > :not([hidden]) ~ :not([hidden]) {
             margin-top: 4px !important;
           }
 
+          .print\\:space-y-1 > :not([hidden]) ~ :not([hidden]) {
+            margin-top: 3px !important;
+          }
+
           .grid {
-            gap: 6px !important;
+            gap: 4px !important;
           }
 
           .px-4 {
-            padding-left: 6px !important;
-            padding-right: 6px !important;
+            padding-left: 5px !important;
+            padding-right: 5px !important;
           }
 
           .py-4,
           .py-3 {
-            padding-top: 4px !important;
-            padding-bottom: 4px !important;
+            padding-top: 3px !important;
+            padding-bottom: 3px !important;
           }
 
           .p-4 {
-            padding: 6px !important;
+            padding: 5px !important;
           }
 
           .p-6 {
-            padding: 8px !important;
+            padding: 6px !important;
+          }
+
+          .border {
+            border-color: #d1d5db !important;
+          }
+
+          .border-b {
+            border-bottom-color: #d1d5db !important;
           }
 
           .text-2xl {
-            font-size: 18px !important;
-            line-height: 22px !important;
+            font-size: 16px !important;
+            line-height: 19px !important;
           }
 
           .text-xl {
-            font-size: 17px !important;
-            line-height: 21px !important;
+            font-size: 15px !important;
+            line-height: 18px !important;
           }
 
           .text-sm {
-            font-size: 10.5px !important;
-            line-height: 13px !important;
+            font-size: 9.5px !important;
+            line-height: 12px !important;
           }
 
           .text-xs {
-            font-size: 9.5px !important;
-            line-height: 12px !important;
+            font-size: 8.5px !important;
+            line-height: 11px !important;
           }
 
           .font-bold {
@@ -728,27 +775,27 @@ export default function RoosterPerMedewerkerPage() {
             border-top-width: 1px !important;
           }
 
-          .print\\:grid-cols-\\[120px_95px_1fr_12px\\] {
-            grid-template-columns: 120px 95px 1fr 12px !important;
+          .print\\:grid-cols-\\[115px_85px_1fr_10px\\] {
+            grid-template-columns: 115px 85px 1fr 10px !important;
           }
 
           .print\\:gap-2 {
-            gap: 6px !important;
+            gap: 4px !important;
           }
 
           .print\\:px-2 {
-            padding-left: 6px !important;
-            padding-right: 6px !important;
+            padding-left: 5px !important;
+            padding-right: 5px !important;
           }
 
           .print\\:py-1 {
-            padding-top: 3px !important;
-            padding-bottom: 3px !important;
+            padding-top: 2px !important;
+            padding-bottom: 2px !important;
           }
 
           .print\\:px-1 {
-            padding-left: 4px !important;
-            padding-right: 4px !important;
+            padding-left: 3px !important;
+            padding-right: 3px !important;
           }
 
           .print\\:py-0 {
@@ -758,11 +805,14 @@ export default function RoosterPerMedewerkerPage() {
 
           .inline-flex.rounded-full {
             white-space: nowrap !important;
+            background: transparent !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
           }
 
           .h-4.w-4.rounded-full {
-            width: 7px !important;
-            height: 7px !important;
+            width: 6px !important;
+            height: 6px !important;
           }
         }
       `}</style>
