@@ -253,14 +253,13 @@ export default function RoosterPerMedewerkerPage() {
         const ruweData: unknown[] = Array.isArray(json?.data) ? json.data : [];
 
         const genormaliseerd: Dienst[] = ruweData
-          .map((item) => normaliseerDienst(item))
-          .filter((d): d is Dienst => Boolean(d))
-          .filter((d) => String(d.user_id) === String(medewerkerId))
-          .sort((a: Dienst, b: Dienst) => {
-            const datumVergelijking = a.date.localeCompare(b.date);
-            if (datumVergelijking !== 0) return datumVergelijking;
-            return a.starttime.localeCompare(b.starttime);
-          });
+        .map((item) => normaliseerDienst(item))
+        .filter((d): d is Dienst => Boolean(d))
+        .sort((a: Dienst, b: Dienst) => {
+          const datumVergelijking = a.date.localeCompare(b.date);
+          if (datumVergelijking !== 0) return datumVergelijking;
+          return a.starttime.localeCompare(b.starttime);
+        });
 
         if (actief) {
           setDiensten(genormaliseerd);
