@@ -250,7 +250,11 @@ export default function RoosterPerMedewerkerPage() {
           throw new Error(json?.details || json?.error || "Onbekende fout");
         }
 
-        const ruweData: unknown[] = Array.isArray(json?.data) ? json.data : [];
+        const ruweData: unknown[] = Array.isArray(json)
+        ? json
+        : Array.isArray(json?.data)
+          ? json.data
+          : [];
 
         const genormaliseerd: Dienst[] = ruweData
         .map((item) => normaliseerDienst(item))
