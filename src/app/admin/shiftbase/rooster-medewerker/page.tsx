@@ -32,14 +32,18 @@ type Dienst = {
   color?: string;
 };
 
+function formatTijd(value: string) {
+  if (!value) return "?";
+  return value.slice(0, 5);
+}
+
 function vandaagIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function overDagenIso(aantalDagen: number) {
-  const d = new Date();
-  d.setDate(d.getDate() + aantalDagen);
-  return d.toISOString().slice(0, 10);
+function eindeJaarIso() {
+  const jaar = new Date().getFullYear();
+  return `${jaar}-12-31`;
 }
 
 function formatDatum(value: string) {
@@ -129,8 +133,8 @@ function normaliseerDienst(item: any): Dienst | null {
 export default function RoosterPerMedewerkerPage() {
   const [medewerkers, setMedewerkers] = useState<Medewerker[]>([]);
   const [medewerkerId, setMedewerkerId] = useState("");
-  const [startDatum, setStartDatum] = useState(vandaagIso());
-  const [eindDatum, setEindDatum] = useState(overDagenIso(28));
+  const startDatum = vandaagIso();
+  const eindDatum = eindeJaarIso();
   const [diensten, setDiensten] = useState<Dienst[]>([]);
   const [loadingMedewerkers, setLoadingMedewerkers] = useState(true);
   const [loadingRooster, setLoadingRooster] = useState(false);
@@ -248,7 +252,7 @@ export default function RoosterPerMedewerkerPage() {
     return () => {
       actief = false;
     };
-  }, [medewerkerId, startDatum, eindDatum]);
+  }, [medewerkerId]);
 
   const geselecteerdeMedewerker = useMemo(() => {
     return medewerkers.find((m) => String(m.id) === String(medewerkerId));
@@ -311,8 +315,7 @@ export default function RoosterPerMedewerkerPage() {
             </h1>
 
             <p className="mt-1 text-sm text-slate-600">
-              Selecteer een medewerker en periode om het ShiftBase-rooster te
-              bekijken.
+            Selecteer een medewerker om het ShiftBase-rooster vanaf vandaag tot het einde van het jaar te bekijken.
             </p>
           </div>
 
@@ -331,7 +334,7 @@ export default function RoosterPerMedewerkerPage() {
         </div>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <label className="space-y-1 md:col-span-2">
               <span className="text-sm font-medium text-slate-700">
                 Medewerker
@@ -360,29 +363,12 @@ export default function RoosterPerMedewerkerPage() {
               </select>
             </label>
 
-            <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700">Vanaf</span>
-
-              <input
-                type="date"
-                value={startDatum}
-                onChange={(e) => setStartDatum(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              />
-            </label>
-
-            <label className="space-y-1">
-              <span className="text-sm font-medium text-slate-700">
-                Tot en met
-              </span>
-
-              <input
-                type="date"
-                value={eindDatum}
-                onChange={(e) => setEindDatum(e.target.value)}
-                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-              />
-            </label>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+              <div className="font-medium text-slate-700">Periode</div>
+              <div className="mt-1">
+                Vanaf vandaag t/m 31 december {new Date().getFullYear()}
+              </div>
+            </div>
           </div>
         </section>
 
@@ -436,7 +422,7 @@ export default function RoosterPerMedewerkerPage() {
 
           {!loadingRooster && diensten.length === 0 && !error && (
             <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-              Geen diensten gevonden voor deze medewerker in deze periode.
+              Geen diensten gevonden voor deze medewerker vanaf vandaag tot het einde van het jaar.
             </div>
           )}
 
@@ -470,7 +456,7 @@ export default function RoosterPerMedewerkerPage() {
 
                       <div>
                         <div className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
-                          {dienst.starttime || "?"} – {dienst.endtime || "?"}
+                          {formatTijd(dienst.starttime)} – {formatTijd(dienst.endtime)}
                         </div>
                       </div>
 
