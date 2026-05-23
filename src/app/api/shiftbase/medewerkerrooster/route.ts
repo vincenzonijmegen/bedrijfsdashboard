@@ -1,70 +1,70 @@
 // ===========================
 // File: src/app/api/shiftbase/medewerkerrooster/route.ts
 // ===========================
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-if (process.env.NODE_ENV === "development") {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
-}
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
 
-export async function GET(req: NextRequest) {
-  const rawKey = process.env.SHIFTBASE_API_KEY;
-  const apiKey = rawKey?.trim() || "";
+  const minDate = searchParams.get("min_date");
+  const maxDate = searchParams.get("max_date");
+
+  if (!minDate || !maxDate) {
+    return NextResponse.json(
+      { error: "Query parameters `min_date` en `max_date` zijn verplicht" },
+      { status: 400 }
+    );
+  }
+
+  const apiKey = process.env.SHIFTBASE_API_KEY;
 
   if (!apiKey) {
+    console.error("SHIFTBASE_API_KEY niet ingesteld");
+
     return NextResponse.json(
       { error: "SHIFTBASE_API_KEY ontbreekt" },
       { status: 500 }
     );
   }
 
-  /**
-   * Let op:
-   * Als jullie bestaande rooster-koppeling al een andere werkende ShiftBase-url gebruikt,
-   * vervang dan alleen deze URL door die bestaande url.
-   */
-  const url = new URL("https://api.shiftbase.com/api/shifts");
+  const url = new URL("https://api.shiftbase.com/api/rosters");
+  url.searchParams.set("min_date", minDate);
+  url.searchParams.set("max_date", maxDate);
 
-  req.nextUrl.searchParams.forEach((value, key) => {
-    url.searchParams.set(key, value);
+  const res = await fetch(url.toString(), {
+    headers: {
+      Authorization: `API ${apiKey}`,
+    },
+    cache: "no-store",
   });
 
-  try {
-    const res = await fetch(url.toString(), {
-      method: "GET",
-      headers: {
-        Authorization: `API ${apiKey}`,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-      cache: "no-store",
-    });
+  const text = await res.text();
 
-    if (!res.ok) {
-      const details = await res.text();
+  if (!res.ok) {
+    console.error("Shiftbase error:", res.status, text);
 
-      return NextResponse.json(
-        {
-          error: "Fout bij ophalen rooster uit ShiftBase",
-          details,
-        },
-        { status: res.status }
-      );
-    }
-
-    const data = await res.json();
-
-    return NextResponse.json(data);
-  } catch (err) {
     return NextResponse.json(
-      {
-        error: "Interne fout bij ophalen rooster",
-        details: String(err),
-      },
-      { status: 500 }
+      { error: "Shiftbase fout", details: text },
+      { status: res.status }
+    );
+  }
+
+  try {
+    const json = JSON.parse(text);
+    const data = Array.isArray(json) ? json : json.data;
+
+    return NextResponse.json({
+      data: Array.isArray(data) ? data : [],
+    });
+  } catch {
+    console.error("JSON parse fout:", text);
+
+    return NextResponse.json(
+      { error: "Ongeldige JSON in response" },
+      { status: 502 }
     );
   }
 }
