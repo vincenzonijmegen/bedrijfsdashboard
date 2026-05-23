@@ -239,6 +239,11 @@ function telShiftCategorieen(diensten: Dienst[]): ShiftCategorieStats {
   return stats;
 }
 
+function berekenPercentage(deel: number, totaal: number) {
+  if (totaal === 0) return 0;
+  return (deel / totaal) * 100;
+}
+
 export default function RoosterPerMedewerkerPage() {
   const periode = useMemo(() => {
     const jaar = new Date().getFullYear();
@@ -412,6 +417,10 @@ export default function RoosterPerMedewerkerPage() {
           return telShiftCategorieen(diensten);
         }, [diensten]);
 
+        const standbyPercentage = useMemo(() => {
+          return berekenPercentage(shiftCategorieTotalen.standby, diensten.length);
+        }, [shiftCategorieTotalen.standby, diensten.length]);
+
         const shiftCategoriePerWeek = useMemo(() => {
           const perWeek: Record<string, ShiftCategorieStats> = {};
 
@@ -421,6 +430,18 @@ export default function RoosterPerMedewerkerPage() {
 
           return perWeek;
         }, [dienstenPerWeek]);
+
+
+        const standbyPercentagePerWeek = useMemo(() => {
+          const perWeek: Record<string, number> = {};
+
+          for (const [week, weekDiensten] of Object.entries(dienstenPerWeek)) {
+            const stats = shiftCategoriePerWeek[week] ?? legeShiftCategorieStats();
+            perWeek[week] = berekenPercentage(stats.standby, weekDiensten.length);
+          }
+
+          return perWeek;
+        }, [dienstenPerWeek, shiftCategoriePerWeek]);
 
   const totaalUren = useMemo(() => {
     return diensten.reduce((totaal, dienst) => {
@@ -519,8 +540,8 @@ export default function RoosterPerMedewerkerPage() {
 
           <p className="mt-1 text-xs text-slate-500">
             Vol: {shiftCategorieTotalen.vol} · Deel: {shiftCategorieTotalen.deel} ·
-            Standby: {shiftCategorieTotalen.standby} · Keuken:{" "}
-            {shiftCategorieTotalen.keuken}
+            Standby: {shiftCategorieTotalen.standby} (
+            {standbyPercentage.toFixed(0)}%) · Keuken: {shiftCategorieTotalen.keuken}
           </p>
         </section>
 
@@ -659,8 +680,19 @@ export default function RoosterPerMedewerkerPage() {
             <div className="text-sm font-medium text-slate-500">
               Standby-shifts
             </div>
-            <div className="mt-2 text-2xl font-bold text-slate-900">
-              {shiftCategorieTotalen.standby}
+
+            <div className="mt-2 flex items-end gap-2">
+              <div className="text-2xl font-bold text-slate-900">
+                {shiftCategorieTotalen.standby}
+              </div>
+
+              <div className="pb-1 text-sm font-semibold text-slate-500">
+                {standbyPercentage.toFixed(0)}%
+              </div>
+            </div>
+
+            <div className="mt-1 text-xs text-slate-500">
+              van alle diensten
             </div>
           </div>
 
@@ -704,7 +736,10 @@ export default function RoosterPerMedewerkerPage() {
                     <div className="flex flex-wrap gap-2 text-xs font-medium text-slate-600">
                       <span>Vol: {shiftCategoriePerWeek[week]?.vol ?? 0}</span>
                       <span>Deel: {shiftCategoriePerWeek[week]?.deel ?? 0}</span>
-                      <span>Standby: {shiftCategoriePerWeek[week]?.standby ?? 0}</span>
+                      <span>
+                        Standby: {shiftCategoriePerWeek[week]?.standby ?? 0} (
+                        {(standbyPercentagePerWeek[week] ?? 0).toFixed(0)}%)
+                      </span>
                       <span>Keuken: {shiftCategoriePerWeek[week]?.keuken ?? 0}</span>
                     </div>
                   </div>
