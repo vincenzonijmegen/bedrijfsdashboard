@@ -82,53 +82,26 @@ function getWeekKey(value: string) {
 }
 
 function normaliseerDienst(item: any): Dienst | null {
-  const bron =
-    item?.Shift ||
-    item?.Schedule ||
-    item?.Roster ||
-    item?.PlannedShift ||
-    item;
-
-  const shiftInfo =
-    item?.ShiftType ||
-    item?.Shift ||
-    item?.Team ||
-    item?.Department ||
-    {};
+  const roster = item?.Roster ?? item;
+  const user = item?.User ?? {};
+  const shift = item?.Shift ?? {};
+  const department = roster?.Department ?? item?.Department ?? {};
 
   const id = String(
-    bron?.id ??
+    roster?.occurrence_id ??
+      roster?.id ??
       item?.id ??
-      `${bron?.date ?? ""}-${bron?.starttime ?? ""}-${bron?.user_id ?? ""}`
+      `${roster?.date ?? ""}-${roster?.starttime ?? ""}-${roster?.user_id ?? ""}`
   );
 
-  const date = String(
-    bron?.date ??
-      item?.date ??
-      bron?.start_date ??
-      item?.start_date ??
-      ""
-  );
+  const date = String(roster?.date ?? "");
 
-  const starttime = String(
-    bron?.starttime ??
-      bron?.start_time ??
-      item?.starttime ??
-      item?.start_time ??
-      ""
-  );
-
-  const endtime = String(
-    bron?.endtime ??
-      bron?.end_time ??
-      item?.endtime ??
-      item?.end_time ??
-      ""
-  );
+  const starttime = String(roster?.starttime ?? "");
+  const endtime = String(roster?.endtime ?? "");
 
   const user_id = String(
-    bron?.user_id ??
-      bron?.employee_id ??
+    roster?.user_id ??
+      user?.id ??
       item?.user_id ??
       item?.employee_id ??
       ""
@@ -142,25 +115,14 @@ function normaliseerDienst(item: any): Dienst | null {
     starttime,
     endtime,
     user_id,
-    user_name:
-      bron?.user_name ??
-      bron?.employee_name ??
-      item?.user_name ??
-      item?.employee_name,
-    description:
-      bron?.description ??
-      item?.description ??
-      shiftInfo?.description,
-    shift_name:
-      shiftInfo?.long_name ??
-      shiftInfo?.name ??
-      bron?.shift_name ??
-      bron?.name,
+    user_name: user?.name ?? roster?.user_name ?? roster?.employee_name,
+    description: roster?.description ?? shift?.long_name ?? shift?.name,
+    shift_name: shift?.long_name ?? shift?.name ?? roster?.name,
     department_name:
-      item?.department_name ??
-      bron?.department_name ??
-      shiftInfo?.department_name,
-    color: shiftInfo?.color ?? bron?.color ?? item?.color,
+      department?.name ??
+      roster?.department_name ??
+      item?.department_name,
+    color: shift?.color ?? roster?.color ?? item?.color,
   };
 }
 
