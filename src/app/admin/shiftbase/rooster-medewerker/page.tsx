@@ -8,14 +8,14 @@ import {
   ArrowLeft,
   CalendarDays,
   Clock,
+  Printer,
   RefreshCw,
   User,
 } from "lucide-react";
 
 type Medewerker = {
-  id: string | number;
-  fullName?: string;
-  name?: string;
+  id: string;
+  fullName: string;
   department_name?: string;
 };
 
@@ -31,11 +31,6 @@ type Dienst = {
   department_name?: string;
   color?: string;
 };
-
-function formatTijd(value: string) {
-  if (!value) return "?";
-  return value.slice(0, 5);
-}
 
 function vandaagIso() {
   return new Date().toISOString().slice(0, 10);
@@ -62,6 +57,24 @@ function formatKorteDatum(value: string) {
   }
 }
 
+function formatTijd(value: string) {
+  if (!value) return "?";
+  return value.slice(0, 5);
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (typeof value === "object" && value !== null) {
+    return value as Record<string, unknown>;
+  }
+
+  return {};
+}
+
+function asString(value: unknown) {
+  if (value === null || value === undefined) return "";
+  return String(value);
+}
+
 function getWeekKey(value: string) {
   const date = parseISO(value);
 
@@ -85,31 +98,49 @@ function getWeekKey(value: string) {
   return `${weekYear}-W${String(week).padStart(2, "0")}`;
 }
 
-function normaliseerDienst(item: any): Dienst | null {
-  const roster = item?.Roster ?? item;
-  const user = item?.User ?? {};
-  const shift = item?.Shift ?? {};
-  const department = roster?.Department ?? item?.Department ?? {};
+function normaliseerMedewerker(item: unknown): Medewerker | null {
+  const medewerker = asRecord(item);
 
-  const id = String(
-    roster?.occurrence_id ??
-      roster?.id ??
-      item?.id ??
-      `${roster?.date ?? ""}-${roster?.starttime ?? ""}-${roster?.user_id ?? ""}`
-  );
+  const id = asString(medewerker.id);
+  const naam =
+    asString(medewerker.fullName) ||
+    asString(medewerker.name) ||
+    asString(medewerker.full_name);
 
-  const date = String(roster?.date ?? "");
+  if (!id || !naam || naam === "Anonymous User") return null;
 
-  const starttime = String(roster?.starttime ?? "");
-  const endtime = String(roster?.endtime ?? "");
+  return {
+    id,
+    fullName: naam,
+    department_name: asString(medewerker.department_name) || undefined,
+  };
+}
 
-  const user_id = String(
-    roster?.user_id ??
-      user?.id ??
-      item?.user_id ??
-      item?.employee_id ??
-      ""
-  );
+function normaliseerDienst(item: unknown): Dienst | null {
+  const itemObj = asRecord(item);
+
+  const roster = asRecord(itemObj.Roster ?? item);
+  const user = asRecord(itemObj.User);
+  const shift = asRecord(itemObj.Shift);
+  const department = asRecord(roster.Department ?? itemObj.Department);
+
+  const id =
+    asString(roster.occurrence_id) ||
+    asString(roster.id) ||
+    asString(itemObj.id) ||
+    `${asString(roster.date)}-${asString(roster.starttime)}-${asString(
+      roster.user_id
+    )}`;
+
+  const date = asString(roster.date);
+  const starttime = asString(roster.starttime);
+  const endtime = asString(roster.endtime);
+
+  const user_id =
+    asString(roster.user_id) ||
+    asString(user.id) ||
+    asString(itemObj.user_id) ||
+    asString(itemObj.employee_id);
 
   if (!date || !user_id) return null;
 
@@ -119,22 +150,47 @@ function normaliseerDienst(item: any): Dienst | null {
     starttime,
     endtime,
     user_id,
-    user_name: user?.name ?? roster?.user_name ?? roster?.employee_name,
-    description: roster?.description ?? shift?.long_name ?? shift?.name,
-    shift_name: shift?.long_name ?? shift?.name ?? roster?.name,
+    user_name:
+      asString(user.name) ||
+      asString(roster.user_name) ||
+      asString(roster.employee_name) ||
+      undefined,
+    description:
+      asString(roster.description) ||
+      asString(shift.long_name) ||
+      asString(shift.name) ||
+      undefined,
+    shift_name:
+      asString(shift.long_name) ||
+      asString(shift.name) ||
+      asString(roster.name) ||
+      undefined,
     department_name:
-      department?.name ??
-      roster?.department_name ??
-      item?.department_name,
-    color: shift?.color ?? roster?.color ?? item?.color,
+      asString(department.name) ||
+      asString(roster.department_name) ||
+      asString(itemObj.department_name) ||
+      undefined,
+    color:
+      asString(shift.color) ||
+      asString(roster.color) ||
+      asString(itemObj.color) ||
+      undefined,
   };
 }
 
 export default function RoosterPerMedewerkerPage() {
+  const periode = useMemo(() => {
+    const jaar = new Date().getFullYear();
+
+    return {
+      startDatum: vandaagIso(),
+      eindDatum: eindeJaarIso(),
+      jaar,
+    };
+  }, []);
+
   const [medewerkers, setMedewerkers] = useState<Medewerker[]>([]);
   const [medewerkerId, setMedewerkerId] = useState("");
-  const startDatum = vandaagIso();
-  const eindDatum = eindeJaarIso();
   const [diensten, setDiensten] = useState<Dienst[]>([]);
   const [loadingMedewerkers, setLoadingMedewerkers] = useState(true);
   const [loadingRooster, setLoadingRooster] = useState(false);
@@ -155,16 +211,12 @@ export default function RoosterPerMedewerkerPage() {
           throw new Error(json?.details || json?.error || "Onbekende fout");
         }
 
-        const lijst: Medewerker[] = Array.isArray(json?.data)
-          ? json.data
-              .filter((m: any) => m.fullName !== "Anonymous User")
-              .sort((a: any, b: any) =>
-                String(a.fullName || a.name || "").localeCompare(
-                  String(b.fullName || b.name || ""),
-                  "nl"
-                )
-              )
-          : [];
+        const ruweData: unknown[] = Array.isArray(json?.data) ? json.data : [];
+
+        const lijst = ruweData
+          .map(normaliseerMedewerker)
+          .filter((m): m is Medewerker => Boolean(m))
+          .sort((a, b) => a.fullName.localeCompare(b.fullName, "nl"));
 
         if (!actief) return;
 
@@ -191,7 +243,7 @@ export default function RoosterPerMedewerkerPage() {
   }, []);
 
   useEffect(() => {
-    if (!medewerkerId || !startDatum || !eindDatum) return;
+    if (!medewerkerId || !periode.startDatum || !periode.eindDatum) return;
 
     let actief = true;
 
@@ -200,9 +252,8 @@ export default function RoosterPerMedewerkerPage() {
       setError(null);
 
       const params = new URLSearchParams({
-        min_date: startDatum,
-        max_date: eindDatum,
-        user_id: medewerkerId,
+        min_date: periode.startDatum,
+        max_date: periode.eindDatum,
       });
 
       try {
@@ -217,10 +268,10 @@ export default function RoosterPerMedewerkerPage() {
         }
 
         const ruweData: unknown[] = Array.isArray(json)
-        ? json
-        : Array.isArray(json?.data)
-          ? json.data
-          : [];
+          ? json
+          : Array.isArray(json?.data)
+            ? json.data
+            : [];
 
         const genormaliseerd: Dienst[] = ruweData
           .map((item) => normaliseerDienst(item))
@@ -252,7 +303,7 @@ export default function RoosterPerMedewerkerPage() {
     return () => {
       actief = false;
     };
-  }, [medewerkerId]);
+  }, [medewerkerId, periode.startDatum, periode.eindDatum]);
 
   const geselecteerdeMedewerker = useMemo(() => {
     return medewerkers.find((m) => String(m.id) === String(medewerkerId));
@@ -270,31 +321,31 @@ export default function RoosterPerMedewerkerPage() {
     return grouped;
   }, [diensten]);
 
-const weekStatistieken = useMemo(() => {
-  const aantallen = Object.values(dienstenPerWeek).map(
-    (weekDiensten) => weekDiensten.length
-  );
+  const weekStatistieken = useMemo(() => {
+    const aantallen = Object.values(dienstenPerWeek).map(
+      (weekDiensten) => weekDiensten.length
+    );
 
-  if (aantallen.length === 0) {
+    if (aantallen.length === 0) {
+      return {
+        minimum: 0,
+        maximum: 0,
+        gemiddeld: 0,
+      };
+    }
+
+    const minimum = Math.min(...aantallen);
+    const maximum = Math.max(...aantallen);
+    const gemiddeld =
+      aantallen.reduce((totaal, aantal) => totaal + aantal, 0) /
+      aantallen.length;
+
     return {
-      minimum: 0,
-      maximum: 0,
-      gemiddeld: 0,
+      minimum,
+      maximum,
+      gemiddeld,
     };
-  }
-
-  const minimum = Math.min(...aantallen);
-  const maximum = Math.max(...aantallen);
-  const gemiddeld =
-    aantallen.reduce((totaal, aantal) => totaal + aantal, 0) / aantallen.length;
-
-  return {
-    minimum,
-    maximum,
-    gemiddeld,
-  };
-}, [dienstenPerWeek]);
-
+  }, [dienstenPerWeek]);
 
   const totaalUren = useMemo(() => {
     return diensten.reduce((totaal, dienst) => {
@@ -323,6 +374,10 @@ const weekStatistieken = useMemo(() => {
     }, 0);
   }, [diensten]);
 
+  function printRooster() {
+    window.print();
+  }
+
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-6">
       <div className="mx-auto max-w-6xl space-y-6">
@@ -330,36 +385,55 @@ const weekStatistieken = useMemo(() => {
           <div>
             <Link
               href="/admin"
-              className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-blue-700 hover:text-blue-900"
+              className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-blue-700 hover:text-blue-900 print:hidden"
             >
               <ArrowLeft className="h-4 w-4" />
               Terug naar management portaal
             </Link>
 
-            <h1 className="text-2xl font-bold text-slate-900">
+            <h1 className="text-2xl font-bold text-slate-900 print:hidden">
               Rooster per medewerker
             </h1>
 
-            <p className="mt-1 text-sm text-slate-600">
-            Selecteer een medewerker om het ShiftBase-rooster vanaf vandaag tot het einde van het jaar te bekijken.
+            <p className="mt-1 text-sm text-slate-600 print:hidden">
+              Selecteer een medewerker om het ShiftBase-rooster vanaf vandaag
+              tot het einde van het jaar te bekijken.
             </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-            <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              Geselecteerd
+          <div className="flex flex-col gap-3 sm:items-end print:hidden">
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                Geselecteerd
+              </div>
+
+              <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <User className="h-4 w-4 text-blue-600" />
+                {geselecteerdeMedewerker?.fullName || "Geen medewerker"}
+              </div>
             </div>
 
-            <div className="mt-1 flex items-center gap-2 text-sm font-semibold text-slate-900">
-              <User className="h-4 w-4 text-blue-600" />
-              {geselecteerdeMedewerker?.fullName ||
-                geselecteerdeMedewerker?.name ||
-                "Geen medewerker"}
-            </div>
+            <button
+              type="button"
+              onClick={printRooster}
+              className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+            >
+              <Printer className="h-4 w-4" />
+              Print rooster
+            </button>
           </div>
         </div>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="hidden print:block">
+          <h1 className="text-xl font-bold text-slate-900">
+            Rooster {geselecteerdeMedewerker?.fullName || ""}
+          </h1>
+          <p className="mt-1 text-sm text-slate-600">
+            Vanaf vandaag t/m 31 december {periode.jaar}
+          </p>
+        </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm print:hidden">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <label className="space-y-1 md:col-span-2">
               <span className="text-sm font-medium text-slate-700">
@@ -382,7 +456,7 @@ const weekStatistieken = useMemo(() => {
 
                 {medewerkers.map((m) => (
                   <option key={String(m.id)} value={String(m.id)}>
-                    {m.fullName || m.name || `Medewerker ${m.id}`}
+                    {m.fullName}
                     {m.department_name ? ` — ${m.department_name}` : ""}
                   </option>
                 ))}
@@ -392,19 +466,19 @@ const weekStatistieken = useMemo(() => {
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
               <div className="font-medium text-slate-700">Periode</div>
               <div className="mt-1">
-                Vanaf vandaag t/m 31 december {new Date().getFullYear()}
+                Vanaf vandaag t/m 31 december {periode.jaar}
               </div>
             </div>
           </div>
         </section>
 
         {error && (
-          <section className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 shadow-sm">
+          <section className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 shadow-sm print:hidden">
             {error}
           </section>
         )}
 
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-3 print:hidden">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
               <CalendarDays className="h-4 w-4" />
@@ -439,7 +513,7 @@ const weekStatistieken = useMemo(() => {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-3 print:hidden">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <div className="text-sm font-medium text-slate-500">
               Minimum diensten per week
@@ -471,16 +545,17 @@ const weekStatistieken = useMemo(() => {
           </div>
         </section>
 
-        <section className="space-y-5">
+        <section className="space-y-5 print:space-y-1">
           {loadingRooster && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm print:hidden">
               Rooster wordt geladen…
             </div>
           )}
 
           {!loadingRooster && diensten.length === 0 && !error && (
             <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm">
-              Geen diensten gevonden voor deze medewerker vanaf vandaag tot het einde van het jaar.
+              Geen diensten gevonden voor deze medewerker vanaf vandaag tot het
+              einde van het jaar.
             </div>
           )}
 
@@ -490,7 +565,7 @@ const weekStatistieken = useMemo(() => {
                 key={week}
                 className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
               >
-                <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 print:px-2 print:py-1">
                   <h2 className="text-sm font-bold text-slate-900">
                     Week {week.split("-W")[1]}
                   </h2>
@@ -500,39 +575,38 @@ const weekStatistieken = useMemo(() => {
                   {weekDiensten.map((dienst) => (
                     <div
                       key={dienst.id}
-                      className="grid grid-cols-1 gap-3 px-4 py-4 md:grid-cols-[180px_140px_1fr]"
+                      className="grid grid-cols-1 gap-3 px-4 py-3 md:grid-cols-[180px_140px_1fr_24px] print:grid-cols-[120px_95px_1fr_12px] print:gap-2 print:px-2 print:py-1"
                     >
                       <div>
                         <div className="text-sm font-semibold capitalize text-slate-900">
                           {formatDatum(dienst.date)}
                         </div>
 
-                        <div className="mt-1 text-xs text-slate-500">
+                        <div className="mt-1 text-xs text-slate-500 print:hidden">
                           {formatKorteDatum(dienst.date)}
                         </div>
                       </div>
 
                       <div>
-                        <div className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">
-                        {formatTijd(dienst.starttime)} – {formatTijd(dienst.endtime)}
-                      </div>
+                        <div className="inline-flex whitespace-nowrap rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700 print:px-1 print:py-0">
+                          {formatTijd(dienst.starttime)} –{" "}
+                          {formatTijd(dienst.endtime)}
+                        </div>
                       </div>
 
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <div className="font-medium text-slate-900">
-                            {dienst.description ||
-                              dienst.shift_name ||
-                              "Dienst"}
-                          </div>
-
-                          {dienst.department_name && (
-                            <div className="mt-1 text-sm text-slate-500">
-                              {dienst.department_name}
-                            </div>
-                          )}
+                      <div>
+                        <div className="font-medium text-slate-900">
+                          {dienst.description || dienst.shift_name || "Dienst"}
                         </div>
 
+                        {dienst.department_name && (
+                          <div className="mt-1 text-sm text-slate-500 print:hidden">
+                            {dienst.department_name}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-end">
                         {dienst.color && (
                           <span
                             className="h-4 w-4 rounded-full border border-slate-200"
@@ -548,6 +622,150 @@ const weekStatistieken = useMemo(() => {
             ))}
         </section>
       </div>
+
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
+
+          html,
+          body {
+            background: white !important;
+          }
+
+          main {
+            background: white !important;
+            padding: 0 !important;
+            min-height: auto !important;
+          }
+
+          .mx-auto {
+            max-width: none !important;
+          }
+
+          .print\\:hidden {
+            display: none !important;
+          }
+
+          .print\\:block {
+            display: block !important;
+          }
+
+          .rounded-2xl {
+            border-radius: 6px !important;
+          }
+
+          .shadow-sm {
+            box-shadow: none !important;
+          }
+
+          section {
+            break-inside: avoid;
+          }
+
+          .space-y-6 > :not([hidden]) ~ :not([hidden]) {
+            margin-top: 8px !important;
+          }
+
+          .space-y-5 > :not([hidden]) ~ :not([hidden]) {
+            margin-top: 6px !important;
+          }
+
+          .print\\:space-y-1 > :not([hidden]) ~ :not([hidden]) {
+            margin-top: 4px !important;
+          }
+
+          .grid {
+            gap: 6px !important;
+          }
+
+          .px-4 {
+            padding-left: 6px !important;
+            padding-right: 6px !important;
+          }
+
+          .py-4,
+          .py-3 {
+            padding-top: 4px !important;
+            padding-bottom: 4px !important;
+          }
+
+          .p-4 {
+            padding: 6px !important;
+          }
+
+          .p-6 {
+            padding: 8px !important;
+          }
+
+          .text-2xl {
+            font-size: 18px !important;
+            line-height: 22px !important;
+          }
+
+          .text-xl {
+            font-size: 17px !important;
+            line-height: 21px !important;
+          }
+
+          .text-sm {
+            font-size: 10.5px !important;
+            line-height: 13px !important;
+          }
+
+          .text-xs {
+            font-size: 9.5px !important;
+            line-height: 12px !important;
+          }
+
+          .font-bold {
+            font-weight: 700 !important;
+          }
+
+          .divide-y > :not([hidden]) ~ :not([hidden]) {
+            border-top-width: 1px !important;
+          }
+
+          .print\\:grid-cols-\\[120px_95px_1fr_12px\\] {
+            grid-template-columns: 120px 95px 1fr 12px !important;
+          }
+
+          .print\\:gap-2 {
+            gap: 6px !important;
+          }
+
+          .print\\:px-2 {
+            padding-left: 6px !important;
+            padding-right: 6px !important;
+          }
+
+          .print\\:py-1 {
+            padding-top: 3px !important;
+            padding-bottom: 3px !important;
+          }
+
+          .print\\:px-1 {
+            padding-left: 4px !important;
+            padding-right: 4px !important;
+          }
+
+          .print\\:py-0 {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+          }
+
+          .inline-flex.rounded-full {
+            white-space: nowrap !important;
+          }
+
+          .h-4.w-4.rounded-full {
+            width: 7px !important;
+            height: 7px !important;
+          }
+        }
+      `}</style>
     </main>
   );
 }
