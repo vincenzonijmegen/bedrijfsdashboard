@@ -1,11 +1,17 @@
 "use client";
 import { useEffect, useState } from "react";
 
+
+
 type Boekingsregel = {
   rekening: string | null;
   omschrijving: string;
   bedrag: number;
 };
+
+
+
+
 
 export default function BoekingsdocumentPage() {
   const [maand, setMaand] = useState<string>(() => {
@@ -17,18 +23,24 @@ export default function BoekingsdocumentPage() {
   const [loading, setLoading] = useState<boolean>(false);
 
   const fetchBoeking = async () => {
-    setLoading(true);
-    const res = await fetch(`/api/mypos/boeking?maand=${maand}`);
-    const data = await res.json();
-    if (data?.regels) {
-      setRegels(data.regels);
-      setSaldo(data.saldo);
-    } else {
-      setRegels([]);
-      setSaldo(null);
-    }
-    setLoading(false);
-  };
+      setLoading(true);
+
+      const res = await fetch(`/api/mypos/boeking?maand=${maand}&t=${Date.now()}`, {
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (data?.regels) {
+        setRegels(data.regels);
+        setSaldo(data.saldo);
+      } else {
+        setRegels([]);
+        setSaldo(null);
+      }
+
+      setLoading(false);
+    };
 
   useEffect(() => {
     fetchBoeking();
