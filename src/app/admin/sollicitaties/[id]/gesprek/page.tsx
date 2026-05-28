@@ -18,6 +18,30 @@ const weekdagen = [
   "Zondag",
 ];
 
+function isBeschikbaarMoment(
+  momenten: string[] | null | undefined,
+  dag: string,
+  shift: 1 | 2
+) {
+  if (!momenten?.length) return false;
+
+  return momenten.some((moment) => {
+    const tekst = String(moment).toLowerCase();
+    const dagLower = dag.toLowerCase();
+
+    if (!tekst.startsWith(dagLower)) return false;
+
+    // Shift 1: 11:30 – 17:30
+    if (shift === 1) {
+      return tekst.includes("11:30") || tekst.includes("11.30");
+    }
+
+    // Shift 2: 17:30 – 23:00
+    // Let op: niet op 17:30 checken, want dat is ook de eindtijd van shift 1.
+    return tekst.includes("23:00") || tekst.includes("23.00");
+  });
+}
+
 function formatDateNl(value: string | null) {
   if (!value) return "-";
   const d = new Date(value);
@@ -361,13 +385,8 @@ export default function GespreksdocumentPage({
                         const momenten: string[] =
                           data.beschikbaar_momenten || [];
 
-                        const s1 = momenten.some(
-                          (m) => m.startsWith(dag) && m.includes("11:30")
-                        );
-
-                        const s2 = momenten.some(
-                          (m) => m.startsWith(dag) && m.includes("17:30")
-                        );
+                        const s1 = isBeschikbaarMoment(momenten, dag, 1);
+                        const s2 = isBeschikbaarMoment(momenten, dag, 2);
 
                         return (
                           <tr key={dag}>
