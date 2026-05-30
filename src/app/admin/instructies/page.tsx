@@ -16,6 +16,9 @@ interface Instructie {
   nummer?: string;
   functies?: string[];
   slug: string;
+  onboarding_fase?: "voor_eerste_shift" | "binnen_2_weken" | "taakgericht";
+  onboarding_verplicht?: boolean;
+  onboarding_volgorde?: number;
 }
 
 function normalizeFuncties(f: unknown): string[] {
@@ -29,6 +32,19 @@ function normalizeFuncties(f: unknown): string[] {
     }
   }
   return [];
+}
+
+function faseLabel(fase?: string) {
+  switch (fase) {
+    case "voor_eerste_shift":
+      return "Voor eerste shift";
+    case "binnen_2_weken":
+      return "Binnen 2 weken";
+    case "taakgericht":
+      return "Taakgericht / naslag";
+    default:
+      return "Taakgericht / naslag";
+  }
 }
 
 export default function InstructieOverzicht() {
@@ -128,11 +144,13 @@ export default function InstructieOverzicht() {
             <div className="w-full">
               <table className="w-full table-fixed text-sm">
                 <colgroup>
-                  <col className="w-[10%]" />
-                  <col className="w-[35%]" />
-                  <col className="w-[35%]" />
-                  <col className="w-[20%]" />
-                </colgroup>
+                <col className="w-[8%]" />
+                <col className="w-[28%]" />
+                <col className="w-[24%]" />
+                <col className="w-[18%]" />
+                <col className="w-[10%]" />
+                <col className="w-[12%]" />
+              </colgroup>
 
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
@@ -144,6 +162,12 @@ export default function InstructieOverzicht() {
                     </th>
                     <th className="border-b border-slate-200 px-4 py-2 text-left">
                       Functies
+                    </th>
+                    <th className="border-b border-slate-200 px-4 py-2 text-left">
+                      Onboarding
+                    </th>
+                    <th className="border-b border-slate-200 px-4 py-2 text-left">
+                      Volgorde
                     </th>
                     <th className="border-b border-slate-200 px-4 py-2 text-right">
                       Acties
@@ -167,7 +191,7 @@ export default function InstructieOverzicht() {
                         </Link>
                       </td>
 
-                      <td className="px-4 py-2 text-slate-600">
+                                            <td className="px-4 py-2 text-slate-600">
                         {i.functies && i.functies.length ? (
                           <div className="flex flex-wrap gap-1">
                             {i.functies.map((f, idx) => (
@@ -182,6 +206,27 @@ export default function InstructieOverzicht() {
                         ) : (
                           "-"
                         )}
+                      </td>
+
+                      <td className="px-4 py-2">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs font-semibold text-slate-700">
+                            {faseLabel(i.onboarding_fase)}
+                          </span>
+                          {i.onboarding_verplicht ? (
+                            <span className="w-fit rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">
+                              Verplicht
+                            </span>
+                          ) : (
+                            <span className="w-fit rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                              Niet verplicht
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-2 text-slate-600">
+                        {i.onboarding_volgorde ?? 999}
                       </td>
 
                       <td className="px-4 py-2 text-right">
