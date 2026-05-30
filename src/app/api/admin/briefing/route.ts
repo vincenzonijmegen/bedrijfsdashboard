@@ -584,6 +584,7 @@ try {
                     item?.Shift?.name ||
                     item?.Roster?.name ||
                     "Dienst",
+                  shiftKleur: item?.Shift?.color || null,
                   medewerkerId: item?.Roster?.user_id ?? item?.User?.id ?? null,
                   medewerkerNaam:
                     item?.User?.name ||
