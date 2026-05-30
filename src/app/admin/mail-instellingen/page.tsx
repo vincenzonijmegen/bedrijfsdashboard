@@ -13,6 +13,7 @@ import {
   Users,
   RefreshCw,
   AlertTriangle,
+  Send,
 } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -52,6 +53,7 @@ export default function MailInstellingenPage() {
   const [naam, setNaam] = useState("");
   const [email, setEmail] = useState("");
   const [opslaan, setOpslaan] = useState(false);
+  const [versturen, setVersturen] = useState(false);
   const [melding, setMelding] = useState<string | null>(null);
   const [fout, setFout] = useState<string | null>(null);
 
@@ -83,6 +85,50 @@ export default function MailInstellingenPage() {
     setMelding("Mailinstelling opgeslagen.");
     mutate();
   }
+
+  async function verstuurDagbriefingNu() {
+  const akkoord = window.confirm(
+    "Weet je zeker dat je de dagbriefing nu wilt versturen naar alle actieve ontvangers?"
+  );
+
+  if (!akkoord) return;
+
+  setVersturen(true);
+  setMelding(null);
+  setFout(null);
+
+  try {
+    const res = await fetch("/api/admin/briefing/mail", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+
+    const json = await res.json();
+
+    if (!res.ok || !json.success || !json.verzonden) {
+      setFout(
+        json.reden ||
+          json.error ||
+          "Dagbriefing kon niet worden verzonden."
+      );
+      return;
+    }
+
+    setMelding(
+      `Dagbriefing verzonden naar ${json.aantalOntvangers} ontvanger${
+        json.aantalOntvangers === 1 ? "" : "s"
+      }.`
+    );
+  } catch (error) {
+    setFout(`Dagbriefing kon niet worden verzonden: ${String(error)}`);
+  } finally {
+    setVersturen(false);
+  }
+}
+
 
   async function voegOntvangerToe(e: React.FormEvent) {
     e.preventDefault();
@@ -248,6 +294,27 @@ export default function MailInstellingenPage() {
                 {soort.actief ? "Actief" : "Uitgeschakeld"}
               </span>
             </div>
+
+            <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="font-semibold text-slate-900">
+                Handmatig versturen
+              </div>
+              <div className="mt-1 text-sm text-slate-600">
+                Verstuur de dagbriefing nu naar alle actieve ontvangers.
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={verstuurDagbriefingNu}
+              disabled={versturen || ontvangers.filter((o) => o.actief).length === 0}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Send className="h-4 w-4" />
+              {versturen ? "Versturen..." : "Verstuur dagbriefing nu"}
+            </button>
+          </div>
 
             <div className="grid gap-3 md:grid-cols-2">
               <button

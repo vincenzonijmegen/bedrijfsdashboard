@@ -570,7 +570,7 @@ function renderBijzonderheden(briefing: BriefingData) {
 }
 
 export function renderBriefingEmail(briefing: BriefingData) {
-  const subject = `Dagbriefing Vincenzo – ${briefing.datumLabel}`;
+  const subject = `Dagbriefing Vincenzo - ${briefing.datumLabel}`;
 
   const html = `
 <!doctype html>
