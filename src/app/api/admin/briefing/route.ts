@@ -555,9 +555,59 @@ async function haalPersoneelOp(
 }>> {
   const meldingen: string[] = [];
 
+  let ingepland: any[] = [];
   let openShifts: any[] = [];
   let klokurenRegels: any[] = [];
   let jarigVandaag: any[] = [];
+
+try {
+        const roosterUrl = new URL("/api/shiftbase/rooster", origin);
+        roosterUrl.searchParams.set("datum", datum);
+
+        const res = await fetch(roosterUrl.toString(), {
+          cache: "no-store",
+        });
+
+        if (res.ok) {
+          const json = await res.json();
+
+          ingepland = Array.isArray(json)
+            ? json
+                .map((item: any) => ({
+                  id: item?.Roster?.id ?? item?.id ?? null,
+                  datum,
+                  starttijd: item?.Roster?.starttime ?? null,
+                  eindtijd: item?.Roster?.endtime ?? null,
+                  shiftCode: item?.Roster?.name ?? null,
+                  shiftNaam:
+                    item?.Shift?.long_name ||
+                    item?.Shift?.name ||
+                    item?.Roster?.name ||
+                    "Dienst",
+                  medewerkerId: item?.Roster?.user_id ?? item?.User?.id ?? null,
+                  medewerkerNaam:
+                    item?.User?.name ||
+                    item?.User?.full_name ||
+                    item?.User?.fullName ||
+                    "Onbekend",
+                }))
+                .sort((a: any, b: any) => {
+                  const tijd = String(a.starttijd || "").localeCompare(String(b.starttijd || ""));
+                  if (tijd !== 0) return tijd;
+
+                  return String(a.medewerkerNaam || "").localeCompare(
+                    String(b.medewerkerNaam || "")
+                  );
+                })
+            : [];
+        } else {
+          meldingen.push(`Dagrooster kon niet worden opgehaald. Status: ${res.status}`);
+        }
+      } catch (error) {
+        meldingen.push(`Dagrooster kon niet worden opgehaald: ${String(error)}`);
+      }
+
+
 
   try {
     const openShiftsUrl = new URL("/api/shiftbase/open-diensten", origin);
@@ -693,7 +743,7 @@ async function haalPersoneelOp(
       return {
         status: meldingen.length > 0 ? "fout" : "ok",
         data: {
-          ingepland: [],
+          ingepland,
           openShifts,
           klokurenGoedTeKeuren: {
             aantal: klokurenRegels.length,
@@ -705,7 +755,7 @@ async function haalPersoneelOp(
         melding:
           meldingen.length > 0
             ? meldingen.join(" ")
-            : "Personeelblok gedeeltelijk gekoppeld: open shifts, klokuren en verjaardagen.",
+            : "Personeelblok gekoppeld: dagrooster, open shifts, klokuren en verjaardagen.",
       };
     }
 

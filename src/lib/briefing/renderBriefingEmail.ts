@@ -181,9 +181,31 @@ function renderPersoneel(briefing: BriefingData) {
   }
 
   const data = personeel.data || {};
+  const ingepland = Array.isArray(data.ingepland) ? data.ingepland : [];
   const openShifts = Array.isArray(data.openShifts) ? data.openShifts : [];
   const klokuren = data.klokurenGoedTeKeuren || {};
   const jarigen = Array.isArray(data.jarigVandaag) ? data.jarigVandaag : [];
+
+  const ingeplandHtml =
+  ingepland.length > 0
+    ? `
+      <p style="margin: 12px 0 6px 0;"><strong>Dagrooster vandaag</strong></p>
+      <ul style="margin: 0 0 12px 20px; padding: 0;">
+        ${ingepland
+          .map(
+            (dienst: any) => `
+              <li>
+                ${escapeHtml(formatTijd(dienst.starttijd))}–${escapeHtml(formatTijd(dienst.eindtijd))}
+                ${escapeHtml(dienst.medewerkerNaam || "Onbekend")}
+                <span style="color: #64748b;">(${escapeHtml(dienst.shiftNaam || dienst.shiftCode || "Dienst")})</span>
+              </li>
+            `
+          )
+          .join("")}
+      </ul>
+    `
+    : `<p style="margin: 12px 0;">${badge("Geen dagrooster gevonden", "oranje")}</p>`;
+
 
   const openShiftHtml =
     openShifts.length > 0
@@ -243,14 +265,15 @@ function renderPersoneel(briefing: BriefingData) {
       `
       : `<p style="margin: 12px 0;">${badge("Niemand jarig", "grijs")}</p>`;
 
-  return section(
-    "Personeel",
-    `
-      ${openShiftHtml}
-      ${klokurenHtml}
-      ${jarigenHtml}
-    `
-  );
+return section(
+      "Personeel",
+      `
+        ${ingeplandHtml}
+        ${openShiftHtml}
+        ${klokurenHtml}
+        ${jarigenHtml}
+      `
+    );
 }
 
 function renderSollicitanten(briefing: BriefingData) {
@@ -465,6 +488,7 @@ export function renderBriefingEmail(briefing: BriefingData) {
     briefing.onderdelen.weer.data?.drukteverwachting || "",
     "",
     "PERSONEEL",
+    `Ingepland vandaag: ${briefing.onderdelen.personeel.data?.ingepland?.length ?? 0}`,
     `Open shifts: ${briefing.onderdelen.personeel.data?.openShifts?.length ?? 0}`,
     `Klokuren goed te keuren: ${briefing.onderdelen.personeel.data?.klokurenGoedTeKeuren?.aantal ?? 0}`,
     `Jarig vandaag: ${briefing.onderdelen.personeel.data?.jarigVandaag?.length ?? 0}`,
