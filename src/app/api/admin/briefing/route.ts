@@ -271,42 +271,270 @@ async function haalSollicitantenOp(
 }
 
 async function haalHaccpOp(datum: string): Promise<BriefingOnderdeel<{
+  samenvatting: {
+    totaalTaken: number;
+    afgerondTaken: number;
+    openTaken: number;
+    overduePeriodiek: number;
+    overgeslagenVandaag: number;
+    routinesMetOpenTaken: number;
+  };
   openTaken: any[];
   overdueTaken: any[];
+  overgeslagenVandaag: any[];
+  routines: any[];
 }>> {
   try {
-    /**
-     * Eerste veilige basis.
-     * Deze query gaat uit van een bestaande HACCP-log/routine structuur.
-     * Als de actuele tabelnamen anders zijn, blijft alleen dit blok op fout staan.
-     */
-    const openTaken = await db.query(
+    const routineSlugs = [
+      "keuken-opstart",
+      "keuken-afsluit",
+      "keuken-eindschoonmaak",
+      "winkel-opstart",
+      "winkel-afsluit",
+    ];
+
+    const result = await db.query(
       `
+      WITH basis AS (
+        SELECT
+          r.id AS routine_id,
+          r.naam AS routine_naam,
+          r.slug AS routine_slug,
+          r.locatie,
+          r.type,
+
+          t.id AS taak_id,
+          t.naam AS taak_naam,
+          t.frequentie,
+          COALESCE(t.weekdagen, '[]'::jsonb) AS weekdagen,
+          COALESCE(t.sortering, 9999) AS sortering,
+
+          a.afgetekend_door_naam,
+          a.afgetekend_op,
+          a.status,
+          a.bron,
+          a.overgeslagen_reden,
+
+          laatst.datum AS laatst_gedaan_datum,
+
+          CASE t.frequentie
+            WHEN 'M' THEN (laatst.datum + INTERVAL '1 month')::date
+            WHEN 'Q' THEN (laatst.datum + INTERVAL '3 months')::date
+            WHEN 'H' THEN (laatst.datum + INTERVAL '6 months')::date
+            WHEN 'Y' THEN (laatst.datum + INTERVAL '1 year')::date
+            ELSE NULL
+          END AS vervaldatum
+
+        FROM routines r
+        JOIN routine_taken t
+          ON t.routine_id = r.id
+         AND COALESCE(t.actief, true) = true
+
+        LEFT JOIN routine_aftekeningen a
+          ON a.routine_taak_id = t.id
+         AND a.datum = $1::date
+
+        LEFT JOIN LATERAL (
+          SELECT la.datum
+          FROM routine_aftekeningen la
+          WHERE la.routine_taak_id = t.id
+            AND la.status = 'gedaan'
+            AND la.afgetekend_op IS NOT NULL
+            AND la.datum <= $1::date
+          ORDER BY la.datum DESC, la.afgetekend_op DESC
+          LIMIT 1
+        ) laatst ON true
+
+        WHERE COALESCE(r.actief, true) = true
+          AND r.slug = ANY($2::text[])
+      ),
+      zichtbaar AS (
+        SELECT
+          *,
+          CASE
+            WHEN frequentie IN ('M', 'Q', 'H', 'Y') THEN
+              afgetekend_op IS NOT NULL
+              OR laatst_gedaan_datum IS NULL
+              OR vervaldatum <= $1::date
+
+            WHEN jsonb_array_length(weekdagen) > 0
+              AND NOT EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements_text(weekdagen) AS wd(dag)
+                WHERE wd.dag = CASE EXTRACT(ISODOW FROM $1::date)
+                  WHEN 1 THEN 'ma'
+                  WHEN 2 THEN 'di'
+                  WHEN 3 THEN 'wo'
+                  WHEN 4 THEN 'do'
+                  WHEN 5 THEN 'vr'
+                  WHEN 6 THEN 'za'
+                  WHEN 7 THEN 'zo'
+                END
+              )
+              THEN false
+
+            WHEN frequentie = '2D' THEN
+              MOD(($1::date - DATE '2026-01-05')::int, 2) = 0
+
+            ELSE true
+          END AS zichtbaar,
+
+          CASE
+            WHEN frequentie NOT IN ('M', 'Q', 'H', 'Y') THEN NULL
+            WHEN laatst_gedaan_datum IS NULL THEN NULL
+            WHEN vervaldatum < $1::date THEN ($1::date - vervaldatum)::int
+            ELSE 0
+          END AS dagen_te_laat
+
+        FROM basis
+      )
       SELECT *
-      FROM haccp_taken
-      WHERE actief = true
-      LIMIT 0
-      `
+      FROM zichtbaar
+      WHERE zichtbaar = true
+      ORDER BY
+        locatie ASC,
+        type ASC,
+        routine_naam ASC,
+        sortering ASC,
+        taak_naam ASC
+      `,
+      [datum, routineSlugs]
     );
 
+    const taken = result.rows.map((row) => {
+      const afgetekend = Boolean(row.afgetekend_op);
+      const isPeriodiek = ["M", "Q", "H", "Y"].includes(row.frequentie);
+
+      return {
+        routineId: row.routine_id,
+        routineNaam: row.routine_naam,
+        routineSlug: row.routine_slug,
+        locatie: row.locatie,
+        type: row.type,
+
+        taakId: row.taak_id,
+        taakNaam: row.taak_naam,
+        frequentie: row.frequentie,
+        sortering: row.sortering,
+
+        afgetekend,
+        afgetekendDoorNaam: row.afgetekend_door_naam,
+        afgetekendOp: row.afgetekend_op,
+        status: row.status,
+        bron: row.bron,
+        overgeslagenReden: row.overgeslagen_reden,
+
+        isPeriodiek,
+        laatstGedaanDatum: row.laatst_gedaan_datum,
+        vervaldatum: row.vervaldatum,
+        dagenTeLaat:
+          row.dagen_te_laat === null || row.dagen_te_laat === undefined
+            ? null
+            : Number(row.dagen_te_laat),
+      };
+    });
+
+    const openTaken = taken.filter((taak) => !taak.afgetekend);
+
+    const overdueTaken = taken.filter((taak) => {
+      if (!taak.isPeriodiek) return false;
+      if (taak.afgetekend) return false;
+      if (!taak.laatstGedaanDatum) return true;
+      if (!taak.vervaldatum) return false;
+
+      return String(taak.vervaldatum).slice(0, 10) <= datum;
+    });
+
+    const overgeslagenVandaag = taken.filter(
+      (taak) => taak.status === "overgeslagen"
+    );
+
+    const routinesMap = new Map<
+      string,
+      {
+        routineId: number;
+        routineNaam: string;
+        routineSlug: string;
+        locatie: string | null;
+        type: string | null;
+        totaalTaken: number;
+        afgerondTaken: number;
+        openTaken: number;
+        overdueTaken: number;
+      }
+    >();
+
+    for (const taak of taken) {
+      const key = taak.routineSlug;
+
+      if (!routinesMap.has(key)) {
+        routinesMap.set(key, {
+          routineId: taak.routineId,
+          routineNaam: taak.routineNaam,
+          routineSlug: taak.routineSlug,
+          locatie: taak.locatie,
+          type: taak.type,
+          totaalTaken: 0,
+          afgerondTaken: 0,
+          openTaken: 0,
+          overdueTaken: 0,
+        });
+      }
+
+      const routine = routinesMap.get(key)!;
+
+      routine.totaalTaken += 1;
+
+      if (taak.afgetekend) {
+        routine.afgerondTaken += 1;
+      } else {
+        routine.openTaken += 1;
+      }
+
+      if (overdueTaken.some((overdue) => overdue.taakId === taak.taakId)) {
+        routine.overdueTaken += 1;
+      }
+    }
+
+    const routines = Array.from(routinesMap.values());
+
     return {
-      status: "niet_gekoppeld",
+      status: "ok",
       data: {
-        openTaken: openTaken.rows,
-        overdueTaken: [],
+        samenvatting: {
+          totaalTaken: taken.length,
+          afgerondTaken: taken.filter((taak) => taak.afgetekend).length,
+          openTaken: openTaken.length,
+          overduePeriodiek: overdueTaken.length,
+          overgeslagenVandaag: overgeslagenVandaag.length,
+          routinesMetOpenTaken: routines.filter((routine) => routine.openTaken > 0)
+            .length,
+        },
+        openTaken,
+        overdueTaken,
+        overgeslagenVandaag,
+        routines,
       },
-      melding:
-        "HACCP is als blok aanwezig, maar moet nog exact gekoppeld worden aan de actuele routinetabellen.",
+      melding: "HACCP-blok gekoppeld op basis van bestaande routine- en aftekenlogica.",
     };
   } catch (error) {
     return {
-      status: "niet_gekoppeld",
+      status: "fout",
       data: {
+        samenvatting: {
+          totaalTaken: 0,
+          afgerondTaken: 0,
+          openTaken: 0,
+          overduePeriodiek: 0,
+          overgeslagenVandaag: 0,
+          routinesMetOpenTaken: 0,
+        },
         openTaken: [],
         overdueTaken: [],
+        overgeslagenVandaag: [],
+        routines: [],
       },
-      melding:
-        "HACCP is als blok aanwezig, maar nog niet gekoppeld aan de actuele routinetabellen.",
+      melding: `HACCP kon niet worden opgehaald: ${String(error)}`,
     };
   }
 }
