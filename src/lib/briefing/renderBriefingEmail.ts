@@ -51,6 +51,92 @@ function formatDatum(value: string | null | undefined) {
   }).format(date);
 }
 
+function normaliseerShiftNaam(value: unknown) {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isStandbyDienst(dienst: any) {
+  const naam = normaliseerShiftNaam(dienst?.shiftNaam || dienst?.shiftCode);
+  return /standby/i.test(naam);
+}
+
+function bepaalShiftGroep(dienst: any) {
+  const naam = normaliseerShiftNaam(dienst?.shiftNaam || dienst?.shiftCode);
+
+  if (/standby/i.test(naam)) return "StandBy";
+  if (/shift\s*1/i.test(naam) || /\bS1\b/i.test(naam)) return "Shift 1";
+  if (/shift\s*2/i.test(naam) || /\bS2\b/i.test(naam)) return "Shift 2";
+
+  return "Overig";
+}
+
+function bepaalRolLabel(dienst: any) {
+  const naam = normaliseerShiftNaam(dienst?.shiftNaam || dienst?.shiftCode);
+
+  if (/keuken voorbereiden/i.test(naam)) return "Keuken voorbereiden";
+  if (/voorbereiden/i.test(naam)) return "Voorbereiden";
+  if (/keuken/i.test(naam)) return "Keuken";
+  if (/standby/i.test(naam)) return "StandBy";
+
+  return "Winkel";
+}
+
+function sorteerDiensten(a: any, b: any) {
+  const groepVolgorde: Record<string, number> = {
+    "Shift 1": 1,
+    StandBy: 2,
+    "Shift 2": 3,
+    Overig: 4,
+  };
+
+  const groepA = bepaalShiftGroep(a);
+  const groepB = bepaalShiftGroep(b);
+
+  const groepSort =
+    (groepVolgorde[groepA] || 99) - (groepVolgorde[groepB] || 99);
+
+  if (groepSort !== 0) return groepSort;
+
+  const tijdSort = String(a.starttijd || "").localeCompare(
+    String(b.starttijd || "")
+  );
+
+  if (tijdSort !== 0) return tijdSort;
+
+  return String(a.medewerkerNaam || "").localeCompare(
+    String(b.medewerkerNaam || "")
+  );
+}
+
+function groepeerDiensten(diensten: any[]) {
+  const groepen = new Map<string, any[]>();
+
+  for (const dienst of [...diensten].sort(sorteerDiensten)) {
+    const groep = bepaalShiftGroep(dienst);
+
+    if (!groepen.has(groep)) {
+      groepen.set(groep, []);
+    }
+
+    groepen.get(groep)!.push(dienst);
+  }
+
+  const volgorde = ["Shift 1", "StandBy", "Shift 2", "Overig"];
+
+  return volgorde
+    .filter((groep) => groepen.has(groep))
+    .map((groep) => ({
+      naam: groep,
+      diensten: groepen.get(groep) || [],
+    }));
+}
+
+
+
+
+
 function section(title: string, inhoud: string) {
   return `
     <tr>
@@ -189,20 +275,41 @@ function renderPersoneel(briefing: BriefingData) {
   const ingeplandHtml =
   ingepland.length > 0
     ? `
-      <p style="margin: 12px 0 6px 0;"><strong>Dagrooster vandaag</strong></p>
-      <ul style="margin: 0 0 12px 20px; padding: 0;">
-        ${ingepland
-          .map(
-            (dienst: any) => `
-              <li>
-                ${escapeHtml(formatTijd(dienst.starttijd))}–${escapeHtml(formatTijd(dienst.eindtijd))}
-                ${escapeHtml(dienst.medewerkerNaam || "Onbekend")}
-                <span style="color: #64748b;">(${escapeHtml(dienst.shiftNaam || dienst.shiftCode || "Dienst")})</span>
-              </li>
-            `
-          )
-          .join("")}
-      </ul>
+      <p style="margin: 12px 0 10px 0;"><strong>Dagrooster vandaag</strong></p>
+
+      ${groepeerDiensten(ingepland)
+        .map(
+          (groep) => `
+            <p style="margin: 12px 0 5px 0; color: #0f172a;">
+              <strong>${escapeHtml(groep.naam)}</strong>
+            </p>
+
+            <ul style="margin: 0 0 10px 20px; padding: 0;">
+              ${groep.diensten
+                .map((dienst: any) => {
+                  const rol = bepaalRolLabel(dienst);
+                  const standby = isStandbyDienst(dienst);
+
+                  return `
+                    <li>
+                      ${escapeHtml(formatTijd(dienst.starttijd))}–${escapeHtml(formatTijd(dienst.eindtijd))}
+                      ${escapeHtml(dienst.medewerkerNaam || "Onbekend")}
+                      <span style="color: #64748b;">
+                        — ${escapeHtml(rol)}
+                      </span>
+                      ${
+                        standby
+                          ? `<span style="display: inline-block; margin-left: 6px; padding: 2px 7px; border-radius: 999px; background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; font-size: 11px; font-weight: 700;">StandBy</span>`
+                          : ""
+                      }
+                    </li>
+                  `;
+                })
+                .join("")}
+            </ul>
+          `
+        )
+        .join("")}
     `
     : `<p style="margin: 12px 0;">${badge("Geen dagrooster gevonden", "oranje")}</p>`;
 
@@ -210,14 +317,17 @@ function renderPersoneel(briefing: BriefingData) {
   const openShiftHtml =
     openShifts.length > 0
       ? `
-        <p style="margin: 12px 0 6px 0;"><strong>Open shifts</strong></p>
+        <p style="margin: 16px 0 6px 0;">
+          <strong>Open shifts</strong>
+          ${badge(`${openShifts.length} open`, "oranje")}
+        </p>
         <ul style="margin: 0 0 12px 20px; padding: 0;">
           ${openShifts
             .map(
               (shift: any) => `
                 <li>
                   ${escapeHtml(formatTijd(shift.starttijd))}–${escapeHtml(formatTijd(shift.eindtijd))}
-                  ${escapeHtml(shift.omschrijving || "Open dienst")}
+                  ${escapeHtml(normaliseerShiftNaam(shift.omschrijving || "Open dienst"))}
                 </li>
               `
             )
