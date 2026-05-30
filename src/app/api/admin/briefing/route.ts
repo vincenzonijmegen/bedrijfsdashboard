@@ -2,6 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { dbRapportage } from "@/lib/dbRapportage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -713,19 +714,57 @@ async function haalBijzonderhedenOp(datum: string): Promise<BriefingOnderdeel<{
   schoolvakantie: string | null;
   evenementen: any[];
   opmerkingen: any[];
-}>> {
-  return {
-    status: "niet_gekoppeld",
-    data: {
-      feestdag: null,
-      schoolvakantie: null,
-      evenementen: [],
-      opmerkingen: [],
-    },
-    melding:
-      "Bijzonderhedenblok staat klaar. Feestdagen, vakanties en evenementen worden later gekoppeld.",
+  gekoppeld: {
+    feestdagen: boolean;
+    schoolvakanties: boolean;
+    evenementen: boolean;
+    opmerkingen: boolean;
   };
-}
+}>> {
+  const meldingen: string[] = [];
+
+  let feestdag: string | null = null;
+
+  try {
+    const feestdagResult = await dbRapportage.query(
+      `
+      SELECT
+        naam,
+        TO_CHAR(datum, 'YYYY-MM-DD') AS datum
+      FROM rapportage.feestdagen
+      WHERE datum = $1::date
+      LIMIT 1
+      `,
+      [datum]
+    );
+
+    feestdag = feestdagResult.rows[0]?.naam || null;
+  } catch (error) {
+    meldingen.push(`Feestdagen konden niet worden opgehaald: ${String(error)}`);
+  }
+
+  return {
+      status: meldingen.length > 0 ? "fout" : "ok",
+      data: {
+        feestdag,
+        schoolvakantie: null,
+        evenementen: [],
+        opmerkingen: [],
+        gekoppeld: {
+          feestdagen: meldingen.length === 0,
+          schoolvakanties: false,
+          evenementen: false,
+          opmerkingen: false,
+        },
+      },
+      melding:
+        meldingen.length > 0
+          ? meldingen.join(" ")
+          : feestdag
+            ? `Bijzonderheden gedeeltelijk gekoppeld: vandaag is ${feestdag}.`
+            : "Bijzonderheden gedeeltelijk gekoppeld: geen feestdag vandaag.",
+    };
+  }
 
 export async function GET(req: NextRequest) {
   const datum = req.nextUrl.searchParams.get("datum") || vandaagAmsterdamIso();
