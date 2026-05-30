@@ -23,6 +23,12 @@ type WeerUur = {
   windKmh: number | null;
 };
 
+function telDagenOp(datum: string, dagen: number) {
+  const date = new Date(`${datum}T12:00:00`);
+  date.setDate(date.getDate() + dagen);
+  return date.toISOString().slice(0, 10);
+}
+
 function vandaagAmsterdamIso() {
   const formatter = new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Europe/Amsterdam",
@@ -305,30 +311,174 @@ async function haalHaccpOp(datum: string): Promise<BriefingOnderdeel<{
   }
 }
 
-async function haalPersoneelOp(datum: string): Promise<BriefingOnderdeel<{
+async function haalPersoneelOp(
+  datum: string,
+  origin: string
+): Promise<BriefingOnderdeel<{
   ingepland: any[];
   openShifts: any[];
   klokurenGoedTeKeuren: {
     aantal: number | null;
     oudsteDatum: string | null;
+    regels: any[];
   };
   jarigVandaag: any[];
 }>> {
-  return {
-    status: "niet_gekoppeld",
-    data: {
-      ingepland: [],
-      openShifts: [],
-      klokurenGoedTeKeuren: {
-        aantal: null,
-        oudsteDatum: null,
-      },
-      jarigVandaag: [],
-    },
-    melding:
-      "Personeelblok staat klaar, maar Shiftbase/klokuren/verjaardagen worden in de volgende stap exact gekoppeld.",
-  };
-}
+  const meldingen: string[] = [];
+
+  let openShifts: any[] = [];
+  let klokurenRegels: any[] = [];
+  let jarigVandaag: any[] = [];
+
+  try {
+    const openShiftsUrl = new URL("/api/shiftbase/open-diensten", origin);
+    openShiftsUrl.searchParams.set("min_date", datum);
+    openShiftsUrl.searchParams.set("max_date", datum);
+
+    const res = await fetch(openShiftsUrl.toString(), {
+      cache: "no-store",
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+
+      openShifts = Array.isArray(json?.data)
+        ? json.data
+            .map((item: any) => ({
+              id: item?.OpenShift?.id ?? null,
+              datum: item?.OpenShift?.date ?? null,
+              starttijd: item?.OpenShift?.starttime ?? null,
+              eindtijd: item?.OpenShift?.endtime ?? null,
+              omschrijving:
+                item?.OpenShift?.description ||
+                item?.Shift?.long_name ||
+                "Open dienst",
+              shift: item?.Shift ?? null,
+            }))
+            .filter((item: any) => item.datum === datum)
+        : [];
+    } else {
+      meldingen.push(`Open shifts konden niet worden opgehaald. Status: ${res.status}`);
+    }
+  } catch (error) {
+    meldingen.push(`Open shifts konden niet worden opgehaald: ${String(error)}`);
+  }
+
+  try {
+    const minDate = telDagenOp(datum, -30);
+
+    const [timesheetsRes, medewerkersRes] = await Promise.all([
+      fetch(`${origin}/api/shiftbase/timesheets?min_date=${minDate}`, {
+        cache: "no-store",
+      }),
+      fetch(`${origin}/api/shiftbase/medewerkers`, {
+        cache: "no-store",
+      }),
+    ]);
+
+    const timesheetsJson = timesheetsRes.ok ? await timesheetsRes.json() : { data: [] };
+    const medewerkersJson = medewerkersRes.ok ? await medewerkersRes.json() : { data: [] };
+
+    const medewerkersMap =
+      Array.isArray(medewerkersJson?.data)
+        ? Object.fromEntries(
+            medewerkersJson.data
+              .filter((m: any) => m.fullName !== "Anonymous User")
+              .map((m: any) => [m.id, m.fullName])
+          )
+        : {};
+
+    klokurenRegels = Array.isArray(timesheetsJson?.data)
+      ? timesheetsJson.data
+          .map((item: any) => item?.Timesheet)
+          .filter(Boolean)
+          .filter((regel: any) => regel.status !== "Approved" && regel.status !== "Declined")
+          .map((regel: any) => ({
+            id: regel.id,
+            datum: regel.date,
+            starttijd: regel.starttime,
+            eindtijd: regel.endtime,
+            medewerkerId: regel.user_id,
+            medewerkerNaam: medewerkersMap[regel.user_id] || regel.user_id,
+            status: regel.status,
+            totaal: regel.total,
+          }))
+          .sort((a: any, b: any) => String(a.datum).localeCompare(String(b.datum)))
+      : [];
+
+    if (!timesheetsRes.ok) {
+      meldingen.push(`Klokuren konden niet worden opgehaald. Status: ${timesheetsRes.status}`);
+    }
+
+    if (!medewerkersRes.ok) {
+      meldingen.push(
+        `Medewerkernamen bij klokuren konden niet worden opgehaald. Status: ${medewerkersRes.status}`
+      );
+    }
+  } catch (error) {
+    meldingen.push(`Klokuren konden niet worden opgehaald: ${String(error)}`);
+  }
+
+  try {
+    const kolommen = await db.query(
+      `
+      SELECT column_name
+      FROM information_schema.columns
+      WHERE table_name = 'medewerkers'
+        AND column_name = 'geboortedatum'
+      `
+    );
+
+    if (kolommen.rows.length > 0) {
+      const jarigen = await db.query(
+        `
+        SELECT
+          naam,
+          email,
+          geboortedatum
+        FROM medewerkers
+        WHERE geboortedatum IS NOT NULL
+          AND EXTRACT(MONTH FROM geboortedatum::date) = EXTRACT(MONTH FROM $1::date)
+          AND EXTRACT(DAY FROM geboortedatum::date) = EXTRACT(DAY FROM $1::date)
+        ORDER BY naam
+        `,
+        [datum]
+      );
+
+      jarigVandaag = jarigen.rows;
+    } else {
+      meldingen.push("Verjaardagen niet gekoppeld: kolom geboortedatum bestaat niet in medewerkers.");
+    }
+  } catch (error) {
+    meldingen.push(`Verjaardagen konden niet worden opgehaald: ${String(error)}`);
+  }
+
+  const oudsteDatum =
+        klokurenRegels.length > 0
+          ? klokurenRegels
+              .map((regel: any) => regel.datum)
+              .filter(Boolean)
+              .sort()[0] || null
+          : null;
+
+      return {
+        status: meldingen.length > 0 ? "fout" : "ok",
+        data: {
+          ingepland: [],
+          openShifts,
+          klokurenGoedTeKeuren: {
+            aantal: klokurenRegels.length,
+            oudsteDatum,
+            regels: klokurenRegels.slice(0, 20),
+          },
+          jarigVandaag,
+        },
+        melding:
+          meldingen.length > 0
+            ? meldingen.join(" ")
+            : "Personeelblok gedeeltelijk gekoppeld: open shifts, klokuren en verjaardagen.",
+      };
+    }
 
 async function haalBijzonderhedenOp(datum: string): Promise<BriefingOnderdeel<{
   feestdag: string | null;
@@ -360,7 +510,7 @@ export async function GET(req: NextRequest) {
     bijzonderheden,
   ] = await Promise.all([
     haalWeerOp(datum),
-    haalPersoneelOp(datum),
+    haalPersoneelOp(datum, req.nextUrl.origin),
     haalSollicitantenOp(datum, req.nextUrl.origin),
     haalHaccpOp(datum),
     haalBijzonderhedenOp(datum),
