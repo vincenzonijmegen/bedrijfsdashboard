@@ -10,6 +10,7 @@ import {
   UserPlus,
   Tag,
   FileText,
+  Mail,
   Folder,
   Eye,
   EyeOff,
@@ -397,6 +398,7 @@ export default function AdminDashboard() {
           setActiveSection={setActiveSection}
         >
           <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} breadcrumb="Management – Actielijsten" />
+          <LinkCard href="/admin/mail-instellingen" label="Dagbriefing" color="blue" Icon={Mail} breadcrumb="Management – Dagbriefing" />
           <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} breadcrumb="Management – Notities" />
           <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} breadcrumb="Planning – Rooster" />
           <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} breadcrumb="Planning – Open Shifts" />
@@ -408,6 +410,8 @@ export default function AdminDashboard() {
 
         <Section id="management" title="📘 Management" color="blue" activeSection={activeSection} setActiveSection={setActiveSection}>
           <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} breadcrumb="Management – Actielijsten" />
+          <LinkCard href="/admin/mail-instellingen" label="Dagbriefing & mailinstellingen" color="blue" Icon={Mail} breadcrumb="Management – Dagbriefing & mailinstellingen" />
+          <LinkCard href="/api/admin/briefing/email-preview" label="Dagbriefing preview" color="blue" Icon={Eye} breadcrumb="Management – Dagbriefing preview" target="_blank" rel="noopener noreferrer" />
           <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} breadcrumb="Management – Notities" />
           <LinkCard href="/admin/contacten" label="Relaties" color="blue" Icon={Folder} breadcrumb="Management – Relaties" />
           <LinkCard href="/admin/routines" label="Routines HACCP" color="blue" Icon={Folder} breadcrumb="Management – Routines HACCP" />
