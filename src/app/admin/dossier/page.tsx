@@ -34,6 +34,16 @@ const formatDate = (dateStr: string) => {
   }
 };
 
+const toDateInputValue = (dateStr?: string | null) => {
+  if (!dateStr) return "";
+
+  try {
+    return format(new Date(dateStr), "yyyy-MM-dd");
+  } catch {
+    return "";
+  }
+};
+
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 interface Medewerker {
@@ -68,6 +78,9 @@ export default function DossierOverzicht() {
   const [kanIjsbereiden, setKanIjsbereiden] = useState(false);
   const [skillsOpslaan, setSkillsOpslaan] = useState(false);
   const [skillsSuccess, setSkillsSuccess] = useState(false);
+  const [eersteWerkdag, setEersteWerkdag] = useState("");
+  const [eersteWerkdagOpslaan, setEersteWerkdagOpslaan] = useState(false);
+  const [eersteWerkdagSuccess, setEersteWerkdagSuccess] = useState(false);
 
   const [van, setVan] = useState("");
   const [tot, setTot] = useState("");
@@ -106,7 +119,9 @@ export default function DossierOverzicht() {
     setKanScheppen(geselecteerde.kan_scheppen ?? true);
     setKanVoorbereiden(geselecteerde.kan_voorbereiden ?? false);
     setKanIjsbereiden(geselecteerde.kan_ijsbereiden ?? false);
+    setEersteWerkdag(toDateInputValue(geselecteerde.eerste_werkdag));
     setSkillsSuccess(false);
+    setEersteWerkdagSuccess(false);
   }, [geselecteerde]);
 
   const { data: verzuim, mutate: mutateVerzuim } = useSWR<Ziekteverzuim[]>(
@@ -114,7 +129,7 @@ export default function DossierOverzicht() {
     fetcher
   );
 
-  const slaSkillsOp = async () => {
+    const slaSkillsOp = async () => {
     if (!geselecteerde) return;
 
     setSkillsOpslaan(true);
@@ -143,6 +158,36 @@ export default function DossierOverzicht() {
       setTimeout(() => setSkillsSuccess(false), 3000);
     } else {
       alert("Opslaan van planning-skills mislukt.");
+    }
+  };
+
+  const slaEersteWerkdagOp = async () => {
+    if (!geselecteerde) return;
+
+    setEersteWerkdagOpslaan(true);
+    setEersteWerkdagSuccess(false);
+
+    const res = await fetch(
+      `/api/admin/medewerkers/${encodeURIComponent(
+        geselecteerde.email
+      )}/eerste-werkdag`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eerste_werkdag: eersteWerkdag || null,
+        }),
+      }
+    );
+
+    setEersteWerkdagOpslaan(false);
+
+    if (res.ok) {
+      setEersteWerkdagSuccess(true);
+      mutateMedewerkers();
+      setTimeout(() => setEersteWerkdagSuccess(false), 3000);
+    } else {
+      alert("Opslaan van eerste werkdag mislukt.");
     }
   };
 
@@ -278,17 +323,59 @@ export default function DossierOverzicht() {
           <>
             {geselecteerde && (
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm">
-                      <div className="font-semibold text-blue-950">Onboarding</div>
-                      <div className="mt-1 text-blue-900">
-                        Eerste werkdag:{" "}
-                        <strong>
-                          {geselecteerde.eerste_werkdag
-                            ? formatDate(geselecteerde.eerste_werkdag)
-                            : "Nog niet ingevuld"}
-                      </strong>
-                    </div>
-                  </div>
+                                   <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm">
+                                    <div className="mb-3 flex items-center justify-between gap-3">
+                                      <div>
+                                        <div className="font-semibold text-blue-950">Onboarding</div>
+                                        <div className="mt-1 text-blue-900">
+                                          Eerste werkdag:{" "}
+                                          <strong>
+                                            {geselecteerde.eerste_werkdag
+                                              ? formatDate(geselecteerde.eerste_werkdag)
+                                              : "Nog niet ingevuld"}
+                                          </strong>
+                                        </div>
+                                      </div>
+
+                                      {eersteWerkdagSuccess && (
+                                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+                                          Opgeslagen
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                                      <label className="block">
+                                        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-blue-900">
+                                          Eerste werkdag instellen
+                                        </span>
+                                        <input
+                                          type="date"
+                                          value={eersteWerkdag}
+                                          onChange={(e) => setEersteWerkdag(e.target.value)}
+                                          className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                                        />
+                                      </label>
+
+                                      <button
+                                        onClick={slaEersteWerkdagOp}
+                                        disabled={eersteWerkdagOpslaan}
+                                        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
+                                      >
+                                        {eersteWerkdagOpslaan ? "Opslaan..." : "Eerste werkdag opslaan"}
+                                      </button>
+
+                                      {eersteWerkdag && (
+                                        <button
+                                          type="button"
+                                          onClick={() => setEersteWerkdag("")}
+                                          className="rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50"
+                                        >
+                                          Datum leegmaken
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
                 <div className="mb-4 flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-lg font-bold text-slate-900">
