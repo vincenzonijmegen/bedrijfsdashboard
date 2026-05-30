@@ -31,6 +31,7 @@ import {
   ChevronRight,
   List,
   ClipboardList,
+  ClipboardCheck,
   Truck,
 } from "lucide-react";
 import { registerRoute } from "./_components/routeRegistry";
@@ -400,6 +401,7 @@ export default function AdminDashboard() {
           <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} breadcrumb="Management – Actielijsten" />
           <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} breadcrumb="Management – Notities" />
           <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} breadcrumb="Planning – Rooster" />
+          <LinkCard href="/admin/haccp-controle" label="HACCP controle" color="blue" Icon={ClipboardCheck} breadcrumb="Management – HACCP controle"/>
           <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} breadcrumb="Planning – Open Shifts" />
           <LinkCard href="/admin/dossier" label="Dossiers" color="orange" Icon={Folder} breadcrumb="Medewerkers – Dossiers" />
           <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ShoppingCart} breadcrumb="Voorraadbeheer, Recepturen & Allergenen – Bestel-app" />
@@ -409,6 +411,7 @@ export default function AdminDashboard() {
 
         <Section id="management" title="📘 Management" color="blue" activeSection={activeSection} setActiveSection={setActiveSection}>
           <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} breadcrumb="Management – Actielijsten" />
+          <LinkCard href="/admin/haccp-controle" label="HACCP controle" color="blue" Icon={ClipboardCheck} breadcrumb="Management – HACCP controle"/>
           <LinkCard href="/admin/mail-instellingen" label="Dagbriefing & mailinstellingen" color="blue" Icon={Mail} breadcrumb="Management – Dagbriefing & mailinstellingen" />
           <LinkCard href="/api/admin/briefing/email-preview" label="Dagbriefing preview" color="blue" Icon={Eye} breadcrumb="Management – Dagbriefing preview" target="_blank" rel="noopener noreferrer" />
           <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} breadcrumb="Management – Notities" />
