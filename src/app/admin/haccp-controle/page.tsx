@@ -47,6 +47,19 @@ function formatRoutineNaam(slug: string, fallback: string) {
   return namen[slug] || fallback;
 }
 
+function routineVolgorde(slug: string) {
+  const volgorde: Record<string, number> = {
+    "winkel-opstart": 1,
+    "winkel-afsluit": 2,
+    "keuken-opstart": 3,
+    "keuken-afsluit": 4,
+    "keuken-eindschoonmaak": 5,
+  };
+
+  return volgorde[slug] || 99;
+}
+
+
 function frequentieLabel(frequentie: string) {
   const labels: Record<string, string> = {
     D: "Dagelijks",
@@ -91,7 +104,18 @@ export default function HaccpControlePage() {
     {}
   );
 
-  const routinesMetOpenTaken = routines.filter((routine) => routine.openTaken > 0);
+  const routinesMetOpenTaken = routines
+  .filter((routine) => routine.openTaken > 0)
+  .sort((a, b) => {
+    const volgorde =
+      routineVolgorde(a.routineSlug) - routineVolgorde(b.routineSlug);
+
+    if (volgorde !== 0) return volgorde;
+
+    return String(a.routineNaam || "").localeCompare(
+      String(b.routineNaam || "")
+    );
+  });
 
   return (
     <main className="min-h-screen bg-slate-100 p-4 md:p-8">
