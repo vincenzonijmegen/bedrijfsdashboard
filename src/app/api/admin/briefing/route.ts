@@ -201,41 +201,65 @@ async function haalWeerOp(datum: string): Promise<BriefingOnderdeel<{
   }
 }
 
-async function haalSollicitantenOp(datum: string): Promise<BriefingOnderdeel<any[]>> {
+async function haalSollicitantenOp(
+  datum: string,
+  origin: string
+): Promise<BriefingOnderdeel<any[]>> {
   try {
     /**
-     * Deze query is bewust voorzichtig.
-     * Als jouw sollicitatie-afspraken in een andere tabel of kolom staan,
-     * faalt alleen dit onderdeel en blijft de briefing-API verder werken.
+     * Eerste koppeling via bestaande Calendly-vandaag endpoint.
+     * Dit voorkomt dat we afhankelijk zijn van kolommen in de sollicitaties-tabel
+     * die mogelijk niet bestaan.
      */
-    const result = await db.query(
-      `
-      SELECT
-        id,
-        voornaam,
-        achternaam,
-        email,
-        telefoon,
-        status,
-        gesprek_datum,
-        gesprek_tijd
-      FROM sollicitaties
-      WHERE gesprek_datum = $1
-      ORDER BY gesprek_tijd ASC NULLS LAST, achternaam ASC, voornaam ASC
-      `,
-      [datum]
-    );
+    const vandaag = vandaagAmsterdamIso();
+
+    if (datum !== vandaag) {
+      return {
+        status: "niet_gekoppeld",
+        data: [],
+        melding:
+          "Sollicitatieafspraken zijn voorlopig alleen gekoppeld voor vandaag via Calendly.",
+      };
+    }
+
+    const url = new URL("/api/calendly/vandaag", origin);
+
+    const res = await fetch(url.toString(), {
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      return {
+        status: "fout",
+        data: [],
+        melding: `Calendly-vandaag kon niet worden opgehaald. Status: ${res.status}`,
+      };
+    }
+
+    const json = await res.json();
+
+    const afspraken =
+      Array.isArray(json)
+        ? json
+        : Array.isArray(json?.afspraken)
+          ? json.afspraken
+          : Array.isArray(json?.items)
+            ? json.items
+            : Array.isArray(json?.events)
+              ? json.events
+              : Array.isArray(json?.data)
+                ? json.data
+                : [];
 
     return {
-      status: result.rows.length > 0 ? "ok" : "leeg",
-      data: result.rows,
+      status: afspraken.length > 0 ? "ok" : "leeg",
+      data: afspraken,
     };
   } catch (error) {
     return {
       status: "fout",
       data: [],
-      melding:
-        "Sollicitanten konden nog niet worden opgehaald. Controleer later of de kolommen gesprek_datum en gesprek_tijd bestaan.",
+      melding: `Sollicitatieafspraken konden niet worden opgehaald: ${String(error)}`,
     };
   }
 }
@@ -337,7 +361,7 @@ export async function GET(req: NextRequest) {
   ] = await Promise.all([
     haalWeerOp(datum),
     haalPersoneelOp(datum),
-    haalSollicitantenOp(datum),
+    haalSollicitantenOp(datum, req.nextUrl.origin),
     haalHaccpOp(datum),
     haalBijzonderhedenOp(datum),
   ]);
