@@ -13,6 +13,7 @@ export async function GET(req: NextRequest) {
         email,
         functie,
         geboortedatum,
+        eerste_werkdag,
         COALESCE(kan_scheppen, false) AS kan_scheppen,
         COALESCE(kan_voorbereiden, false) AS kan_voorbereiden,
         COALESCE(kan_ijsbereiden, false) AS kan_ijsbereiden

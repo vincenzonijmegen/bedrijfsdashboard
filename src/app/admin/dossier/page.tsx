@@ -39,6 +39,7 @@ const fetcher = (url: string) => fetch(url).then((res) => res.json());
 interface Medewerker {
   email: string;
   naam: string;
+  eerste_werkdag?: string | null;
   kan_scheppen?: boolean;
   kan_voorbereiden?: boolean;
   kan_ijsbereiden?: boolean;
@@ -277,11 +278,23 @@ export default function DossierOverzicht() {
           <>
             {geselecteerde && (
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-5 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm">
+                      <div className="font-semibold text-blue-950">Onboarding</div>
+                      <div className="mt-1 text-blue-900">
+                        Eerste werkdag:{" "}
+                        <strong>
+                          {geselecteerde.eerste_werkdag
+                            ? formatDate(geselecteerde.eerste_werkdag)
+                            : "Nog niet ingevuld"}
+                      </strong>
+                    </div>
+                  </div>
                 <div className="mb-4 flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-lg font-bold text-slate-900">
                       Planning / inzetbaarheid
                     </h2>
+                    
                     <p className="mt-1 text-sm text-slate-500">
                       Deze vaardigheden worden gebruikt voor de zomerfeestenplanning.
                     </p>
