@@ -6,7 +6,13 @@ import { db } from "@/lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const DAGBRIEFING_SLEUTEL = "dagbriefing";
+const DEFAULT_MAIL_SOORT = "dagbriefing";
+
+const TOEGESTANE_MAIL_SOORTEN = [
+  "dagbriefing",
+  "dagrapport",
+  "weekrapport",
+];
 
 function isValidEmail(value: unknown) {
   const email = String(value || "").trim();
@@ -17,7 +23,56 @@ function normaliseerEmail(value: unknown) {
   return String(value || "").trim().toLowerCase();
 }
 
-async function haalMailInstellingenOp() {
+function normaliseerSleutel(value: unknown) {
+  const sleutel = String(value || DEFAULT_MAIL_SOORT).trim();
+
+  if (!TOEGESTANE_MAIL_SOORTEN.includes(sleutel)) {
+    return DEFAULT_MAIL_SOORT;
+  }
+
+  return sleutel;
+}
+
+async function zorgDatMailSoortenBestaan() {
+  await db.query(
+    `
+    INSERT INTO management_mail_soorten (
+      sleutel,
+      naam,
+      actief,
+      alleen_versturen_bij_rooster,
+      omschrijving
+    )
+    VALUES
+    (
+      'dagbriefing',
+      'Dagbriefing management',
+      true,
+      false,
+      'Dagelijkse managementbriefing met weer, rooster, sollicitanten, HACCP en bijzonderheden.'
+    ),
+    (
+      'dagrapport',
+      'Dagrapport',
+      true,
+      false,
+      'Dagelijkse rapportage met omzet, productie, HACCP en bijzonderheden.'
+    ),
+    (
+      'weekrapport',
+      'Weekrapport',
+      true,
+      false,
+      'Wekelijkse rapportage met omzet en managementsamenvatting.'
+    )
+    ON CONFLICT (sleutel) DO NOTHING
+    `
+  );
+}
+
+async function haalMailInstellingenOp(sleutel: string) {
+  await zorgDatMailSoortenBestaan();
+
   const soortenResult = await db.query(
     `
     SELECT
@@ -33,43 +88,10 @@ async function haalMailInstellingenOp() {
     WHERE sleutel = $1
     LIMIT 1
     `,
-    [DAGBRIEFING_SLEUTEL]
+    [sleutel]
   );
 
-  let soort = soortenResult.rows[0] || null;
-
-  if (!soort) {
-    const insertResult = await db.query(
-      `
-      INSERT INTO management_mail_soorten (
-        sleutel,
-        naam,
-        actief,
-        alleen_versturen_bij_rooster,
-        omschrijving
-      )
-      VALUES (
-        $1,
-        'Dagbriefing management',
-        true,
-        false,
-        'Dagelijkse managementbriefing met weer, rooster, sollicitanten, HACCP en bijzonderheden.'
-      )
-      RETURNING
-        id,
-        sleutel,
-        naam,
-        actief,
-        alleen_versturen_bij_rooster,
-        omschrijving,
-        aangemaakt_op,
-        bijgewerkt_op
-      `,
-      [DAGBRIEFING_SLEUTEL]
-    );
-
-    soort = insertResult.rows[0];
-  }
+  const soort = soortenResult.rows[0] || null;
 
   const ontvangersResult = await db.query(
     `
@@ -85,7 +107,7 @@ async function haalMailInstellingenOp() {
     WHERE mail_soort_sleutel = $1
     ORDER BY actief DESC, naam ASC NULLS LAST, email ASC
     `,
-    [DAGBRIEFING_SLEUTEL]
+    [sleutel]
   );
 
   return {
@@ -94,9 +116,86 @@ async function haalMailInstellingenOp() {
   };
 }
 
-export async function GET() {
+async function haalAlleMailInstellingenOp() {
+  await zorgDatMailSoortenBestaan();
+
+  const soortenResult = await db.query(
+    `
+    SELECT
+      id,
+      sleutel,
+      naam,
+      actief,
+      alleen_versturen_bij_rooster,
+      omschrijving,
+      aangemaakt_op,
+      bijgewerkt_op
+    FROM management_mail_soorten
+    WHERE sleutel = ANY($1::text[])
+    ORDER BY
+      CASE sleutel
+        WHEN 'dagbriefing' THEN 1
+        WHEN 'dagrapport' THEN 2
+        WHEN 'weekrapport' THEN 3
+        ELSE 99
+      END,
+      naam ASC
+    `,
+    [TOEGESTANE_MAIL_SOORTEN]
+  );
+
+  const ontvangersResult = await db.query(
+    `
+    SELECT
+      id,
+      mail_soort_sleutel,
+      naam,
+      email,
+      actief,
+      aangemaakt_op,
+      bijgewerkt_op
+    FROM management_mail_ontvangers
+    WHERE mail_soort_sleutel = ANY($1::text[])
+    ORDER BY actief DESC, naam ASC NULLS LAST, email ASC
+    `,
+    [TOEGESTANE_MAIL_SOORTEN]
+  );
+
+  const ontvangersPerSoort = new Map<string, any[]>();
+
+  for (const ontvanger of ontvangersResult.rows) {
+    const sleutel = ontvanger.mail_soort_sleutel;
+
+    if (!ontvangersPerSoort.has(sleutel)) {
+      ontvangersPerSoort.set(sleutel, []);
+    }
+
+    ontvangersPerSoort.get(sleutel)!.push(ontvanger);
+  }
+
+  return soortenResult.rows.map((soort) => ({
+    soort,
+    ontvangers: ontvangersPerSoort.get(soort.sleutel) || [],
+  }));
+}
+
+export async function GET(req: NextRequest) {
   try {
-    const data = await haalMailInstellingenOp();
+    const alles = req.nextUrl.searchParams.get("alles") === "1";
+
+    if (alles) {
+      const mailSoorten = await haalAlleMailInstellingenOp();
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          mailSoorten,
+        },
+      });
+    }
+
+    const sleutel = normaliseerSleutel(req.nextUrl.searchParams.get("sleutel"));
+    const data = await haalMailInstellingenOp(sleutel);
 
     return NextResponse.json({
       success: true,
@@ -116,6 +215,10 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
+    const sleutel = normaliseerSleutel(
+      body?.mail_soort_sleutel || body?.sleutel || DEFAULT_MAIL_SOORT
+    );
 
     const naam =
       body?.naam === null || body?.naam === undefined
@@ -158,7 +261,7 @@ export async function POST(req: NextRequest) {
         aangemaakt_op,
         bijgewerkt_op
       `,
-      [DAGBRIEFING_SLEUTEL, naam || null, email, actief]
+      [sleutel, naam || null, email, actief]
     );
 
     return NextResponse.json({
@@ -179,6 +282,10 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
+
+    const sleutel = normaliseerSleutel(
+      body?.mail_soort_sleutel || body?.sleutel || DEFAULT_MAIL_SOORT
+    );
 
     if (body?.type === "soort") {
       const actief =
@@ -217,7 +324,7 @@ export async function PATCH(req: NextRequest) {
           aangemaakt_op,
           bijgewerkt_op
         `,
-        [DAGBRIEFING_SLEUTEL, actief, alleenVersturenBijRooster]
+        [sleutel, actief, alleenVersturenBijRooster]
       );
 
       return NextResponse.json({
@@ -266,7 +373,7 @@ export async function PATCH(req: NextRequest) {
           AND mail_soort_sleutel = $2
         LIMIT 1
         `,
-        [id, DAGBRIEFING_SLEUTEL]
+        [id, sleutel]
       );
 
       const huidig = huidigResult.rows[0];
@@ -305,7 +412,7 @@ export async function PATCH(req: NextRequest) {
           naam === undefined ? huidig.naam : naam || null,
           email === undefined ? huidig.email : email,
           actief === undefined ? huidig.actief : actief,
-          DAGBRIEFING_SLEUTEL,
+          sleutel,
         ]
       );
 
@@ -336,6 +443,7 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const id = Number(req.nextUrl.searchParams.get("id"));
+    const sleutel = normaliseerSleutel(req.nextUrl.searchParams.get("sleutel"));
 
     if (!Number.isInteger(id) || id <= 0) {
       return NextResponse.json(
@@ -354,7 +462,7 @@ export async function DELETE(req: NextRequest) {
         AND mail_soort_sleutel = $2
       RETURNING id
       `,
-      [id, DAGBRIEFING_SLEUTEL]
+      [id, sleutel]
     );
 
     if (result.rows.length === 0) {

@@ -398,7 +398,6 @@ export default function AdminDashboard() {
           setActiveSection={setActiveSection}
         >
           <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} breadcrumb="Management – Actielijsten" />
-          <LinkCard href="/admin/mail-instellingen" label="Dagbriefing" color="blue" Icon={Mail} breadcrumb="Management – Dagbriefing" />
           <LinkCard href="/admin/notities" label="Notities" color="blue" Icon={FileText} breadcrumb="Management – Notities" />
           <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} breadcrumb="Planning – Rooster" />
           <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} breadcrumb="Planning – Open Shifts" />
