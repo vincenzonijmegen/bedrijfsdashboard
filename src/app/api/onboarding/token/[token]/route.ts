@@ -43,6 +43,75 @@ async function haalOpdracht(token: string) {
   return result.rows[0] || null;
 }
 
+async function haalVragen(instructieId: string) {
+  const vragenResult = await db.query(
+    `
+    SELECT
+      id,
+      instructie_id,
+      vraag,
+      uitleg,
+      type,
+      verplicht,
+      sortering
+    FROM instructie_vragen
+    WHERE instructie_id = $1
+      AND actief = true
+    ORDER BY sortering ASC, aangemaakt_op ASC
+    `,
+    [instructieId]
+  );
+
+  const vragen = vragenResult.rows;
+
+  if (vragen.length === 0) {
+    return [];
+  }
+
+  const vraagIds = vragen.map((vraag) => vraag.id);
+
+  const optiesResult = await db.query(
+    `
+    SELECT
+      id,
+      vraag_id,
+      tekst,
+      sortering
+    FROM instructie_vraag_opties
+    WHERE vraag_id = ANY($1::uuid[])
+    ORDER BY sortering ASC, aangemaakt_op ASC
+    `,
+    [vraagIds]
+  );
+
+  const optiesPerVraag = new Map<string, any[]>();
+
+  for (const optie of optiesResult.rows) {
+    const vraagId = String(optie.vraag_id);
+
+    if (!optiesPerVraag.has(vraagId)) {
+      optiesPerVraag.set(vraagId, []);
+    }
+
+    optiesPerVraag.get(vraagId)!.push({
+      id: optie.id,
+      tekst: optie.tekst,
+      sortering: optie.sortering,
+    });
+  }
+
+  return vragen.map((vraag) => ({
+    id: vraag.id,
+    instructie_id: vraag.instructie_id,
+    vraag: vraag.vraag,
+    uitleg: vraag.uitleg,
+    type: vraag.type,
+    verplicht: vraag.verplicht,
+    sortering: vraag.sortering,
+    opties: optiesPerVraag.get(String(vraag.id)) || [],
+  }));
+}
+
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { token } = await params;
@@ -58,9 +127,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
       );
     }
 
+    const vragen = await haalVragen(opdracht.instructie_id);
+
     return NextResponse.json({
       success: true,
       opdracht,
+      vragen,
+      heeftVragen: vragen.length > 0,
     });
   } catch (error) {
     return NextResponse.json(
