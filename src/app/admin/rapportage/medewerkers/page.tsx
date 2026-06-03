@@ -11,7 +11,7 @@ const rapportages = [
       {
     titel: 'Overzicht progressie',
     beschrijving: 'Overzicht progressie werkinstructies',
-    link: '/admin/rapportage/medewerkers/overzicht-progressie',
+    link: '/admin/onboarding',
   },
     {
     titel: 'Toetsresultaten',
