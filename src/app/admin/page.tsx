@@ -451,6 +451,8 @@ export default function AdminDashboard() {
 
           <SubSection title="📘 Instructies" color="blue">
             <LinkCard href="/admin/instructies" label="Instructies beheren" color="blue" Icon={FileText} breadcrumb="Medewerkers – Instructies beheren" />
+            <LinkCard href="/admin/instructies" label="Instructies beheren" color="blue" Icon={FileText} breadcrumb="Medewerkers – Instructies beheren"/>
+            <LinkCard href="/admin/instructie-vragen" label="Instructievragen beheren" color="blue" Icon={ClipboardList} breadcrumb="Medewerkers – Instructievragen beheren"/>
             <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" Icon={Eye} breadcrumb="Medewerkers – Instructies medewerkers" />
           </SubSection>
 
