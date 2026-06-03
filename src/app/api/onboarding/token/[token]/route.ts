@@ -12,6 +12,11 @@ type Params = {
   }>;
 };
 
+type AntwoordInput = {
+  vraagId: string;
+  optieId: string;
+};
+
 async function haalOpdracht(token: string) {
   const result = await db.query(
     `
@@ -43,7 +48,7 @@ async function haalOpdracht(token: string) {
   return result.rows[0] || null;
 }
 
-async function haalVragen(instructieId: string) {
+async function haalVragenVoorWeergave(instructieId: string) {
   const vragenResult = await db.query(
     `
     SELECT
@@ -112,6 +117,88 @@ async function haalVragen(instructieId: string) {
   }));
 }
 
+async function haalVragenVoorControle(instructieId: string) {
+  const vragenResult = await db.query(
+    `
+    SELECT
+      id,
+      vraag,
+      verplicht
+    FROM instructie_vragen
+    WHERE instructie_id = $1
+      AND actief = true
+      AND type = 'multiple_choice'
+    ORDER BY sortering ASC, aangemaakt_op ASC
+    `,
+    [instructieId]
+  );
+
+  const vragen = vragenResult.rows;
+
+  if (vragen.length === 0) {
+    return [];
+  }
+
+  const vraagIds = vragen.map((vraag) => vraag.id);
+
+  const optiesResult = await db.query(
+    `
+    SELECT
+      id,
+      vraag_id,
+      tekst,
+      is_correct
+    FROM instructie_vraag_opties
+    WHERE vraag_id = ANY($1::uuid[])
+    `,
+    [vraagIds]
+  );
+
+  const optiesPerVraag = new Map<string, any[]>();
+
+  for (const optie of optiesResult.rows) {
+    const vraagId = String(optie.vraag_id);
+
+    if (!optiesPerVraag.has(vraagId)) {
+      optiesPerVraag.set(vraagId, []);
+    }
+
+    optiesPerVraag.get(vraagId)!.push(optie);
+  }
+
+  return vragen.map((vraag) => ({
+    ...vraag,
+    opties: optiesPerVraag.get(String(vraag.id)) || [],
+  }));
+}
+
+async function markeerAfgerond(opdracht: any) {
+  await db.query(
+    `
+    INSERT INTO gelezen_instructies (email, instructie_id, gelezen_op)
+    VALUES ($1, $2, NOW())
+    ON CONFLICT (email, instructie_id)
+    DO UPDATE SET gelezen_op = COALESCE(gelezen_instructies.gelezen_op, NOW())
+    `,
+    [
+      String(opdracht.medewerker_email).toLowerCase(),
+      opdracht.instructie_id,
+    ]
+  );
+
+  await db.query(
+    `
+    UPDATE onboarding_opdrachten
+    SET
+      status = 'afgerond',
+      afgerond_op = COALESCE(afgerond_op, NOW()),
+      bijgewerkt_op = NOW()
+    WHERE id = $1
+    `,
+    [opdracht.id]
+  );
+}
+
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const { token } = await params;
@@ -127,7 +214,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
       );
     }
 
-    const vragen = await haalVragen(opdracht.instructie_id);
+    const vragen = await haalVragenVoorWeergave(opdracht.instructie_id);
 
     return NextResponse.json({
       success: true,
@@ -146,7 +233,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
   }
 }
 
-export async function POST(_req: NextRequest, { params }: Params) {
+export async function POST(req: NextRequest, { params }: Params) {
   try {
     const { token } = await params;
     const opdracht = await haalOpdracht(token);
@@ -174,34 +261,148 @@ export async function POST(_req: NextRequest, { params }: Params) {
       );
     }
 
-    await db.query(
+    if (opdracht.status === "afgerond") {
+      return NextResponse.json({
+        success: true,
+        afgerond: true,
+        alAfgerond: true,
+        melding: "Deze instructie was al afgerond.",
+      });
+    }
+
+    const vragen = await haalVragenVoorControle(opdracht.instructie_id);
+
+    // Geen vragen: alleen bevestigen dat de instructie gelezen en begrepen is.
+    if (vragen.length === 0) {
+      await markeerAfgerond(opdracht);
+
+      return NextResponse.json({
+        success: true,
+        afgerond: true,
+        geslaagd: true,
+        aantalVragen: 0,
+        aantalCorrect: 0,
+      });
+    }
+
+    const body = await req.json().catch(() => ({}));
+
+    const antwoorden: AntwoordInput[] = Array.isArray(body?.antwoorden)
+      ? body.antwoorden.map((antwoord: any) => ({
+          vraagId: String(antwoord?.vraagId || "").trim(),
+          optieId: String(antwoord?.optieId || "").trim(),
+        }))
+      : [];
+
+    const antwoordPerVraag = new Map<string, string>();
+
+    for (const antwoord of antwoorden) {
+      if (antwoord.vraagId && antwoord.optieId) {
+        antwoordPerVraag.set(antwoord.vraagId, antwoord.optieId);
+      }
+    }
+
+    const verplichteVragen = vragen.filter((vraag) => vraag.verplicht);
+
+    const ontbrekendeVragen = verplichteVragen.filter(
+      (vraag) => !antwoordPerVraag.has(String(vraag.id))
+    );
+
+    if (ontbrekendeVragen.length > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Niet alle verplichte vragen zijn beantwoord.",
+          ontbrekendeVragen: ontbrekendeVragen.map((vraag) => vraag.id),
+        },
+        { status: 400 }
+      );
+    }
+
+    let aantalCorrect = 0;
+
+    const controleResultaten = vragen.map((vraag) => {
+      const gekozenOptieId = antwoordPerVraag.get(String(vraag.id)) || null;
+
+      const gekozenOptie = vraag.opties.find(
+        (optie: any) => String(optie.id) === String(gekozenOptieId)
+      );
+
+      const correct = Boolean(gekozenOptie?.is_correct);
+
+      if (correct) {
+        aantalCorrect += 1;
+      }
+
+      return {
+        vraagId: String(vraag.id),
+        gekozenOptieId,
+        correct,
+      };
+    });
+
+    const aantalVragen = vragen.length;
+    const geslaagd = aantalVragen > 0 && aantalCorrect === aantalVragen;
+
+    const resultaatInsert = await db.query(
       `
-      INSERT INTO gelezen_instructies (email, instructie_id, gelezen_op)
-      VALUES ($1, $2, NOW())
-      ON CONFLICT (email, instructie_id)
-      DO UPDATE SET gelezen_op = COALESCE(gelezen_instructies.gelezen_op, NOW())
+      INSERT INTO instructie_toets_resultaten (
+        onboarding_opdracht_id,
+        medewerker_email,
+        instructie_id,
+        afgerond_op,
+        aantal_vragen,
+        aantal_correct,
+        geslaagd
+      )
+      VALUES ($1, $2, $3, NOW(), $4, $5, $6)
+      RETURNING id
       `,
       [
+        opdracht.id,
         String(opdracht.medewerker_email).toLowerCase(),
         opdracht.instructie_id,
+        aantalVragen,
+        aantalCorrect,
+        geslaagd,
       ]
     );
 
-    await db.query(
-      `
-      UPDATE onboarding_opdrachten
-      SET
-        status = 'afgerond',
-        afgerond_op = COALESCE(afgerond_op, NOW()),
-        bijgewerkt_op = NOW()
-      WHERE id = $1
-      `,
-      [opdracht.id]
-    );
+    const resultaatId = resultaatInsert.rows[0].id;
+
+    for (const resultaat of controleResultaten) {
+      await db.query(
+        `
+        INSERT INTO instructie_toets_antwoorden (
+          resultaat_id,
+          vraag_id,
+          gekozen_optie_id,
+          correct
+        )
+        VALUES ($1, $2, $3, $4)
+        `,
+        [
+          resultaatId,
+          resultaat.vraagId,
+          resultaat.gekozenOptieId,
+          resultaat.correct,
+        ]
+      );
+    }
+
+    if (geslaagd) {
+      await markeerAfgerond(opdracht);
+    }
 
     return NextResponse.json({
       success: true,
-      afgerond: true,
+      afgerond: geslaagd,
+      geslaagd,
+      aantalVragen,
+      aantalCorrect,
+      fouten: controleResultaten
+        .filter((resultaat) => !resultaat.correct)
+        .map((resultaat) => resultaat.vraagId),
     });
   } catch (error) {
     return NextResponse.json(
