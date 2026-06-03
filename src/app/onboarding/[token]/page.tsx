@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import useSWR from "swr";
 import {
   AlertTriangle,
@@ -10,7 +10,16 @@ import {
 } from "lucide-react";
 import { useParams } from "next/navigation";
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = async (url: string) => {
+  const res = await fetch(url, { cache: "no-store" });
+  const json = await res.json();
+
+  if (!res.ok) {
+    throw new Error(json?.error || "Laden mislukt");
+  }
+
+  return json;
+};
 
 type Optie = {
   id: string;
@@ -20,7 +29,6 @@ type Optie = {
 
 type Vraag = {
   id: string;
-  instructie_id: string;
   vraag: string;
   uitleg: string | null;
   type: "multiple_choice" | "bevestiging";
@@ -43,9 +51,9 @@ type Opdracht = {
 
 type TokenResponse = {
   success: boolean;
-  opdracht?: Opdracht;
-  vragen?: Vraag[];
-  heeftVragen?: boolean;
+  opdracht: Opdracht;
+  vragen: Vraag[];
+  heeftVragen: boolean;
   error?: string;
 };
 
@@ -69,41 +77,39 @@ export default function OnboardingTokenPage() {
   const [bezig, setBezig] = useState(false);
   const [melding, setMelding] = useState<string | null>(null);
   const [fout, setFout] = useState<string | null>(null);
-  const [resultaat, setResultaat] = useState<{
-    geslaagd: boolean;
-    aantalVragen: number;
-    aantalCorrect: number;
-    fouten?: string[];
-  } | null>(null);
+  const [fouteVragen, setFouteVragen] = useState<string[]>([]);
 
   const opdracht = data?.opdracht || null;
   const vragen = data?.vragen || [];
   const heeftVragen = Boolean(data?.heeftVragen && vragen.length > 0);
 
-  const titel = opdracht?.nummer
-    ? `${opdracht.nummer}. ${opdracht.titel}`
-    : opdracht?.titel || "Onboarding";
+  const isAfgerond =
+    opdracht?.status === "afgerond" || Boolean(opdracht?.afgerond_op);
 
-  const alleVerplichteVragenBeantwoord = useMemo(() => {
-    const verplichteVragen = vragen.filter((vraag) => vraag.verplicht);
+  const titel = opdracht
+    ? opdracht.nummer
+      ? `${opdracht.nummer}. ${opdracht.titel}`
+      : opdracht.titel
+    : "Onboarding";
 
-    return verplichteVragen.every((vraag) => Boolean(antwoorden[vraag.id]));
-  }, [vragen, antwoorden]);
+  const alleVerplichteVragenBeantwoord = vragen
+    .filter((vraag) => vraag.verplicht)
+    .every((vraag) => Boolean(antwoorden[vraag.id]));
 
   function kiesAntwoord(vraagId: string, optieId: string) {
     setAntwoorden((huidig) => ({
       ...huidig,
       [vraagId]: optieId,
     }));
+
     setFout(null);
-    setResultaat(null);
+    setFouteVragen([]);
   }
 
   async function bevestigZonderVragen() {
     setBezig(true);
     setMelding(null);
     setFout(null);
-    setResultaat(null);
 
     try {
       const res = await fetch(`/api/onboarding/token/${token}`, {
@@ -118,7 +124,7 @@ export default function OnboardingTokenPage() {
       }
 
       setMelding("Dank je wel. De instructie is opgeslagen als gelezen.");
-      mutate();
+      await mutate();
     } catch (error) {
       setFout(`Bevestigen is niet gelukt: ${String(error)}`);
     } finally {
@@ -135,7 +141,7 @@ export default function OnboardingTokenPage() {
     setBezig(true);
     setMelding(null);
     setFout(null);
-    setResultaat(null);
+    setFouteVragen([]);
 
     try {
       const payload = {
@@ -160,21 +166,15 @@ export default function OnboardingTokenPage() {
         return;
       }
 
-      setResultaat({
-        geslaagd: Boolean(json.geslaagd),
-        aantalVragen: Number(json.aantalVragen || 0),
-        aantalCorrect: Number(json.aantalCorrect || 0),
-        fouten: json.fouten || [],
-      });
-
       if (json.geslaagd) {
         setMelding(
           "Goed gedaan. Je hebt de vragen juist beantwoord en de instructie is afgerond."
         );
-        mutate();
+        await mutate();
       } else {
+        setFouteVragen(json.fouten || []);
         setFout(
-          `Je had ${json.aantalCorrect} van de ${json.aantalVragen} vragen goed. Lees de instructie nogmaals door en probeer het opnieuw.`
+          `Je had ${json.aantalCorrect} van de ${json.aantalVragen} vragen goed. Verbeter de foute antwoorden en probeer opnieuw.`
         );
       }
     } catch (error) {
@@ -183,9 +183,6 @@ export default function OnboardingTokenPage() {
       setBezig(false);
     }
   }
-
-  const isAfgerond =
-    opdracht?.status === "afgerond" || Boolean(opdracht?.afgerond_op);
 
   return (
     <main className="min-h-screen bg-slate-100 p-4 md:p-8">
@@ -215,7 +212,7 @@ export default function OnboardingTokenPage() {
 
         {error && (
           <section className="rounded-2xl border border-red-200 bg-red-50 p-5 text-red-800 shadow-sm">
-            Deze onboardinglink kon niet worden geladen.
+            Deze onboardinglink kon niet worden geladen: {String(error)}
           </section>
         )}
 
@@ -234,8 +231,8 @@ export default function OnboardingTokenPage() {
                   <div>
                     <div className="font-bold">Deze instructie is afgerond.</div>
                     <div className="mt-1 text-sm">
-                      Je hoeft niets meer te doen. Je kunt de instructie
-                      hieronder nog wel nalezen.
+                      Je hoeft niets meer te doen. Je kunt de instructie hieronder
+                      nog wel nalezen.
                     </div>
                   </div>
                 </div>
@@ -314,7 +311,7 @@ export default function OnboardingTokenPage() {
                 <div className="space-y-4">
                   {vragen.map((vraag, index) => {
                     const gekozenOptieId = antwoorden[vraag.id];
-                    const foutVraag = resultaat?.fouten?.includes(vraag.id);
+                    const foutVraag = fouteVragen.includes(vraag.id);
 
                     return (
                       <div
@@ -332,11 +329,6 @@ export default function OnboardingTokenPage() {
                           <div className="mt-1 font-bold text-slate-900">
                             {vraag.vraag}
                           </div>
-                          {vraag.uitleg && (
-                            <p className="mt-1 text-sm text-slate-600">
-                              {vraag.uitleg}
-                            </p>
-                          )}
                         </div>
 
                         <div className="space-y-2">
