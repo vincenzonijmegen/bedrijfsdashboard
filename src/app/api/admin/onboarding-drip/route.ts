@@ -311,7 +311,7 @@ async function haalTeVersturenOpdrachten() {
     SELECT *
     FROM kandidaten
     ORDER BY medewerker_naam ASC
-    LIMIT 25
+    LIMIT 3
   `);
 
   return result.rows;
