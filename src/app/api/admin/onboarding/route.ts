@@ -52,13 +52,26 @@ function faseVolgorde(fase: string) {
 function medewerkerFuncties(medewerker: any): string[] {
   const functies = new Set<string>();
 
-  if (medewerker.functie) {
-    functies.add(String(medewerker.functie));
+  const hoofdFunctie = String(medewerker.functie || "").trim();
+
+  if (hoofdFunctie) {
+    functies.add(hoofdFunctie);
   }
 
-  if (medewerker.kan_scheppen) {
+  // Scheppers overdag + avond mogen ook instructies zien die alleen voor
+  // scheppers overdag gelden. Andersom niet.
+  if (hoofdFunctie === "scheppers overdag + avond") {
     functies.add("scheppers overdag");
-    functies.add("scheppers overdag + avond");
+  }
+
+  // Alleen als er géén duidelijke schepfunctie in het functieveld staat,
+  // gebruiken we kan_scheppen als fallback.
+  if (
+    medewerker.kan_scheppen &&
+    hoofdFunctie !== "scheppers overdag" &&
+    hoofdFunctie !== "scheppers overdag + avond"
+  ) {
+    functies.add("scheppers overdag");
   }
 
   if (medewerker.kan_voorbereiden) {

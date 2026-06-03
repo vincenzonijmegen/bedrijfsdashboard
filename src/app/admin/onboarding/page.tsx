@@ -285,10 +285,6 @@ export default function OnboardingPage() {
           {gefilterd.map((item) => {
             const openIds = item.openInstructies.map((i) => String(i.id));
 
-            const alleIds = item.perFase
-              .flatMap((fase) => fase.instructies)
-              .map((i) => String(i.id));
-
             return (
               <div
                 key={item.medewerker.email}
@@ -352,24 +348,7 @@ export default function OnboardingPage() {
                         className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         <UserCheck className="h-4 w-4" />
-                        Open afvinken
-                      </button>
-                    )}
-
-                    {alleIds.length > 0 && (
-                      <button
-                        type="button"
-                        disabled={bezig === item.medewerker.email}
-                        onClick={() =>
-                          vinkAf(
-                            item.medewerker.email,
-                            alleIds,
-                            item.medewerker.naam
-                          )
-                        }
-                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        Alles als gelezen
+                        Alle open instructies afvinken
                       </button>
                     )}
                   </div>
