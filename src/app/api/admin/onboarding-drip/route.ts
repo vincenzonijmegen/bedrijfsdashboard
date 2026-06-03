@@ -376,7 +376,10 @@ function renderOnboardingMail(opdracht: any, bevestigUrl: string) {
 }
 
 async function verstuurVolgende(req: NextRequest) {
-  const wachtrij = await bouwWachtrijBij();
+  const wachtrij = {
+  overgeslagen: true,
+  melding: "Wachtrij is al opgebouwd; voor deze test slaan we opbouwen over.",
+};
   const opdrachten = await haalTeVersturenOpdrachten();
 
   const verzonden: any[] = [];
