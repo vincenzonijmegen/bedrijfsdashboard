@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { dbRapportage } from "@/lib/dbRapportage";
+import { haalOnboardingBriefing } from "@/lib/briefing/haalOnboardingBriefing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -807,32 +808,50 @@ async function haalBijzonderhedenOp(datum: string): Promise<BriefingOnderdeel<{
 export async function GET(req: NextRequest) {
   const datum = req.nextUrl.searchParams.get("datum") || vandaagAmsterdamIso();
 
-  const [
+const [
+  weer,
+  personeel,
+  sollicitanten,
+  haccp,
+  bijzonderheden,
+] = await Promise.all([
+  haalWeerOp(datum),
+  haalPersoneelOp(datum, req.nextUrl.origin),
+  haalSollicitantenOp(datum, req.nextUrl.origin),
+  haalHaccpOp(datum),
+  haalBijzonderhedenOp(datum),
+]);
+
+let onboarding;
+
+try {
+  const onboardingData = await haalOnboardingBriefing();
+
+  onboarding = {
+    status: "ok",
+    data: onboardingData,
+  };
+} catch (error) {
+  onboarding = {
+    status: "fout",
+    data: null,
+    melding: `Onboarding kon niet worden opgehaald: ${String(error)}`,
+  };
+}
+
+return NextResponse.json({
+  success: true,
+  datum,
+  datumLabel: formatDatumLang(datum),
+  titel: "Dagbriefing Vincenzo",
+  gegenereerdOp: new Date().toISOString(),
+  onderdelen: {
     weer,
     personeel,
     sollicitanten,
     haccp,
+    onboarding,
     bijzonderheden,
-  ] = await Promise.all([
-    haalWeerOp(datum),
-    haalPersoneelOp(datum, req.nextUrl.origin),
-    haalSollicitantenOp(datum, req.nextUrl.origin),
-    haalHaccpOp(datum),
-    haalBijzonderhedenOp(datum),
-  ]);
-
-  return NextResponse.json({
-    success: true,
-    datum,
-    datumLabel: formatDatumLang(datum),
-    titel: "Dagbriefing Vincenzo",
-    gegenereerdOp: new Date().toISOString(),
-    onderdelen: {
-      weer,
-      personeel,
-      sollicitanten,
-      haccp,
-      bijzonderheden,
-    },
-  });
+  },
+});
 }
