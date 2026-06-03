@@ -17,6 +17,7 @@ type BriefingData = {
     personeel: BriefingOnderdeel<any>;
     sollicitanten: BriefingOnderdeel<any[]>;
     haccp: BriefingOnderdeel<any>;
+    onboarding: BriefingOnderdeel<any>;
     bijzonderheden: BriefingOnderdeel<any>;
   };
 };
@@ -168,10 +169,6 @@ function groepeerDiensten(diensten: any[]) {
     }));
 }
 
-
-
-
-
 function section(title: string, inhoud: string) {
   return `
     <tr>
@@ -195,7 +192,10 @@ function section(title: string, inhoud: string) {
   `;
 }
 
-function badge(label: string, kleur: "groen" | "oranje" | "rood" | "blauw" | "grijs" = "grijs") {
+function badge(
+  label: string,
+  kleur: "groen" | "oranje" | "rood" | "blauw" | "grijs" = "grijs"
+) {
   const kleuren = {
     groen: {
       bg: "#dcfce7",
@@ -237,7 +237,9 @@ function renderWeer(briefing: BriefingData) {
   if (weer.status !== "ok") {
     return section(
       "Weer & drukteverwachting",
-      `<p style="margin: 0;">${escapeHtml(weer.melding || "Weer niet beschikbaar.")}</p>`
+      `<p style="margin: 0;">${escapeHtml(
+        weer.melding || "Weer niet beschikbaar."
+      )}</p>`
     );
   }
 
@@ -245,7 +247,11 @@ function renderWeer(briefing: BriefingData) {
   const uren = Array.isArray(data?.uren) ? data.uren : [];
 
   const compacteUren = uren
-    .filter((uur: any) => ["12:00", "14:00", "16:00", "18:00", "20:00", "22:00"].includes(uur.uur))
+    .filter((uur: any) =>
+      ["12:00", "14:00", "16:00", "18:00", "20:00", "22:00"].includes(
+        uur.uur
+      )
+    )
     .map((uur: any) => {
       const temperatuur =
         uur.temperatuur === null || uur.temperatuur === undefined
@@ -259,9 +265,15 @@ function renderWeer(briefing: BriefingData) {
 
       return `
         <tr>
-          <td style="padding: 6px 8px; border-bottom: 1px solid #e2e8f0;">${escapeHtml(uur.uur)}</td>
-          <td style="padding: 6px 8px; border-bottom: 1px solid #e2e8f0;">${escapeHtml(temperatuur)}</td>
-          <td style="padding: 6px 8px; border-bottom: 1px solid #e2e8f0;">${escapeHtml(regen)}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px solid #e2e8f0;">${escapeHtml(
+            uur.uur
+          )}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px solid #e2e8f0;">${escapeHtml(
+            temperatuur
+          )}</td>
+          <td style="padding: 6px 8px; border-bottom: 1px solid #e2e8f0;">${escapeHtml(
+            regen
+          )}</td>
         </tr>
       `;
     })
@@ -270,8 +282,12 @@ function renderWeer(briefing: BriefingData) {
   return section(
     "Weer & drukteverwachting",
     `
-      <p style="margin: 0 0 8px 0;"><strong>${escapeHtml(data?.samenvatting || "")}</strong></p>
-      <p style="margin: 0 0 14px 0;">${escapeHtml(data?.drukteverwachting || "")}</p>
+      <p style="margin: 0 0 8px 0;"><strong>${escapeHtml(
+        data?.samenvatting || ""
+      )}</strong></p>
+      <p style="margin: 0 0 14px 0;">${escapeHtml(
+        data?.drukteverwachting || ""
+      )}</p>
 
       ${
         compacteUren
@@ -297,7 +313,9 @@ function renderPersoneel(briefing: BriefingData) {
   if (personeel.status !== "ok") {
     return section(
       "Personeel",
-      `<p style="margin: 0;">${escapeHtml(personeel.melding || "Personeelgegevens niet beschikbaar.")}</p>`
+      `<p style="margin: 0;">${escapeHtml(
+        personeel.melding || "Personeelgegevens niet beschikbaar."
+      )}</p>`
     );
   }
 
@@ -308,39 +326,43 @@ function renderPersoneel(briefing: BriefingData) {
   const jarigen = Array.isArray(data.jarigVandaag) ? data.jarigVandaag : [];
 
   const ingeplandHtml =
-          ingepland.length > 0
-            ? `
-              <p style="margin: 12px 0 10px 0;"><strong>Dagrooster vandaag</strong></p>
+    ingepland.length > 0
+      ? `
+        <p style="margin: 12px 0 10px 0;"><strong>Dagrooster vandaag</strong></p>
 
-              ${groepeerDiensten(ingepland)
-                .map(
-                  (groep) => `
-                    <p style="margin: 14px 0 6px 0; color: #0f172a;">
-                      <strong>${escapeHtml(groep.naam)}</strong>
-                    </p>
+        ${groepeerDiensten(ingepland)
+          .map(
+            (groep) => `
+              <p style="margin: 14px 0 6px 0; color: #0f172a;">
+                <strong>${escapeHtml(groep.naam)}</strong>
+              </p>
 
-                    <ul style="margin: 0 0 12px 20px; padding: 0;">
-                      ${groep.diensten
-                        .map((dienst: any) => {
-                          const rol = bepaalRolLabel(dienst);
-                          const kleur = dienst.shiftKleur || null;
+              <ul style="margin: 0 0 12px 20px; padding: 0;">
+                ${groep.diensten
+                  .map((dienst: any) => {
+                    const rol = bepaalRolLabel(dienst);
+                    const kleur = dienst.shiftKleur || null;
 
-                          return `
-                            <li style="margin-bottom: 4px;">
-                              ${escapeHtml(formatTijd(dienst.starttijd))}–${escapeHtml(formatTijd(dienst.eindtijd))}
-                              ${escapeHtml(dienst.medewerkerNaam || "Onbekend")}
-                              ${rolBadge(rol, kleur)}
-                            </li>
-                          `;
-                        })
-                        .join("")}
-                    </ul>
-                  `
-                )
-                .join("")}
+                    return `
+                      <li style="margin-bottom: 4px;">
+                        ${escapeHtml(formatTijd(dienst.starttijd))}–${escapeHtml(
+                          formatTijd(dienst.eindtijd)
+                        )}
+                        ${escapeHtml(dienst.medewerkerNaam || "Onbekend")}
+                        ${rolBadge(rol, kleur)}
+                      </li>
+                    `;
+                  })
+                  .join("")}
+              </ul>
             `
-            : `<p style="margin: 12px 0;">${badge("Geen dagrooster gevonden", "oranje")}</p>`;
-
+          )
+          .join("")}
+      `
+      : `<p style="margin: 12px 0;">${badge(
+          "Geen dagrooster gevonden",
+          "oranje"
+        )}</p>`;
 
   const openShiftHtml =
     openShifts.length > 0
@@ -354,15 +376,22 @@ function renderPersoneel(briefing: BriefingData) {
             .map(
               (shift: any) => `
                 <li>
-                  ${escapeHtml(formatTijd(shift.starttijd))}–${escapeHtml(formatTijd(shift.eindtijd))}
-                  ${escapeHtml(normaliseerShiftNaam(shift.omschrijving || "Open dienst"))}
+                  ${escapeHtml(formatTijd(shift.starttijd))}–${escapeHtml(
+                formatTijd(shift.eindtijd)
+              )}
+                  ${escapeHtml(
+                    normaliseerShiftNaam(shift.omschrijving || "Open dienst")
+                  )}
                 </li>
               `
             )
             .join("")}
         </ul>
       `
-      : `<p style="margin: 12px 0;">${badge("Geen open shifts", "groen")}</p>`;
+      : `<p style="margin: 12px 0;">${badge(
+          "Geen open shifts",
+          "groen"
+        )}</p>`;
 
   const klokurenHtml =
     Number(klokuren.aantal || 0) > 0
@@ -372,7 +401,9 @@ function renderPersoneel(briefing: BriefingData) {
           ${badge(`${klokuren.aantal} open`, "oranje")}
           ${
             klokuren.oudsteDatum
-              ? `Oudste datum: <strong>${escapeHtml(formatDatum(klokuren.oudsteDatum))}</strong>`
+              ? `Oudste datum: <strong>${escapeHtml(
+                  formatDatum(klokuren.oudsteDatum)
+                )}</strong>`
               : ""
           }
         </p>
@@ -381,15 +412,28 @@ function renderPersoneel(briefing: BriefingData) {
             .map(
               (regel: any) => `
                 <li>
-                  ${escapeHtml(formatDatum(regel.datum))} – ${escapeHtml(regel.medewerkerNaam)}
-                  ${regel.starttijd ? `(${escapeHtml(formatTijd(regel.starttijd))}${regel.eindtijd ? `–${escapeHtml(formatTijd(regel.eindtijd))}` : ""})` : ""}
+                  ${escapeHtml(formatDatum(regel.datum))} – ${escapeHtml(
+                regel.medewerkerNaam
+              )}
+                  ${
+                    regel.starttijd
+                      ? `(${escapeHtml(formatTijd(regel.starttijd))}${
+                          regel.eindtijd
+                            ? `–${escapeHtml(formatTijd(regel.eindtijd))}`
+                            : ""
+                        })`
+                      : ""
+                  }
                 </li>
               `
             )
             .join("")}
         </ul>
       `
-      : `<p style="margin: 12px 0;">${badge("Geen klokuren open", "groen")}</p>`;
+      : `<p style="margin: 12px 0;">${badge(
+          "Geen klokuren open",
+          "groen"
+        )}</p>`;
 
   const jarigenHtml =
     jarigen.length > 0
@@ -397,21 +441,26 @@ function renderPersoneel(briefing: BriefingData) {
         <p style="margin: 12px 0 6px 0;"><strong>Jarig vandaag</strong></p>
         <ul style="margin: 0 0 12px 20px; padding: 0;">
           ${jarigen
-            .map((persoon: any) => `<li>${escapeHtml(persoon.naam || persoon.email || "Medewerker")}</li>`)
+            .map(
+              (persoon: any) =>
+                `<li>${escapeHtml(
+                  persoon.naam || persoon.email || "Medewerker"
+                )}</li>`
+            )
             .join("")}
         </ul>
       `
       : `<p style="margin: 12px 0;">${badge("Niemand jarig", "grijs")}</p>`;
 
-return section(
-      "Personeel",
-      `
-        ${ingeplandHtml}
-        ${openShiftHtml}
-        ${klokurenHtml}
-        ${jarigenHtml}
-      `
-    );
+  return section(
+    "Personeel",
+    `
+      ${ingeplandHtml}
+      ${openShiftHtml}
+      ${klokurenHtml}
+      ${jarigenHtml}
+    `
+  );
 }
 
 function renderSollicitanten(briefing: BriefingData) {
@@ -421,14 +470,19 @@ function renderSollicitanten(briefing: BriefingData) {
   if (sollicitanten.status === "fout") {
     return section(
       "Sollicitanten",
-      `<p style="margin: 0;">${escapeHtml(sollicitanten.melding || "Sollicitatieafspraken niet beschikbaar.")}</p>`
+      `<p style="margin: 0;">${escapeHtml(
+        sollicitanten.melding || "Sollicitatieafspraken niet beschikbaar."
+      )}</p>`
     );
   }
 
   if (afspraken.length === 0) {
     return section(
       "Sollicitanten",
-      `<p style="margin: 0;">${badge("Geen sollicitatieafspraken vandaag", "grijs")}</p>`
+      `<p style="margin: 0;">${badge(
+        "Geen sollicitatieafspraken vandaag",
+        "grijs"
+      )}</p>`
     );
   }
 
@@ -454,7 +508,9 @@ function renderSollicitanten(briefing: BriefingData) {
               afspraak.start ||
               "";
 
-            return `<li>${escapeHtml(formatTijd(tijd))} ${escapeHtml(naam)}</li>`;
+            return `<li>${escapeHtml(formatTijd(tijd))} ${escapeHtml(
+              naam
+            )}</li>`;
           })
           .join("")}
       </ul>
@@ -468,7 +524,9 @@ function renderHaccp(briefing: BriefingData) {
   if (haccp.status !== "ok") {
     return section(
       "HACCP / routines",
-      `<p style="margin: 0;">${escapeHtml(haccp.melding || "HACCP niet beschikbaar.")}</p>`
+      `<p style="margin: 0;">${escapeHtml(
+        haccp.melding || "HACCP niet beschikbaar."
+      )}</p>`
     );
   }
 
@@ -477,8 +535,10 @@ function renderHaccp(briefing: BriefingData) {
   const routines = Array.isArray(data.routines) ? data.routines : [];
   const overdueTaken = Array.isArray(data.overdueTaken) ? data.overdueTaken : [];
 
-  const kleurOpen = Number(samenvatting.openTaken || 0) > 0 ? "oranje" : "groen";
-  const kleurOverdue = Number(samenvatting.overduePeriodiek || 0) > 0 ? "rood" : "groen";
+  const kleurOpen =
+    Number(samenvatting.openTaken || 0) > 0 ? "oranje" : "groen";
+  const kleurOverdue =
+    Number(samenvatting.overduePeriodiek || 0) > 0 ? "rood" : "groen";
 
   const routinesHtml = routines
     .map((routine: any) => {
@@ -488,7 +548,9 @@ function renderHaccp(briefing: BriefingData) {
 
       return `
         <tr>
-          <td style="padding: 7px 8px; border-bottom: 1px solid #e2e8f0;">${escapeHtml(routine.routineNaam)}</td>
+          <td style="padding: 7px 8px; border-bottom: 1px solid #e2e8f0;">${escapeHtml(
+            routine.routineNaam
+          )}</td>
           <td style="padding: 7px 8px; border-bottom: 1px solid #e2e8f0;">${afgerond}/${totaal}</td>
           <td style="padding: 7px 8px; border-bottom: 1px solid #e2e8f0;">${open}</td>
         </tr>
@@ -513,14 +575,20 @@ function renderHaccp(briefing: BriefingData) {
             .join("")}
         </ul>
       `
-      : `<p style="margin: 12px 0 0 0;">${badge("Geen overdue periodieke taken", "groen")}</p>`;
+      : `<p style="margin: 12px 0 0 0;">${badge(
+          "Geen overdue periodieke taken",
+          "groen"
+        )}</p>`;
 
   return section(
     "HACCP / routines",
     `
       <p style="margin: 0 0 12px 0;">
         ${badge(`${samenvatting.openTaken || 0} open`, kleurOpen as any)}
-        ${badge(`${samenvatting.overduePeriodiek || 0} overdue periodiek`, kleurOverdue as any)}
+        ${badge(
+          `${samenvatting.overduePeriodiek || 0} overdue periodiek`,
+          kleurOverdue as any
+        )}
         ${badge(`${samenvatting.overgeslagenVandaag || 0} overgeslagen`, "grijs")}
       </p>
 
@@ -544,13 +612,168 @@ function renderHaccp(briefing: BriefingData) {
   );
 }
 
+function renderOnboarding(briefing: BriefingData) {
+  const onboarding = briefing.onderdelen.onboarding;
+
+  if (!onboarding) {
+    return "";
+  }
+
+  if (onboarding.status === "fout") {
+    return section(
+      "Onboarding",
+      `<p style="margin: 0; color: #991b1b;">${escapeHtml(
+        onboarding.melding || "Onboarding kon niet worden opgehaald."
+      )}</p>`
+    );
+  }
+
+  if (onboarding.status !== "ok" || !onboarding.data) {
+    return "";
+  }
+
+  const data = onboarding.data || {};
+  const samenvatting = data.samenvatting || {};
+
+  const verzondenVandaag = Array.isArray(data.verzondenVandaag)
+    ? data.verzondenVandaag
+    : [];
+
+  const afgerondSindsGisteren = Array.isArray(data.afgerondSindsGisteren)
+    ? data.afgerondSindsGisteren
+    : [];
+
+  const openNaVerzending = Array.isArray(data.openNaVerzending)
+    ? data.openNaVerzending
+    : [];
+
+  const langerDanDrieDagenOpen = Array.isArray(data.langerDanDrieDagenOpen)
+    ? data.langerDanDrieDagenOpen
+    : [];
+
+  const fouten = Array.isArray(data.fouten) ? data.fouten : [];
+
+  const itemTitel = (item: any) =>
+    `${escapeHtml(item.medewerker_naam || item.medewerker_email || "Onbekend")} – ${escapeHtml(
+      item.nummer ? `${item.nummer}. ${item.titel}` : item.titel || "Instructie"
+    )}`;
+
+  const verzondenHtml =
+    verzondenVandaag.length > 0
+      ? `
+        <p style="margin: 14px 0 6px 0;"><strong>Vandaag verzonden</strong></p>
+        <ul style="margin: 0 0 12px 20px; padding: 0;">
+          ${verzondenVandaag
+            .slice(0, 10)
+            .map((item: any) => `<li>${itemTitel(item)}</li>`)
+            .join("")}
+        </ul>
+      `
+      : "";
+
+  const afgerondHtml =
+    afgerondSindsGisteren.length > 0
+      ? `
+        <p style="margin: 14px 0 6px 0;"><strong>Afgerond sinds gisteren</strong></p>
+        <ul style="margin: 0 0 12px 20px; padding: 0;">
+          ${afgerondSindsGisteren
+            .slice(0, 10)
+            .map((item: any) => `<li>${itemTitel(item)}</li>`)
+            .join("")}
+        </ul>
+      `
+      : "";
+
+  const openHtml =
+    openNaVerzending.length > 0
+      ? `
+        <p style="margin: 14px 0 6px 0;"><strong>Nog open na verzending</strong></p>
+        <ul style="margin: 0 0 12px 20px; padding: 0;">
+          ${openNaVerzending
+            .slice(0, 10)
+            .map((item: any) => `<li>${itemTitel(item)}</li>`)
+            .join("")}
+        </ul>
+      `
+      : "";
+
+  const openLangHtml =
+    langerDanDrieDagenOpen.length > 0
+      ? `
+        <p style="margin: 14px 0 6px 0; color: #991b1b;"><strong>Aandacht nodig: langer dan 3 dagen open</strong></p>
+        <ul style="margin: 0 0 12px 20px; padding: 0; color: #991b1b;">
+          ${langerDanDrieDagenOpen
+            .slice(0, 10)
+            .map((item: any) => `<li>${itemTitel(item)}</li>`)
+            .join("")}
+        </ul>
+      `
+      : "";
+
+  const foutenHtml =
+    fouten.length > 0
+      ? `
+        <p style="margin: 14px 0 6px 0; color: #991b1b;"><strong>Verzendfouten</strong></p>
+        <ul style="margin: 0 0 12px 20px; padding: 0; color: #991b1b;">
+          ${fouten
+            .slice(0, 10)
+            .map(
+              (item: any) =>
+                `<li>${itemTitel(item)} – ${escapeHtml(
+                  item.laatste_fout || "Onbekende fout"
+                )}</li>`
+            )
+            .join("")}
+        </ul>
+      `
+      : "";
+
+  return section(
+    "Onboarding",
+    `
+      <p style="margin: 0 0 12px 0;">
+        ${badge(`${samenvatting.verzondenVandaag || 0} verzonden vandaag`, "blauw")}
+        ${badge(`${samenvatting.afgerondSindsGisteren || 0} afgerond`, "groen")}
+        ${badge(`${samenvatting.openNaVerzending || 0} open`, "oranje")}
+        ${badge(
+          `${samenvatting.langerDanDrieDagenOpen || 0} langer dan 3 dagen`,
+          Number(samenvatting.langerDanDrieDagenOpen || 0) > 0
+            ? "rood"
+            : "groen"
+        )}
+        ${badge(
+          `${samenvatting.verzendfouten || 0} fouten`,
+          Number(samenvatting.verzendfouten || 0) > 0 ? "rood" : "groen"
+        )}
+      </p>
+
+      ${verzondenHtml}
+      ${afgerondHtml}
+      ${openLangHtml}
+      ${foutenHtml}
+      ${openHtml}
+
+      ${
+        verzondenVandaag.length === 0 &&
+        afgerondSindsGisteren.length === 0 &&
+        openNaVerzending.length === 0 &&
+        fouten.length === 0
+          ? `<p style="margin: 0;">${badge("Geen onboardingactie nodig", "groen")}</p>`
+          : ""
+      }
+    `
+  );
+}
+
 function renderBijzonderheden(briefing: BriefingData) {
   const bijzonderheden = briefing.onderdelen.bijzonderheden;
 
   if (bijzonderheden.status !== "ok") {
     return section(
       "Bijzonderheden",
-      `<p style="margin: 0;">${escapeHtml(bijzonderheden.melding || "Bijzonderheden niet beschikbaar.")}</p>`
+      `<p style="margin: 0;">${escapeHtml(
+        bijzonderheden.melding || "Bijzonderheden niet beschikbaar."
+      )}</p>`
     );
   }
 
@@ -601,13 +824,16 @@ export function renderBriefingEmail(briefing: BriefingData) {
             ${renderPersoneel(briefing)}
             ${renderSollicitanten(briefing)}
             ${renderHaccp(briefing)}
+            ${renderOnboarding(briefing)}
             ${renderBijzonderheden(briefing)}
 
             <tr>
               <td style="padding: 0 24px 24px 24px; color: #64748b; font-size: 12px; line-height: 1.5;">
-                Gegenereerd op ${escapeHtml(new Date(briefing.gegenereerdOp).toLocaleString("nl-NL", {
-                  timeZone: "Europe/Amsterdam",
-                }))}.
+                Gegenereerd op ${escapeHtml(
+                  new Date(briefing.gegenereerdOp).toLocaleString("nl-NL", {
+                    timeZone: "Europe/Amsterdam",
+                  })
+                )}.
               </td>
             </tr>
           </table>
@@ -622,24 +848,58 @@ export function renderBriefingEmail(briefing: BriefingData) {
     `${briefing.titel || "Dagbriefing Vincenzo"} – ${briefing.datumLabel}`,
     "",
     "WEER & DRUKTEVERWACHTING",
-    briefing.onderdelen.weer.data?.samenvatting || briefing.onderdelen.weer.melding || "",
+    briefing.onderdelen.weer.data?.samenvatting ||
+      briefing.onderdelen.weer.melding ||
+      "",
     briefing.onderdelen.weer.data?.drukteverwachting || "",
     "",
     "PERSONEEL",
-    `Ingepland vandaag: ${briefing.onderdelen.personeel.data?.ingepland?.length ?? 0}`,
-    `Open shifts: ${briefing.onderdelen.personeel.data?.openShifts?.length ?? 0}`,
-    `Klokuren goed te keuren: ${briefing.onderdelen.personeel.data?.klokurenGoedTeKeuren?.aantal ?? 0}`,
-    `Jarig vandaag: ${briefing.onderdelen.personeel.data?.jarigVandaag?.length ?? 0}`,
+    `Ingepland vandaag: ${
+      briefing.onderdelen.personeel.data?.ingepland?.length ?? 0
+    }`,
+    `Open shifts: ${
+      briefing.onderdelen.personeel.data?.openShifts?.length ?? 0
+    }`,
+    `Klokuren goed te keuren: ${
+      briefing.onderdelen.personeel.data?.klokurenGoedTeKeuren?.aantal ?? 0
+    }`,
+    `Jarig vandaag: ${
+      briefing.onderdelen.personeel.data?.jarigVandaag?.length ?? 0
+    }`,
     "",
     "SOLLICITANTEN",
     `Afspraken vandaag: ${briefing.onderdelen.sollicitanten.data?.length ?? 0}`,
     "",
     "HACCP / ROUTINES",
-    `Open taken: ${briefing.onderdelen.haccp.data?.samenvatting?.openTaken ?? 0}`,
-    `Overdue periodiek: ${briefing.onderdelen.haccp.data?.samenvatting?.overduePeriodiek ?? 0}`,
+    `Open taken: ${
+      briefing.onderdelen.haccp.data?.samenvatting?.openTaken ?? 0
+    }`,
+    `Overdue periodiek: ${
+      briefing.onderdelen.haccp.data?.samenvatting?.overduePeriodiek ?? 0
+    }`,
+    "",
+    "ONBOARDING",
+    `Vandaag verzonden: ${
+      briefing.onderdelen.onboarding?.data?.samenvatting?.verzondenVandaag ?? 0
+    }`,
+    `Afgerond sinds gisteren: ${
+      briefing.onderdelen.onboarding?.data?.samenvatting
+        ?.afgerondSindsGisteren ?? 0
+    }`,
+    `Nog open na verzending: ${
+      briefing.onderdelen.onboarding?.data?.samenvatting?.openNaVerzending ?? 0
+    }`,
+    `Langer dan 3 dagen open: ${
+      briefing.onderdelen.onboarding?.data?.samenvatting
+        ?.langerDanDrieDagenOpen ?? 0
+    }`,
+    `Verzendfouten: ${
+      briefing.onderdelen.onboarding?.data?.samenvatting?.verzendfouten ?? 0
+    }`,
     "",
     "BIJZONDERHEDEN",
-    briefing.onderdelen.bijzonderheden.data?.feestdag || "Geen bijzonderheid in eigen tabel.",
+    briefing.onderdelen.bijzonderheden.data?.feestdag ||
+      "Geen bijzonderheid in eigen tabel.",
   ].join("\n");
 
   return {
