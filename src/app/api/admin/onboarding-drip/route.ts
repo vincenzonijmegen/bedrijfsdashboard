@@ -285,7 +285,7 @@ async function haalTeVersturenOpdrachten() {
     SELECT *
     FROM kandidaten
     ORDER BY medewerker_naam ASC
-    LIMIT 25
+    LIMIT 1
   `);
 
   return result.rows;
@@ -366,12 +366,17 @@ async function verstuurVolgende(req: NextRequest) {
 
     try {
       const result = await resend.emails.send({
-        from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
-        to: [opdracht.medewerker_email],
-        subject: email.subject,
-        html: email.html,
-        text: email.text,
-      });
+      from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
+      to: ["herman@ijssalonvincenzo.nl"],
+      subject: `[TEST] ${email.subject}`,
+      html: `
+        <p><strong>TESTMAIL</strong></p>
+        <p>Originele ontvanger: ${opdracht.medewerker_email}</p>
+        <hr />
+        ${email.html}
+      `,
+      text: `TESTMAIL\nOriginele ontvanger: ${opdracht.medewerker_email}\n\n${email.text}`,
+    });
 
       await db.query(
         `
