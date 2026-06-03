@@ -332,7 +332,7 @@ async function haalTeVersturenOpdrachten() {
     SELECT *
     FROM kandidaten
     ORDER BY medewerker_naam ASC
-    LIMIT 5
+    LIMIT 10
   `);
 
   return result.rows;
@@ -415,11 +415,7 @@ function renderOnboardingMail(
 async function verstuurVolgende(req: NextRequest) {
   // Voor nu blijft dit bewust overgeslagen: de wachtrij is al opgebouwd.
   // Pas bij cron/live-automatisering weer terugzetten naar: await bouwWachtrijBij()
-  const wachtrij = {
-    overgeslagen: true,
-    melding: "Wachtrij is al opgebouwd; voor deze test slaan we opbouwen over.",
-  };
-
+const wachtrij = await bouwWachtrijBij();
   const opdrachten = await haalTeVersturenOpdrachten();
 
   const verzonden: any[] = [];
