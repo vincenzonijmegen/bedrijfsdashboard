@@ -102,8 +102,6 @@ function toDatumString(value: unknown) {
   return new Date().toISOString().slice(0, 10);
 }
 
-
-
 function beschikbaarVanaf(medewerker: any, instructie: any) {
   const fase = String(instructie.onboarding_fase || "taakgericht");
 
@@ -121,6 +119,29 @@ function tekstZonderHtml(html: string) {
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function schoneInstructieHtml(html: string) {
+  return String(html || "")
+    .replace(/\[end\]/gi, "")
+    .replace(/<p>\s*<\/p>/gi, "")
+    .trim();
+}
+
+async function instructieHeeftVragen(instructieId: string) {
+  const result = await db.query(
+    `
+    SELECT EXISTS (
+      SELECT 1
+      FROM instructie_vragen
+      WHERE instructie_id = $1
+        AND actief = true
+    ) AS heeft_vragen
+    `,
+    [instructieId]
+  );
+
+  return Boolean(result.rows[0]?.heeft_vragen);
 }
 
 async function bouwWachtrijBij() {
@@ -311,18 +332,34 @@ async function haalTeVersturenOpdrachten() {
     SELECT *
     FROM kandidaten
     ORDER BY medewerker_naam ASC
-    LIMIT 3
+    LIMIT 5
   `);
 
   return result.rows;
 }
 
-function renderOnboardingMail(opdracht: any, bevestigUrl: string) {
+function renderOnboardingMail(
+  opdracht: any,
+  bevestigUrl: string,
+  heeftVragen: boolean
+) {
   const titel = opdracht.nummer
     ? `${opdracht.nummer}. ${opdracht.titel}`
     : opdracht.titel;
 
   const subject = `Onboarding Vincenzo - ${titel}`;
+
+  const introTekst = heeftVragen
+    ? "Dit is de volgende stap in je onboarding bij IJssalon Vincenzo. Lees de instructie rustig door. Daarna beantwoord je online een paar controlevragen."
+    : "Dit is de volgende stap in je onboarding bij IJssalon Vincenzo. Lees de instructie rustig door. Klik daarna onderaan op de knop om te bevestigen dat je de instructie hebt gelezen en begrepen.";
+
+  const knopTekst = heeftVragen
+    ? "Open instructie en vragen"
+    : "Ik heb deze instructie gelezen en begrepen";
+
+  const linkLabel = heeftVragen ? "Instructie en vragen" : "Bevestigen";
+
+  const schoneInhoud = schoneInstructieHtml(opdracht.inhoud || "");
 
   const html = `
     <div style="margin:0; padding:0; background:#f1f5f9; font-family:Arial, sans-serif; color:#0f172a;">
@@ -335,19 +372,17 @@ function renderOnboardingMail(opdracht: any, bevestigUrl: string) {
           </h1>
 
           <p style="margin:0 0 18px 0; color:#475569; line-height:1.5;">
-            Dit is de volgende stap in je onboarding bij IJssalon Vincenzo.
-            Lees de instructie rustig door. Klik daarna onderaan op de knop om te bevestigen
-            dat je de instructie hebt gelezen en begrepen.
+            ${introTekst}
           </p>
 
           <div style="border-top:1px solid #e2e8f0; border-bottom:1px solid #e2e8f0; padding:18px 0; margin:18px 0; line-height:1.6;">
-            ${opdracht.inhoud || ""}
+            ${schoneInhoud}
           </div>
 
           <p style="margin:20px 0;">
             <a href="${bevestigUrl}"
                style="display:inline-block; background:#2563eb; color:#ffffff; text-decoration:none; padding:12px 18px; border-radius:12px; font-weight:700;">
-              Ik heb deze instructie gelezen en begrepen
+              ${knopTekst}
             </a>
           </p>
 
@@ -363,23 +398,28 @@ function renderOnboardingMail(opdracht: any, bevestigUrl: string) {
   const text = [
     `Hallo ${opdracht.medewerker_naam || ""},`,
     "",
-    `Onboarding Vincenzo - ${titel}`,
+    titel,
     "",
-    "Lees de instructie en bevestig daarna dat je deze hebt gelezen en begrepen.",
+    heeftVragen
+      ? "Lees de instructie en beantwoord daarna de controlevragen via de link."
+      : "Lees de instructie en bevestig daarna dat je deze hebt gelezen en begrepen.",
     "",
-    tekstZonderHtml(opdracht.inhoud || ""),
+    tekstZonderHtml(schoneInhoud),
     "",
-    `Bevestigen: ${bevestigUrl}`,
+    `${linkLabel}: ${bevestigUrl}`,
   ].join("\n");
 
   return { subject, html, text };
 }
 
 async function verstuurVolgende(req: NextRequest) {
+  // Voor nu blijft dit bewust overgeslagen: de wachtrij is al opgebouwd.
+  // Pas bij cron/live-automatisering weer terugzetten naar: await bouwWachtrijBij()
   const wachtrij = {
-  overgeslagen: true,
-  melding: "Wachtrij is al opgebouwd; voor deze test slaan we opbouwen over.",
-};
+    overgeslagen: true,
+    melding: "Wachtrij is al opgebouwd; voor deze test slaan we opbouwen over.",
+  };
+
   const opdrachten = await haalTeVersturenOpdrachten();
 
   const verzonden: any[] = [];
@@ -391,7 +431,8 @@ async function verstuurVolgende(req: NextRequest) {
       req.nextUrl.origin
     ).toString();
 
-    const email = renderOnboardingMail(opdracht, bevestigUrl);
+    const heeftVragen = await instructieHeeftVragen(opdracht.instructie_id);
+    const email = renderOnboardingMail(opdracht, bevestigUrl, heeftVragen);
 
     try {
       const result = await resend.emails.send({
@@ -420,6 +461,7 @@ async function verstuurVolgende(req: NextRequest) {
         medewerker_email: opdracht.medewerker_email,
         medewerker_naam: opdracht.medewerker_naam,
         instructie: opdracht.titel,
+        heeftVragen,
         result,
       });
     } catch (error) {
@@ -482,6 +524,16 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
     const actie = String(body?.actie || "verstuur_volgende");
+
+    if (actie === "bouw_wachtrij") {
+      const wachtrij = await bouwWachtrijBij();
+
+      return NextResponse.json({
+        success: true,
+        actie,
+        wachtrij,
+      });
+    }
 
     if (actie !== "verstuur_volgende") {
       return NextResponse.json(
