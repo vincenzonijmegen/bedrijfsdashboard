@@ -78,11 +78,37 @@ function instructieHoortBijMedewerker(
   );
 }
 
+function toDatumString(value: unknown) {
+  if (!value) {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  const raw = String(value).trim();
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+    return raw.slice(0, 10);
+  }
+
+  const parsed = new Date(raw);
+
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+
+  return new Date().toISOString().slice(0, 10);
+}
+
+
+
 function beschikbaarVanaf(medewerker: any, instructie: any) {
   const fase = String(instructie.onboarding_fase || "taakgericht");
 
   if (fase === "binnen_2_weken" && medewerker.eerste_werkdag) {
-    return String(medewerker.eerste_werkdag).slice(0, 10);
+    return toDatumString(medewerker.eerste_werkdag);
   }
 
   return new Date().toISOString().slice(0, 10);
