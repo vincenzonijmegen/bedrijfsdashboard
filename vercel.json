@@ -5,16 +5,20 @@
       "schedule": "0 4 * * *"
     },
     {
-      "path": "/api/cron/dagbriefing-mail",
-      "schedule": "0 5 * * *"
-    },
-    {
       "path": "/api/cron/weekrapport-mail",
       "schedule": "0 6 * * 0"
     },
     {
       "path": "/api/calendly/sync",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/dagbriefing-mail",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/onboarding-drip-mail",
+      "schedule": "0 7 * * *"
     }
   ]
 }
