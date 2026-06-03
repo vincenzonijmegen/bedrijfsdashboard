@@ -198,7 +198,7 @@ async function haalOnboardingDataOp() {
         totaal,
         gelezen,
         open,
-        afgerond: totaal > 0 && open === 0,
+        afgerond: open === 0,
       },
       perFase,
       openInstructies: verplichteInstructies.filter((i) => !i.gelezen),
@@ -246,8 +246,10 @@ export async function POST(req: NextRequest) {
 
     const email = String(body?.email || "").trim().toLowerCase();
     const instructieIds = Array.isArray(body?.instructieIds)
-      ? body.instructieIds.map(Number).filter((id: number) => Number.isInteger(id))
-      : [];
+  ? body.instructieIds
+      .map((id: unknown) => String(id || "").trim())
+      .filter(Boolean)
+  : [];
 
     if (!email) {
       return NextResponse.json(
@@ -272,7 +274,7 @@ export async function POST(req: NextRequest) {
     await db.query(
       `
       INSERT INTO gelezen_instructies (email, instructie_id, gelezen_op)
-      SELECT $1, unnest($2::int[]), NOW()
+      SELECT $1, unnest($2::uuid[]), NOW()
       ON CONFLICT (email, instructie_id)
       DO UPDATE SET gelezen_op = COALESCE(gelezen_instructies.gelezen_op, NOW())
       `,
