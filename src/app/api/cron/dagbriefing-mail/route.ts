@@ -1,6 +1,6 @@
 // src/app/api/cron/dagbriefing-mail/route.ts
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { renderBriefingEmail } from "@/lib/briefing/renderBriefingEmail";
 import { getManagementMailInstellingen } from "@/lib/mail/getManagementMailInstellingen";
@@ -10,96 +10,88 @@ export const dynamic = "force-dynamic";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-function heeftDagrooster(briefingData: any) {
-  const ingepland = briefingData?.onderdelen?.personeel?.data?.ingepland;
-  return Array.isArray(ingepland) && ingepland.length > 0;
-}
-
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const { soort, ontvangerEmails } =
-      await getManagementMailInstellingen("dagbriefing");
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
-    if (!soort.actief) {
+    if (!baseUrl) {
+      throw new Error("NEXT_PUBLIC_BASE_URL ontbreekt.");
+    }
+
+    const instellingen = await getManagementMailInstellingen("dagbriefing");
+
+    if (!instellingen.soort.actief)  {
       return NextResponse.json({
         success: true,
         verzonden: false,
-        bron: "cron-dagbriefing-mail",
-        reden: "Dagbriefing-mailfunctie staat uit.",
+        reden: "Dagbriefing staat uit in mailinstellingen.",
       });
     }
 
-    if (ontvangerEmails.length === 0) {
+    if (!instellingen.ontvangerEmails || instellingen.ontvangerEmails.length === 0) {
       return NextResponse.json({
         success: true,
         verzonden: false,
-        bron: "cron-dagbriefing-mail",
         reden: "Geen actieve ontvangers ingesteld voor dagbriefing.",
       });
     }
 
-    const briefingUrl = new URL("/api/admin/briefing", req.nextUrl.origin);
-
-    const briefingRes = await fetch(briefingUrl.toString(), {
+    const briefingRes = await fetch(`${baseUrl}/api/admin/briefing`, {
       cache: "no-store",
     });
 
-    const briefingData = await briefingRes.json();
+    const briefing = await briefingRes.json();
 
-    if (!briefingRes.ok || !briefingData?.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          verzonden: false,
-          bron: "cron-dagbriefing-mail",
-          reden: "Briefing kon niet worden opgehaald.",
-          status: briefingRes.status,
-          details: briefingData,
-        },
-        { status: 500 }
+    if (!briefingRes.ok || !briefing?.success) {
+      throw new Error(
+        `Dagbriefing ophalen mislukt: ${JSON.stringify(briefing)}`
       );
     }
 
-    if (soort.alleen_versturen_bij_rooster && !heeftDagrooster(briefingData)) {
-      return NextResponse.json({
-        success: true,
-        verzonden: false,
-        bron: "cron-dagbriefing-mail",
-        reden:
-          "Niet verzonden: instelling 'alleen bij dagrooster' staat aan en er staan geen medewerkers ingepland.",
-        datum: briefingData.datum,
-        datumLabel: briefingData.datumLabel,
-      });
+    if (instellingen.soort.alleen_versturen_bij_rooster) {
+      const ingepland =
+        briefing?.onderdelen?.personeel?.data?.ingepland || [];
+
+      if (!Array.isArray(ingepland) || ingepland.length === 0) {
+        return NextResponse.json({
+          success: true,
+          verzonden: false,
+          reden:
+            "Dagbriefing niet verzonden: alleen versturen bij rooster staat aan en er staat niemand ingepland.",
+          datum: briefing.datum,
+          datumLabel: briefing.datumLabel,
+        });
+      }
     }
 
-    const email = renderBriefingEmail(briefingData);
+    const { subject, html, text } = renderBriefingEmail(briefing);
 
     const result = await resend.emails.send({
       from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
-      to: ontvangerEmails,
-      subject: email.subject,
-      html: email.html,
-      text: email.text,
+      to: instellingen.ontvangerEmails,
+      subject,
+      html,
+      text,
     });
 
     return NextResponse.json({
       success: true,
       verzonden: true,
-      bron: "cron-dagbriefing-mail",
-      datum: briefingData.datum,
-      datumLabel: briefingData.datumLabel,
-      subject: email.subject,
-      ontvangers: ontvangerEmails,
-      aantalOntvangers: ontvangerEmails.length,
+      mailSoort: "dagbriefing",
+      datum: briefing.datum,
+      datumLabel: briefing.datumLabel,
+      subject,
+      ontvangers: instellingen.ontvangerEmails,
+      aantalOntvangers: instellingen.ontvangerEmails.length,
       result,
     });
   } catch (error) {
     return NextResponse.json(
       {
         success: false,
-        verzonden: false,
         bron: "cron-dagbriefing-mail",
-        error: `Cron dagbriefing kon niet worden uitgevoerd: ${String(error)}`,
+        error: "Dagbriefing versturen mislukt",
+        details: String(error),
       },
       { status: 500 }
     );
