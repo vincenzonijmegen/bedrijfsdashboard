@@ -73,34 +73,6 @@ type LinkCardProps = {
   rel?: string;
 };
 
-function useVragenTeller(intervalMs = 10000) {
-  const [teller, setTeller] = React.useState<number | null>(null);
-
-  const fetchAantal = async () => {
-    try {
-      const res = await fetch("/api/admin/vragen", { credentials: "include" });
-      if (!res.ok) return;
-
-      const data = await res.json();
-      const open = Array.isArray(data)
-        ? data.filter((v: any) => !v.antwoord).length
-        : 0;
-
-      setTeller(open);
-    } catch {
-      setTeller(null);
-    }
-  };
-
-  React.useEffect(() => {
-    fetchAantal();
-    const interval = setInterval(fetchAantal, intervalMs);
-    return () => clearInterval(interval);
-  }, [intervalMs]);
-
-  return teller;
-}
-
 const LinkCard = ({
   href,
   label,
@@ -262,7 +234,7 @@ export default function AdminDashboard() {
     { refreshInterval: 60000 }
   );
 
-  const openVragenTeller = useVragenTeller(10000);
+
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -378,16 +350,6 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {openVragenTeller !== null && openVragenTeller > 0 && (
-          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 shadow-sm">
-            📬 {openVragenTeller} onbeantwoorde vraag
-            {openVragenTeller > 1 ? "en" : ""}.
-            <Link href="/admin/vragen" className="ml-2 text-blue-700 underline">
-              Bekijk nu
-            </Link>
           </div>
         )}
 
