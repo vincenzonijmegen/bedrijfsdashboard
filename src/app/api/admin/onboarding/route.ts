@@ -51,7 +51,6 @@ function faseVolgorde(fase: string) {
 
 function medewerkerFuncties(medewerker: any): string[] {
   const functies = new Set<string>();
-
   const hoofdFunctie = String(medewerker.functie || "").trim();
 
   if (hoofdFunctie) {
@@ -85,14 +84,19 @@ function medewerkerFuncties(medewerker: any): string[] {
   return Array.from(functies);
 }
 
-function instructieHoortBijMedewerker(instructie: any, functiesMedewerker: string[]) {
+function instructieHoortBijMedewerker(
+  instructie: any,
+  functiesMedewerker: string[]
+) {
   const functiesInstructie = normalizeFuncties(instructie.functies);
 
   if (functiesInstructie.length === 0) {
     return false;
   }
 
-  return functiesInstructie.some((functie) => functiesMedewerker.includes(functie));
+  return functiesInstructie.some((functie) =>
+    functiesMedewerker.includes(functie)
+  );
 }
 
 async function haalOnboardingDataOp() {
@@ -133,27 +137,49 @@ async function haalOnboardingDataOp() {
 
   const gelezenResult = await db.query(`
     SELECT
-      email,
+      LOWER(email) AS email,
       instructie_id,
       gelezen_op
     FROM gelezen_instructies
   `);
 
-  const gelezenSet = new Set(
-    gelezenResult.rows.map(
-      (row) => `${String(row.email).toLowerCase()}::${String(row.instructie_id)}`
-    )
-  );
+  const opdrachtenResult = await db.query(`
+    SELECT
+      LOWER(medewerker_email) AS medewerker_email,
+      instructie_id,
+      status,
+      verzonden_op,
+      afgerond_op,
+      token_verloopt_op,
+      laatste_fout
+    FROM onboarding_opdrachten
+  `);
+
+  const gelezenMap = new Map<string, any>();
+
+  for (const row of gelezenResult.rows) {
+    gelezenMap.set(`${row.email}::${String(row.instructie_id)}`, row);
+  }
+
+  const opdrachtMap = new Map<string, any>();
+
+  for (const row of opdrachtenResult.rows) {
+    opdrachtMap.set(`${row.medewerker_email}::${String(row.instructie_id)}`, row);
+  }
 
   const items = medewerkersResult.rows.map((medewerker) => {
+    const emailKey = String(medewerker.email || "").toLowerCase();
     const functies = medewerkerFuncties(medewerker);
 
     const verplichteInstructies = instructiesResult.rows
       .filter((instructie) => instructieHoortBijMedewerker(instructie, functies))
       .map((instructie) => {
-        const gelezen = gelezenSet.has(
-          `${String(medewerker.email).toLowerCase()}::${String(instructie.id)}`
-        );
+        const key = `${emailKey}::${String(instructie.id)}`;
+        const gelezenRow = gelezenMap.get(key);
+        const opdrachtRow = opdrachtMap.get(key);
+
+        const gelezen =
+          Boolean(gelezenRow) || opdrachtRow?.status === "afgerond";
 
         return {
           id: instructie.id,
@@ -165,13 +191,24 @@ async function haalOnboardingDataOp() {
           onboarding_fase_label: faseLabel(instructie.onboarding_fase),
           onboarding_volgorde: Number(instructie.onboarding_volgorde || 999),
           gelezen,
+          gelezen_op: gelezenRow?.gelezen_op || opdrachtRow?.afgerond_op || null,
+
+          // Nieuw voor dashboardcontrole
+          onboarding_status: opdrachtRow?.status || null,
+          onboarding_verzonden_op: opdrachtRow?.verzonden_op || null,
+          onboarding_afgerond_op: opdrachtRow?.afgerond_op || null,
+          onboarding_token_verloopt_op: opdrachtRow?.token_verloopt_op || null,
+          onboarding_laatste_fout: opdrachtRow?.laatste_fout || null,
         };
       })
       .sort((a, b) => {
-        const fase = faseVolgorde(a.onboarding_fase) - faseVolgorde(b.onboarding_fase);
+        const fase =
+          faseVolgorde(a.onboarding_fase) - faseVolgorde(b.onboarding_fase);
+
         if (fase !== 0) return fase;
 
         const volgorde = a.onboarding_volgorde - b.onboarding_volgorde;
+
         if (volgorde !== 0) return volgorde;
 
         return String(a.nummer || "").localeCompare(String(b.nummer || ""));
@@ -241,8 +278,6 @@ export async function GET() {
       data,
     });
   } catch (error) {
-    console.error("Fout bij ophalen onboarding:", error);
-
     return NextResponse.json(
       {
         success: false,
@@ -259,10 +294,8 @@ export async function POST(req: NextRequest) {
 
     const email = String(body?.email || "").trim().toLowerCase();
     const instructieIds = Array.isArray(body?.instructieIds)
-  ? body.instructieIds
-      .map((id: unknown) => String(id || "").trim())
-      .filter(Boolean)
-  : [];
+      ? body.instructieIds.map((id: unknown) => String(id))
+      : [];
 
     if (!email) {
       return NextResponse.json(
@@ -278,34 +311,56 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "Geen instructies ontvangen om af te vinken.",
+          error: "Geen instructies geselecteerd.",
         },
         { status: 400 }
       );
     }
 
-    await db.query(
-      `
-      INSERT INTO gelezen_instructies (email, instructie_id, gelezen_op)
-      SELECT $1, unnest($2::uuid[]), NOW()
-      ON CONFLICT (email, instructie_id)
-      DO UPDATE SET gelezen_op = COALESCE(gelezen_instructies.gelezen_op, NOW())
-      `,
-      [email, instructieIds]
-    );
+    let aantal = 0;
+
+    for (const instructieId of instructieIds) {
+      await db.query(
+        `
+        INSERT INTO gelezen_instructies (
+          email,
+          instructie_id,
+          gelezen_op
+        )
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (email, instructie_id)
+        DO UPDATE SET
+          gelezen_op = COALESCE(gelezen_instructies.gelezen_op, NOW())
+        `,
+        [email, instructieId]
+      );
+
+      await db.query(
+        `
+        UPDATE onboarding_opdrachten
+        SET
+          status = 'afgerond',
+          afgerond_op = COALESCE(afgerond_op, NOW()),
+          bijgewerkt_op = NOW()
+        WHERE LOWER(medewerker_email) = LOWER($1)
+          AND instructie_id = $2
+          AND status <> 'afgerond'
+        `,
+        [email, instructieId]
+      );
+
+      aantal += 1;
+    }
 
     return NextResponse.json({
       success: true,
-      email,
-      aantal: instructieIds.length,
+      aantal,
     });
   } catch (error) {
-    console.error("Fout bij afvinken onboarding:", error);
-
     return NextResponse.json(
       {
         success: false,
-        error: `Onboarding kon niet worden afgevinkt: ${String(error)}`,
+        error: `Onboarding kon niet worden bijgewerkt: ${String(error)}`,
       },
       { status: 500 }
     );
