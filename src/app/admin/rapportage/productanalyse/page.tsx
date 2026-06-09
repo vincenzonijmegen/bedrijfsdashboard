@@ -3,15 +3,12 @@
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, Download, Search, TrendingUp } from "lucide-react";
+import { ArrowLeft, BarChart3, Download, Search } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const formatAantal = (value: unknown) =>
   Number(value || 0).toLocaleString("nl-NL", { maximumFractionDigits: 0 });
-
-const maandNaam = (maand: number) =>
-  new Date(2026, maand - 1, 1).toLocaleDateString("nl-NL", { month: "long" });
 
 const vandaagIso = () => new Date().toISOString().slice(0, 10);
 
@@ -47,7 +44,6 @@ export default function ProductanalysePage() {
   const [start, setStart] = useState(seizoenStartIso());
   const [end, setEnd] = useState(vandaagIso());
   const [product, setProduct] = useState("");
-  const [verloopProduct, setVerloopProduct] = useState("");
 
   const query = useMemo(() => {
     const params = new URLSearchParams();
@@ -68,11 +64,12 @@ export default function ProductanalysePage() {
       if (end) params.set("end", end);
     }
 
-    if (product.trim()) params.set("product", product.trim());
-    if (verloopProduct.trim()) params.set("verloopProduct", verloopProduct.trim());
+    if (product.trim()) {
+      params.set("product", product.trim());
+    }
 
     return params.toString();
-  }, [periode, start, end, product, verloopProduct]);
+  }, [periode, start, end, product]);
 
   const { data, error, isLoading } = useSWR(
     `/api/rapportage/productanalyse?${query}`,
@@ -81,12 +78,16 @@ export default function ProductanalysePage() {
 
   const jaren: number[] = data?.jaren || [];
   const seizoenJaren: number[] = data?.seizoenJaren || jaren;
+
   const aantallenPerJaarProduct: Record<string, any>[] =
     data?.aantallenPerJaarProduct || [];
-  const seizoenVergelijking: Record<string, any>[] = data?.seizoenVergelijking || [];
+
+  const seizoenVergelijking: Record<string, any>[] =
+    data?.seizoenVergelijking || [];
+
   const topProducten = data?.topProducten || [];
-  const groeiKrimp = data?.groeiKrimp || [];
-  const verloop = data?.verloop;
+
+  const laatsteOmzetDatum = data?.laatsteOmzetDatum || data?.maxDatum || null;
 
   return (
     <main className="min-h-screen bg-slate-100 p-4 md:p-6">
@@ -97,11 +98,15 @@ export default function ProductanalysePage() {
               href="/admin/rapportage"
               className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800"
             >
-              <ArrowLeft className="h-4 w-4" /> Terug naar rapportages
+              <ArrowLeft className="h-4 w-4" />
+              Terug naar rapportages
             </Link>
+
             <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-              <BarChart3 className="h-7 w-7 text-blue-600" /> Productanalyse
+              <BarChart3 className="h-7 w-7 text-blue-600" />
+              Productanalyse
             </h1>
+
             <p className="mt-1 text-sm text-slate-500">
               Analyseer verkoopaantallen per product, jaar en seizoen op basis van rapportage.omzet.
             </p>
@@ -117,7 +122,8 @@ export default function ProductanalysePage() {
             }
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
           >
-            <Download className="h-4 w-4" /> Exporteer CSV
+            <Download className="h-4 w-4" />
+            Exporteer CSV
           </button>
         </div>
 
@@ -195,12 +201,14 @@ export default function ProductanalysePage() {
                   {formatAantal(aantallenPerJaarProduct.length)}
                 </div>
               </div>
+
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="text-sm font-medium text-slate-500">Jaren in selectie</div>
                 <div className="mt-1 text-3xl font-bold text-slate-900">
                   {jaren.length ? `${Math.min(...jaren)}-${Math.max(...jaren)}` : "-"}
                 </div>
               </div>
+
               <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="text-sm font-medium text-slate-500">Totaal aantallen</div>
                 <div className="mt-1 text-3xl font-bold text-slate-900">
@@ -223,6 +231,7 @@ export default function ProductanalysePage() {
                   Hoofdrapport met alle producten en verkoopaantallen per jaar.
                 </p>
               </div>
+
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
@@ -235,6 +244,7 @@ export default function ProductanalysePage() {
                       ))}
                     </tr>
                   </thead>
+
                   <tbody className="divide-y divide-slate-100">
                     {aantallenPerJaarProduct.map((row) => (
                       <tr key={row.product} className="hover:bg-slate-50">
@@ -257,9 +267,12 @@ export default function ProductanalysePage() {
               <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div className="border-b border-slate-200 p-5">
                   <h2 className="text-lg font-bold text-slate-900">Topproducten</h2>
-                  <p className="mt-1 text-sm text-slate-500">Top 50 binnen de gekozen selectie.</p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Top 50 binnen de gekozen selectie.
+                  </p>
                 </div>
-                <div className="max-h-[520px] overflow-auto">
+
+                <div className="overflow-x-auto">
                   <table className="min-w-full text-sm">
                     <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                       <tr>
@@ -268,11 +281,14 @@ export default function ProductanalysePage() {
                         <th className="px-4 py-3 text-right">Aantal</th>
                       </tr>
                     </thead>
+
                     <tbody className="divide-y divide-slate-100">
                       {topProducten.map((row: any, index: number) => (
                         <tr key={row.product} className="hover:bg-slate-50">
                           <td className="px-4 py-2 text-slate-500">{index + 1}</td>
-                          <td className="px-4 py-2 font-medium text-slate-800">{row.product}</td>
+                          <td className="px-4 py-2 font-medium text-slate-800">
+                            {row.product}
+                          </td>
                           <td className="px-4 py-2 text-right text-slate-700">
                             {formatAantal(row.aantal)}
                           </td>
@@ -285,46 +301,29 @@ export default function ProductanalysePage() {
 
               <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div className="border-b border-slate-200 p-5">
-                  <h2 className="flex items-center gap-2 text-lg font-bold text-slate-900">
-                    <TrendingUp className="h-5 w-5 text-blue-600" /> Groei / krimp
-                  </h2>
+                  <h2 className="text-lg font-bold text-slate-900">Jaartotalen</h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    Vergelijking met vorig jaar of met dezelfde periode vorig jaar.
+                    Totaal aantal verkochte producten per jaar.
                   </p>
                 </div>
-                <div className="max-h-[520px] overflow-auto">
+
+                <div className="overflow-x-auto">
                   <table className="min-w-full text-sm">
                     <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                       <tr>
-                        <th className="px-4 py-3">Product</th>
-                        <th className="px-4 py-3 text-right">Nu</th>
-                        <th className="px-4 py-3 text-right">Vorig jaar</th>
-                        <th className="px-4 py-3 text-right">Verschil</th>
-                        <th className="px-4 py-3 text-right">%</th>
+                        <th className="px-4 py-3">Jaar</th>
+                        <th className="px-4 py-3 text-right">Aantal</th>
                       </tr>
                     </thead>
+
                     <tbody className="divide-y divide-slate-100">
-                      {groeiKrimp.map((row: any) => (
-                        <tr key={row.product} className="hover:bg-slate-50">
-                          <td className="px-4 py-2 font-medium text-slate-800">{row.product}</td>
-                          <td className="px-4 py-2 text-right">{formatAantal(row.aantalHuidig)}</td>
-                          <td className="px-4 py-2 text-right">{formatAantal(row.aantalVorig)}</td>
-                          <td
-                            className={`px-4 py-2 text-right font-semibold ${
-                              row.verschil >= 0 ? "text-emerald-700" : "text-red-700"
-                            }`}
-                          >
-                            {row.verschil > 0 ? "+" : ""}
-                            {formatAantal(row.verschil)}
+                      {jaren.map((jaar) => (
+                        <tr key={jaar} className="hover:bg-slate-50">
+                          <td className="px-4 py-2 font-medium text-slate-800">
+                            {jaar}
                           </td>
-                          <td
-                            className={`px-4 py-2 text-right font-semibold ${
-                              row.verschil >= 0 ? "text-emerald-700" : "text-red-700"
-                            }`}
-                          >
-                            {row.percentage === null
-                              ? "-"
-                              : `${row.percentage > 0 ? "+" : ""}${row.percentage.toFixed(1)}%`}
+                          <td className="px-4 py-2 text-right text-slate-700">
+                            {formatAantal(data.jaarTotalen?.[jaar])}
                           </td>
                         </tr>
                       ))}
@@ -336,55 +335,15 @@ export default function ProductanalysePage() {
 
             <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="border-b border-slate-200 p-5">
-                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                  <div>
-                    <h2 className="text-lg font-bold text-slate-900">Verloop in de tijd</h2>
-                    <p className="mt-1 text-sm text-slate-500">
-                      Maandverloop voor één gekozen product.
-                    </p>
-                  </div>
-                  <label className="w-full space-y-1 text-sm font-medium text-slate-700 md:w-80">
-                    Product
-                    <input
-                      value={verloopProduct}
-                      onChange={(e) => setVerloopProduct(e.target.value)}
-                      placeholder={verloop?.product || "Exacte productnaam"}
-                      className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
-                    />
-                  </label>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                    <tr>
-                      <th className="px-4 py-3">Jaar</th>
-                      <th className="px-4 py-3">Maand</th>
-                      <th className="px-4 py-3 text-right">Aantal</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {(verloop?.regels || []).map((row: any) => (
-                      <tr key={`${row.jaar}-${row.maand}`} className="hover:bg-slate-50">
-                        <td className="px-4 py-2 font-medium text-slate-800">{row.jaar}</td>
-                        <td className="px-4 py-2 text-slate-700">{maandNaam(row.maand)}</td>
-                        <td className="px-4 py-2 text-right text-slate-700">
-                          {formatAantal(row.aantal)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-200 p-5">
-                <h2 className="text-lg font-bold text-slate-900">Seizoensvergelijking</h2>
+                <h2 className="text-lg font-bold text-slate-900">
+                  Seizoensvergelijking
+                </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Vergelijkt elk jaar vanaf 1 maart tot dezelfde kalenderdag als vandaag.
+                  Vergelijkt elk jaar vanaf 1 maart t/m dezelfde maand/dag als de laatst bekende omzetdatum.
+                  {laatsteOmzetDatum ? ` Laatste omzetdatum: ${laatsteOmzetDatum}.` : ""}
                 </p>
               </div>
+
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
@@ -397,6 +356,7 @@ export default function ProductanalysePage() {
                       ))}
                     </tr>
                   </thead>
+
                   <tbody className="divide-y divide-slate-100">
                     {seizoenVergelijking.map((row) => (
                       <tr key={row.product} className="hover:bg-slate-50">
