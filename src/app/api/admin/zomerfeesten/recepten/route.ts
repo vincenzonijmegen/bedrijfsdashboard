@@ -4,10 +4,6 @@ import { NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type ColumnRow = {
-  column_name: string;
-};
-
 const mogelijkeReceptTabellen = ["recepten", "recepturen"];
 const mogelijkeNaamKolommen = ["naam", "titel", "recept_naam", "product_naam"];
 const mogelijkeCategorieKolommen = ["categorie", "categorie_naam", "type", "soort"];
@@ -31,7 +27,7 @@ export async function GET() {
       return NextResponse.json([]);
     }
 
-    const columnRes = await db.query<ColumnRow>(
+    const columnRes = await db.query(
       `SELECT column_name
        FROM information_schema.columns
        WHERE table_schema = 'public'
@@ -39,7 +35,7 @@ export async function GET() {
       [tabelNaam]
     );
 
-    const kolommen = columnRes.rows.map((row) => row.column_name);
+    const kolommen = columnRes.rows.map((row: { column_name: string }) => row.column_name);
     const naamKolom = mogelijkeNaamKolommen.find((naam) => kolommen.includes(naam));
     const categorieKolom = mogelijkeCategorieKolommen.find((naam) => kolommen.includes(naam));
 
