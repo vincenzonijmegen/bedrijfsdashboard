@@ -215,24 +215,41 @@ export async function GET(req: NextRequest) {
       new Set(seizoenResult.rows.map((r: any) => Number(r.jaar)))
     ).sort((a, b) => a - b);
 
-    const productenMap = new Map<string, Record<string, number | string>>();
-    for (const row of perJaarResult.rows) {
-      const item = productenMap.get(row.product) || { product: row.product };
-      item[`y${row.jaar}`] = toInt(row.aantal);
-      productenMap.set(row.product, item);
-    }
+const productenMap = new Map<string, Record<string, number | string>>();
 
-    const seizoenMap = new Map<string, Record<string, number | string>>();
-    for (const row of seizoenResult.rows) {
-      const item = seizoenMap.get(row.product) || { product: row.product };
-      item[`y${row.jaar}`] = toInt(row.aantal);
-      seizoenMap.set(row.product, item);
-    }
+for (const row of perJaarResult.rows) {
+  const item: Record<string, number | string> =
+    productenMap.get(row.product) ?? { product: String(row.product) };
 
-    const jaarTotalen = perJaarResult.rows.reduce<Record<string, number>>((acc, row) => {
-      acc[row.jaar] = (acc[row.jaar] || 0) + toInt(row.aantal);
-      return acc;
-    }, {});
+  item[`y${row.jaar}`] = toInt(row.aantal);
+
+  productenMap.set(row.product, item);
+}
+
+const seizoenMap = new Map<string, Record<string, number | string>>();
+
+for (const row of seizoenResult.rows) {
+  let item = seizoenMap.get(String(row.product));
+
+  if (!item) {
+    item = {
+      product: String(row.product),
+    };
+  }
+
+  item[String(`y${row.jaar}`)] = toInt(row.aantal);
+
+  seizoenMap.set(String(row.product), item);
+}
+
+const jaarTotalen = perJaarResult.rows.reduce<Record<string, number>>(
+  (acc, row) => {
+    const jaarKey = String(row.jaar);
+    acc[jaarKey] = (acc[jaarKey] || 0) + toInt(row.aantal);
+    return acc;
+  },
+  {}
+);
 
     return NextResponse.json({
       success: true,
