@@ -441,11 +441,17 @@ export async function verstuurOnboardingDrip({
 
   const opdrachten = await haalTeVersturenOpdrachten(limit);
 
-  const verzonden: any[] = [];
-  const fouten: any[] = [];
+    const verzonden: any[] = [];
+    const fouten: any[] = [];
 
-  for (const opdracht of opdrachten) {
-    const bevestigUrl = new URL(`/onboarding/${opdracht.token}`, origin).toString();
+    const veiligeOrigin =
+      process.env.APP_URL || origin || "https://werkinstructies-app.vercel.app";
+
+    for (const opdracht of opdrachten) {
+      const bevestigUrl = new URL(
+        `/onboarding/${opdracht.token}`,
+        veiligeOrigin
+      ).toString();
 
     const heeftVragen = await instructieHeeftVragen(opdracht.instructie_id);
     const email = renderOnboardingMail(opdracht, bevestigUrl, heeftVragen);

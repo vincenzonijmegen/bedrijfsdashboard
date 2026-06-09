@@ -8,11 +8,14 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const resultaat = await verstuurOnboardingDrip({
-      origin: req.nextUrl.origin,
-      limit: 5,
-      bouwWachtrij: false,
-    });
+    const origin =
+  process.env.APP_URL || "https://werkinstructies-app.vercel.app";
+
+const resultaat = await verstuurOnboardingDrip({
+  origin,
+  limit: 5,
+  bouwWachtrij: false,
+});
 
     return NextResponse.json({
       success: true,

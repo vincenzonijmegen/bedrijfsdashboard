@@ -9,14 +9,9 @@ const rapportages = [
     link: '/admin/rapportage/medewerkers/ziekteverzuim',
   },
       {
-    titel: 'Overzicht progressie',
-    beschrijving: 'Overzicht progressie werkinstructies',
+    titel: 'Overzicht onboarding - instructies',
+    beschrijving: 'Overzicht Onboarding - werkinstructies',
     link: '/admin/onboarding',
-  },
-    {
-    titel: 'Toetsresultaten',
-    beschrijving: 'Overzicht toetsresultateb per medewerker',
-    link: '/admin/rapportage/medewerkers/resultaten',
   },
   // Toekomstige rapportages kunnen hier worden toegevoegd
 ];
