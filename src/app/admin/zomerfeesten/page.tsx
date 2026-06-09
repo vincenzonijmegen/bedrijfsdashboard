@@ -32,6 +32,7 @@ type Recept = {
   id: number;
   naam: string;
   categorie?: string | null;
+  hoeveelheid_mix?: string | number | null;
 };
 
 type Smaak = {
@@ -51,8 +52,17 @@ type DetailResponse = {
   smaken: Smaak[];
 };
 
+type NieuweSmaak = {
+  recept_id: number | null;
+  smaakcode: string;
+  smaaknaam: string;
+  soort: "melk" | "vrucht" | "overig";
+  aantal_bakken: number;
+  kleur: string;
+};
+
 const fetcher = async (url: string) => {
-  const res = await fetch(url);
+  const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error("Fout bij ophalen");
   return res.json();
 };
@@ -73,6 +83,15 @@ const legePlanning = () => ({
   status: "concept" as "concept" | "actief" | "afgerond",
 });
 
+const legeNieuweSmaak = (): NieuweSmaak => ({
+  recept_id: null,
+  smaakcode: "",
+  smaaknaam: "",
+  soort: "melk",
+  aantal_bakken: 0,
+  kleur: "#93c5fd",
+});
+
 const formatEuro = (waarde: number) =>
   new Intl.NumberFormat("nl-NL", {
     style: "currency",
@@ -83,6 +102,21 @@ const formatEuro = (waarde: number) =>
 const datumVoorInput = (waarde?: string) => {
   if (!waarde) return "";
   return waarde.slice(0, 10);
+};
+
+const maakCode = (naam: string) =>
+  naam
+    .slice(0, 4)
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toUpperCase();
+
+const soortUitCategorie = (categorie?: string | null): "melk" | "vrucht" | "overig" => {
+  const tekst = (categorie || "").toLowerCase();
+  if (tekst.includes("vrucht") || tekst.includes("sorbet") || tekst.includes("fruit")) {
+    return "vrucht";
+  }
+  if (tekst.includes("melk") || tekst.includes("room")) return "melk";
+  return "melk";
 };
 
 export default function ZomerfeestenPage() {
@@ -97,6 +131,7 @@ export default function ZomerfeestenPage() {
 
   const [planning, setPlanning] = useState(legePlanning());
   const [smaken, setSmaken] = useState<Smaak[]>([]);
+  const [nieuweSmaak, setNieuweSmaak] = useState<NieuweSmaak>(legeNieuweSmaak());
   const [melding, setMelding] = useState<string | null>(null);
   const [opslaanBezig, setOpslaanBezig] = useState(false);
 
@@ -149,24 +184,45 @@ export default function ZomerfeestenPage() {
         ...s,
         recept_id: s.recept_id ? Number(s.recept_id) : null,
         aantal_bakken: Number(s.aantal_bakken || 0),
-        kleur: s.kleur || "",
+        kleur: s.kleur || "#93c5fd",
       }))
     );
   };
 
+  const kiesNieuwRecept = (receptId: number | null) => {
+    const recept = recepten?.find((r) => r.id === receptId);
+    setNieuweSmaak((prev) => ({
+      ...prev,
+      recept_id: receptId,
+      smaaknaam: recept?.naam || prev.smaaknaam,
+      smaakcode: prev.smaakcode || maakCode(recept?.naam || ""),
+      soort: soortUitCategorie(recept?.categorie),
+    }));
+  };
+
   const voegSmaakToe = () => {
+    const smaaknaam = nieuweSmaak.smaaknaam.trim();
+    const smaakcode = nieuweSmaak.smaakcode.trim().toUpperCase();
+
+    if (!smaaknaam || !smaakcode) {
+      setMelding("Kies een recept of vul minimaal een smaaknaam en code in.");
+      return;
+    }
+
     setSmaken((prev) => [
       ...prev,
       {
-        recept_id: null,
-        smaakcode: "",
-        smaaknaam: "",
-        soort: "melk",
-        aantal_bakken: 0,
-        kleur: "",
+        recept_id: nieuweSmaak.recept_id,
+        smaakcode,
+        smaaknaam,
+        soort: nieuweSmaak.soort,
+        aantal_bakken: Number(nieuweSmaak.aantal_bakken || 0),
+        kleur: nieuweSmaak.kleur || "#93c5fd",
         sortering: prev.length + 1,
       },
     ]);
+    setNieuweSmaak(legeNieuweSmaak());
+    setMelding(null);
   };
 
   const wijzigSmaak = (index: number, patch: Partial<Smaak>) => {
@@ -178,17 +234,13 @@ export default function ZomerfeestenPage() {
     );
   };
 
-  const kiesRecept = (index: number, receptId: number | null) => {
+  const kiesBestaandRecept = (index: number, receptId: number | null) => {
     const recept = recepten?.find((r) => r.id === receptId);
     wijzigSmaak(index, {
       recept_id: receptId,
       smaaknaam: recept?.naam || smaken[index]?.smaaknaam || "",
-      smaakcode:
-        smaken[index]?.smaakcode ||
-        (recept?.naam || "")
-          .slice(0, 4)
-          .replace(/[^a-zA-Z0-9]/g, "")
-          .toUpperCase(),
+      smaakcode: smaken[index]?.smaakcode || maakCode(recept?.naam || ""),
+      soort: recept ? soortUitCategorie(recept.categorie) : smaken[index]?.soort || "melk",
     });
   };
 
@@ -210,8 +262,9 @@ export default function ZomerfeestenPage() {
       setMelding("Zomerfeestenplanning opgeslagen.");
       mutate("/api/admin/zomerfeesten/planningen");
       await laadPlanning(json.id);
-    } catch (err: any) {
-      setMelding(err.message || "Opslaan mislukt");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Opslaan mislukt";
+      setMelding(message);
     } finally {
       setOpslaanBezig(false);
     }
@@ -255,6 +308,7 @@ export default function ZomerfeestenPage() {
                 onClick={() => {
                   setPlanning(legePlanning());
                   setSmaken([]);
+                  setNieuweSmaak(legeNieuweSmaak());
                   setMelding(null);
                 }}
                 className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
@@ -513,156 +567,257 @@ export default function ZomerfeestenPage() {
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-2">
-                  <IceCream className="h-5 w-5 text-blue-600" />
-                  <h2 className="text-lg font-bold text-slate-900">Smaakplanning</h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={voegSmaakToe}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-                >
-                  <Plus className="h-4 w-4" /> Smaak toevoegen
-                </button>
+              <div className="mb-4 flex items-center gap-2">
+                <IceCream className="h-5 w-5 text-blue-600" />
+                <h2 className="text-lg font-bold text-slate-900">Smaakplanning</h2>
               </div>
 
               {receptenError && (
                 <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  Recepten konden niet worden opgehaald. Controleer de API-route of tabelnaam.
+                  Keukenrecepten konden niet worden opgehaald. Controleer de API-route of tabelnaam.
                 </div>
               )}
 
               {!receptenError && recepten && recepten.length === 0 && (
                 <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  Er zijn nog geen recepten gevonden om te koppelen.
+                  Er zijn nog geen actieve keukenrecepten gevonden om te koppelen.
                 </div>
               )}
 
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full min-w-[820px] text-sm">
-                  <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                    <tr>
-                      <th className="p-3">Recept</th>
-                      <th className="p-3">Code</th>
-                      <th className="p-3">Smaaknaam</th>
-                      <th className="p-3">Soort</th>
-                      <th className="p-3 text-right">Bakken</th>
-                      <th className="p-3 text-right">Per dag</th>
-                      <th className="p-3">Kleur</th>
-                      <th className="p-3"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {smaken.map((smaak, index) => (
-                      <tr key={index} className="bg-white">
-                        <td className="p-3">
-                          <select
-                            className="w-full rounded-lg border border-slate-200 px-2 py-2"
-                            value={smaak.recept_id ?? ""}
-                            onChange={(e) =>
-                              kiesRecept(
-                                index,
-                                e.target.value ? Number(e.target.value) : null
-                              )
-                            }
-                          >
-                            <option value="">-- kies recept --</option>
-                            {(recepten ?? []).map((r) => (
-                              <option key={r.id} value={r.id}>
-                                {r.categorie ? `${r.categorie} · ` : ""}
-                                {r.naam}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="p-3">
-                          <input
-                            className="w-24 rounded-lg border border-slate-200 px-2 py-2 uppercase"
-                            value={smaak.smaakcode}
-                            onChange={(e) =>
-                              wijzigSmaak(index, {
-                                smaakcode: e.target.value.toUpperCase(),
-                              })
-                            }
-                          />
-                        </td>
-                        <td className="p-3">
-                          <input
-                            className="w-full rounded-lg border border-slate-200 px-2 py-2"
-                            value={smaak.smaaknaam}
-                            onChange={(e) =>
-                              wijzigSmaak(index, { smaaknaam: e.target.value })
-                            }
-                          />
-                        </td>
-                        <td className="p-3">
-                          <select
-                            className="rounded-lg border border-slate-200 px-2 py-2"
-                            value={smaak.soort}
-                            onChange={(e) =>
-                              wijzigSmaak(index, {
-                                soort: e.target.value as "melk" | "vrucht" | "overig",
-                              })
-                            }
-                          >
-                            <option value="melk">Melk</option>
-                            <option value="vrucht">Vrucht</option>
-                            <option value="overig">Overig</option>
-                          </select>
-                        </td>
-                        <td className="p-3 text-right">
-                          <input
-                            type="number"
-                            step="0.1"
-                            className="w-24 rounded-lg border border-slate-200 px-2 py-2 text-right"
-                            value={smaak.aantal_bakken}
-                            onChange={(e) =>
-                              wijzigSmaak(index, {
-                                aantal_bakken: Number(e.target.value),
-                              })
-                            }
-                          />
-                        </td>
-                        <td className="p-3 text-right font-medium text-slate-700">
+              <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
+                  Smaak toevoegen
+                </h3>
+
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
+                  <label className="space-y-1 text-sm md:col-span-2 xl:col-span-2">
+                    <span className="font-medium text-slate-700">Keukenrecept</span>
+                    <select
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
+                      value={nieuweSmaak.recept_id ?? ""}
+                      onChange={(e) =>
+                        kiesNieuwRecept(e.target.value ? Number(e.target.value) : null)
+                      }
+                    >
+                      <option value="">-- kies keukenrecept --</option>
+                      {(recepten ?? []).map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.categorie ? `${r.categorie} · ` : ""}
+                          {r.naam}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="space-y-1 text-sm">
+                    <span className="font-medium text-slate-700">Code</span>
+                    <input
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 uppercase"
+                      value={nieuweSmaak.smaakcode}
+                      onChange={(e) =>
+                        setNieuweSmaak((s) => ({
+                          ...s,
+                          smaakcode: e.target.value.toUpperCase(),
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label className="space-y-1 text-sm md:col-span-2 xl:col-span-1">
+                    <span className="font-medium text-slate-700">Smaaknaam</span>
+                    <input
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
+                      value={nieuweSmaak.smaaknaam}
+                      onChange={(e) =>
+                        setNieuweSmaak((s) => ({ ...s, smaaknaam: e.target.value }))
+                      }
+                    />
+                  </label>
+
+                  <label className="space-y-1 text-sm">
+                    <span className="font-medium text-slate-700">Soort</span>
+                    <select
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
+                      value={nieuweSmaak.soort}
+                      onChange={(e) =>
+                        setNieuweSmaak((s) => ({
+                          ...s,
+                          soort: e.target.value as "melk" | "vrucht" | "overig",
+                        }))
+                      }
+                    >
+                      <option value="melk">Melk</option>
+                      <option value="vrucht">Vrucht</option>
+                      <option value="overig">Overig</option>
+                    </select>
+                  </label>
+
+                  <label className="space-y-1 text-sm">
+                    <span className="font-medium text-slate-700">Bakken</span>
+                    <input
+                      type="number"
+                      step="0.1"
+                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-right"
+                      value={nieuweSmaak.aantal_bakken}
+                      onChange={(e) =>
+                        setNieuweSmaak((s) => ({
+                          ...s,
+                          aantal_bakken: Number(e.target.value),
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <div className="flex items-end gap-3">
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-slate-700">Kleur</span>
+                      <input
+                        type="color"
+                        className="h-10 w-14 rounded border border-slate-200 bg-white p-1"
+                        value={nieuweSmaak.kleur || "#93c5fd"}
+                        onChange={(e) =>
+                          setNieuweSmaak((s) => ({ ...s, kleur: e.target.value }))
+                        }
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={voegSmaakToe}
+                      className="mb-0 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800"
+                    >
+                      <Plus className="h-4 w-4" /> Toevoegen
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {smaken.map((smaak, index) => (
+                  <div
+                    key={index}
+                    className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                  >
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_90px_minmax(180px,1fr)_120px_100px_90px_44px] xl:items-end">
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">Keukenrecept</span>
+                        <select
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                          value={smaak.recept_id ?? ""}
+                          onChange={(e) =>
+                            kiesBestaandRecept(
+                              index,
+                              e.target.value ? Number(e.target.value) : null
+                            )
+                          }
+                        >
+                          <option value="">-- kies keukenrecept --</option>
+                          {(recepten ?? []).map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.categorie ? `${r.categorie} · ` : ""}
+                              {r.naam}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">Code</span>
+                        <input
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 uppercase"
+                          value={smaak.smaakcode}
+                          onChange={(e) =>
+                            wijzigSmaak(index, {
+                              smaakcode: e.target.value.toUpperCase(),
+                            })
+                          }
+                        />
+                      </label>
+
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">Smaaknaam</span>
+                        <input
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                          value={smaak.smaaknaam}
+                          onChange={(e) =>
+                            wijzigSmaak(index, { smaaknaam: e.target.value })
+                          }
+                        />
+                      </label>
+
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">Soort</span>
+                        <select
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                          value={smaak.soort}
+                          onChange={(e) =>
+                            wijzigSmaak(index, {
+                              soort: e.target.value as "melk" | "vrucht" | "overig",
+                            })
+                          }
+                        >
+                          <option value="melk">Melk</option>
+                          <option value="vrucht">Vrucht</option>
+                          <option value="overig">Overig</option>
+                        </select>
+                      </label>
+
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">Bakken</span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-right"
+                          value={smaak.aantal_bakken}
+                          onChange={(e) =>
+                            wijzigSmaak(index, {
+                              aantal_bakken: Number(e.target.value),
+                            })
+                          }
+                        />
+                      </label>
+
+                      <div className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">Per dag</span>
+                        <div className="rounded-xl bg-slate-50 px-3 py-2 text-right font-semibold text-slate-700">
                           {aantalDagen > 0
                             ? (Number(smaak.aantal_bakken || 0) / aantalDagen).toFixed(1)
                             : "-"}
-                        </td>
-                        <td className="p-3">
+                        </div>
+                      </div>
+
+                      <div className="flex items-end gap-2">
+                        <label className="space-y-1 text-sm">
+                          <span className="font-medium text-slate-700">Kleur</span>
                           <input
                             type="color"
-                            className="h-9 w-12 rounded border border-slate-200 bg-white p-1"
+                            className="h-10 w-14 rounded border border-slate-200 bg-white p-1"
                             value={smaak.kleur || "#93c5fd"}
                             onChange={(e) =>
                               wijzigSmaak(index, { kleur: e.target.value })
                             }
                           />
-                        </td>
-                        <td className="p-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setSmaken((prev) => prev.filter((_, i) => i !== index))
-                            }
-                            className="rounded-lg p-2 text-red-600 hover:bg-red-50"
-                            title="Verwijderen"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSmaken((prev) => prev.filter((_, i) => i !== index))
+                          }
+                          className="mb-0 rounded-xl p-3 text-red-600 hover:bg-red-50"
+                          title="Verwijderen"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
 
-                    {smaken.length === 0 && (
-                      <tr>
-                        <td colSpan={8} className="p-6 text-center text-slate-500">
-                          Nog geen smaken toegevoegd.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                {smaken.length === 0 && (
+                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                    Nog geen smaken toegevoegd.
+                  </div>
+                )}
               </div>
 
               <div className="mt-4 flex flex-col gap-2 rounded-xl bg-slate-50 p-4 text-sm text-slate-700 md:flex-row md:items-center md:justify-between">

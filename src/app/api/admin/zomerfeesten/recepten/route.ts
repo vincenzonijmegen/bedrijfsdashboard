@@ -1,5 +1,5 @@
-import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { query } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,57 +12,24 @@ const responseInit = {
 
 export async function GET() {
   try {
-    const columnRes = await db.query(
-      `SELECT column_name
-       FROM information_schema.columns
-       WHERE table_schema = 'public'
-         AND table_name = 'recepten'`
-    );
-
-    const kolommen = columnRes.rows.map(
-      (row: { column_name: string }) => row.column_name
-    );
-
-    if (!kolommen.includes("id")) {
-      return NextResponse.json(
-        { error: "Tabel recepten heeft geen kolom id" },
-        { status: 500, ...responseInit }
-      );
-    }
-
-    const naamKolom = ["naam", "titel", "recept_naam", "product_naam"].find((kolom) =>
-      kolommen.includes(kolom)
-    );
-
-    if (!naamKolom) {
-      return NextResponse.json(
-        { error: "Geen naamkolom gevonden in tabel recepten" },
-        { status: 500, ...responseInit }
-      );
-    }
-
-    const categorieKolom = ["categorie", "categorie_naam", "type", "soort"].find((kolom) =>
-      kolommen.includes(kolom)
-    );
-
-    const quoteIdent = (value: string) => `"${value.replace(/"/g, '""')}"`;
-
-    const result = await db.query(
-      `SELECT
-         id,
-         ${quoteIdent(naamKolom)}::text AS naam,
-         ${categorieKolom ? `COALESCE(${quoteIdent(categorieKolom)}::text, '')` : "''"} AS categorie
-       FROM recepten
-       WHERE ${quoteIdent(naamKolom)} IS NOT NULL
-         AND TRIM(${quoteIdent(naamKolom)}::text) <> ''
-       ORDER BY LOWER(${quoteIdent(naamKolom)}::text)`
+    const result = await query(
+      `
+      SELECT
+        id,
+        naam,
+        categorie,
+        hoeveelheid_mix
+      FROM keuken_recepten
+      WHERE actief = true
+      ORDER BY categorie ASC, naam ASC
+      `
     );
 
     return NextResponse.json(result.rows, responseInit);
   } catch (err) {
-    console.error("Fout bij ophalen recepten voor Zomerfeesten:", err);
+    console.error("Fout bij ophalen keukenrecepten voor Zomerfeesten:", err);
     return NextResponse.json(
-      { error: "Kon recepten niet ophalen" },
+      { error: "Kon keukenrecepten niet ophalen" },
       { status: 500, ...responseInit }
     );
   }
