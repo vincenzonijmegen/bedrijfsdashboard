@@ -90,7 +90,7 @@ export default function ZomerfeestenPage() {
     "/api/admin/zomerfeesten/planningen",
     fetcher
   );
-  const { data: recepten } = useSWR<Recept[]>(
+  const { data: recepten, error: receptenError } = useSWR<Recept[]>(
     "/api/admin/zomerfeesten/recepten",
     fetcher
   );
@@ -235,8 +235,8 @@ export default function ZomerfeestenPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-100 -m-6 p-4 md:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen w-full bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1180px] space-y-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -280,7 +280,7 @@ export default function ZomerfeestenPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
           <aside className="space-y-4">
             <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
@@ -359,14 +359,14 @@ export default function ZomerfeestenPage() {
             </section>
           </aside>
 
-          <div className="space-y-6">
+          <div className="min-w-0 space-y-6">
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <CalendarDays className="h-5 w-5 text-blue-600" />
                 <h2 className="text-lg font-bold text-slate-900">Planninggegevens</h2>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <label className="space-y-1 text-sm">
                   <span className="font-medium text-slate-700">Jaar</span>
                   <input
@@ -527,8 +527,20 @@ export default function ZomerfeestenPage() {
                 </button>
               </div>
 
+              {receptenError && (
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  Recepten konden niet worden opgehaald. Controleer de API-route of tabelnaam.
+                </div>
+              )}
+
+              {!receptenError && recepten && recepten.length === 0 && (
+                <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  Er zijn nog geen recepten gevonden om te koppelen.
+                </div>
+              )}
+
               <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full min-w-[900px] text-sm">
+                <table className="w-full min-w-[820px] text-sm">
                   <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                     <tr>
                       <th className="p-3">Recept</th>

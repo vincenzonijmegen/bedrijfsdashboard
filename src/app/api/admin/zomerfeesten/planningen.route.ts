@@ -51,8 +51,9 @@ export async function GET(req: NextRequest) {
            zsp.aantal_bakken,
            zsp.kleur,
            zsp.sortering,
-           zsp.smaaknaam AS recept_naam
+           r.naam AS recept_naam
          FROM zomerfeesten_smaakplanning zsp
+         LEFT JOIN recepten r ON r.id = zsp.recept_id
          WHERE zsp.planning_id = $1
          ORDER BY zsp.sortering NULLS LAST, zsp.soort, zsp.smaaknaam`,
         [id]
