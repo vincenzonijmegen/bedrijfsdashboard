@@ -400,6 +400,7 @@ export default function AdminDashboard() {
           <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers Rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages – Medewerkers Rapporten" />
           <LinkCard href="/admin/aftekenlijsten" label="Overzicht formulieren/rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages – Formulieren/-rapporten" />
           <LinkCard href="/admin/rapportage/haccp" label="HACCP Rapportage" color="purple" Icon={BarChart2} breadcrumb="Rapportages – HACCP" />
+          <LinkCard href="/admin/rapportage/productanalyse" label="Productanalyse" color="purple" Icon={BarChart2} breadcrumb="Rapportages – Productanalyse" />
         </Section>
 
         <Section id="medewerkers" title="👥 Medewerkers" color="green" activeSection={activeSection} setActiveSection={setActiveSection}>
