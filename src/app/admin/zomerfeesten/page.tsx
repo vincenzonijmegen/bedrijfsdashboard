@@ -565,12 +565,13 @@ export default function ZomerfeestenPage() {
                 </label>
               </div>
             </section>
+          </div>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center gap-2">
-                <IceCream className="h-5 w-5 text-blue-600" />
-                <h2 className="text-lg font-bold text-slate-900">Smaakplanning</h2>
-              </div>
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
+            <div className="mb-4 flex items-center gap-2">
+              <IceCream className="h-5 w-5 text-blue-600" />
+              <h2 className="text-lg font-bold text-slate-900">Smaakplanning</h2>
+            </div>
 
               {receptenError && (
                 <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -829,20 +830,19 @@ export default function ZomerfeestenPage() {
                   Melk {totalen.melk} · Vrucht {totalen.vrucht} · Overig {totalen.overig}
                 </div>
               </div>
-            </section>
+          </section>
 
-            {planning.id && (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={verwijderPlanning}
-                  className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 className="h-4 w-4" /> Planning verwijderen
-                </button>
-              </div>
-            )}
-          </div>
+          {planning.id && (
+            <div className="flex justify-end lg:col-span-2">
+              <button
+                type="button"
+                onClick={verwijderPlanning}
+                className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="h-4 w-4" /> Planning verwijderen
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </main>
