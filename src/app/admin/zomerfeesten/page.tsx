@@ -93,6 +93,25 @@ type IngredientTotaal = {
   eenheid: string;
   totaal: number;
   bronregels: number;
+  product_id?: number | null;
+  product_naam?: string | null;
+  leverancier_naam?: string | null;
+  bestelnummer?: string | null;
+  besteleenheid?: number | null;
+  huidige_prijs?: number | null;
+  verpakking_hoeveelheid?: number | null;
+  verpakking_eenheid?: string | null;
+};
+
+type BestelAdviesRegel = IngredientTotaal & {
+  verpakking_bron: "kolom" | "productnaam" | "ontbreekt";
+  verpakking_hoeveelheid_gebruikt: number | null;
+  verpakking_eenheid_gebruikt: string | null;
+  benodigde_hoeveelheid_in_verpakkingseenheid: number | null;
+  bestellen: number | null;
+  kosten: number | null;
+  status: "berekend" | "controle_nodig";
+  melding: string | null;
 };
 
 type TussenreceptControle = {
@@ -112,12 +131,15 @@ type IngredientControleResponse = {
   meta: {
     line_table: string | null;
     waarschuwingen?: string[];
+    besteladvies_berekend?: number;
+    besteladvies_controle_nodig?: number;
+    totale_kosten?: number;
   };
   smaken: IngredientControleSmaak[];
   tussenrecepten?: TussenreceptControle[];
   totalen: IngredientTotaal[];
+  besteladvies?: BestelAdviesRegel[];
 };
-
 
 type NieuweSmaak = {
   recept_id: number | null;
@@ -166,6 +188,16 @@ const formatEuro = (waarde: number) =>
     maximumFractionDigits: 0,
   }).format(waarde || 0);
 
+const formatEuroExact = (waarde: number | null | undefined) =>
+  waarde === null || waarde === undefined
+    ? "–"
+    : new Intl.NumberFormat("nl-NL", {
+        style: "currency",
+        currency: "EUR",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(waarde || 0);
+
 const formatHoeveelheid = (waarde: number) => {
   if (!Number.isFinite(waarde)) return "0";
   return new Intl.NumberFormat("nl-NL", {
@@ -184,9 +216,15 @@ const maakCode = (naam: string) =>
     .replace(/[^a-zA-Z0-9]/g, "")
     .toUpperCase();
 
-const soortUitCategorie = (categorie?: string | null): "melk" | "vrucht" | "overig" => {
+const soortUitCategorie = (
+  categorie?: string | null,
+): "melk" | "vrucht" | "overig" => {
   const tekst = (categorie || "").toLowerCase();
-  if (tekst.includes("vrucht") || tekst.includes("sorbet") || tekst.includes("fruit")) {
+  if (
+    tekst.includes("vrucht") ||
+    tekst.includes("sorbet") ||
+    tekst.includes("fruit")
+  ) {
     return "vrucht";
   }
   if (tekst.includes("melk") || tekst.includes("room")) return "melk";
@@ -218,16 +256,17 @@ const koppelingClassName = (smaak: Smaak) => {
 export default function ZomerfeestenPage() {
   const { data: planningen } = useSWR<PlanningLijstItem[]>(
     "/api/admin/zomerfeesten/planningen",
-    fetcher
+    fetcher,
   );
   const { data: recepten, error: receptenError } = useSWR<Recept[]>(
     "/api/admin/zomerfeesten/recepten",
-    fetcher
+    fetcher,
   );
 
   const [planning, setPlanning] = useState(legePlanning());
   const [smaken, setSmaken] = useState<Smaak[]>([]);
-  const [nieuweSmaak, setNieuweSmaak] = useState<NieuweSmaak>(legeNieuweSmaak());
+  const [nieuweSmaak, setNieuweSmaak] =
+    useState<NieuweSmaak>(legeNieuweSmaak());
   const [melding, setMelding] = useState<string | null>(null);
   const [opslaanBezig, setOpslaanBezig] = useState(false);
 
@@ -236,14 +275,17 @@ export default function ZomerfeestenPage() {
       planning.id
         ? `/api/admin/zomerfeesten/ingredienten-controle?planning_id=${planning.id}`
         : null,
-      fetcher
+      fetcher,
     );
 
   const aantalDagen = useMemo(() => {
     const start = new Date(planning.start_datum);
     const eind = new Date(planning.eind_datum);
     if (Number.isNaN(start.getTime()) || Number.isNaN(eind.getTime())) return 0;
-    return Math.max(0, Math.round((eind.getTime() - start.getTime()) / 86400000) + 1);
+    return Math.max(
+      0,
+      Math.round((eind.getTime() - start.getTime()) / 86400000) + 1,
+    );
   }, [planning.start_datum, planning.eind_datum]);
 
   const totalen = useMemo(() => {
@@ -261,14 +303,18 @@ export default function ZomerfeestenPage() {
 
   const koppelingTotalen = useMemo(() => {
     const doorrekenbaar = smaken.filter((s) => s.doorrekenbaar).length;
-    const overslaan = smaken.filter((s) => s.koppeling_status === "overslaan").length;
-    const laterMaken = smaken.filter((s) => s.koppeling_status === "ontbreekt_kostprijs").length;
+    const overslaan = smaken.filter(
+      (s) => s.koppeling_status === "overslaan",
+    ).length;
+    const laterMaken = smaken.filter(
+      (s) => s.koppeling_status === "ontbreekt_kostprijs",
+    ).length;
     const actieNodig = smaken.filter(
       (s) =>
         s.recept_id &&
         !s.doorrekenbaar &&
         s.koppeling_status !== "overslaan" &&
-        s.koppeling_status !== "ontbreekt_kostprijs"
+        s.koppeling_status !== "ontbreekt_kostprijs",
     ).length;
     return { doorrekenbaar, overslaan, laterMaken, actieNodig };
   }, [smaken]);
@@ -279,7 +325,7 @@ export default function ZomerfeestenPage() {
   const laadPlanning = async (id: number) => {
     setMelding(null);
     const detail: DetailResponse = await fetcher(
-      `/api/admin/zomerfeesten/planningen?id=${id}`
+      `/api/admin/zomerfeesten/planningen?id=${id}`,
     );
 
     setPlanning({
@@ -306,7 +352,7 @@ export default function ZomerfeestenPage() {
         aantal_bakken: Number(s.aantal_bakken || 0),
         doorrekenbaar: Boolean(s.doorrekenbaar),
         kleur: s.kleur || "#93c5fd",
-      }))
+      })),
     );
   };
 
@@ -351,7 +397,7 @@ export default function ZomerfeestenPage() {
       prev.map((s, i) => {
         if (i !== index) return s;
         return { ...s, ...patch };
-      })
+      }),
     );
   };
 
@@ -361,7 +407,9 @@ export default function ZomerfeestenPage() {
       recept_id: receptId,
       smaaknaam: recept?.naam || smaken[index]?.smaaknaam || "",
       smaakcode: smaken[index]?.smaakcode || maakCode(recept?.naam || ""),
-      soort: recept ? soortUitCategorie(recept.categorie) : smaken[index]?.soort || "melk",
+      soort: recept
+        ? soortUitCategorie(recept.categorie)
+        : smaken[index]?.soort || "melk",
       kostprijs_recept_id: null,
       kostprijs_recept_naam: null,
       koppeling_status: null,
@@ -401,7 +449,7 @@ export default function ZomerfeestenPage() {
 
     const res = await fetch(
       `/api/admin/zomerfeesten/planningen?id=${planning.id}`,
-      { method: "DELETE" }
+      { method: "DELETE" },
     );
 
     if (res.ok) {
@@ -423,7 +471,8 @@ export default function ZomerfeestenPage() {
                 Planning & smaakplanning
               </h1>
               <p className="mt-1 text-sm text-slate-600">
-                Eerste bouwblok: jaargang aanmaken en aantal bakken per smaak vastleggen.
+                Eerste bouwblok: jaargang aanmaken en aantal bakken per smaak
+                vastleggen.
               </p>
             </div>
 
@@ -487,7 +536,8 @@ export default function ZomerfeestenPage() {
                       </span>
                     </div>
                     <div className="mt-1 text-xs text-slate-500">
-                      {Number(p.aantal_smaken || 0)} smaken · {Number(p.totaal_bakken || 0)} bakken
+                      {Number(p.aantal_smaken || 0)} smaken ·{" "}
+                      {Number(p.totaal_bakken || 0)} bakken
                     </div>
                   </button>
                 ))}
@@ -506,27 +556,39 @@ export default function ZomerfeestenPage() {
               <div className="space-y-3 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Dagen</span>
-                  <span className="font-semibold text-slate-900">{aantalDagen}</span>
+                  <span className="font-semibold text-slate-900">
+                    {aantalDagen}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Weekomzet</span>
-                  <span className="font-semibold text-slate-900">{formatEuro(weekOmzet)}</span>
+                  <span className="font-semibold text-slate-900">
+                    {formatEuro(weekOmzet)}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Melk</span>
-                  <span className="font-semibold text-slate-900">{totalen.melk}</span>
+                  <span className="font-semibold text-slate-900">
+                    {totalen.melk}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Vrucht</span>
-                  <span className="font-semibold text-slate-900">{totalen.vrucht}</span>
+                  <span className="font-semibold text-slate-900">
+                    {totalen.vrucht}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between border-t border-slate-100 pt-3">
                   <span className="text-slate-500">Totaal bakken</span>
-                  <span className="font-bold text-slate-900">{totalen.totaal}</span>
+                  <span className="font-bold text-slate-900">
+                    {totalen.totaal}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Bakken per dag</span>
-                  <span className="font-semibold text-slate-900">{bakkenPerDag.toFixed(1)}</span>
+                  <span className="font-semibold text-slate-900">
+                    {bakkenPerDag.toFixed(1)}
+                  </span>
                 </div>
               </div>
             </section>
@@ -536,7 +598,9 @@ export default function ZomerfeestenPage() {
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
                 <CalendarDays className="h-5 w-5 text-blue-600" />
-                <h2 className="text-lg font-bold text-slate-900">Planninggegevens</h2>
+                <h2 className="text-lg font-bold text-slate-900">
+                  Planninggegevens
+                </h2>
               </div>
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -547,7 +611,10 @@ export default function ZomerfeestenPage() {
                     className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
                     value={planning.jaar}
                     onChange={(e) =>
-                      setPlanning((p) => ({ ...p, jaar: Number(e.target.value) }))
+                      setPlanning((p) => ({
+                        ...p,
+                        jaar: Number(e.target.value),
+                      }))
                     }
                   />
                 </label>
@@ -570,7 +637,10 @@ export default function ZomerfeestenPage() {
                     className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
                     value={planning.start_datum}
                     onChange={(e) =>
-                      setPlanning((p) => ({ ...p, start_datum: e.target.value }))
+                      setPlanning((p) => ({
+                        ...p,
+                        start_datum: e.target.value,
+                      }))
                     }
                   />
                 </label>
@@ -588,7 +658,9 @@ export default function ZomerfeestenPage() {
                 </label>
 
                 <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">Omzet per dag</span>
+                  <span className="font-medium text-slate-700">
+                    Omzet per dag
+                  </span>
                   <div className="relative">
                     <Euro className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                     <input
@@ -643,7 +715,10 @@ export default function ZomerfeestenPage() {
                     onChange={(e) =>
                       setPlanning((p) => ({
                         ...p,
-                        status: e.target.value as "concept" | "actief" | "afgerond",
+                        status: e.target.value as
+                          | "concept"
+                          | "actief"
+                          | "afgerond",
                       }))
                     }
                   >
@@ -669,7 +744,9 @@ export default function ZomerfeestenPage() {
                 </label>
 
                 <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">Kastruimte bakken</span>
+                  <span className="font-medium text-slate-700">
+                    Kastruimte bakken
+                  </span>
                   <input
                     type="number"
                     className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
@@ -689,306 +766,339 @@ export default function ZomerfeestenPage() {
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
             <div className="mb-4 flex items-center gap-2">
               <IceCream className="h-5 w-5 text-blue-600" />
-              <h2 className="text-lg font-bold text-slate-900">Smaakplanning</h2>
+              <h2 className="text-lg font-bold text-slate-900">
+                Smaakplanning
+              </h2>
             </div>
 
-              {receptenError && (
-                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  Keukenrecepten konden niet worden opgehaald. Controleer de API-route of tabelnaam.
+            {receptenError && (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Keukenrecepten konden niet worden opgehaald. Controleer de
+                API-route of tabelnaam.
+              </div>
+            )}
+
+            {!receptenError && recepten && recepten.length === 0 && (
+              <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                Er zijn nog geen actieve keukenrecepten gevonden om te koppelen.
+              </div>
+            )}
+
+            {smaken.length > 0 && koppelingTotalen.actieNodig > 0 && (
+              <div className="mb-4 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  {koppelingTotalen.actieNodig} smaak/smaken hebben nog geen
+                  bruikbare kostprijskoppeling. Controleer dit bij
+                  Receptkoppelingen voordat we later bestellijsten of
+                  kostprijzen berekenen.
                 </div>
-              )}
+              </div>
+            )}
 
-              {!receptenError && recepten && recepten.length === 0 && (
-                <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                  Er zijn nog geen actieve keukenrecepten gevonden om te koppelen.
-                </div>
-              )}
+            <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
+                Smaak toevoegen
+              </h3>
 
-              {smaken.length > 0 && koppelingTotalen.actieNodig > 0 && (
-                <div className="mb-4 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <div>
-                    {koppelingTotalen.actieNodig} smaak/smaken hebben nog geen bruikbare kostprijskoppeling.
-                    Controleer dit bij Receptkoppelingen voordat we later bestellijsten of kostprijzen berekenen.
-                  </div>
-                </div>
-              )}
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,2fr)_120px_minmax(190px,1.5fr)_120px_110px]">
+                <label className="min-w-0 space-y-1 text-sm md:col-span-2 xl:col-span-1">
+                  <span className="font-medium text-slate-700">
+                    Keukenrecept
+                  </span>
+                  <select
+                    className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2"
+                    value={nieuweSmaak.recept_id ?? ""}
+                    onChange={(e) =>
+                      kiesNieuwRecept(
+                        e.target.value ? Number(e.target.value) : null,
+                      )
+                    }
+                  >
+                    <option value="">-- kies keukenrecept --</option>
+                    {(recepten ?? []).map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.categorie ? `${r.categorie} · ` : ""}
+                        {r.naam}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-              <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
-                  Smaak toevoegen
-                </h3>
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium text-slate-700">Code</span>
+                  <input
+                    className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 uppercase"
+                    value={nieuweSmaak.smaakcode}
+                    onChange={(e) =>
+                      setNieuweSmaak((s) => ({
+                        ...s,
+                        smaakcode: e.target.value.toUpperCase(),
+                      }))
+                    }
+                  />
+                </label>
 
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,2fr)_120px_minmax(190px,1.5fr)_120px_110px]">
-                  <label className="min-w-0 space-y-1 text-sm md:col-span-2 xl:col-span-1">
-                    <span className="font-medium text-slate-700">Keukenrecept</span>
-                    <select
-                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2"
-                      value={nieuweSmaak.recept_id ?? ""}
-                      onChange={(e) =>
-                        kiesNieuwRecept(e.target.value ? Number(e.target.value) : null)
-                      }
-                    >
-                      <option value="">-- kies keukenrecept --</option>
-                      {(recepten ?? []).map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.categorie ? `${r.categorie} · ` : ""}
-                          {r.naam}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                <label className="min-w-0 space-y-1 text-sm md:col-span-2 xl:col-span-1">
+                  <span className="font-medium text-slate-700">Smaaknaam</span>
+                  <input
+                    className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2"
+                    value={nieuweSmaak.smaaknaam}
+                    onChange={(e) =>
+                      setNieuweSmaak((s) => ({
+                        ...s,
+                        smaaknaam: e.target.value,
+                      }))
+                    }
+                  />
+                </label>
 
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium text-slate-700">Soort</span>
+                  <select
+                    className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2"
+                    value={nieuweSmaak.soort}
+                    onChange={(e) =>
+                      setNieuweSmaak((s) => ({
+                        ...s,
+                        soort: e.target.value as "melk" | "vrucht" | "overig",
+                      }))
+                    }
+                  >
+                    <option value="melk">Melk</option>
+                    <option value="vrucht">Vrucht</option>
+                    <option value="overig">Overig</option>
+                  </select>
+                </label>
+
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium text-slate-700">Bakken</span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-right"
+                    value={nieuweSmaak.aantal_bakken}
+                    onChange={(e) =>
+                      setNieuweSmaak((s) => ({
+                        ...s,
+                        aantal_bakken: Number(e.target.value),
+                      }))
+                    }
+                  />
+                </label>
+
+                <div className="flex min-w-0 flex-wrap items-end gap-3 md:col-span-2 xl:col-span-5">
                   <label className="space-y-1 text-sm">
-                    <span className="font-medium text-slate-700">Code</span>
+                    <span className="font-medium text-slate-700">Kleur</span>
                     <input
-                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 uppercase"
-                      value={nieuweSmaak.smaakcode}
+                      type="color"
+                      className="h-10 w-14 rounded border border-slate-200 bg-white p-1"
+                      value={nieuweSmaak.kleur || "#93c5fd"}
                       onChange={(e) =>
-                        setNieuweSmaak((s) => ({
-                          ...s,
-                          smaakcode: e.target.value.toUpperCase(),
-                        }))
+                        setNieuweSmaak((s) => ({ ...s, kleur: e.target.value }))
                       }
                     />
                   </label>
 
-                  <label className="min-w-0 space-y-1 text-sm md:col-span-2 xl:col-span-1">
-                    <span className="font-medium text-slate-700">Smaaknaam</span>
-                    <input
-                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2"
-                      value={nieuweSmaak.smaaknaam}
-                      onChange={(e) =>
-                        setNieuweSmaak((s) => ({ ...s, smaaknaam: e.target.value }))
-                      }
-                    />
-                  </label>
+                  <button
+                    type="button"
+                    onClick={voegSmaakToe}
+                    className="mb-0 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800"
+                  >
+                    <Plus className="h-4 w-4" /> Toevoegen
+                  </button>
+                </div>
+              </div>
+            </div>
 
-                  <label className="space-y-1 text-sm">
-                    <span className="font-medium text-slate-700">Soort</span>
-                    <select
-                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2"
-                      value={nieuweSmaak.soort}
-                      onChange={(e) =>
-                        setNieuweSmaak((s) => ({
-                          ...s,
-                          soort: e.target.value as "melk" | "vrucht" | "overig",
-                        }))
-                      }
-                    >
-                      <option value="melk">Melk</option>
-                      <option value="vrucht">Vrucht</option>
-                      <option value="overig">Overig</option>
-                    </select>
-                  </label>
-
-                  <label className="space-y-1 text-sm">
-                    <span className="font-medium text-slate-700">Bakken</span>
-                    <input
-                      type="number"
-                      step="0.1"
-                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-right"
-                      value={nieuweSmaak.aantal_bakken}
-                      onChange={(e) =>
-                        setNieuweSmaak((s) => ({
-                          ...s,
-                          aantal_bakken: Number(e.target.value),
-                        }))
-                      }
-                    />
-                  </label>
-
-                  <div className="flex min-w-0 flex-wrap items-end gap-3 md:col-span-2 xl:col-span-5">
+            <div className="space-y-3">
+              {smaken.map((smaak, index) => (
+                <div
+                  key={index}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(170px,1.2fr)_78px_minmax(135px,1fr)_96px_78px_74px_86px] xl:items-end">
                     <label className="space-y-1 text-sm">
-                      <span className="font-medium text-slate-700">Kleur</span>
-                      <input
-                        type="color"
-                        className="h-10 w-14 rounded border border-slate-200 bg-white p-1"
-                        value={nieuweSmaak.kleur || "#93c5fd"}
+                      <span className="font-medium text-slate-700">
+                        Keukenrecept
+                      </span>
+                      <select
+                        className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
+                        value={smaak.recept_id ?? ""}
                         onChange={(e) =>
-                          setNieuweSmaak((s) => ({ ...s, kleur: e.target.value }))
+                          kiesBestaandRecept(
+                            index,
+                            e.target.value ? Number(e.target.value) : null,
+                          )
+                        }
+                      >
+                        <option value="">-- kies keukenrecept --</option>
+                        {(recepten ?? []).map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.categorie ? `${r.categorie} · ` : ""}
+                            {r.naam}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-slate-700">Code</span>
+                      <input
+                        className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2 uppercase"
+                        value={smaak.smaakcode}
+                        onChange={(e) =>
+                          wijzigSmaak(index, {
+                            smaakcode: e.target.value.toUpperCase(),
+                          })
                         }
                       />
                     </label>
 
-                    <button
-                      type="button"
-                      onClick={voegSmaakToe}
-                      className="mb-0 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white hover:bg-slate-800"
-                    >
-                      <Plus className="h-4 w-4" /> Toevoegen
-                    </button>
-                  </div>
-                </div>
-              </div>
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-slate-700">
+                        Smaaknaam
+                      </span>
+                      <input
+                        className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
+                        value={smaak.smaaknaam}
+                        onChange={(e) =>
+                          wijzigSmaak(index, { smaaknaam: e.target.value })
+                        }
+                      />
+                    </label>
 
-              <div className="space-y-3">
-                {smaken.map((smaak, index) => (
-                  <div
-                    key={index}
-                    className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-                  >
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(170px,1.2fr)_78px_minmax(135px,1fr)_96px_78px_74px_86px] xl:items-end">
-                      <label className="space-y-1 text-sm">
-                        <span className="font-medium text-slate-700">Keukenrecept</span>
-                        <select
-                          className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
-                          value={smaak.recept_id ?? ""}
-                          onChange={(e) =>
-                            kiesBestaandRecept(
-                              index,
-                              e.target.value ? Number(e.target.value) : null
-                            )
-                          }
-                        >
-                          <option value="">-- kies keukenrecept --</option>
-                          {(recepten ?? []).map((r) => (
-                            <option key={r.id} value={r.id}>
-                              {r.categorie ? `${r.categorie} · ` : ""}
-                              {r.naam}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-slate-700">Soort</span>
+                      <select
+                        className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
+                        value={smaak.soort}
+                        onChange={(e) =>
+                          wijzigSmaak(index, {
+                            soort: e.target.value as
+                              | "melk"
+                              | "vrucht"
+                              | "overig",
+                          })
+                        }
+                      >
+                        <option value="melk">Melk</option>
+                        <option value="vrucht">Vrucht</option>
+                        <option value="overig">Overig</option>
+                      </select>
+                    </label>
 
-                      <label className="space-y-1 text-sm">
-                        <span className="font-medium text-slate-700">Code</span>
-                        <input
-                          className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2 uppercase"
-                          value={smaak.smaakcode}
-                          onChange={(e) =>
-                            wijzigSmaak(index, {
-                              smaakcode: e.target.value.toUpperCase(),
-                            })
-                          }
-                        />
-                      </label>
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-slate-700">Bakken</span>
+                      <input
+                        type="number"
+                        step="0.1"
+                        className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-right"
+                        value={smaak.aantal_bakken}
+                        onChange={(e) =>
+                          wijzigSmaak(index, {
+                            aantal_bakken: Number(e.target.value),
+                          })
+                        }
+                      />
+                    </label>
 
-                      <label className="space-y-1 text-sm">
-                        <span className="font-medium text-slate-700">Smaaknaam</span>
-                        <input
-                          className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
-                          value={smaak.smaaknaam}
-                          onChange={(e) =>
-                            wijzigSmaak(index, { smaaknaam: e.target.value })
-                          }
-                        />
-                      </label>
-
-                      <label className="space-y-1 text-sm">
-                        <span className="font-medium text-slate-700">Soort</span>
-                        <select
-                          className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
-                          value={smaak.soort}
-                          onChange={(e) =>
-                            wijzigSmaak(index, {
-                              soort: e.target.value as "melk" | "vrucht" | "overig",
-                            })
-                          }
-                        >
-                          <option value="melk">Melk</option>
-                          <option value="vrucht">Vrucht</option>
-                          <option value="overig">Overig</option>
-                        </select>
-                      </label>
-
-                      <label className="space-y-1 text-sm">
-                        <span className="font-medium text-slate-700">Bakken</span>
-                        <input
-                          type="number"
-                          step="0.1"
-                          className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-right"
-                          value={smaak.aantal_bakken}
-                          onChange={(e) =>
-                            wijzigSmaak(index, {
-                              aantal_bakken: Number(e.target.value),
-                            })
-                          }
-                        />
-                      </label>
-
-                      <div className="space-y-1 text-sm">
-                        <span className="font-medium text-slate-700">Per dag</span>
-                        <div className="rounded-xl bg-slate-50 px-2 py-2 text-right font-semibold text-slate-700">
-                          {aantalDagen > 0
-                            ? (Number(smaak.aantal_bakken || 0) / aantalDagen).toFixed(1)
-                            : "-"}
-                        </div>
-                      </div>
-
-                      <div className="flex min-w-0 items-end gap-2">
-                        <label className="space-y-1 text-sm">
-                          <span className="font-medium text-slate-700">Kleur</span>
-                          <input
-                            type="color"
-                            className="h-10 w-14 rounded border border-slate-200 bg-white p-1"
-                            value={smaak.kleur || "#93c5fd"}
-                            onChange={(e) =>
-                              wijzigSmaak(index, { kleur: e.target.value })
-                            }
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setSmaken((prev) => prev.filter((_, i) => i !== index))
-                          }
-                          className="mb-0 shrink-0 rounded-xl p-3 text-red-600 hover:bg-red-50"
-                          title="Verwijderen"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                    <div className="space-y-1 text-sm">
+                      <span className="font-medium text-slate-700">
+                        Per dag
+                      </span>
+                      <div className="rounded-xl bg-slate-50 px-2 py-2 text-right font-semibold text-slate-700">
+                        {aantalDagen > 0
+                          ? (
+                              Number(smaak.aantal_bakken || 0) / aantalDagen
+                            ).toFixed(1)
+                          : "-"}
                       </div>
                     </div>
 
-                    <div
-                      className={`mt-3 rounded-xl border px-3 py-2 text-sm ${koppelingClassName(
-                        smaak
-                      )}`}
-                    >
-                      <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                        <span className="font-semibold">
-                          Calculatie: {koppelingLabel(smaak)}
+                    <div className="flex min-w-0 items-end gap-2">
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">
+                          Kleur
                         </span>
-                        {smaak.kostprijs_recept_naam && (
-                          <span className="text-xs md:text-sm">
-                            Kostprijsrecept: {smaak.kostprijs_recept_naam}
-                          </span>
-                        )}
-                      </div>
+                        <input
+                          type="color"
+                          className="h-10 w-14 rounded border border-slate-200 bg-white p-1"
+                          value={smaak.kleur || "#93c5fd"}
+                          onChange={(e) =>
+                            wijzigSmaak(index, { kleur: e.target.value })
+                          }
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSmaken((prev) =>
+                            prev.filter((_, i) => i !== index),
+                          )
+                        }
+                        className="mb-0 shrink-0 rounded-xl p-3 text-red-600 hover:bg-red-50"
+                        title="Verwijderen"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
-                ))}
 
-                {smaken.length === 0 && (
-                  <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                    Nog geen smaken toegevoegd.
+                  <div
+                    className={`mt-3 rounded-xl border px-3 py-2 text-sm ${koppelingClassName(
+                      smaak,
+                    )}`}
+                  >
+                    <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                      <span className="font-semibold">
+                        Calculatie: {koppelingLabel(smaak)}
+                      </span>
+                      {smaak.kostprijs_recept_naam && (
+                        <span className="text-xs md:text-sm">
+                          Kostprijsrecept: {smaak.kostprijs_recept_naam}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
+                </div>
+              ))}
 
-              <div className="mt-4 flex flex-col gap-2 rounded-xl bg-slate-50 p-4 text-sm text-slate-700 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-2 font-medium text-slate-900">
-                  <Check className="h-4 w-4 text-emerald-600" />
-                  Totaal: {totalen.totaal} bakken
+              {smaken.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                  Nog geen smaken toegevoegd.
                 </div>
-                <div className="text-slate-600">
-                  Melk {totalen.melk} · Vrucht {totalen.vrucht} · Overig {totalen.overig}
-                </div>
-                <div className="text-xs text-slate-500 md:basis-full">
-                  Doorrekenbaar {koppelingTotalen.doorrekenbaar} · Later maken {koppelingTotalen.laterMaken} · Overslaan {koppelingTotalen.overslaan} · Actie nodig {koppelingTotalen.actieNodig}
-                </div>
+              )}
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2 rounded-xl bg-slate-50 p-4 text-sm text-slate-700 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-2 font-medium text-slate-900">
+                <Check className="h-4 w-4 text-emerald-600" />
+                Totaal: {totalen.totaal} bakken
               </div>
+              <div className="text-slate-600">
+                Melk {totalen.melk} · Vrucht {totalen.vrucht} · Overig{" "}
+                {totalen.overig}
+              </div>
+              <div className="text-xs text-slate-500 md:basis-full">
+                Doorrekenbaar {koppelingTotalen.doorrekenbaar} · Later maken{" "}
+                {koppelingTotalen.laterMaken} · Overslaan{" "}
+                {koppelingTotalen.overslaan} · Actie nodig{" "}
+                {koppelingTotalen.actieNodig}
+              </div>
+            </div>
           </section>
-
-
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">Ingrediëntencontrole</h2>
+                <h2 className="text-lg font-bold text-slate-900">
+                  Ingrediëntencontrole
+                </h2>
                 <p className="mt-1 text-sm text-slate-600">
-                  Eerste controle: doorrekenbare smaken worden opgeschaald vanuit het gekoppelde kostprijsrecept. Dit is nog géén bestellijst.
+                  Eerste controle: doorrekenbare smaken worden opgeschaald
+                  vanuit het gekoppelde kostprijsrecept. Dit is nog géén
+                  bestellijst.
                 </p>
               </div>
               {ingredientenControle?.meta?.line_table && (
@@ -1006,36 +1116,48 @@ export default function ZomerfeestenPage() {
 
             {planning.id && ingredientenControleError && (
               <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                Ingrediëntencontrole kon niet worden opgehaald. Controleer de serverlog voor de exacte databasefout.
+                Ingrediëntencontrole kon niet worden opgehaald. Controleer de
+                serverlog voor de exacte databasefout.
               </div>
             )}
 
             {planning.id && ingredientenControle && (
               <div className="space-y-5">
-                {(ingredientenControle.meta.waarschuwingen ?? []).map((waarschuwing, index) => (
-                  <div
-                    key={index}
-                    className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
-                  >
-                    {waarschuwing}
-                  </div>
-                ))}
+                {(ingredientenControle.meta.waarschuwingen ?? []).map(
+                  (waarschuwing, index) => (
+                    <div
+                      key={index}
+                      className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                    >
+                      {waarschuwing}
+                    </div>
+                  ),
+                )}
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-sm text-slate-500">Doorrekenbare smaken</div>
+                    <div className="text-sm text-slate-500">
+                      Doorrekenbare smaken
+                    </div>
                     <div className="mt-1 text-2xl font-bold text-slate-900">
                       {ingredientenControle.smaken.length}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-sm text-slate-500">Ingrediëntregels</div>
+                    <div className="text-sm text-slate-500">
+                      Ingrediëntregels
+                    </div>
                     <div className="mt-1 text-2xl font-bold text-slate-900">
-                      {ingredientenControle.smaken.reduce((sum, smaak) => sum + smaak.regels.length, 0)}
+                      {ingredientenControle.smaken.reduce(
+                        (sum, smaak) => sum + smaak.regels.length,
+                        0,
+                      )}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-sm text-slate-500">Bestelproducten na openklappen</div>
+                    <div className="text-sm text-slate-500">
+                      Bestelproducten na openklappen
+                    </div>
                     <div className="mt-1 text-2xl font-bold text-slate-900">
                       {ingredientenControle.totalen.length}
                     </div>
@@ -1044,7 +1166,13 @@ export default function ZomerfeestenPage() {
 
                 {(ingredientenControle.tussenrecepten ?? []).length > 0 && (
                   <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                    Tussenrecepten opengeklapt: {(ingredientenControle.tussenrecepten ?? []).map((t) => `${t.naam} ${formatHoeveelheid(t.benodigde_hoeveelheid)} ${t.eenheid}`).join(" · ")}
+                    Tussenrecepten opengeklapt:{" "}
+                    {(ingredientenControle.tussenrecepten ?? [])
+                      .map(
+                        (t) =>
+                          `${t.naam} ${formatHoeveelheid(t.benodigde_hoeveelheid)} ${t.eenheid}`,
+                      )
+                      .join(" · ")}
                   </div>
                 )}
 
@@ -1062,7 +1190,11 @@ export default function ZomerfeestenPage() {
                                 {smaak.smaakcode} · {smaak.smaaknaam}
                               </div>
                               <div className="text-sm text-slate-500">
-                                {smaak.aantal_bakken} bakken via {smaak.kostprijs_recept_naam} · opbrengst {formatHoeveelheid(smaak.opbrengst_bakken)} bak(ken) · factor {formatHoeveelheid(smaak.factor)}
+                                {smaak.aantal_bakken} bakken via{" "}
+                                {smaak.kostprijs_recept_naam} · opbrengst{" "}
+                                {formatHoeveelheid(smaak.opbrengst_bakken)}{" "}
+                                bak(ken) · factor{" "}
+                                {formatHoeveelheid(smaak.factor)}
                               </div>
                             </div>
                             <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
@@ -1092,7 +1224,10 @@ export default function ZomerfeestenPage() {
                                     )}
                                   </span>
                                   <span className="shrink-0 font-semibold text-slate-900">
-                                    {formatHoeveelheid(regel.benodigde_hoeveelheid)} {regel.eenheid}
+                                    {formatHoeveelheid(
+                                      regel.benodigde_hoeveelheid,
+                                    )}{" "}
+                                    {regel.eenheid}
                                   </span>
                                 </div>
                               ))}
@@ -1115,48 +1250,162 @@ export default function ZomerfeestenPage() {
                       Tussenrecepten
                     </div>
                     <div className="divide-y divide-blue-100">
-                      {(ingredientenControle.tussenrecepten ?? []).map((tussen) => (
-                        <div key={`${tussen.naam}-${tussen.eenheid}`} className="p-4">
-                          <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                            <div>
-                              <div className="font-semibold text-slate-900">{tussen.naam}</div>
-                              <div className="text-sm text-slate-500">
-                                Benodigd: {formatHoeveelheid(tussen.benodigde_hoeveelheid)} {tussen.eenheid}
-                                {tussen.recept_naam ? ` · via ${tussen.recept_naam}` : ""}
-                                {tussen.factor !== null ? ` · factor ${formatHoeveelheid(tussen.factor)}` : ""}
+                      {(ingredientenControle.tussenrecepten ?? []).map(
+                        (tussen) => (
+                          <div
+                            key={`${tussen.naam}-${tussen.eenheid}`}
+                            className="p-4"
+                          >
+                            <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                              <div>
+                                <div className="font-semibold text-slate-900">
+                                  {tussen.naam}
+                                </div>
+                                <div className="text-sm text-slate-500">
+                                  Benodigd:{" "}
+                                  {formatHoeveelheid(
+                                    tussen.benodigde_hoeveelheid,
+                                  )}{" "}
+                                  {tussen.eenheid}
+                                  {tussen.recept_naam
+                                    ? ` · via ${tussen.recept_naam}`
+                                    : ""}
+                                  {tussen.factor !== null
+                                    ? ` · factor ${formatHoeveelheid(tussen.factor)}`
+                                    : ""}
+                                </div>
                               </div>
+                              <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                                {tussen.regels.length} regels
+                              </span>
                             </div>
-                            <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
-                              {tussen.regels.length} regels
-                            </span>
+                            {tussen.waarschuwingen.length > 0 && (
+                              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                                {tussen.waarschuwingen.join(" ")}
+                              </div>
+                            )}
+                            {tussen.regels.length > 0 && (
+                              <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                                {tussen.regels
+                                  .slice(0, 8)
+                                  .map((regel, index) => (
+                                    <div
+                                      key={`${tussen.naam}-${index}`}
+                                      className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-sm"
+                                    >
+                                      <span className="min-w-0 truncate text-slate-700">
+                                        {regel.naam}
+                                      </span>
+                                      <span className="shrink-0 font-semibold text-slate-900">
+                                        {formatHoeveelheid(
+                                          regel.benodigde_hoeveelheid,
+                                        )}{" "}
+                                        {regel.eenheid}
+                                      </span>
+                                    </div>
+                                  ))}
+                                {tussen.regels.length > 8 && (
+                                  <div className="rounded-xl bg-white px-3 py-2 text-sm text-slate-500">
+                                    + {tussen.regels.length - 8} extra regels
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
-                          {tussen.waarschuwingen.length > 0 && (
-                            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                              {tussen.waarschuwingen.join(" ")}
-                            </div>
-                          )}
-                          {tussen.regels.length > 0 && (
-                            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
-                              {tussen.regels.slice(0, 8).map((regel, index) => (
-                                <div
-                                  key={`${tussen.naam}-${index}`}
-                                  className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-sm"
-                                >
-                                  <span className="min-w-0 truncate text-slate-700">{regel.naam}</span>
-                                  <span className="shrink-0 font-semibold text-slate-900">
-                                    {formatHoeveelheid(regel.benodigde_hoeveelheid)} {regel.eenheid}
-                                  </span>
-                                </div>
-                              ))}
-                              {tussen.regels.length > 8 && (
-                                <div className="rounded-xl bg-white px-3 py-2 text-sm text-slate-500">
-                                  + {tussen.regels.length - 8} extra regels
-                                </div>
-                              )}
-                            </div>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {(ingredientenControle.besteladvies ?? []).length > 0 && (
+                  <div className="rounded-2xl border border-emerald-200 overflow-hidden">
+                    <div className="border-b border-emerald-100 bg-emerald-50 px-4 py-3">
+                      <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                        <div className="text-sm font-bold text-emerald-800">
+                          Voorlopig besteladvies
+                        </div>
+                        <div className="text-sm font-semibold text-emerald-900">
+                          Totaal:{" "}
+                          {formatEuroExact(
+                            ingredientenControle.meta.totale_kosten ?? 0,
                           )}
                         </div>
-                      ))}
+                      </div>
+                      <div className="mt-1 text-xs text-emerald-700">
+                        Berekend{" "}
+                        {ingredientenControle.meta.besteladvies_berekend ?? 0} ·
+                        Controle nodig{" "}
+                        {ingredientenControle.meta
+                          .besteladvies_controle_nodig ?? 0}
+                        . Verpakkingen uit productnaam blijven controlepunten.
+                      </div>
+                    </div>
+                    <div className="divide-y divide-emerald-100">
+                      {(ingredientenControle.besteladvies ?? []).map(
+                        (regel) => (
+                          <div
+                            key={`${regel.product_id ?? regel.naam}-${regel.eenheid}`}
+                            className="grid grid-cols-1 gap-3 px-4 py-3 text-sm lg:grid-cols-[minmax(0,1.3fr)_120px_120px_100px_110px_110px] lg:items-center"
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate font-semibold text-slate-900">
+                                {regel.naam}
+                              </div>
+                              <div className="mt-0.5 text-xs text-slate-500">
+                                {regel.bestelnummer
+                                  ? `Bestelnr. ${regel.bestelnummer}`
+                                  : "Geen bestelnummer"}
+                                {regel.melding ? ` · ${regel.melding}` : ""}
+                              </div>
+                            </div>
+                            <div className="text-slate-700 lg:text-right">
+                              <span className="lg:hidden text-slate-500">
+                                Nodig:{" "}
+                              </span>
+                              <span className="font-semibold">
+                                {formatHoeveelheid(regel.totaal)}{" "}
+                                {regel.eenheid}
+                              </span>
+                            </div>
+                            <div className="text-slate-700 lg:text-right">
+                              <span className="lg:hidden text-slate-500">
+                                Verpakking:{" "}
+                              </span>
+                              {regel.verpakking_hoeveelheid_gebruikt
+                                ? `${formatHoeveelheid(regel.verpakking_hoeveelheid_gebruikt)} ${regel.verpakking_eenheid_gebruikt ?? ""}`
+                                : "controle"}
+                            </div>
+                            <div className="text-slate-900 lg:text-right">
+                              <span className="lg:hidden text-slate-500">
+                                Bestellen:{" "}
+                              </span>
+                              <span className="font-bold">
+                                {regel.bestellen ?? "–"}
+                              </span>
+                            </div>
+                            <div className="text-slate-700 lg:text-right">
+                              <span className="lg:hidden text-slate-500">
+                                Prijs:{" "}
+                              </span>
+                              {formatEuroExact(regel.huidige_prijs)}
+                            </div>
+                            <div className="flex items-center justify-between gap-2 lg:justify-end">
+                              <span
+                                className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                                  regel.status === "berekend"
+                                    ? "bg-emerald-50 text-emerald-700"
+                                    : "bg-amber-50 text-amber-700"
+                                }`}
+                              >
+                                {regel.status === "berekend"
+                                  ? formatEuroExact(regel.kosten)
+                                  : "Controle"}
+                              </span>
+                            </div>
+                          </div>
+                        ),
+                      )}
                     </div>
                   </div>
                 )}
@@ -1172,11 +1421,15 @@ export default function ZomerfeestenPage() {
                           key={`${totaal.naam}-${totaal.eenheid}`}
                           className="grid grid-cols-[minmax(0,1fr)_140px_90px] gap-3 px-4 py-3 text-sm"
                         >
-                          <div className="min-w-0 truncate font-medium text-slate-800">{totaal.naam}</div>
+                          <div className="min-w-0 truncate font-medium text-slate-800">
+                            {totaal.naam}
+                          </div>
                           <div className="text-right font-semibold text-slate-900">
                             {formatHoeveelheid(totaal.totaal)} {totaal.eenheid}
                           </div>
-                          <div className="text-right text-slate-500">{totaal.bronregels} regels</div>
+                          <div className="text-right text-slate-500">
+                            {totaal.bronregels} regels
+                          </div>
                         </div>
                       ))}
                     </div>

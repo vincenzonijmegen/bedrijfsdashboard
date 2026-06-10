@@ -11,6 +11,11 @@ type ProductInfo = {
   id: number;
   naam: string;
   leverancier_naam: string | null;
+  bestelnummer: string | null;
+  besteleenheid: number | null;
+  huidige_prijs: number | null;
+  verpakking_hoeveelheid: number | null;
+  verpakking_eenheid: string | null;
   label: string;
 };
 
@@ -19,6 +24,25 @@ type TotaalItem = {
   eenheid: string;
   totaal: number;
   bronregels: number;
+  product_id: number | null;
+  product_naam: string | null;
+  leverancier_naam: string | null;
+  bestelnummer: string | null;
+  besteleenheid: number | null;
+  huidige_prijs: number | null;
+  verpakking_hoeveelheid: number | null;
+  verpakking_eenheid: string | null;
+};
+
+type BestelAdviesRegel = TotaalItem & {
+  verpakking_bron: "kolom" | "productnaam" | "ontbreekt";
+  verpakking_hoeveelheid_gebruikt: number | null;
+  verpakking_eenheid_gebruikt: string | null;
+  benodigde_hoeveelheid_in_verpakkingseenheid: number | null;
+  bestellen: number | null;
+  kosten: number | null;
+  status: "berekend" | "controle_nodig";
+  melding: string | null;
 };
 
 type TussenreceptItem = {
@@ -138,11 +162,14 @@ async function getColumnsForTables(tables: string[]) {
      WHERE table_schema = 'public'
        AND table_name = ANY($1::text[])
      ORDER BY ordinal_position`,
-    [tables]
+    [tables],
   );
 
   const map: ColumnMap = {};
-  for (const row of result.rows as { table_name: string; column_name: string }[]) {
+  for (const row of result.rows as {
+    table_name: string;
+    column_name: string;
+  }[]) {
     if (!map[row.table_name]) map[row.table_name] = [];
     map[row.table_name].push(row.column_name);
   }
@@ -162,7 +189,11 @@ async function findRecipeLineTable() {
     const ingredientIdColumn = firstExisting(columns, INGREDIENT_ID_COLUMNS);
     const unitColumn = firstExisting(columns, UNIT_COLUMNS);
 
-    if (receptIdColumn && quantityColumn && (nameColumn || ingredientIdColumn)) {
+    if (
+      receptIdColumn &&
+      quantityColumn &&
+      (nameColumn || ingredientIdColumn)
+    ) {
       return {
         tableName,
         columns,
@@ -191,9 +222,9 @@ function yieldForRecipe(recipeRow: RegelRij | undefined) {
   return { opbrengstBakken: 1, bron: "standaard 1" };
 }
 
-
 function yieldLiterForMixRecipe(recipeRow: RegelRij | undefined) {
-  if (!recipeRow) return { opbrengstLiter: null as number | null, bron: "ontbreekt" };
+  if (!recipeRow)
+    return { opbrengstLiter: null as number | null, bron: "ontbreekt" };
 
   for (const column of MIX_YIELD_LITER_COLUMNS) {
     if (Object.prototype.hasOwnProperty.call(recipeRow, column)) {
@@ -209,25 +240,77 @@ async function getProductMap(productIds: number[]) {
   const uniekeIds = Array.from(new Set(productIds.filter((id) => id > 0)));
   if (uniekeIds.length === 0) return new Map<number, ProductInfo>();
 
+  const kolommenRes = await db.query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = 'producten'`,
+  );
+  const productKolommen = new Set(
+    (kolommenRes.rows as { column_name: string }[]).map(
+      (row) => row.column_name,
+    ),
+  );
+
+  const selectExtra = [
+    productKolommen.has("bestelnummer")
+      ? "p.bestelnummer"
+      : "NULL AS bestelnummer",
+    productKolommen.has("besteleenheid")
+      ? "p.besteleenheid"
+      : "NULL AS besteleenheid",
+    productKolommen.has("huidige_prijs")
+      ? "p.huidige_prijs"
+      : "NULL AS huidige_prijs",
+    productKolommen.has("verpakking_hoeveelheid")
+      ? "p.verpakking_hoeveelheid"
+      : "NULL AS verpakking_hoeveelheid",
+    productKolommen.has("verpakking_eenheid")
+      ? "p.verpakking_eenheid"
+      : "NULL AS verpakking_eenheid",
+  ].join(",\n       ");
+
   const result = await db.query(
     `SELECT
        p.id,
        p.naam AS product_naam,
-       l.naam AS leverancier_naam
+       l.naam AS leverancier_naam,
+       ${selectExtra}
      FROM producten p
      LEFT JOIN leveranciers l ON l.id = p.leverancier_id
      WHERE p.id = ANY($1::int[])`,
-    [uniekeIds]
+    [uniekeIds],
   );
 
   const map = new Map<number, ProductInfo>();
-  for (const row of result.rows as { id: number; product_naam: string; leverancier_naam: string | null }[]) {
+  for (const row of result.rows as RegelRij[]) {
     const id = toNumber(row.id);
-    const leverancier = row.leverancier_naam ? `${row.leverancier_naam} · ` : "";
+    const leverancier = row.leverancier_naam
+      ? `${row.leverancier_naam} · `
+      : "";
     map.set(id, {
       id,
-      naam: row.product_naam,
-      leverancier_naam: row.leverancier_naam,
+      naam: String(row.product_naam || ""),
+      leverancier_naam: row.leverancier_naam
+        ? String(row.leverancier_naam)
+        : null,
+      bestelnummer: row.bestelnummer ? String(row.bestelnummer) : null,
+      besteleenheid:
+        row.besteleenheid === null || row.besteleenheid === undefined
+          ? null
+          : toNumber(row.besteleenheid, 0),
+      huidige_prijs:
+        row.huidige_prijs === null || row.huidige_prijs === undefined
+          ? null
+          : toNumber(row.huidige_prijs, 0),
+      verpakking_hoeveelheid:
+        row.verpakking_hoeveelheid === null ||
+        row.verpakking_hoeveelheid === undefined
+          ? null
+          : toNumber(row.verpakking_hoeveelheid, 0),
+      verpakking_eenheid: row.verpakking_eenheid
+        ? String(row.verpakking_eenheid)
+        : null,
       label: `${leverancier}${row.product_naam}`,
     });
   }
@@ -244,28 +327,194 @@ function addTotaal(
   map: Map<string, TotaalItem>,
   naam: string,
   eenheid: string,
-  hoeveelheid: number
+  hoeveelheid: number,
+  product?: ProductInfo | null,
 ) {
-  const key = `${naam.toLowerCase()}||${eenheid.toLowerCase()}`;
-  const bestaand = map.get(key) || { naam, eenheid, totaal: 0, bronregels: 0 };
+  const productKey = product
+    ? `product:${product.id}`
+    : `naam:${naam.toLowerCase()}`;
+  const key = `${productKey}||${eenheid.toLowerCase()}`;
+  const bestaand = map.get(key) || {
+    naam,
+    eenheid,
+    totaal: 0,
+    bronregels: 0,
+    product_id: product?.id ?? null,
+    product_naam: product?.naam ?? null,
+    leverancier_naam: product?.leverancier_naam ?? null,
+    bestelnummer: product?.bestelnummer ?? null,
+    besteleenheid: product?.besteleenheid ?? null,
+    huidige_prijs: product?.huidige_prijs ?? null,
+    verpakking_hoeveelheid: product?.verpakking_hoeveelheid ?? null,
+    verpakking_eenheid: product?.verpakking_eenheid ?? null,
+  };
   bestaand.totaal += hoeveelheid;
   bestaand.bronregels += 1;
   map.set(key, bestaand);
 }
 
+function normaliseerEenheid(eenheid: string) {
+  const value = normalizeName(eenheid).replace("liter", "l");
+  if (["g", "gram", "gr"].includes(value)) return "g";
+  if (["kg", "kilo", "kilogram"].includes(value)) return "kg";
+  if (["l", "ltr", "lt"].includes(value)) return "l";
+  if (["ml", "milliliter"].includes(value)) return "ml";
+  return value || "";
+}
+
+function parseVerpakkingUitNaam(naam: string) {
+  const matches = Array.from(
+    naam.matchAll(
+      /(\d+(?:[\.,]\d+)?)\s*(kg|kilo|kilogram|g|gram|gr|liter|ltr|lt|l|ml)\b/gi,
+    ),
+  );
+  if (matches.length === 0)
+    return {
+      hoeveelheid: null as number | null,
+      eenheid: null as string | null,
+    };
+  const match = matches[matches.length - 1];
+  return {
+    hoeveelheid: toNumber(match[1], 0),
+    eenheid: normaliseerEenheid(match[2]),
+  };
+}
+
+function converteerHoeveelheid(
+  hoeveelheid: number,
+  vanEenheid: string,
+  naarEenheid: string,
+) {
+  const van = normaliseerEenheid(vanEenheid);
+  const naar = normaliseerEenheid(naarEenheid);
+  if (!van || !naar || van === naar)
+    return { waarde: hoeveelheid, mogelijk: van === naar || !van || !naar };
+
+  if (van === "g" && naar === "kg")
+    return { waarde: hoeveelheid / 1000, mogelijk: true };
+  if (van === "kg" && naar === "g")
+    return { waarde: hoeveelheid * 1000, mogelijk: true };
+  if (van === "ml" && naar === "l")
+    return { waarde: hoeveelheid / 1000, mogelijk: true };
+  if (van === "l" && naar === "ml")
+    return { waarde: hoeveelheid * 1000, mogelijk: true };
+
+  return { waarde: null as number | null, mogelijk: false };
+}
+
+function maakBesteladvies(totalen: TotaalItem[]) {
+  return totalen.map((totaal): BestelAdviesRegel => {
+    const kolomHoeveelheid =
+      totaal.verpakking_hoeveelheid && totaal.verpakking_hoeveelheid > 0
+        ? totaal.verpakking_hoeveelheid
+        : null;
+    const kolomEenheid = totaal.verpakking_eenheid
+      ? normaliseerEenheid(totaal.verpakking_eenheid)
+      : null;
+    const parsed = parseVerpakkingUitNaam(totaal.product_naam || totaal.naam);
+
+    const verpakkingHoeveelheid = kolomHoeveelheid || parsed.hoeveelheid;
+    const verpakkingEenheid = kolomEenheid || parsed.eenheid;
+    const verpakkingBron =
+      kolomHoeveelheid && kolomEenheid
+        ? "kolom"
+        : parsed.hoeveelheid && parsed.eenheid
+          ? "productnaam"
+          : "ontbreekt";
+
+    if (!totaal.product_id) {
+      return {
+        ...totaal,
+        verpakking_bron: "ontbreekt",
+        verpakking_hoeveelheid_gebruikt: null,
+        verpakking_eenheid_gebruikt: null,
+        benodigde_hoeveelheid_in_verpakkingseenheid: null,
+        bestellen: null,
+        kosten: null,
+        status: "controle_nodig",
+        melding: "Geen productkoppeling gevonden.",
+      };
+    }
+
+    if (!verpakkingHoeveelheid || !verpakkingEenheid) {
+      return {
+        ...totaal,
+        verpakking_bron: "ontbreekt",
+        verpakking_hoeveelheid_gebruikt: null,
+        verpakking_eenheid_gebruikt: null,
+        benodigde_hoeveelheid_in_verpakkingseenheid: null,
+        bestellen: null,
+        kosten: null,
+        status: "controle_nodig",
+        melding:
+          "Verpakkingsinhoud niet herkend. Vul later verpakking_hoeveelheid/verpakking_eenheid of controleer productnaam.",
+      };
+    }
+
+    const geconverteerd = converteerHoeveelheid(
+      totaal.totaal,
+      totaal.eenheid,
+      verpakkingEenheid,
+    );
+    if (!geconverteerd.mogelijk || geconverteerd.waarde === null) {
+      return {
+        ...totaal,
+        verpakking_bron: verpakkingBron,
+        verpakking_hoeveelheid_gebruikt: verpakkingHoeveelheid,
+        verpakking_eenheid_gebruikt: verpakkingEenheid,
+        benodigde_hoeveelheid_in_verpakkingseenheid: null,
+        bestellen: null,
+        kosten: null,
+        status: "controle_nodig",
+        melding: `Eenheid ${totaal.eenheid || "onbekend"} kan niet automatisch naar ${verpakkingEenheid} worden omgerekend.`,
+      };
+    }
+
+    const bestellen = Math.ceil(geconverteerd.waarde / verpakkingHoeveelheid);
+    const kosten =
+      totaal.huidige_prijs !== null && totaal.huidige_prijs !== undefined
+        ? bestellen * totaal.huidige_prijs
+        : null;
+
+    return {
+      ...totaal,
+      verpakking_bron: verpakkingBron,
+      verpakking_hoeveelheid_gebruikt: verpakkingHoeveelheid,
+      verpakking_eenheid_gebruikt: verpakkingEenheid,
+      benodigde_hoeveelheid_in_verpakkingseenheid: geconverteerd.waarde,
+      bestellen,
+      kosten,
+      status: "berekend",
+      melding:
+        verpakkingBron === "productnaam"
+          ? "Verpakking afgeleid uit productnaam; controleer dit."
+          : null,
+    };
+  });
+}
+
 function formatIngredientNaam(
   regel: RegelRij,
   lineTable: NonNullable<Awaited<ReturnType<typeof findRecipeLineTable>>>,
-  productMap: Map<number, ProductInfo>
+  productMap: Map<number, ProductInfo>,
 ) {
   const ingredientIdColumn = lineTable.ingredientIdColumn;
-  const ingredientId = ingredientIdColumn ? toNumber(regel[ingredientIdColumn], 0) : 0;
-  const product = ingredientId > 0 ? productMap.get(ingredientId) || null : null;
+  const ingredientId = ingredientIdColumn
+    ? toNumber(regel[ingredientIdColumn], 0)
+    : 0;
+  const product =
+    ingredientId > 0 ? productMap.get(ingredientId) || null : null;
   const naam =
     product?.label ||
-    (lineTable.nameColumn ? String(regel[lineTable.nameColumn] || "").trim() : "") ||
-    (ingredientIdColumn && ingredientId > 0 ? `${ingredientIdColumn}: ${ingredientId}` : "Onbekend ingrediënt");
-  const eenheid = lineTable.unitColumn ? String(regel[lineTable.unitColumn] || "").trim() : "";
+    (lineTable.nameColumn
+      ? String(regel[lineTable.nameColumn] || "").trim()
+      : "") ||
+    (ingredientIdColumn && ingredientId > 0
+      ? `${ingredientIdColumn}: ${ingredientId}`
+      : "Onbekend ingrediënt");
+  const eenheid = lineTable.unitColumn
+    ? String(regel[lineTable.unitColumn] || "").trim()
+    : "";
 
   return { ingredientId, product, naam, eenheid };
 }
@@ -275,8 +524,8 @@ async function getTussenreceptenByProducten(producten: ProductInfo[]) {
     new Set(
       producten
         .filter((product) => isTussenreceptProduct(product))
-        .map((product) => normalizeName(product.naam))
-    )
+        .map((product) => normalizeName(product.naam)),
+    ),
   );
 
   if (namen.length === 0) return new Map<string, RegelRij>();
@@ -285,7 +534,7 @@ async function getTussenreceptenByProducten(producten: ProductInfo[]) {
     `SELECT *
      FROM recepten
      WHERE lower(trim(naam)) = ANY($1::text[])`,
-    [namen]
+    [namen],
   );
 
   const map = new Map<string, RegelRij>();
@@ -299,7 +548,10 @@ export async function GET(req: NextRequest) {
   const planningId = req.nextUrl.searchParams.get("planning_id");
 
   if (!planningId) {
-    return NextResponse.json({ error: "planning_id ontbreekt" }, { status: 400 });
+    return NextResponse.json(
+      { error: "planning_id ontbreekt" },
+      { status: 400 },
+    );
   }
 
   try {
@@ -319,7 +571,7 @@ export async function GET(req: NextRequest) {
        LEFT JOIN recepten kr ON kr.id = rk.kostprijs_recept_id
        WHERE zsp.planning_id = $1
        ORDER BY zsp.sortering NULLS LAST, zsp.soort, zsp.smaaknaam`,
-      [planningId]
+      [planningId],
     );
 
     const smaken = smakenRes.rows as RegelRij[];
@@ -327,16 +579,16 @@ export async function GET(req: NextRequest) {
       (s) =>
         s.kostprijs_recept_id &&
         !["ontbreekt_kostprijs", "controle_nodig", "overslaan"].includes(
-          String(s.koppeling_status || "")
-        )
+          String(s.koppeling_status || ""),
+        ),
     );
 
     const kostprijsReceptIds = Array.from(
       new Set(
         doorrekenbareSmaken
           .map((s) => toNumber(s.kostprijs_recept_id, 0))
-          .filter((id) => id > 0)
-      )
+          .filter((id) => id > 0),
+      ),
     );
 
     if (kostprijsReceptIds.length === 0) {
@@ -344,7 +596,9 @@ export async function GET(req: NextRequest) {
         success: true,
         meta: {
           line_table: null,
-          waarschuwingen: ["Er zijn nog geen doorrekenbare smaken in deze planning."],
+          waarschuwingen: [
+            "Er zijn nog geen doorrekenbare smaken in deze planning.",
+          ],
         },
         smaken: [],
         tussenrecepten: [],
@@ -354,7 +608,7 @@ export async function GET(req: NextRequest) {
 
     const receptenRes = await db.query(
       `SELECT * FROM recepten WHERE id = ANY($1::int[])`,
-      [kostprijsReceptIds]
+      [kostprijsReceptIds],
     );
     const receptRows = new Map<number, RegelRij>();
     for (const row of receptenRes.rows as RegelRij[]) {
@@ -393,7 +647,7 @@ export async function GET(req: NextRequest) {
       `SELECT *
        FROM ${q(lineTable.tableName)}
        WHERE ${q(lineTable.receptIdColumn)} = ANY($1::int[])`,
-      [kostprijsReceptIds]
+      [kostprijsReceptIds],
     );
 
     const regelsPerRecept = new Map<number, RegelRij[]>();
@@ -404,20 +658,22 @@ export async function GET(req: NextRequest) {
     }
 
     const eersteProductIds = lineTable.ingredientIdColumn
-      ? (regelsRes.rows as RegelRij[]).map((row) => toNumber(row[lineTable.ingredientIdColumn as string], 0))
+      ? (regelsRes.rows as RegelRij[]).map((row) =>
+          toNumber(row[lineTable.ingredientIdColumn as string], 0),
+        )
       : [];
     let productMap = await getProductMap(eersteProductIds);
 
     const tussenProducten = Array.from(productMap.values()).filter((product) =>
-      isTussenreceptProduct(product)
+      isTussenreceptProduct(product),
     );
     const tussenReceptMap = await getTussenreceptenByProducten(tussenProducten);
     const tussenReceptIds = Array.from(
       new Set(
         Array.from(tussenReceptMap.values())
           .map((row) => toNumber(row.id, 0))
-          .filter((id) => id > 0)
-      )
+          .filter((id) => id > 0),
+      ),
     );
 
     const tussenRegelsPerRecept = new Map<number, RegelRij[]>();
@@ -426,18 +682,24 @@ export async function GET(req: NextRequest) {
         `SELECT *
          FROM ${q(lineTable.tableName)}
          WHERE ${q(lineTable.receptIdColumn)} = ANY($1::int[])`,
-        [tussenReceptIds]
+        [tussenReceptIds],
       );
 
       const extraProductIds = lineTable.ingredientIdColumn
-        ? (tussenRegelsRes.rows as RegelRij[]).map((row) => toNumber(row[lineTable.ingredientIdColumn as string], 0))
+        ? (tussenRegelsRes.rows as RegelRij[]).map((row) =>
+            toNumber(row[lineTable.ingredientIdColumn as string], 0),
+          )
         : [];
       const extraProductMap = await getProductMap(extraProductIds);
-      productMap = new Map([...Array.from(productMap.entries()), ...Array.from(extraProductMap.entries())]);
+      productMap = new Map([
+        ...Array.from(productMap.entries()),
+        ...Array.from(extraProductMap.entries()),
+      ]);
 
       for (const row of tussenRegelsRes.rows as RegelRij[]) {
         const receptId = toNumber(row[lineTable.receptIdColumn], 0);
-        if (!tussenRegelsPerRecept.has(receptId)) tussenRegelsPerRecept.set(receptId, []);
+        if (!tussenRegelsPerRecept.has(receptId))
+          tussenRegelsPerRecept.set(receptId, []);
         tussenRegelsPerRecept.get(receptId)?.push(row);
       }
     }
@@ -448,7 +710,7 @@ export async function GET(req: NextRequest) {
     function verwerkTussenrecept(
       product: ProductInfo,
       eenheid: string,
-      benodigdeHoeveelheid: number
+      benodigdeHoeveelheid: number,
     ) {
       const naamKey = normalizeName(product.naam);
       const recept = tussenReceptMap.get(naamKey) || null;
@@ -473,20 +735,30 @@ export async function GET(req: NextRequest) {
     const controleSmaken = doorrekenbareSmaken.map((s) => {
       const kostprijsReceptId = toNumber(s.kostprijs_recept_id);
       const aantalBakken = toNumber(s.aantal_bakken);
-      const { opbrengstBakken, bron } = yieldForRecipe(receptRows.get(kostprijsReceptId));
-      const factor = opbrengstBakken > 0 ? aantalBakken / opbrengstBakken : aantalBakken;
+      const { opbrengstBakken, bron } = yieldForRecipe(
+        receptRows.get(kostprijsReceptId),
+      );
+      const factor =
+        opbrengstBakken > 0 ? aantalBakken / opbrengstBakken : aantalBakken;
       const receptRegels = regelsPerRecept.get(kostprijsReceptId) || [];
 
       const regels = receptRegels.map((regel) => {
-        const { product, naam, eenheid } = formatIngredientNaam(regel, lineTable, productMap);
+        const { product, naam, eenheid } = formatIngredientNaam(
+          regel,
+          lineTable,
+          productMap,
+        );
         const hoeveelheidPerRecept = toNumber(regel[lineTable.quantityColumn]);
         const benodigdeHoeveelheid = hoeveelheidPerRecept * factor;
-        const type = product && isTussenreceptProduct(product) ? "tussenrecept" : "product";
+        const type =
+          product && isTussenreceptProduct(product)
+            ? "tussenrecept"
+            : "product";
 
         if (type === "tussenrecept" && product) {
           verwerkTussenrecept(product, eenheid, benodigdeHoeveelheid);
         } else {
-          addTotaal(totalenMap, naam, eenheid, benodigdeHoeveelheid);
+          addTotaal(totalenMap, naam, eenheid, benodigdeHoeveelheid, product);
         }
 
         return {
@@ -500,7 +772,9 @@ export async function GET(req: NextRequest) {
 
       const waarschuwingen: string[] = [];
       if (regels.length === 0) {
-        waarschuwingen.push("Geen receptregels gevonden voor dit kostprijsrecept.");
+        waarschuwingen.push(
+          "Geen receptregels gevonden voor dit kostprijsrecept.",
+        );
       }
 
       return {
@@ -521,9 +795,14 @@ export async function GET(req: NextRequest) {
     for (const tussen of tussenMap.values()) {
       if (!tussen.recept_id) {
         tussen.waarschuwingen.push(
-          `Geen kostprijsrecept gevonden voor tussenrecept ${tussen.naam}. Deze hoeveelheid blijft daarom niet-opengeklapt.`
+          `Geen kostprijsrecept gevonden voor tussenrecept ${tussen.naam}. Deze hoeveelheid blijft daarom niet-opengeklapt.`,
         );
-        addTotaal(totalenMap, `Vincenzo · ${tussen.naam}`, tussen.eenheid, tussen.benodigde_hoeveelheid);
+        addTotaal(
+          totalenMap,
+          `Vincenzo · ${tussen.naam}`,
+          tussen.eenheid,
+          tussen.benodigde_hoeveelheid,
+        );
         continue;
       }
 
@@ -532,10 +811,15 @@ export async function GET(req: NextRequest) {
 
       if (!opbrengstLiter || opbrengstLiter <= 0) {
         tussen.waarschuwingen.push(
-          `${tussen.naam} is een tussenrecept, maar op het kostprijsrecept staat nog geen opbrengst_liter. Daarom is dit tussenrecept niet opengeklapt.`
+          `${tussen.naam} is een tussenrecept, maar op het kostprijsrecept staat nog geen opbrengst_liter. Daarom is dit tussenrecept niet opengeklapt.`,
         );
         tussen.factor = null;
-        addTotaal(totalenMap, `Vincenzo · ${tussen.naam}`, tussen.eenheid, tussen.benodigde_hoeveelheid);
+        addTotaal(
+          totalenMap,
+          `Vincenzo · ${tussen.naam}`,
+          tussen.eenheid,
+          tussen.benodigde_hoeveelheid,
+        );
         continue;
       }
 
@@ -544,16 +828,27 @@ export async function GET(req: NextRequest) {
 
       const tussenRegels = tussenRegelsPerRecept.get(tussen.recept_id) || [];
       if (tussenRegels.length === 0) {
-        tussen.waarschuwingen.push(`Geen receptregels gevonden voor tussenrecept ${tussen.naam}.`);
-        addTotaal(totalenMap, `Vincenzo · ${tussen.naam}`, tussen.eenheid, tussen.benodigde_hoeveelheid);
+        tussen.waarschuwingen.push(
+          `Geen receptregels gevonden voor tussenrecept ${tussen.naam}.`,
+        );
+        addTotaal(
+          totalenMap,
+          `Vincenzo · ${tussen.naam}`,
+          tussen.eenheid,
+          tussen.benodigde_hoeveelheid,
+        );
         continue;
       }
 
       tussen.regels = tussenRegels.map((regel) => {
-        const { naam, eenheid } = formatIngredientNaam(regel, lineTable, productMap);
+        const { product, naam, eenheid } = formatIngredientNaam(
+          regel,
+          lineTable,
+          productMap,
+        );
         const hoeveelheidPerRecept = toNumber(regel[lineTable.quantityColumn]);
         const benodigdeHoeveelheid = hoeveelheidPerRecept * factor;
-        addTotaal(totalenMap, naam, eenheid, benodigdeHoeveelheid);
+        addTotaal(totalenMap, naam, eenheid, benodigdeHoeveelheid, product);
         return {
           naam,
           eenheid,
@@ -564,10 +859,21 @@ export async function GET(req: NextRequest) {
     }
 
     const totalen = Array.from(totalenMap.values()).sort((a, b) =>
-      a.naam.localeCompare(b.naam, "nl")
+      a.naam.localeCompare(b.naam, "nl"),
     );
     const tussenrecepten = Array.from(tussenMap.values()).sort((a, b) =>
-      a.naam.localeCompare(b.naam, "nl")
+      a.naam.localeCompare(b.naam, "nl"),
+    );
+    const besteladvies = maakBesteladvies(totalen);
+    const besteladviesBerekend = besteladvies.filter(
+      (regel) => regel.status === "berekend",
+    );
+    const besteladviesControleNodig = besteladvies.filter(
+      (regel) => regel.status !== "berekend",
+    );
+    const totaleKosten = besteladviesBerekend.reduce(
+      (sum, regel) => sum + (regel.kosten || 0),
+      0,
     );
 
     return NextResponse.json({
@@ -580,12 +886,18 @@ export async function GET(req: NextRequest) {
         ingredient_id_column: lineTable.ingredientIdColumn,
         productnamen_gekoppeld: lineTable.ingredientIdColumn ? true : false,
         unit_column: lineTable.unitColumn,
-        tussenrecepten_opengeklapt: tussenrecepten.filter((t) => t.regels.length > 0).length,
+        tussenrecepten_opengeklapt: tussenrecepten.filter(
+          (t) => t.regels.length > 0,
+        ).length,
+        besteladvies_berekend: besteladviesBerekend.length,
+        besteladvies_controle_nodig: besteladviesControleNodig.length,
+        totale_kosten: totaleKosten,
         waarschuwingen: tussenrecepten.flatMap((t) => t.waarschuwingen),
       },
       smaken: controleSmaken,
       tussenrecepten,
       totalen,
+      besteladvies,
     });
   } catch (err) {
     console.error("Fout bij Zomerfeesten ingrediëntencontrole:", err);
