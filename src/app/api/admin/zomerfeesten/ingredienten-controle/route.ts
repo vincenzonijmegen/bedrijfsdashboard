@@ -96,6 +96,22 @@ const YIELD_COLUMNS = [
   "recept_opbrengst",
 ];
 
+// Voor gewone ijsrecepten geldt bij Vincenzo: 1 kostprijsrecept = 1 bak.
+// Voor tussenrecepten zoals Melkmix/Vruchtenmix mag dat NIET gelden: die recepten
+// leveren liters mix op. Zonder expliciete opbrengst_liter klappen we ze bewust niet open,
+// omdat de aantallen anders veel te hoog worden.
+const MIX_YIELD_LITER_COLUMNS = [
+  "opbrengst_liter",
+  "opbrengst_liters",
+  "opbrengst_l",
+  "aantal_liter",
+  "aantal_liters",
+  "liter",
+  "liters",
+  "batch_liter",
+  "batch_liters",
+];
+
 const TUSSENRECEPT_NAMEN = ["melkmix", "vruchtenmix"];
 
 const q = (identifier: string) => `"${identifier.replace(/"/g, '""')}"`;
@@ -173,6 +189,20 @@ function yieldForRecipe(recipeRow: RegelRij | undefined) {
   }
 
   return { opbrengstBakken: 1, bron: "standaard 1" };
+}
+
+
+function yieldLiterForMixRecipe(recipeRow: RegelRij | undefined) {
+  if (!recipeRow) return { opbrengstLiter: null as number | null, bron: "ontbreekt" };
+
+  for (const column of MIX_YIELD_LITER_COLUMNS) {
+    if (Object.prototype.hasOwnProperty.call(recipeRow, column)) {
+      const value = toNumber(recipeRow[column], 0);
+      if (value > 0) return { opbrengstLiter: value, bron: column };
+    }
+  }
+
+  return { opbrengstLiter: null as number | null, bron: "niet ingesteld" };
 }
 
 async function getProductMap(productIds: number[]) {
@@ -498,8 +528,18 @@ export async function GET(req: NextRequest) {
       }
 
       const receptRow = tussenReceptMap.get(normalizeName(tussen.naam));
-      const { opbrengstBakken } = yieldForRecipe(receptRow);
-      const factor = opbrengstBakken > 0 ? tussen.benodigde_hoeveelheid / opbrengstBakken : tussen.benodigde_hoeveelheid;
+      const { opbrengstLiter, bron } = yieldLiterForMixRecipe(receptRow);
+
+      if (!opbrengstLiter || opbrengstLiter <= 0) {
+        tussen.waarschuwingen.push(
+          `${tussen.naam} is een tussenrecept, maar op het kostprijsrecept staat nog geen opbrengst_liter. Daarom is dit tussenrecept niet opengeklapt.`
+        );
+        tussen.factor = null;
+        addTotaal(totalenMap, `Vincenzo · ${tussen.naam}`, tussen.eenheid, tussen.benodigde_hoeveelheid);
+        continue;
+      }
+
+      const factor = tussen.benodigde_hoeveelheid / opbrengstLiter;
       tussen.factor = factor;
 
       const tussenRegels = tussenRegelsPerRecept.get(tussen.recept_id) || [];
