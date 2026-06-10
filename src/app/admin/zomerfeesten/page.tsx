@@ -3,6 +3,7 @@
 import useSWR, { mutate } from "swr";
 import { useMemo, useState } from "react";
 import {
+  AlertTriangle,
   CalendarDays,
   Check,
   Euro,
@@ -35,6 +36,14 @@ type Recept = {
   hoeveelheid_mix?: string | number | null;
 };
 
+type KoppelingStatus =
+  | "naam_match"
+  | "handmatig"
+  | "gekoppeld"
+  | "ontbreekt_kostprijs"
+  | "controle_nodig"
+  | "overslaan";
+
 type Smaak = {
   id?: number;
   recept_id: number | null;
@@ -45,6 +54,11 @@ type Smaak = {
   aantal_bakken: number;
   kleur: string;
   sortering?: number | null;
+  kostprijs_recept_id?: number | null;
+  kostprijs_recept_naam?: string | null;
+  koppeling_status?: KoppelingStatus | null;
+  koppeling_opmerking?: string | null;
+  doorrekenbaar?: boolean | null;
 };
 
 type DetailResponse = {
@@ -119,6 +133,28 @@ const soortUitCategorie = (categorie?: string | null): "melk" | "vrucht" | "over
   return "melk";
 };
 
+const koppelingLabel = (smaak: Smaak) => {
+  if (!smaak.recept_id) return "Geen keukenrecept gekozen";
+  if (smaak.doorrekenbaar) return "Doorrekenbaar";
+  if (smaak.koppeling_status === "overslaan") return "Overgeslagen";
+  if (smaak.koppeling_status === "ontbreekt_kostprijs") return "Later maken";
+  if (smaak.koppeling_status === "controle_nodig") return "Controle nodig";
+  return "Mist koppeling";
+};
+
+const koppelingClassName = (smaak: Smaak) => {
+  if (smaak.doorrekenbaar) {
+    return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  }
+  if (smaak.koppeling_status === "overslaan") {
+    return "border-slate-200 bg-slate-50 text-slate-600";
+  }
+  if (smaak.koppeling_status === "ontbreekt_kostprijs") {
+    return "border-amber-200 bg-amber-50 text-amber-700";
+  }
+  return "border-red-200 bg-red-50 text-red-700";
+};
+
 export default function ZomerfeestenPage() {
   const { data: planningen } = useSWR<PlanningLijstItem[]>(
     "/api/admin/zomerfeesten/planningen",
@@ -155,6 +191,20 @@ export default function ZomerfeestenPage() {
     return { melk, vrucht, overig, totaal: melk + vrucht + overig };
   }, [smaken]);
 
+  const koppelingTotalen = useMemo(() => {
+    const doorrekenbaar = smaken.filter((s) => s.doorrekenbaar).length;
+    const overslaan = smaken.filter((s) => s.koppeling_status === "overslaan").length;
+    const laterMaken = smaken.filter((s) => s.koppeling_status === "ontbreekt_kostprijs").length;
+    const actieNodig = smaken.filter(
+      (s) =>
+        s.recept_id &&
+        !s.doorrekenbaar &&
+        s.koppeling_status !== "overslaan" &&
+        s.koppeling_status !== "ontbreekt_kostprijs"
+    ).length;
+    return { doorrekenbaar, overslaan, laterMaken, actieNodig };
+  }, [smaken]);
+
   const weekOmzet = Number(planning.omzet_per_dag || 0) * aantalDagen;
   const bakkenPerDag = aantalDagen > 0 ? totalen.totaal / aantalDagen : 0;
 
@@ -182,7 +232,11 @@ export default function ZomerfeestenPage() {
       detail.smaken.map((s) => ({
         ...s,
         recept_id: s.recept_id ? Number(s.recept_id) : null,
+        kostprijs_recept_id: s.kostprijs_recept_id
+          ? Number(s.kostprijs_recept_id)
+          : null,
         aantal_bakken: Number(s.aantal_bakken || 0),
+        doorrekenbaar: Boolean(s.doorrekenbaar),
         kleur: s.kleur || "#93c5fd",
       }))
     );
@@ -240,6 +294,10 @@ export default function ZomerfeestenPage() {
       smaaknaam: recept?.naam || smaken[index]?.smaaknaam || "",
       smaakcode: smaken[index]?.smaakcode || maakCode(recept?.naam || ""),
       soort: recept ? soortUitCategorie(recept.categorie) : smaken[index]?.soort || "melk",
+      kostprijs_recept_id: null,
+      kostprijs_recept_naam: null,
+      koppeling_status: null,
+      doorrekenbaar: null,
     });
   };
 
@@ -578,6 +636,16 @@ export default function ZomerfeestenPage() {
                 </div>
               )}
 
+              {smaken.length > 0 && koppelingTotalen.actieNodig > 0 && (
+                <div className="mb-4 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>
+                    {koppelingTotalen.actieNodig} smaak/smaken hebben nog geen bruikbare kostprijskoppeling.
+                    Controleer dit bij Receptkoppelingen voordat we later bestellijsten of kostprijzen berekenen.
+                  </div>
+                </div>
+              )}
+
               <div className="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <h3 className="mb-3 text-sm font-bold uppercase tracking-wide text-slate-500">
                   Smaak toevoegen
@@ -804,6 +872,23 @@ export default function ZomerfeestenPage() {
                         </button>
                       </div>
                     </div>
+
+                    <div
+                      className={`mt-3 rounded-xl border px-3 py-2 text-sm ${koppelingClassName(
+                        smaak
+                      )}`}
+                    >
+                      <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                        <span className="font-semibold">
+                          Calculatie: {koppelingLabel(smaak)}
+                        </span>
+                        {smaak.kostprijs_recept_naam && (
+                          <span className="text-xs md:text-sm">
+                            Kostprijsrecept: {smaak.kostprijs_recept_naam}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
 
@@ -821,6 +906,9 @@ export default function ZomerfeestenPage() {
                 </div>
                 <div className="text-slate-600">
                   Melk {totalen.melk} · Vrucht {totalen.vrucht} · Overig {totalen.overig}
+                </div>
+                <div className="text-xs text-slate-500 md:basis-full">
+                  Doorrekenbaar {koppelingTotalen.doorrekenbaar} · Later maken {koppelingTotalen.laterMaken} · Overslaan {koppelingTotalen.overslaan} · Actie nodig {koppelingTotalen.actieNodig}
                 </div>
               </div>
           </section>

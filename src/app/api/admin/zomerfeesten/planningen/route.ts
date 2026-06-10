@@ -51,8 +51,20 @@ export async function GET(req: NextRequest) {
            zsp.aantal_bakken,
            zsp.kleur,
            zsp.sortering,
-           zsp.smaaknaam AS recept_naam
+           zsp.smaaknaam AS recept_naam,
+           rk.kostprijs_recept_id,
+           rk.status AS koppeling_status,
+           rk.opmerking AS koppeling_opmerking,
+           kr.naam AS kostprijs_recept_naam,
+           CASE
+             WHEN rk.kostprijs_recept_id IS NOT NULL
+              AND COALESCE(rk.status, '') NOT IN ('ontbreekt_kostprijs', 'controle_nodig', 'overslaan')
+             THEN true
+             ELSE false
+           END AS doorrekenbaar
          FROM zomerfeesten_smaakplanning zsp
+         LEFT JOIN recept_koppelingen rk ON rk.keuken_recept_id = zsp.recept_id
+         LEFT JOIN recepten kr ON kr.id = rk.kostprijs_recept_id
          WHERE zsp.planning_id = $1
          ORDER BY zsp.sortering NULLS LAST, zsp.soort, zsp.smaaknaam`,
         [id]
