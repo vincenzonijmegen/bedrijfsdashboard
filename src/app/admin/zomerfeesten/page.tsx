@@ -66,6 +66,7 @@ type Smaak = {
 };
 
 type VitrineNaam = "links" | "midden" | "rechts";
+type BewaarkastNaam = "links" | "midden" | "rechts";
 
 type VitrinePositie = {
   planning_id: number;
@@ -76,6 +77,18 @@ type VitrinePositie = {
 
 type VitrineResponse = {
   posities: VitrinePositie[];
+};
+
+type BewaarkastPositie = {
+  planning_id: number;
+  bewaarkast: BewaarkastNaam;
+  schap: number;
+  smaakcode: string | null;
+  aantal_bakken: number;
+};
+
+type BewaarkastResponse = {
+  posities: BewaarkastPositie[];
 };
 
 type DetailResponse = {
@@ -190,6 +203,12 @@ const VITRINES: { key: VitrineNaam; label: string }[] = [
 ];
 const VITRINE_POSITIES_PER_VITRINE = 14;
 const VITRINE_TOTAAL_MAX = 42;
+const BEWAARKASTEN: { key: BewaarkastNaam; label: string; code: string }[] = [
+  { key: "links", label: "Bewaar­kast links", code: "L" },
+  { key: "midden", label: "Bewaar­kast midden", code: "M" },
+  { key: "rechts", label: "Bewaar­kast rechts", code: "R" },
+];
+const BEWAARKAST_SCHAPPEN = 6;
 
 const legePlanning = () => ({
   id: null as number | null,
@@ -320,11 +339,22 @@ export default function ZomerfeestenPage() {
     fetcher,
   );
 
+  const { data: bewaarkastData } = useSWR<BewaarkastResponse>(
+    planning.id
+      ? `/api/admin/zomerfeesten/bewaarkast?planning_id=${planning.id}`
+      : null,
+    fetcher,
+  );
+
   const [vitrineIndeling, setVitrineIndeling] = useState<
     Record<string, string | null>
   >({});
+  const [bewaarkastIndeling, setBewaarkastIndeling] = useState<
+    Record<string, { smaakcode: string | null; aantal_bakken: number }>
+  >({});
   const [dragSmaakcode, setDragSmaakcode] = useState<string | null>(null);
   const [vitrineOpslaanBezig, setVitrineOpslaanBezig] = useState(false);
+  const [bewaarkastOpslaanBezig, setBewaarkastOpslaanBezig] = useState(false);
 
   useEffect(() => {
     const volgende: Record<string, string | null> = {};
@@ -346,6 +376,31 @@ export default function ZomerfeestenPage() {
 
     setVitrineIndeling(volgende);
   }, [vitrineData]);
+
+  useEffect(() => {
+    const volgende: Record<
+      string,
+      { smaakcode: string | null; aantal_bakken: number }
+    > = {};
+
+    for (const kast of BEWAARKASTEN) {
+      for (let schap = 1; schap <= BEWAARKAST_SCHAPPEN; schap += 1) {
+        volgende[`${kast.key}-${schap}`] = {
+          smaakcode: null,
+          aantal_bakken: 0,
+        };
+      }
+    }
+
+    for (const positie of bewaarkastData?.posities ?? []) {
+      volgende[`${positie.bewaarkast}-${positie.schap}`] = {
+        smaakcode: positie.smaakcode || null,
+        aantal_bakken: Number(positie.aantal_bakken || 0),
+      };
+    }
+
+    setBewaarkastIndeling(volgende);
+  }, [bewaarkastData]);
 
   const aantalDagen = useMemo(() => {
     const start = new Date(planning.start_datum);
@@ -391,6 +446,25 @@ export default function ZomerfeestenPage() {
 
     return { gevuld, tellingen };
   }, [vitrineIndeling]);
+
+  const bewaarkastTellingen = useMemo(() => {
+    const tellingen = new Map<string, number>();
+    let totaalBakken = 0;
+    let gevuldeSchappen = 0;
+
+    for (const positie of Object.values(bewaarkastIndeling)) {
+      if (!positie.smaakcode) continue;
+      gevuldeSchappen += 1;
+      const aantal = Number(positie.aantal_bakken || 0);
+      totaalBakken += aantal;
+      tellingen.set(
+        positie.smaakcode,
+        (tellingen.get(positie.smaakcode) || 0) + aantal,
+      );
+    }
+
+    return { tellingen, totaalBakken, gevuldeSchappen };
+  }, [bewaarkastIndeling]);
 
   const koppelingTotalen = useMemo(() => {
     const doorrekenbaar = smaken.filter((s) => s.doorrekenbaar).length;
@@ -669,6 +743,95 @@ export default function ZomerfeestenPage() {
       setMelding(message);
     } finally {
       setVitrineOpslaanBezig(false);
+    }
+  };
+
+  const zetBewaarkastSmaak = (
+    bewaarkast: BewaarkastNaam,
+    schap: number,
+    smaakcode: string | null,
+  ) => {
+    setBewaarkastIndeling((prev) => {
+      const key = `${bewaarkast}-${schap}`;
+      const huidige = prev[key] || { smaakcode: null, aantal_bakken: 0 };
+      return {
+        ...prev,
+        [key]: {
+          smaakcode,
+          aantal_bakken: smaakcode
+            ? Math.max(1, Number(huidige.aantal_bakken || 1))
+            : 0,
+        },
+      };
+    });
+  };
+
+  const zetBewaarkastAantal = (
+    bewaarkast: BewaarkastNaam,
+    schap: number,
+    aantal_bakken: number,
+  ) => {
+    setBewaarkastIndeling((prev) => {
+      const key = `${bewaarkast}-${schap}`;
+      const huidige = prev[key] || { smaakcode: null, aantal_bakken: 0 };
+      return {
+        ...prev,
+        [key]: {
+          ...huidige,
+          aantal_bakken: Math.max(0, Number(aantal_bakken || 0)),
+        },
+      };
+    });
+  };
+
+  const opslaanBewaarkast = async () => {
+    if (!planning.id) {
+      setMelding(
+        "Sla eerst de Zomerfeestenplanning op voordat je de bewaarkastindeling opslaat.",
+      );
+      return;
+    }
+
+    setBewaarkastOpslaanBezig(true);
+    setMelding(null);
+
+    try {
+      const posities = BEWAARKASTEN.flatMap((kast) =>
+        Array.from({ length: BEWAARKAST_SCHAPPEN }, (_, index) => {
+          const schap = index + 1;
+          const positie = bewaarkastIndeling[`${kast.key}-${schap}`] || {
+            smaakcode: null,
+            aantal_bakken: 0,
+          };
+          return {
+            bewaarkast: kast.key,
+            schap,
+            smaakcode: positie.smaakcode || null,
+            aantal_bakken: Number(positie.aantal_bakken || 0),
+          };
+        }),
+      );
+
+      const res = await fetch("/api/admin/zomerfeesten/bewaarkast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planning_id: planning.id, posities }),
+      });
+
+      const json = await res.json();
+      if (!res.ok)
+        throw new Error(json.error || "Bewaar­kastindeling opslaan mislukt");
+
+      setMelding("Bewaar­kastindeling opgeslagen.");
+      mutate(`/api/admin/zomerfeesten/bewaarkast?planning_id=${planning.id}`);
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Bewaar­kastindeling opslaan mislukt";
+      setMelding(message);
+    } finally {
+      setBewaarkastOpslaanBezig(false);
     }
   };
 
@@ -1768,10 +1931,15 @@ export default function ZomerfeestenPage() {
                       {vitrine.label}
                     </h3>
                     <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
-                      {Array.from({ length: VITRINE_POSITIES_PER_VITRINE }).filter(
-                        (_, index) =>
-                          Boolean(vitrineIndeling[`${vitrine.key}-${index + 1}`]),
-                      ).length}{" "}
+                      {
+                        Array.from({
+                          length: VITRINE_POSITIES_PER_VITRINE,
+                        }).filter((_, index) =>
+                          Boolean(
+                            vitrineIndeling[`${vitrine.key}-${index + 1}`],
+                          ),
+                        ).length
+                      }{" "}
                       / {VITRINE_POSITIES_PER_VITRINE}
                     </span>
                   </div>
@@ -1853,6 +2021,184 @@ export default function ZomerfeestenPage() {
                       },
                     )}
                   </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
+            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  Bewaar­kastindeling
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Sleep smaken naar een schap en vul het aantal reservebakken
+                  in. Dit is de praktische kastindeling voor de
+                  Zomerfeestenweek.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={opslaanBewaarkast}
+                disabled={!planning.id || bewaarkastOpslaanBezig}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" />
+                {bewaarkastOpslaanBezig
+                  ? "Opslaan..."
+                  : "Bewaar­kasten opslaan"}
+              </button>
+            </div>
+
+            <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+                <div className="font-semibold text-slate-900">
+                  In bewaarkasten: {bewaarkastTellingen.totaalBakken} bakken ·{" "}
+                  {bewaarkastTellingen.gevuldeSchappen} schappen gevuld
+                </div>
+                <div className="text-slate-500">
+                  Sleep een smaak naar een schap. Het aantal kun je daarna
+                  aanpassen.
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {smaken.map((smaak) => {
+                  const code = smaak.smaakcode?.trim().toUpperCase();
+                  if (!code) return null;
+                  const inKast = bewaarkastTellingen.tellingen.get(code) || 0;
+
+                  return (
+                    <button
+                      key={`bewaarkast-palette-${code}`}
+                      type="button"
+                      draggable
+                      onDragStart={() => setDragSmaakcode(code)}
+                      onDragEnd={() => setDragSmaakcode(null)}
+                      className="inline-flex cursor-grab items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm active:cursor-grabbing"
+                      title="Sleep naar de bewaarkast"
+                    >
+                      <span
+                        className="h-3 w-3 rounded-full border border-slate-300"
+                        style={{ backgroundColor: smaak.kleur || "#93c5fd" }}
+                      />
+                      <span>{smaak.smaaknaam}</span>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                        {inKast} in kast
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {smaken.length === 0 && (
+                  <div className="text-sm text-slate-500">
+                    Voeg eerst smaken toe aan de smaakplanning.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+              {BEWAARKASTEN.map((kast) => (
+                <div
+                  key={kast.key}
+                  className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                >
+                  <div className="border-b border-slate-200 bg-cyan-100 px-4 py-3 text-center font-bold uppercase tracking-wide text-slate-900">
+                    {kast.label}
+                  </div>
+                  <div className="grid grid-cols-[1fr_54px_64px] border-b border-slate-200 bg-slate-50 text-xs font-bold uppercase text-slate-600">
+                    <div className="px-3 py-2">Smaak</div>
+                    <div className="px-3 py-2 text-center">Schap</div>
+                    <div className="px-3 py-2 text-center">Aantal</div>
+                  </div>
+
+                  {Array.from({ length: BEWAARKAST_SCHAPPEN }, (_, index) => {
+                    const schap = index + 1;
+                    const key = `${kast.key}-${schap}`;
+                    const positie = bewaarkastIndeling[key] || {
+                      smaakcode: null,
+                      aantal_bakken: 0,
+                    };
+                    const smaak = positie.smaakcode
+                      ? smaakPerCode.get(positie.smaakcode)
+                      : null;
+
+                    return (
+                      <div
+                        key={key}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (dragSmaakcode)
+                            zetBewaarkastSmaak(kast.key, schap, dragSmaakcode);
+                        }}
+                        className="grid grid-cols-[1fr_54px_64px] items-center border-b border-slate-100 last:border-b-0"
+                      >
+                        <div className="p-2">
+                          <div
+                            draggable={Boolean(smaak)}
+                            onDragStart={() =>
+                              positie.smaakcode &&
+                              setDragSmaakcode(positie.smaakcode)
+                            }
+                            onDragEnd={() => setDragSmaakcode(null)}
+                            className={`group relative flex min-h-[42px] items-center rounded-lg border px-3 py-2 text-sm font-bold ${
+                              smaak
+                                ? "cursor-grab border-slate-300 text-slate-900 shadow-sm active:cursor-grabbing"
+                                : "border-dashed border-slate-300 bg-slate-50 text-slate-400 hover:border-blue-300 hover:bg-blue-50"
+                            }`}
+                            style={
+                              smaak
+                                ? { backgroundColor: smaak.kleur || "#bfdbfe" }
+                                : undefined
+                            }
+                          >
+                            {smaak ? (
+                              <>
+                                <span className="truncate">
+                                  {smaak.smaakcode} · {smaak.smaaknaam}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    zetBewaarkastSmaak(kast.key, schap, null);
+                                  }}
+                                  className="absolute right-1 top-1 hidden rounded-full bg-white/80 px-1 text-[10px] font-bold text-slate-700 shadow-sm group-hover:block"
+                                  title="Schap leegmaken"
+                                >
+                                  ×
+                                </button>
+                              </>
+                            ) : (
+                              <span>Sleep smaak hier</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="px-2 text-center text-sm font-bold text-slate-700">
+                          {schap}
+                        </div>
+                        <div className="px-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={positie.aantal_bakken || 0}
+                            onChange={(e) =>
+                              zetBewaarkastAantal(
+                                kast.key,
+                                schap,
+                                Number(e.target.value || 0),
+                              )
+                            }
+                            className="w-full rounded-lg border border-slate-200 px-2 py-2 text-center text-sm font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>
