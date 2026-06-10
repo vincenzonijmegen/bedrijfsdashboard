@@ -509,23 +509,123 @@ export default function ZomerfeestenPage() {
             visibility: hidden !important;
           }
 
-          .print-bestellijst,
-          .print-bestellijst * {
+          .print-only-bestellijst,
+          .print-only-bestellijst * {
             visibility: visible !important;
           }
 
-          .print-bestellijst {
+          .print-only-bestellijst {
+            display: block !important;
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
             margin: 0 !important;
-            border: 0 !important;
-            box-shadow: none !important;
+            padding: 0 !important;
+            color: #0f172a !important;
+            background: white !important;
+            font-size: 9.5pt !important;
+            line-height: 1.25 !important;
+          }
+
+          .print-only-bestellijst h1 {
+            margin: 0 0 3mm 0 !important;
+            font-size: 16pt !important;
+            line-height: 1.15 !important;
+          }
+
+          .print-only-bestellijst .print-meta {
+            margin-bottom: 5mm !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            gap: 10mm !important;
+            color: #475569 !important;
+            font-size: 9pt !important;
+          }
+
+          .print-only-bestellijst .print-total {
+            margin: 0 0 6mm 0 !important;
+            padding: 3mm !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 0 !important;
+            font-size: 11pt !important;
+            font-weight: 700 !important;
+          }
+
+          .print-leverancier {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            margin: 0 0 7mm 0 !important;
+          }
+
+          .print-leverancier-header {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: baseline !important;
+            margin: 0 0 2mm 0 !important;
+            padding-bottom: 1.5mm !important;
+            border-bottom: 1px solid #94a3b8 !important;
+          }
+
+          .print-leverancier-header h2 {
+            margin: 0 !important;
+            font-size: 12pt !important;
+          }
+
+          .print-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            table-layout: fixed !important;
+          }
+
+          .print-table th {
+            padding: 1.6mm 1.5mm !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+            background: #f8fafc !important;
+            color: #334155 !important;
+            font-size: 8pt !important;
+            text-align: left !important;
+          }
+
+          .print-table td {
+            padding: 1.7mm 1.5mm !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            vertical-align: top !important;
+            font-size: 8.5pt !important;
+          }
+
+          .print-table .num {
+            text-align: right !important;
+            white-space: nowrap !important;
+          }
+
+          .print-product {
+            font-weight: 600 !important;
+          }
+
+          .print-subtle {
+            color: #64748b !important;
+            font-size: 8pt !important;
+          }
+
+          .print-note {
+            color: #92400e !important;
+            font-size: 8pt !important;
+          }
+
+          .print-grandtotal {
+            margin-top: 4mm !important;
+            padding-top: 3mm !important;
+            border-top: 2px solid #0f172a !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            font-size: 12pt !important;
+            font-weight: 800 !important;
           }
 
           @page {
-            margin: 12mm;
+            size: A4 portrait;
+            margin: 10mm;
           }
         }
       `}</style>
@@ -1386,7 +1486,7 @@ export default function ZomerfeestenPage() {
                 )}
 
                 {(ingredientenControle.besteladvies ?? []).length > 0 && (
-                  <div className="print-bestellijst rounded-2xl border border-emerald-200 overflow-hidden print:border-slate-300">
+                  <div className="rounded-2xl border border-emerald-200 overflow-hidden print:hidden">
                     <div className="border-b border-emerald-100 bg-emerald-50 px-4 py-3 print:bg-white print:border-slate-300">
                       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
                         <div>
@@ -1511,6 +1611,95 @@ export default function ZomerfeestenPage() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {(ingredientenControle.besteladvies ?? []).length > 0 && (
+                  <div className="print-only-bestellijst hidden">
+                    <h1>Besteladvies Zomerfeesten {planning.jaar}</h1>
+                    <div className="print-meta">
+                      <div>
+                        {planning.naam} · {datumVoorInput(planning.start_datum)} t/m {datumVoorInput(planning.eind_datum)}
+                      </div>
+                      <div>
+                        Gegenereerd: {new Date().toLocaleDateString("nl-NL")}
+                      </div>
+                    </div>
+
+                    <div className="print-total">
+                      Totaal te bestellen: {formatEuroExact(ingredientenControle.meta.totale_kosten ?? 0)}
+                      <span className="print-subtle">
+                        {" "}· Leveranciers: {besteladviesPerLeverancier.length}
+                        {" "}· Regels: {ingredientenControle.meta.besteladvies_berekend ?? 0}
+                        {" "}· Nog invullen: {ingredientenControle.meta.besteladvies_controle_nodig ?? 0}
+                      </span>
+                    </div>
+
+                    {besteladviesPerLeverancier.map((groep) => (
+                      <section key={`print-${groep.leverancier}`} className="print-leverancier">
+                        <div className="print-leverancier-header">
+                          <h2>{groep.leverancier}</h2>
+                          <div>
+                            Subtotaal: {formatEuroExact(groep.totaalKosten)}
+                            <span className="print-subtle">
+                              {" "}· {groep.berekend} regels
+                              {groep.controleNodig > 0 ? ` · ${groep.controleNodig} nog invullen` : ""}
+                            </span>
+                          </div>
+                        </div>
+
+                        <table className="print-table">
+                          <thead>
+                            <tr>
+                              <th style={{ width: "30%" }}>Product</th>
+                              <th style={{ width: "13%" }}>Bestelnr.</th>
+                              <th style={{ width: "12%" }} className="num">Nodig</th>
+                              <th style={{ width: "12%" }} className="num">Verpakking</th>
+                              <th style={{ width: "9%" }} className="num">Bestellen</th>
+                              <th style={{ width: "11%" }} className="num">Prijs</th>
+                              <th style={{ width: "13%" }} className="num">Totaal</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {groep.regels.map((regel) => (
+                              <tr key={`print-${groep.leverancier}-${regel.product_id ?? regel.naam}-${regel.eenheid}`}>
+                                <td>
+                                  <div className="print-product">
+                                    {regel.product_naam || regel.naam}
+                                  </div>
+                                  {regel.status !== "berekend" && (
+                                    <div className="print-note">
+                                      Verpakking/eenheid nog invullen
+                                    </div>
+                                  )}
+                                </td>
+                                <td>{regel.bestelnummer || "–"}</td>
+                                <td className="num">
+                                  {formatHoeveelheid(regel.totaal)} {regel.eenheid}
+                                </td>
+                                <td className="num">
+                                  {regel.verpakking_hoeveelheid_gebruikt
+                                    ? `${formatHoeveelheid(regel.verpakking_hoeveelheid_gebruikt)} ${regel.verpakking_eenheid_gebruikt ?? ""}`
+                                    : "–"}
+                                </td>
+                                <td className="num">{regel.bestellen ?? "–"}</td>
+                                <td className="num">{formatEuroExact(regel.huidige_prijs)}</td>
+                                <td className="num">
+                                  {regel.status === "berekend"
+                                    ? formatEuroExact(regel.kosten)
+                                    : "Nog invullen"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </section>
+                    ))}
+
+                    <div className="print-grandtotal">
+                      <span>Totaal Zomerfeesten</span>
+                      <span>{formatEuroExact(ingredientenControle.meta.totale_kosten ?? 0)}</span>
                     </div>
                   </div>
                 )}
