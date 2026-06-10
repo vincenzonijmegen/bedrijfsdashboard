@@ -434,37 +434,6 @@ export default function ZomerfeestenPage() {
     setBewaarkastIndeling(volgende);
   }, [bewaarkastData]);
 
-  useEffect(() => {
-    document.body.classList.remove(
-      "print-mode-bestellijst",
-      "print-mode-vitrine",
-      "print-mode-bewaarkast",
-    );
-
-    if (printMode) {
-      document.body.classList.add(`print-mode-${printMode}`);
-    }
-
-    return () => {
-      document.body.classList.remove(
-        "print-mode-bestellijst",
-        "print-mode-vitrine",
-        "print-mode-bewaarkast",
-      );
-    };
-  }, [printMode]);
-
-  useEffect(() => {
-    const handleAfterPrint = () => setPrintMode(null);
-    window.addEventListener("afterprint", handleAfterPrint);
-    return () => window.removeEventListener("afterprint", handleAfterPrint);
-  }, []);
-
-  const startPrint = (mode: "bestellijst" | "vitrine" | "bewaarkast") => {
-    setPrintMode(mode);
-    window.setTimeout(() => window.print(), 60);
-  };
-
   const aantalDagen = useMemo(() => {
     const start = new Date(planning.start_datum);
     const eind = new Date(planning.eind_datum);
@@ -3011,9 +2980,13 @@ export default function ZomerfeestenPage() {
                             <div className="print-card-header">
                               <h2>{kast.label}</h2>
                               <span className="print-pill">
-                                {Array.from({ length: BEWAARKAST_SCHAPPEN }).reduce(
+                                {Array.from({ length: BEWAARKAST_SCHAPPEN }).reduce<number>(
                                   (sum, _, index) =>
-                                    sum + Number(bewaarkastIndeling[`${kast.key}-${index + 1}`]?.aantal_bakken || 0),
+                                    sum +
+                                    Number(
+                                      bewaarkastIndeling[`${kast.key}-${index + 1}`]
+                                        ?.aantal_bakken || 0,
+                                    ),
                                   0,
                                 )} bakken
                               </span>
