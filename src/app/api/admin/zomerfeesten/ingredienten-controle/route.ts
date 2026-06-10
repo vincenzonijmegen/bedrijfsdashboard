@@ -432,7 +432,7 @@ function maakBesteladvies(totalen: TotaalItem[]) {
         bestellen: null,
         kosten: null,
         status: "controle_nodig",
-        melding: "Geen productkoppeling gevonden.",
+        melding: "Dit ingrediënt is nog niet gekoppeld aan een bestelproduct.",
       };
     }
 
@@ -447,7 +447,7 @@ function maakBesteladvies(totalen: TotaalItem[]) {
         kosten: null,
         status: "controle_nodig",
         melding:
-          "Verpakkingsinhoud niet herkend. Vul later verpakking_hoeveelheid/verpakking_eenheid of controleer productnaam.",
+          "Verpakking onbekend: vul bij dit product de verpakkingsinhoud in, bijvoorbeeld 10 kg of 1 liter.",
       };
     }
 
@@ -466,7 +466,7 @@ function maakBesteladvies(totalen: TotaalItem[]) {
         bestellen: null,
         kosten: null,
         status: "controle_nodig",
-        melding: `Eenheid ${totaal.eenheid || "onbekend"} kan niet automatisch naar ${verpakkingEenheid} worden omgerekend.`,
+        melding: `Eenheden komen niet overeen: nodig is ${totaal.eenheid || "onbekend"}, verpakking staat op ${verpakkingEenheid}. Controleer dit product.`,
       };
     }
 
@@ -487,7 +487,7 @@ function maakBesteladvies(totalen: TotaalItem[]) {
       status: "berekend",
       melding:
         verpakkingBron === "productnaam"
-          ? "Verpakking afgeleid uit productnaam; controleer dit."
+          ? "Verpakking uit productnaam gelezen. Controleer later of dit klopt."
           : null,
     };
   });

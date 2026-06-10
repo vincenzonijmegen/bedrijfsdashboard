@@ -1323,7 +1323,7 @@ export default function ZomerfeestenPage() {
                     <div className="border-b border-emerald-100 bg-emerald-50 px-4 py-3">
                       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
                         <div className="text-sm font-bold text-emerald-800">
-                          Voorlopig besteladvies
+                          Besteladvies (controleversie)
                         </div>
                         <div className="text-sm font-semibold text-emerald-900">
                           Totaal:{" "}
@@ -1333,12 +1333,12 @@ export default function ZomerfeestenPage() {
                         </div>
                       </div>
                       <div className="mt-1 text-xs text-emerald-700">
-                        Berekend{" "}
+                        Bestelregels berekend: {" "}
                         {ingredientenControle.meta.besteladvies_berekend ?? 0} ·
-                        Controle nodig{" "}
+                        Nog invullen/controleren: {" "}
                         {ingredientenControle.meta
                           .besteladvies_controle_nodig ?? 0}
-                        . Verpakkingen uit productnaam blijven controlepunten.
+                        . Bij regels met “verpakking onbekend” kan de app nog niet bepalen hoeveel verpakkingen besteld moeten worden.
                       </div>
                     </div>
                     <div className="divide-y divide-emerald-100">
@@ -1374,7 +1374,7 @@ export default function ZomerfeestenPage() {
                               </span>
                               {regel.verpakking_hoeveelheid_gebruikt
                                 ? `${formatHoeveelheid(regel.verpakking_hoeveelheid_gebruikt)} ${regel.verpakking_eenheid_gebruikt ?? ""}`
-                                : "controle"}
+                                : "verpakking onbekend"}
                             </div>
                             <div className="text-slate-900 lg:text-right">
                               <span className="lg:hidden text-slate-500">
@@ -1400,7 +1400,7 @@ export default function ZomerfeestenPage() {
                               >
                                 {regel.status === "berekend"
                                   ? formatEuroExact(regel.kosten)
-                                  : "Controle"}
+                                  : "Nog invullen"}
                               </span>
                             </div>
                           </div>
