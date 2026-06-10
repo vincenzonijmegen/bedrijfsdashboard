@@ -71,6 +71,7 @@ type IngredientRegel = {
   eenheid: string;
   hoeveelheid_per_recept: number;
   benodigde_hoeveelheid: number;
+  type?: "product" | "tussenrecept";
 };
 
 type IngredientControleSmaak = {
@@ -94,6 +95,18 @@ type IngredientTotaal = {
   bronregels: number;
 };
 
+type TussenreceptControle = {
+  naam: string;
+  eenheid: string;
+  benodigde_hoeveelheid: number;
+  recept_id: number | null;
+  recept_naam: string | null;
+  factor: number | null;
+  bronregels: number;
+  regels: IngredientRegel[];
+  waarschuwingen: string[];
+};
+
 type IngredientControleResponse = {
   success: boolean;
   meta: {
@@ -101,6 +114,7 @@ type IngredientControleResponse = {
     waarschuwingen?: string[];
   };
   smaken: IngredientControleSmaak[];
+  tussenrecepten?: TussenreceptControle[];
   totalen: IngredientTotaal[];
 };
 
@@ -1021,12 +1035,18 @@ export default function ZomerfeestenPage() {
                     </div>
                   </div>
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="text-sm text-slate-500">Gecombineerde ingrediënten</div>
+                    <div className="text-sm text-slate-500">Bestelproducten na openklappen</div>
                     <div className="mt-1 text-2xl font-bold text-slate-900">
                       {ingredientenControle.totalen.length}
                     </div>
                   </div>
                 </div>
+
+                {(ingredientenControle.tussenrecepten ?? []).length > 0 && (
+                  <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                    Tussenrecepten opengeklapt: {(ingredientenControle.tussenrecepten ?? []).map((t) => `${t.naam} ${formatHoeveelheid(t.benodigde_hoeveelheid)} ${t.eenheid}`).join(" · ")}
+                  </div>
+                )}
 
                 {ingredientenControle.smaken.length > 0 && (
                   <div className="rounded-2xl border border-slate-200 overflow-hidden">
@@ -1063,7 +1083,14 @@ export default function ZomerfeestenPage() {
                                   key={`${smaak.smaakplanning_id}-${index}`}
                                   className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm"
                                 >
-                                  <span className="min-w-0 truncate text-slate-700">{regel.naam}</span>
+                                  <span className="min-w-0 truncate text-slate-700">
+                                    {regel.naam}
+                                    {regel.type === "tussenrecept" && (
+                                      <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                                        tussenrecept
+                                      </span>
+                                    )}
+                                  </span>
                                   <span className="shrink-0 font-semibold text-slate-900">
                                     {formatHoeveelheid(regel.benodigde_hoeveelheid)} {regel.eenheid}
                                   </span>
@@ -1082,10 +1109,62 @@ export default function ZomerfeestenPage() {
                   </div>
                 )}
 
+                {(ingredientenControle.tussenrecepten ?? []).length > 0 && (
+                  <div className="rounded-2xl border border-blue-100 overflow-hidden">
+                    <div className="border-b border-blue-100 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800">
+                      Tussenrecepten
+                    </div>
+                    <div className="divide-y divide-blue-100">
+                      {(ingredientenControle.tussenrecepten ?? []).map((tussen) => (
+                        <div key={`${tussen.naam}-${tussen.eenheid}`} className="p-4">
+                          <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                            <div>
+                              <div className="font-semibold text-slate-900">{tussen.naam}</div>
+                              <div className="text-sm text-slate-500">
+                                Benodigd: {formatHoeveelheid(tussen.benodigde_hoeveelheid)} {tussen.eenheid}
+                                {tussen.recept_naam ? ` · via ${tussen.recept_naam}` : ""}
+                                {tussen.factor !== null ? ` · factor ${formatHoeveelheid(tussen.factor)}` : ""}
+                              </div>
+                            </div>
+                            <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                              {tussen.regels.length} regels
+                            </span>
+                          </div>
+                          {tussen.waarschuwingen.length > 0 && (
+                            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                              {tussen.waarschuwingen.join(" ")}
+                            </div>
+                          )}
+                          {tussen.regels.length > 0 && (
+                            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                              {tussen.regels.slice(0, 8).map((regel, index) => (
+                                <div
+                                  key={`${tussen.naam}-${index}`}
+                                  className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-sm"
+                                >
+                                  <span className="min-w-0 truncate text-slate-700">{regel.naam}</span>
+                                  <span className="shrink-0 font-semibold text-slate-900">
+                                    {formatHoeveelheid(regel.benodigde_hoeveelheid)} {regel.eenheid}
+                                  </span>
+                                </div>
+                              ))}
+                              {tussen.regels.length > 8 && (
+                                <div className="rounded-xl bg-white px-3 py-2 text-sm text-slate-500">
+                                  + {tussen.regels.length - 8} extra regels
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {ingredientenControle.totalen.length > 0 && (
                   <div className="rounded-2xl border border-slate-200 overflow-hidden">
                     <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
-                      Gecombineerde ingrediëntencontrole
+                      Gecombineerde bestelproductencontrole
                     </div>
                     <div className="divide-y divide-slate-100">
                       {ingredientenControle.totalen.map((totaal) => (
