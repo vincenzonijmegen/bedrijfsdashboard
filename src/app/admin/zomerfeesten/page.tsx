@@ -210,6 +210,35 @@ const BEWAARKASTEN: { key: BewaarkastNaam; label: string; code: string }[] = [
 ];
 const BEWAARKAST_SCHAPPEN = 6;
 
+function normaliseerHexKleur(kleur?: string | null) {
+  if (!kleur) return null;
+  const value = kleur.trim();
+  if (!value.startsWith("#")) return null;
+
+  if (value.length === 4) {
+    return `#${value[1]}${value[1]}${value[2]}${value[2]}${value[3]}${value[3]}`.toLowerCase();
+  }
+
+  if (value.length === 7) {
+    return value.toLowerCase();
+  }
+
+  return null;
+}
+
+function isDonkereKleur(kleur?: string | null) {
+  const hex = normaliseerHexKleur(kleur);
+  if (!hex) return false;
+
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const luminantie = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+  return luminantie < 0.48;
+}
+
+
 const legePlanning = () => ({
   id: null as number | null,
   jaar: todayYear,
@@ -2124,6 +2153,9 @@ export default function ZomerfeestenPage() {
                     const smaak = positie.smaakcode
                       ? smaakPerCode.get(positie.smaakcode)
                       : null;
+                    const donkereSmaakKleur = isDonkereKleur(
+                      smaak?.kleur || null,
+                    );
 
                     return (
                       <div
@@ -2151,22 +2183,27 @@ export default function ZomerfeestenPage() {
                             }`}
                             style={
                               smaak
-                                ? { backgroundColor: smaak.kleur || "#bfdbfe" }
+                                ? {
+                                    backgroundColor: smaak.kleur || "#bfdbfe",
+                                    color: donkereSmaakKleur ? "#ffffff" : "#0f172a",
+                                  }
                                 : undefined
                             }
                           >
                             {smaak ? (
                               <>
-                                <span className="truncate">
-                                  {smaak.smaakcode} · {smaak.smaaknaam}
-                                </span>
+                                <span className="truncate">{smaak.smaaknaam}</span>
                                 <button
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     zetBewaarkastSmaak(kast.key, schap, null);
                                   }}
-                                  className="absolute right-1 top-1 hidden rounded-full bg-white/80 px-1 text-[10px] font-bold text-slate-700 shadow-sm group-hover:block"
+                                  className={`absolute right-1 top-1 hidden rounded-full px-1 text-[10px] font-bold shadow-sm group-hover:block ${
+                                    donkereSmaakKleur
+                                      ? "bg-black/25 text-white"
+                                      : "bg-white/80 text-slate-700"
+                                  }`}
                                   title="Schap leegmaken"
                                 >
                                   ×
