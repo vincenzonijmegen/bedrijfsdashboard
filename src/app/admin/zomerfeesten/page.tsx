@@ -926,6 +926,22 @@ export default function ZomerfeestenPage() {
             display: none !important;
           }
 
+          body.print-mode-vitrine header,
+          body.print-mode-vitrine nav,
+          body.print-mode-vitrine aside,
+          body.print-mode-vitrine footer,
+          body.print-mode-bewaarkast header,
+          body.print-mode-bewaarkast nav,
+          body.print-mode-bewaarkast aside,
+          body.print-mode-bewaarkast footer {
+            display: none !important;
+          }
+
+          body.print-mode-vitrine main > *:not(.print-only-vitrine-top),
+          body.print-mode-bewaarkast main > *:not(.print-only-bewaarkast-top) {
+            display: none !important;
+          }
+
           body.print-mode-vitrine .screen-content,
           body.print-mode-bewaarkast .screen-content {
             display: none !important;
@@ -934,6 +950,10 @@ export default function ZomerfeestenPage() {
           body.print-mode-vitrine .print-only-vitrine-top,
           body.print-mode-bewaarkast .print-only-bewaarkast-top {
             display: block !important;
+            position: relative !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
 
           body.print-mode-bestellijst * {
