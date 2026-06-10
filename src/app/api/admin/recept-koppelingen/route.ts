@@ -37,19 +37,58 @@ const geldigeStatus = (waarde: unknown): Status => {
   return "controle_nodig";
 };
 
+async function getKolommen(tabelNaam: string) {
+  const res = await db.query(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = $1`,
+    [tabelNaam]
+  );
+
+  return new Set(res.rows.map((row: { column_name: string }) => row.column_name));
+}
+
 export async function GET() {
   try {
+    const [keukenKolommen, kostprijsKolommen] = await Promise.all([
+      getKolommen("keuken_recepten"),
+      getKolommen("recepten"),
+    ]);
+
+    const keukenHeeftCategorie = keukenKolommen.has("categorie");
+    const keukenHeeftActief = keukenKolommen.has("actief");
+    const kostprijsHeeftCategorie = kostprijsKolommen.has("categorie");
+
+    const keukenCategorieSelect = keukenHeeftCategorie
+      ? "categorie"
+      : "NULL::text AS categorie";
+    const keukenWhere = keukenHeeftActief ? "WHERE actief = true" : "";
+    const keukenOrder = keukenHeeftCategorie
+      ? "categorie NULLS LAST, naam ASC"
+      : "naam ASC";
+
+    const kostprijsCategorieSelect = kostprijsHeeftCategorie
+      ? "COALESCE(categorie, '') AS categorie"
+      : "''::text AS categorie";
+    const kostprijsOrder = kostprijsHeeftCategorie
+      ? "categorie NULLS LAST, naam ASC"
+      : "naam ASC";
+    const koppelingKostprijsCategorieSelect = kostprijsHeeftCategorie
+      ? "COALESCE(r.categorie, '') AS kostprijs_categorie"
+      : "''::text AS kostprijs_categorie";
+
     const [keukenRes, kostprijsRes, koppelingenRes] = await Promise.all([
       db.query(
-        `SELECT id, naam, categorie
+        `SELECT id, naam, ${keukenCategorieSelect}
          FROM keuken_recepten
-         WHERE actief = true
-         ORDER BY categorie NULLS LAST, naam ASC`
+         ${keukenWhere}
+         ORDER BY ${keukenOrder}`
       ),
       db.query(
-        `SELECT id, naam, COALESCE(categorie, '') AS categorie
+        `SELECT id, naam, ${kostprijsCategorieSelect}
          FROM recepten
-         ORDER BY categorie NULLS LAST, naam ASC`
+         ORDER BY ${kostprijsOrder}`
       ),
       db.query(
         `SELECT
@@ -59,7 +98,7 @@ export async function GET() {
            rk.status,
            rk.opmerking,
            r.naam AS kostprijs_naam,
-           COALESCE(r.categorie, '') AS kostprijs_categorie
+           ${koppelingKostprijsCategorieSelect}
          FROM recept_koppelingen rk
          LEFT JOIN recepten r ON r.id = rk.kostprijs_recept_id
          ORDER BY rk.keuken_recept_id ASC`
@@ -110,13 +149,21 @@ export async function GET() {
         opmerking: bestaandeKoppeling?.opmerking ?? "",
         automatische_match_id: automatischeMatch?.id ?? null,
         automatische_match_naam: automatischeMatch?.naam ?? null,
-        berekenbaar: Boolean(kostprijsReceptId) && status !== "ontbreekt_kostprijs" && status !== "controle_nodig",
+        berekenbaar:
+          Boolean(kostprijsReceptId) &&
+          status !== "ontbreekt_kostprijs" &&
+          status !== "controle_nodig",
       };
     });
 
     const samenvatting = {
       totaal: rijen.length,
-      gekoppeld: rijen.filter((r: any) => r.kostprijs_recept_id && r.status !== "controle_nodig" && r.status !== "ontbreekt_kostprijs").length,
+      gekoppeld: rijen.filter(
+        (r: any) =>
+          r.kostprijs_recept_id &&
+          r.status !== "controle_nodig" &&
+          r.status !== "ontbreekt_kostprijs"
+      ).length,
       automatische_match: rijen.filter((r: any) => !r.id && r.automatische_match_id).length,
       ontbreekt: rijen.filter((r: any) => !r.kostprijs_recept_id && !r.automatische_match_id).length,
       controle_nodig: rijen.filter((r: any) => r.status === "controle_nodig").length,
