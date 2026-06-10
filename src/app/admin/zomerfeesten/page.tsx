@@ -23,6 +23,8 @@ type PlanningLijstItem = {
   omzet_per_dag: string | number;
   percentage_melk: string | number;
   percentage_vruchten: string | number;
+  opbrengst_per_bak_melk?: string | number | null;
+  opbrengst_per_bak_vrucht?: string | number | null;
   aantal_machines: number;
   kastruimte_bakken: number;
   status: "concept" | "actief" | "afgerond";
@@ -176,6 +178,8 @@ const legePlanning = () => ({
   omzet_per_dag: 7500,
   percentage_melk: 65,
   percentage_vruchten: 35,
+  opbrengst_per_bak_melk: 90,
+  opbrengst_per_bak_vrucht: 80,
   aantal_machines: 3,
   kastruimte_bakken: 50,
   status: "concept" as "concept" | "actief" | "afgerond",
@@ -363,6 +367,21 @@ export default function ZomerfeestenPage() {
   const weekOmzet = Number(planning.omzet_per_dag || 0) * aantalDagen;
   const bakkenPerDag = aantalDagen > 0 ? totalen.totaal / aantalDagen : 0;
 
+  const percentageMelk = Number(planning.percentage_melk || 0);
+  const percentageVruchten = Number(planning.percentage_vruchten || 0);
+  const opbrengstPerBakMelk = Number(planning.opbrengst_per_bak_melk || 0);
+  const opbrengstPerBakVrucht = Number(planning.opbrengst_per_bak_vrucht || 0);
+  const omzetMelk = weekOmzet * (percentageMelk / 100);
+  const omzetVrucht = weekOmzet * (percentageVruchten / 100);
+  const verwachteBakkenMelk =
+    opbrengstPerBakMelk > 0 ? Math.ceil(omzetMelk / opbrengstPerBakMelk) : 0;
+  const verwachteBakkenVrucht =
+    opbrengstPerBakVrucht > 0 ? Math.ceil(omzetVrucht / opbrengstPerBakVrucht) : 0;
+  const verwachteBakkenTotaal = verwachteBakkenMelk + verwachteBakkenVrucht;
+  const verschilMelk = totalen.melk - verwachteBakkenMelk;
+  const verschilVrucht = totalen.vrucht - verwachteBakkenVrucht;
+  const verschilTotaal = totalen.totaal - verwachteBakkenTotaal;
+
   const laadPlanning = async (id: number) => {
     setMelding(null);
     const detail: DetailResponse = await fetcher(
@@ -378,6 +397,8 @@ export default function ZomerfeestenPage() {
       omzet_per_dag: Number(detail.planning.omzet_per_dag || 0),
       percentage_melk: Number(detail.planning.percentage_melk || 65),
       percentage_vruchten: Number(detail.planning.percentage_vruchten || 35),
+      opbrengst_per_bak_melk: Number(detail.planning.opbrengst_per_bak_melk || 90),
+      opbrengst_per_bak_vrucht: Number(detail.planning.opbrengst_per_bak_vrucht || 80),
       aantal_machines: Number(detail.planning.aantal_machines || 3),
       kastruimte_bakken: Number(detail.planning.kastruimte_bakken || 50),
       status: detail.planning.status || "concept",
@@ -875,6 +896,42 @@ export default function ZomerfeestenPage() {
                 </label>
 
                 <label className="space-y-1 text-sm">
+                  <span className="font-medium text-slate-700">Opbrengst/bak melk</span>
+                  <div className="relative">
+                    <Euro className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <input
+                      type="number"
+                      className="w-full min-w-0 rounded-xl border border-slate-200 py-2 pl-9 pr-3"
+                      value={planning.opbrengst_per_bak_melk}
+                      onChange={(e) =>
+                        setPlanning((p) => ({
+                          ...p,
+                          opbrengst_per_bak_melk: Number(e.target.value),
+                        }))
+                      }
+                    />
+                  </div>
+                </label>
+
+                <label className="space-y-1 text-sm">
+                  <span className="font-medium text-slate-700">Opbrengst/bak vrucht</span>
+                  <div className="relative">
+                    <Euro className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <input
+                      type="number"
+                      className="w-full min-w-0 rounded-xl border border-slate-200 py-2 pl-9 pr-3"
+                      value={planning.opbrengst_per_bak_vrucht}
+                      onChange={(e) =>
+                        setPlanning((p) => ({
+                          ...p,
+                          opbrengst_per_bak_vrucht: Number(e.target.value),
+                        }))
+                      }
+                    />
+                  </div>
+                </label>
+
+                <label className="space-y-1 text-sm">
                   <span className="font-medium text-slate-700">Status</span>
                   <select
                     className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
@@ -929,6 +986,101 @@ export default function ZomerfeestenPage() {
               </div>
             </section>
           </div>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
+            <div className="mb-4 flex items-center gap-2">
+              <Euro className="h-5 w-5 text-blue-600" />
+              <h2 className="text-lg font-bold text-slate-900">
+                Omzetprognose naar bakken
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Weekomzet</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">
+                  {formatEuro(weekOmzet)}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {aantalDagen} dagen × {formatEuro(Number(planning.omzet_per_dag || 0))}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                <p className="text-sm font-semibold text-blue-900">Melkijs</p>
+                <p className="mt-1 text-sm text-blue-800">
+                  {percentageMelk}% van de omzet = {formatEuro(omzetMelk)}
+                </p>
+                <p className="mt-2 text-2xl font-bold text-blue-950">
+                  {verwachteBakkenMelk} bakken
+                </p>
+                <p className="mt-1 text-xs text-blue-700">
+                  gerekend met {formatEuro(opbrengstPerBakMelk)} per bak
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                <p className="text-sm font-semibold text-emerald-900">Vruchtenijs</p>
+                <p className="mt-1 text-sm text-emerald-800">
+                  {percentageVruchten}% van de omzet = {formatEuro(omzetVrucht)}
+                </p>
+                <p className="mt-2 text-2xl font-bold text-emerald-950">
+                  {verwachteBakkenVrucht} bakken
+                </p>
+                <p className="mt-1 text-xs text-emerald-700">
+                  gerekend met {formatEuro(opbrengstPerBakVrucht)} per bak
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Onderdeel</th>
+                    <th className="px-4 py-3 text-right">Prognose</th>
+                    <th className="px-4 py-3 text-right">Gepland</th>
+                    <th className="px-4 py-3 text-right">Verschil</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {[
+                    { label: "Melk", verwacht: verwachteBakkenMelk, gepland: totalen.melk, verschil: verschilMelk },
+                    { label: "Vrucht", verwacht: verwachteBakkenVrucht, gepland: totalen.vrucht, verschil: verschilVrucht },
+                    { label: "Totaal", verwacht: verwachteBakkenTotaal, gepland: totalen.totaal, verschil: verschilTotaal },
+                  ].map((rij) => (
+                    <tr key={rij.label}>
+                      <td className="px-4 py-3 font-semibold text-slate-900">
+                        {rij.label}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">
+                        {rij.verwacht}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">
+                        {rij.gepland}
+                      </td>
+                      <td
+                        className={`px-4 py-3 text-right font-semibold tabular-nums ${
+                          rij.verschil === 0
+                            ? "text-slate-500"
+                            : rij.verschil > 0
+                              ? "text-emerald-700"
+                              : "text-amber-700"
+                        }`}
+                      >
+                        {rij.verschil > 0 ? "+" : ""}
+                        {rij.verschil}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <p className="mt-3 text-xs text-slate-500">
+              Dit is een planningscontrole. De app past aantallen per smaak nog niet automatisch aan.
+            </p>
+          </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
             <div className="mb-4 flex items-center gap-2">

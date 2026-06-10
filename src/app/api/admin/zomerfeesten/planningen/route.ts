@@ -108,6 +108,8 @@ export async function POST(req: NextRequest) {
     const omzetPerDag = toNumber(body.omzet_per_dag);
     const percentageMelk = toNumber(body.percentage_melk, 65);
     const percentageVruchten = toNumber(body.percentage_vruchten, 35);
+    const opbrengstPerBakMelk = toNumber(body.opbrengst_per_bak_melk, 90);
+    const opbrengstPerBakVrucht = toNumber(body.opbrengst_per_bak_vrucht, 80);
     const aantalMachines = toNumber(body.aantal_machines, 3);
     const kastruimteBakken = toNumber(body.kastruimte_bakken, 50);
     const status = ["concept", "actief", "afgerond"].includes(body.status)
@@ -135,11 +137,13 @@ export async function POST(req: NextRequest) {
              omzet_per_dag = $5,
              percentage_melk = $6,
              percentage_vruchten = $7,
-             aantal_machines = $8,
-             kastruimte_bakken = $9,
-             status = $10,
+             opbrengst_per_bak_melk = $8,
+             opbrengst_per_bak_vrucht = $9,
+             aantal_machines = $10,
+             kastruimte_bakken = $11,
+             status = $12,
              bijgewerkt_op = now()
-         WHERE id = $11`,
+         WHERE id = $13`,
         [
           jaar,
           naam,
@@ -148,6 +152,8 @@ export async function POST(req: NextRequest) {
           omzetPerDag,
           percentageMelk,
           percentageVruchten,
+          opbrengstPerBakMelk,
+          opbrengstPerBakVrucht,
           aantalMachines,
           kastruimteBakken,
           status,
@@ -157,8 +163,8 @@ export async function POST(req: NextRequest) {
     } else {
       const insert = await client.query(
         `INSERT INTO zomerfeesten_planningen
-         (jaar, naam, start_datum, eind_datum, omzet_per_dag, percentage_melk, percentage_vruchten, aantal_machines, kastruimte_bakken, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         (jaar, naam, start_datum, eind_datum, omzet_per_dag, percentage_melk, percentage_vruchten, opbrengst_per_bak_melk, opbrengst_per_bak_vrucht, aantal_machines, kastruimte_bakken, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          RETURNING id`,
         [
           jaar,
@@ -168,6 +174,8 @@ export async function POST(req: NextRequest) {
           omzetPerDag,
           percentageMelk,
           percentageVruchten,
+          opbrengstPerBakMelk,
+          opbrengstPerBakVrucht,
           aantalMachines,
           kastruimteBakken,
           status,
