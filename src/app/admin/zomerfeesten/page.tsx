@@ -503,6 +503,32 @@ export default function ZomerfeestenPage() {
 
   return (
     <main className="min-h-screen w-full bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
+      <style jsx global>{`
+        @media print {
+          body * {
+            visibility: hidden !important;
+          }
+
+          .print-bestellijst,
+          .print-bestellijst * {
+            visibility: visible !important;
+          }
+
+          .print-bestellijst {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            border: 0 !important;
+            box-shadow: none !important;
+          }
+
+          @page {
+            margin: 12mm;
+          }
+        }
+      `}</style>
       <div className="mx-auto w-full max-w-[1180px] space-y-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -1360,7 +1386,7 @@ export default function ZomerfeestenPage() {
                 )}
 
                 {(ingredientenControle.besteladvies ?? []).length > 0 && (
-                  <div className="rounded-2xl border border-emerald-200 overflow-hidden print:border-slate-300">
+                  <div className="print-bestellijst rounded-2xl border border-emerald-200 overflow-hidden print:border-slate-300">
                     <div className="border-b border-emerald-100 bg-emerald-50 px-4 py-3 print:bg-white print:border-slate-300">
                       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
                         <div>
