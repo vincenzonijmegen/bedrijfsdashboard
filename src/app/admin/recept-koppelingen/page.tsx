@@ -17,7 +17,8 @@ type Status =
   | "handmatig"
   | "gekoppeld"
   | "ontbreekt_kostprijs"
-  | "controle_nodig";
+  | "controle_nodig"
+  | "overslaan";
 
 type KostprijsRecept = {
   id: number;
@@ -49,6 +50,7 @@ type ApiResponse = {
     automatische_match: number;
     ontbreekt: number;
     controle_nodig: number;
+    overgeslagen?: number;
   };
 };
 
@@ -65,6 +67,7 @@ const statusLabel: Record<Status, string> = {
   gekoppeld: "Gekoppeld",
   ontbreekt_kostprijs: "Mist kostprijsrecept",
   controle_nodig: "Controle nodig",
+  overslaan: "Overslaan",
 };
 
 const statusClass: Record<Status, string> = {
@@ -73,6 +76,7 @@ const statusClass: Record<Status, string> = {
   gekoppeld: "bg-emerald-50 text-emerald-700 border-emerald-200",
   ontbreekt_kostprijs: "bg-amber-50 text-amber-800 border-amber-200",
   controle_nodig: "bg-rose-50 text-rose-700 border-rose-200",
+  overslaan: "bg-slate-100 text-slate-700 border-slate-200",
 };
 
 const normaliseer = (waarde: string) => waarde.trim().toLowerCase();
@@ -103,7 +107,9 @@ export default function ReceptKoppelingenPage() {
       const matchFilter =
         filter === "alles" ||
         (filter === "open" &&
-          (!rij.kostprijs_recept_id || rij.status === "naam_match" || rij.status === "controle_nodig")) ||
+          rij.status !== "overslaan" &&
+          rij.status !== "ontbreekt_kostprijs" &&
+          ((!rij.id && !rij.kostprijs_recept_id) || rij.status === "naam_match" || rij.status === "controle_nodig")) ||
         rij.status === filter;
 
       return matchZoekterm && matchFilter;
@@ -194,7 +200,7 @@ export default function ReceptKoppelingenPage() {
               <p className="text-sm font-medium text-blue-700">Recepturen</p>
               <h1 className="text-2xl font-bold text-slate-900">Receptkoppelingen</h1>
               <p className="mt-1 max-w-3xl text-sm text-slate-600">
-                Koppel keukenrecepten aan kostprijsrecepten. De keukenrecepten blijven leidend voor planning en keukenweergave; de kostprijsrecepten zijn leidend voor ingrediënten, leveranciers, bestellijst en kosten.
+                Koppel keukenrecepten aan kostprijsrecepten. Gebruik Overslaan voor keukenrecepten die nooit een kostprijskoppeling nodig hebben, zoals noten branden. Gebruik Later maken als er nog een kostprijsrecept moet worden toegevoegd.
               </p>
             </div>
 
@@ -214,7 +220,7 @@ export default function ReceptKoppelingenPage() {
           )}
         </section>
 
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-5">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-6">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Totaal</p>
             <p className="mt-2 text-2xl font-bold text-slate-900">{data?.samenvatting.totaal ?? 0}</p>
@@ -235,6 +241,10 @@ export default function ReceptKoppelingenPage() {
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Controle nodig</p>
             <p className="mt-2 text-2xl font-bold text-rose-700">{data?.samenvatting.controle_nodig ?? 0}</p>
           </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Overgeslagen</p>
+            <p className="mt-2 text-2xl font-bold text-slate-700">{data?.samenvatting.overgeslagen ?? 0}</p>
+          </div>
         </section>
 
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -254,13 +264,14 @@ export default function ReceptKoppelingenPage() {
               onChange={(e) => setFilter(e.target.value as typeof filter)}
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
             >
-              <option value="open">Open / te controleren</option>
+              <option value="open">Open / actie nodig</option>
               <option value="alles">Alles</option>
               <option value="naam_match">Automatische match</option>
               <option value="handmatig">Handmatig gekoppeld</option>
               <option value="gekoppeld">Gekoppeld</option>
               <option value="ontbreekt_kostprijs">Mist kostprijsrecept</option>
               <option value="controle_nodig">Controle nodig</option>
+              <option value="overslaan">Overslaan</option>
             </select>
           </div>
         </section>
@@ -349,14 +360,33 @@ export default function ReceptKoppelingenPage() {
                         <Save className="h-4 w-4" /> Goedkeuren
                       </button>
                     )}
-                    {!rij.kostprijs_recept_id && !rij.automatische_match_id && (
+                    {rij.status !== "overslaan" && !rij.kostprijs_recept_id && (
+                      <button
+                        type="button"
+                        disabled={isBezig}
+                        onClick={() =>
+                          slaKoppelingOp(
+                            rij,
+                            null,
+                            "overslaan",
+                            "Bewust overgeslagen; geen kostprijs- of bestellijstkoppeling nodig."
+                          )
+                        }
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-60"
+                        title="Gebruik dit voor keukenrecepten die nooit een kostprijsrecept nodig hebben, zoals noten branden."
+                      >
+                        Overslaan
+                      </button>
+                    )}
+                    {!rij.kostprijs_recept_id && !rij.automatische_match_id && rij.status !== "ontbreekt_kostprijs" && rij.status !== "overslaan" && (
                       <button
                         type="button"
                         disabled={isBezig}
                         onClick={() => slaKoppelingOp(rij, null, "ontbreekt_kostprijs", "Geen kostprijsrecept beschikbaar.")}
                         className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 disabled:opacity-60"
+                        title="Gebruik dit als er later nog een kostprijsrecept moet komen."
                       >
-                        Markeer ontbreekt
+                        Later maken
                       </button>
                     )}
                     {rij.id && (

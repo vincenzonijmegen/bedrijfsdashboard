@@ -9,7 +9,8 @@ type Status =
   | "handmatig"
   | "gekoppeld"
   | "ontbreekt_kostprijs"
-  | "controle_nodig";
+  | "controle_nodig"
+  | "overslaan";
 
 const responseInit = {
   headers: {
@@ -30,7 +31,8 @@ const geldigeStatus = (waarde: unknown): Status => {
     status === "handmatig" ||
     status === "gekoppeld" ||
     status === "ontbreekt_kostprijs" ||
-    status === "controle_nodig"
+    status === "controle_nodig" ||
+    status === "overslaan"
   ) {
     return status;
   }
@@ -152,7 +154,8 @@ export async function GET() {
         berekenbaar:
           Boolean(kostprijsReceptId) &&
           status !== "ontbreekt_kostprijs" &&
-          status !== "controle_nodig",
+          status !== "controle_nodig" &&
+          status !== "overslaan",
       };
     });
 
@@ -162,11 +165,13 @@ export async function GET() {
         (r: any) =>
           r.kostprijs_recept_id &&
           r.status !== "controle_nodig" &&
-          r.status !== "ontbreekt_kostprijs"
+          r.status !== "ontbreekt_kostprijs" &&
+          r.status !== "overslaan"
       ).length,
       automatische_match: rijen.filter((r: any) => !r.id && r.automatische_match_id).length,
       ontbreekt: rijen.filter((r: any) => !r.kostprijs_recept_id && !r.automatische_match_id).length,
       controle_nodig: rijen.filter((r: any) => r.status === "controle_nodig").length,
+      overgeslagen: rijen.filter((r: any) => r.status === "overslaan").length,
     };
 
     return NextResponse.json(
