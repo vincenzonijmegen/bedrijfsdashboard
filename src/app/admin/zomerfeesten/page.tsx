@@ -384,6 +384,9 @@ export default function ZomerfeestenPage() {
   const [dragSmaakcode, setDragSmaakcode] = useState<string | null>(null);
   const [vitrineOpslaanBezig, setVitrineOpslaanBezig] = useState(false);
   const [bewaarkastOpslaanBezig, setBewaarkastOpslaanBezig] = useState(false);
+  const [printMode, setPrintMode] = useState<
+    null | "bestellijst" | "vitrine" | "bewaarkast"
+  >(null);
 
   useEffect(() => {
     const volgende: Record<string, string | null> = {};
@@ -872,13 +875,19 @@ export default function ZomerfeestenPage() {
             visibility: hidden !important;
           }
 
-          .print-only-bestellijst,
-          .print-only-bestellijst * {
+          body.print-mode-bestellijst .print-only-bestellijst,
+          body.print-mode-bestellijst .print-only-bestellijst *,
+          body.print-mode-vitrine .print-only-vitrine,
+          body.print-mode-vitrine .print-only-vitrine *,
+          body.print-mode-bewaarkast .print-only-bewaarkast,
+          body.print-mode-bewaarkast .print-only-bewaarkast * {
             visibility: visible !important;
           }
 
-          .print-only-bestellijst {
-            display: block !important;
+          .print-only-bestellijst,
+          .print-only-vitrine,
+          .print-only-bewaarkast {
+            display: none !important;
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
@@ -887,17 +896,28 @@ export default function ZomerfeestenPage() {
             padding: 0 !important;
             color: #0f172a !important;
             background: white !important;
+          }
+
+          body.print-mode-bestellijst .print-only-bestellijst,
+          body.print-mode-vitrine .print-only-vitrine,
+          body.print-mode-bewaarkast .print-only-bewaarkast {
+            display: block !important;
+          }
+
+          .print-sheet {
+            color: #0f172a !important;
+            background: white !important;
             font-size: 9.5pt !important;
             line-height: 1.25 !important;
           }
 
-          .print-only-bestellijst h1 {
+          .print-sheet h1 {
             margin: 0 0 3mm 0 !important;
             font-size: 16pt !important;
             line-height: 1.15 !important;
           }
 
-          .print-only-bestellijst .print-meta {
+          .print-meta {
             margin-bottom: 5mm !important;
             display: flex !important;
             justify-content: space-between !important;
@@ -906,7 +926,7 @@ export default function ZomerfeestenPage() {
             font-size: 9pt !important;
           }
 
-          .print-only-bestellijst .print-total {
+          .print-total {
             margin: 0 0 6mm 0 !important;
             padding: 3mm !important;
             border: 1px solid #cbd5e1 !important;
@@ -986,8 +1006,114 @@ export default function ZomerfeestenPage() {
             font-weight: 800 !important;
           }
 
+          .print-layout-grid {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 5mm !important;
+            align-items: start !important;
+          }
+
+          .print-card {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 4mm !important;
+            overflow: hidden !important;
+            background: white !important;
+          }
+
+          .print-card-header {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 3mm 4mm !important;
+            background: #e0f2fe !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+          }
+
+          .print-card-header h2 {
+            margin: 0 !important;
+            font-size: 12pt !important;
+            font-weight: 800 !important;
+          }
+
+          .print-pill {
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 999px !important;
+            padding: 1mm 2mm !important;
+            font-size: 8pt !important;
+            font-weight: 700 !important;
+            color: #475569 !important;
+            background: white !important;
+          }
+
+          .print-vitrine-grid {
+            display: grid !important;
+            grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+            gap: 2.2mm !important;
+            padding: 4mm !important;
+          }
+
+          .print-vak {
+            min-height: 32mm !important;
+            border: 1px solid rgba(15, 23, 42, 0.15) !important;
+            border-radius: 4mm !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            position: relative !important;
+            overflow: hidden !important;
+            font-weight: 800 !important;
+          }
+
+          .print-vak-code {
+            transform: rotate(-90deg) !important;
+            white-space: nowrap !important;
+            font-size: 11pt !important;
+            letter-spacing: 0.02em !important;
+          }
+
+          .print-vak-pos {
+            position: absolute !important;
+            right: 2mm !important;
+            bottom: 1.8mm !important;
+            min-width: 5.5mm !important;
+            height: 5.5mm !important;
+            border-radius: 999px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 7.5pt !important;
+            font-weight: 800 !important;
+          }
+
+          .print-bewaarkast-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+          }
+
+          .print-bewaarkast-table th,
+          .print-bewaarkast-table td {
+            border-bottom: 1px solid #e2e8f0 !important;
+            padding: 2.4mm 2.6mm !important;
+            font-size: 9pt !important;
+          }
+
+          .print-bewaarkast-table th {
+            background: #f8fafc !important;
+            color: #334155 !important;
+            text-align: left !important;
+            font-size: 8pt !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.04em !important;
+          }
+
+          .print-bewaarkast-smaak {
+            font-weight: 700 !important;
+          }
+
           @page {
-            size: A4 portrait;
+            size: A4 landscape;
             margin: 10mm;
           }
         }
@@ -1905,15 +2031,26 @@ export default function ZomerfeestenPage() {
                   van 7 bakken; samen maximaal {VITRINE_TOTAAL_MAX} bakken.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={opslaanVitrine}
-                disabled={!planning.id || vitrineOpslaanBezig}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
-              >
-                <Save className="h-4 w-4" />
-                {vitrineOpslaanBezig ? "Opslaan..." : "Vitrine opslaan"}
-              </button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => startPrint("vitrine")}
+                  disabled={!planning.id}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-60"
+                >
+                  <Printer className="h-4 w-4" />
+                  Print vitrines
+                </button>
+                <button
+                  type="button"
+                  onClick={opslaanVitrine}
+                  disabled={!planning.id || vitrineOpslaanBezig}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
+                >
+                  <Save className="h-4 w-4" />
+                  {vitrineOpslaanBezig ? "Opslaan..." : "Vitrine opslaan"}
+                </button>
+              </div>
             </div>
 
             <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -2099,17 +2236,28 @@ export default function ZomerfeestenPage() {
                   Zomerfeestenweek.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={opslaanBewaarkast}
-                disabled={!planning.id || bewaarkastOpslaanBezig}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
-              >
-                <Save className="h-4 w-4" />
-                {bewaarkastOpslaanBezig
-                  ? "Opslaan..."
-                  : "Bewaar­kasten opslaan"}
-              </button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => startPrint("bewaarkast")}
+                  disabled={!planning.id}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-60"
+                >
+                  <Printer className="h-4 w-4" />
+                  Print bewaarkasten
+                </button>
+                <button
+                  type="button"
+                  onClick={opslaanBewaarkast}
+                  disabled={!planning.id || bewaarkastOpslaanBezig}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
+                >
+                  <Save className="h-4 w-4" />
+                  {bewaarkastOpslaanBezig
+                    ? "Opslaan..."
+                    : "Bewaar­kasten opslaan"}
+                </button>
+              </div>
             </div>
 
             <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -2520,7 +2668,7 @@ export default function ZomerfeestenPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => window.print()}
+                            onClick={() => startPrint("bestellijst")}
                             className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 shadow-sm hover:bg-emerald-50 print:hidden"
                           >
                             <Printer className="h-4 w-4" /> Print
@@ -2762,6 +2910,118 @@ export default function ZomerfeestenPage() {
                           ingredientenControle.meta.totale_kosten ?? 0,
                         )}
                       </span>
+                    </div>
+                  </div>
+
+                  <div className="print-only-vitrine hidden">
+                    <div className="print-sheet">
+                      <h1>Vitrine-indeling Zomerfeesten {planning.jaar}</h1>
+                      <div className="print-meta">
+                        <span>{planning.naam || "Zomerfeesten"}</span>
+                        <span>Periode: {planning.start_datum} t/m {planning.eind_datum}</span>
+                      </div>
+                      <div className="print-layout-grid">
+                        {VITRINES.map((vitrine) => (
+                          <section key={`print-vitrine-${vitrine.key}`} className="print-card">
+                            <div className="print-card-header">
+                              <h2>{vitrine.label}</h2>
+                              <span className="print-pill">
+                                {Array.from({ length: VITRINE_POSITIES_PER_VITRINE }).filter((_, index) => Boolean(vitrineIndeling[`${vitrine.key}-${index + 1}`])).length} / {VITRINE_POSITIES_PER_VITRINE}
+                              </span>
+                            </div>
+                            <div className="print-vitrine-grid">
+                              {Array.from({ length: VITRINE_POSITIES_PER_VITRINE }, (_, index) => {
+                                const positie = index + 1;
+                                const smaakcode = vitrineIndeling[`${vitrine.key}-${positie}`] || null;
+                                const smaak = smaakcode ? smaakPerCode.get(smaakcode) : null;
+                                const donker = isDonkereKleur(smaak?.kleur || null);
+                                return (
+                                  <div
+                                    key={`print-vak-${vitrine.key}-${positie}`}
+                                    className="print-vak"
+                                    style={
+                                      smaak
+                                        ? { backgroundColor: smaak.kleur || "#bfdbfe", color: donker ? "#ffffff" : "#0f172a" }
+                                        : { backgroundColor: "#f8fafc", color: "#94a3b8" }
+                                    }
+                                  >
+                                    <span className="print-vak-code">{smaak ? smaak.smaakcode || smaak.smaaknaam : "—"}</span>
+                                    <span
+                                      className="print-vak-pos"
+                                      style={
+                                        smaak
+                                          ? { backgroundColor: donker ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.72)", color: donker ? "#ffffff" : "#334155" }
+                                          : { backgroundColor: "#e2e8f0", color: "#64748b" }
+                                      }
+                                    >
+                                      {positie}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </section>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="print-only-bewaarkast hidden">
+                    <div className="print-sheet">
+                      <h1>Bewaarkastindeling Zomerfeesten {planning.jaar}</h1>
+                      <div className="print-meta">
+                        <span>{planning.naam || "Zomerfeesten"}</span>
+                        <span>Periode: {planning.start_datum} t/m {planning.eind_datum}</span>
+                      </div>
+                      <div className="print-layout-grid">
+                        {BEWAARKASTEN.map((kast) => (
+                          <section key={`print-bewaarkast-${kast.key}`} className="print-card">
+                            <div className="print-card-header">
+                              <h2>{kast.label}</h2>
+                              <span className="print-pill">
+                                {Array.from({ length: BEWAARKAST_SCHAPPEN }).reduce(
+                                  (sum, _, index) =>
+                                    sum + Number(bewaarkastIndeling[`${kast.key}-${index + 1}`]?.aantal_bakken || 0),
+                                  0,
+                                )} bakken
+                              </span>
+                            </div>
+                            <table className="print-bewaarkast-table">
+                              <thead>
+                                <tr>
+                                  <th>Smaak</th>
+                                  <th>Schap</th>
+                                  <th>Aantal</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {Array.from({ length: BEWAARKAST_SCHAPPEN }, (_, index) => {
+                                  const schap = index + 1;
+                                  const entry = bewaarkastIndeling[`${kast.key}-${schap}`];
+                                  const smaak = entry?.smaakcode ? smaakPerCode.get(entry.smaakcode) : null;
+                                  const donker = isDonkereKleur(smaak?.kleur || null);
+                                  return (
+                                    <tr key={`print-bewaarkast-row-${kast.key}-${schap}`}>
+                                      <td
+                                        className="print-bewaarkast-smaak"
+                                        style={
+                                          smaak
+                                            ? { backgroundColor: smaak.kleur || "#f8fafc", color: donker ? "#ffffff" : "#0f172a" }
+                                            : undefined
+                                        }
+                                      >
+                                        {smaak ? smaak.smaaknaam : "—"}
+                                      </td>
+                                      <td>{schap}</td>
+                                      <td>{Number(entry?.aantal_bakken || 0)}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </section>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
