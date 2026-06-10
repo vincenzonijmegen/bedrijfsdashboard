@@ -1133,202 +1133,217 @@ export default function ZomerfeestenPage() {
                 </h2>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">Jaar</span>
-                  <input
-                    type="number"
-                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
-                    value={planning.jaar}
-                    onChange={(e) =>
-                      setPlanning((p) => ({
-                        ...p,
-                        jaar: Number(e.target.value),
-                      }))
-                    }
-                  />
-                </label>
-
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">Naam</span>
-                  <input
-                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
-                    value={planning.naam}
-                    onChange={(e) =>
-                      setPlanning((p) => ({ ...p, naam: e.target.value }))
-                    }
-                  />
-                </label>
-
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">Startdatum</span>
-                  <input
-                    type="date"
-                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
-                    value={planning.start_datum}
-                    onChange={(e) =>
-                      setPlanning((p) => ({
-                        ...p,
-                        start_datum: e.target.value,
-                      }))
-                    }
-                  />
-                </label>
-
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">Einddatum</span>
-                  <input
-                    type="date"
-                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
-                    value={planning.eind_datum}
-                    onChange={(e) =>
-                      setPlanning((p) => ({ ...p, eind_datum: e.target.value }))
-                    }
-                  />
-                </label>
-
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">
-                    Omzet per dag
-                  </span>
-                  <div className="relative">
-                    <Euro className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                    <input
-                      type="number"
-                      className="w-full rounded-xl border border-slate-200 py-2 pl-9 pr-3"
-                      value={planning.omzet_per_dag}
-                      onChange={(e) =>
-                        setPlanning((p) => ({
-                          ...p,
-                          omzet_per_dag: Number(e.target.value),
-                        }))
-                      }
-                    />
+              <div className="space-y-5">
+                <div>
+                  <div className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+                    Basis
                   </div>
-                </label>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-slate-700">Jaar</span>
+                      <input
+                        type="number"
+                        className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
+                        value={planning.jaar}
+                        onChange={(e) =>
+                          setPlanning((p) => ({
+                            ...p,
+                            jaar: Number(e.target.value),
+                          }))
+                        }
+                      />
+                    </label>
 
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">% melk</span>
-                  <input
-                    type="number"
-                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
-                    value={planning.percentage_melk}
-                    onChange={(e) =>
-                      setPlanning((p) => ({
-                        ...p,
-                        percentage_melk: Number(e.target.value),
-                      }))
-                    }
-                  />
-                </label>
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-slate-700">Naam</span>
+                      <input
+                        className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
+                        value={planning.naam}
+                        onChange={(e) =>
+                          setPlanning((p) => ({ ...p, naam: e.target.value }))
+                        }
+                      />
+                    </label>
 
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">% vruchten</span>
-                  <input
-                    type="number"
-                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
-                    value={planning.percentage_vruchten}
-                    onChange={(e) =>
-                      setPlanning((p) => ({
-                        ...p,
-                        percentage_vruchten: Number(e.target.value),
-                      }))
-                    }
-                  />
-                </label>
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-slate-700">Startdatum</span>
+                      <input
+                        type="date"
+                        className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
+                        value={planning.start_datum}
+                        onChange={(e) =>
+                          setPlanning((p) => ({
+                            ...p,
+                            start_datum: e.target.value,
+                          }))
+                        }
+                      />
+                    </label>
 
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">
-                    Opbrengst/bak melk
-                  </span>
-                  <div className="relative">
-                    <Euro className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                    <input
-                      type="number"
-                      className="w-full min-w-0 rounded-xl border border-slate-200 py-2 pl-9 pr-3"
-                      value={planning.opbrengst_per_bak_melk}
-                      onChange={(e) =>
-                        setPlanning((p) => ({
-                          ...p,
-                          opbrengst_per_bak_melk: Number(e.target.value),
-                        }))
-                      }
-                    />
+                    <label className="space-y-1 text-sm">
+                      <span className="font-medium text-slate-700">Einddatum</span>
+                      <input
+                        type="date"
+                        className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
+                        value={planning.eind_datum}
+                        onChange={(e) =>
+                          setPlanning((p) => ({ ...p, eind_datum: e.target.value }))
+                        }
+                      />
+                    </label>
                   </div>
-                </label>
+                </div>
 
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">
-                    Opbrengst/bak vrucht
-                  </span>
-                  <div className="relative">
-                    <Euro className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-                    <input
-                      type="number"
-                      className="w-full min-w-0 rounded-xl border border-slate-200 py-2 pl-9 pr-3"
-                      value={planning.opbrengst_per_bak_vrucht}
-                      onChange={(e) =>
-                        setPlanning((p) => ({
-                          ...p,
-                          opbrengst_per_bak_vrucht: Number(e.target.value),
-                        }))
-                      }
-                    />
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+                      Omzet & verdeling
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <label className="space-y-1 text-sm sm:col-span-2">
+                        <span className="font-medium text-slate-700">Omzet per dag</span>
+                        <div className="relative">
+                          <Euro className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                          <input
+                            type="number"
+                            className="w-full rounded-xl border border-slate-200 py-2 pl-9 pr-3"
+                            value={planning.omzet_per_dag}
+                            onChange={(e) =>
+                              setPlanning((p) => ({
+                                ...p,
+                                omzet_per_dag: Number(e.target.value),
+                              }))
+                            }
+                          />
+                        </div>
+                      </label>
+
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">% melk</span>
+                        <input
+                          type="number"
+                          className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
+                          value={planning.percentage_melk}
+                          onChange={(e) =>
+                            setPlanning((p) => ({
+                              ...p,
+                              percentage_melk: Number(e.target.value),
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">% vruchten</span>
+                        <input
+                          type="number"
+                          className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
+                          value={planning.percentage_vruchten}
+                          onChange={(e) =>
+                            setPlanning((p) => ({
+                              ...p,
+                              percentage_vruchten: Number(e.target.value),
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label className="space-y-1 text-sm sm:col-span-2">
+                        <span className="font-medium text-slate-700">Status</span>
+                        <select
+                          className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
+                          value={planning.status}
+                          onChange={(e) =>
+                            setPlanning((p) => ({
+                              ...p,
+                              status: e.target.value as
+                                | "concept"
+                                | "actief"
+                                | "afgerond",
+                            }))
+                          }
+                        >
+                          <option value="concept">Concept</option>
+                          <option value="actief">Actief</option>
+                          <option value="afgerond">Afgerond</option>
+                        </select>
+                      </label>
+                    </div>
                   </div>
-                </label>
 
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">Status</span>
-                  <select
-                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
-                    value={planning.status}
-                    onChange={(e) =>
-                      setPlanning((p) => ({
-                        ...p,
-                        status: e.target.value as
-                          | "concept"
-                          | "actief"
-                          | "afgerond",
-                      }))
-                    }
-                  >
-                    <option value="concept">Concept</option>
-                    <option value="actief">Actief</option>
-                    <option value="afgerond">Afgerond</option>
-                  </select>
-                </label>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">
+                      Bakken & capaciteit
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">Opbrengst/bak melk</span>
+                        <div className="relative">
+                          <Euro className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                          <input
+                            type="number"
+                            className="w-full min-w-0 rounded-xl border border-slate-200 py-2 pl-9 pr-3"
+                            value={planning.opbrengst_per_bak_melk}
+                            onChange={(e) =>
+                              setPlanning((p) => ({
+                                ...p,
+                                opbrengst_per_bak_melk: Number(e.target.value),
+                              }))
+                            }
+                          />
+                        </div>
+                      </label>
 
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">Machines</span>
-                  <input
-                    type="number"
-                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
-                    value={planning.aantal_machines}
-                    onChange={(e) =>
-                      setPlanning((p) => ({
-                        ...p,
-                        aantal_machines: Number(e.target.value),
-                      }))
-                    }
-                  />
-                </label>
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">Opbrengst/bak vrucht</span>
+                        <div className="relative">
+                          <Euro className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                          <input
+                            type="number"
+                            className="w-full min-w-0 rounded-xl border border-slate-200 py-2 pl-9 pr-3"
+                            value={planning.opbrengst_per_bak_vrucht}
+                            onChange={(e) =>
+                              setPlanning((p) => ({
+                                ...p,
+                                opbrengst_per_bak_vrucht: Number(e.target.value),
+                              }))
+                            }
+                          />
+                        </div>
+                      </label>
 
-                <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">
-                    Kastruimte bakken
-                  </span>
-                  <input
-                    type="number"
-                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
-                    value={planning.kastruimte_bakken}
-                    onChange={(e) =>
-                      setPlanning((p) => ({
-                        ...p,
-                        kastruimte_bakken: Number(e.target.value),
-                      }))
-                    }
-                  />
-                </label>
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">Machines</span>
+                        <input
+                          type="number"
+                          className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
+                          value={planning.aantal_machines}
+                          onChange={(e) =>
+                            setPlanning((p) => ({
+                              ...p,
+                              aantal_machines: Number(e.target.value),
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label className="space-y-1 text-sm">
+                        <span className="font-medium text-slate-700">Kastruimte bakken</span>
+                        <input
+                          type="number"
+                          className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
+                          value={planning.kastruimte_bakken}
+                          onChange={(e) =>
+                            setPlanning((p) => ({
+                              ...p,
+                              kastruimte_bakken: Number(e.target.value),
+                            }))
+                          }
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
               </div>
             </section>
           </div>
