@@ -157,7 +157,6 @@ export default function ZomerfeestenPage() {
 
   const weekOmzet = Number(planning.omzet_per_dag || 0) * aantalDagen;
   const bakkenPerDag = aantalDagen > 0 ? totalen.totaal / aantalDagen : 0;
-  const kastruimteTekort = totalen.totaal > 0 && bakkenPerDag > Number(planning.kastruimte_bakken || 0);
 
   const laadPlanning = async (id: number) => {
     setMelding(null);
@@ -404,12 +403,6 @@ export default function ZomerfeestenPage() {
                   <span className="font-semibold text-slate-900">{bakkenPerDag.toFixed(1)}</span>
                 </div>
               </div>
-
-              {kastruimteTekort && (
-                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                  Let op: bakken per dag is hoger dan de ingevulde kastruimte.
-                </div>
-              )}
             </section>
           </aside>
 
