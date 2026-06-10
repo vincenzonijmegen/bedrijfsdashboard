@@ -27,9 +27,11 @@ import {
   Layers,
   CreditCard,
   Archive,
+  PartyPopper,
   ChevronDown,
   ChevronRight,
   List,
+  Link2,
   ClipboardList,
   ClipboardCheck,
   Truck,
@@ -381,6 +383,7 @@ export default function AdminDashboard() {
           <LinkCard href="/admin/routines" label="Routines HACCP" color="blue" Icon={Folder} breadcrumb="Management – Routines HACCP" />
           <LinkCard href="/keuken/login" label="Keuken-app openen" color="blue" Icon={Wrench} breadcrumb="Keuken-app" target="_blank" rel="noopener noreferrer" />
           <LinkCard href="/winkel/login" label="Winkel-app openen" color="blue" Icon={Wrench} breadcrumb="Winkel-app" target="_blank" rel="noopener noreferrer" />
+          <LinkCard href="/admin/recept-koppelingen" label="Receptkoppelingen" color="blue" Icon={Link2} breadcrumb="Receptkoppelingen" target="_blank" rel="noopener noreferrer"/>
         </Section>
 
         <Section id="planning" title="📅 Planning" color="orange" activeSection={activeSection} setActiveSection={setActiveSection}>
@@ -392,6 +395,8 @@ export default function AdminDashboard() {
           <LinkCard href="/admin/beschikbaarheid" label="Beschikbaarheid per medewerker" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid per medewerker" />
           <LinkCard href="/admin/beschikbaarheid/periode" label="Beschikbaarheid per periode" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid per periode" />
           <LinkCard href="/admin/planning/zomerfeesten" label="Zomerfeesten (planning maken)"  color="orange" Icon={CalendarDays} breadcrumb="Planning – Zomerfeesten"/>
+          <LinkCard href="/admin/zomerfeesten" label="Zomerfeesten voorbereiding" color="orange" Icon={PartyPopper} breadcrumb="Planning – Zomerfeesten voorbereiden"/>
+
         </Section>
 
         <Section id="rapportages" title="📊 Rapportages" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
