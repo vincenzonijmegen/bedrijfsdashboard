@@ -11,6 +11,7 @@ import {
   Plus,
   Printer,
   Save,
+  Timer,
   Trash2,
 } from "lucide-react";
 
@@ -168,6 +169,7 @@ const fetcher = async (url: string) => {
 };
 
 const todayYear = new Date().getFullYear();
+const MINUTEN_PER_BAK_IJS = 15;
 
 const legePlanning = () => ({
   id: null as number | null,
@@ -381,6 +383,16 @@ export default function ZomerfeestenPage() {
   const verschilMelk = totalen.melk - verwachteBakkenMelk;
   const verschilVrucht = totalen.vrucht - verwachteBakkenVrucht;
   const verschilTotaal = totalen.totaal - verwachteBakkenTotaal;
+
+  const machinetijdMinutenTotaal = totalen.totaal * MINUTEN_PER_BAK_IJS;
+  const machinetijdUrenTotaal = machinetijdMinutenTotaal / 60;
+  const aantalMachines = Math.max(1, Number(planning.aantal_machines || 1));
+  const productieUrenWeek = machinetijdUrenTotaal / aantalMachines;
+  const productieUrenPerDag = aantalDagen > 0 ? productieUrenWeek / aantalDagen : 0;
+  const bakkenPerMachinePerUur = 60 / MINUTEN_PER_BAK_IJS;
+  const capaciteitBakkenPerUur = aantalMachines * bakkenPerMachinePerUur;
+  const bakkenPerDagGepland = aantalDagen > 0 ? totalen.totaal / aantalDagen : 0;
+
 
   const laadPlanning = async (id: number) => {
     setMelding(null);
@@ -1079,6 +1091,97 @@ export default function ZomerfeestenPage() {
 
             <p className="mt-3 text-xs text-slate-500">
               Dit is een planningscontrole. De app past aantallen per smaak nog niet automatisch aan.
+            </p>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
+            <div className="mb-4 flex items-center gap-2">
+              <Timer className="h-5 w-5 text-blue-600" />
+              <h2 className="text-lg font-bold text-slate-900">
+                Productietijd & machines
+              </h2>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Machinetijd per bak</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">
+                  {MINUTEN_PER_BAK_IJS} min
+                </p>
+                <p className="mt-1 text-xs text-slate-500">vaste aanname</p>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm text-slate-500">Machines</p>
+                <p className="mt-1 text-2xl font-bold text-slate-900">
+                  {aantalMachines}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {formatHoeveelheid(capaciteitBakkenPerUur)} bakken per uur samen
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                <p className="text-sm font-semibold text-blue-900">Totaal machinetijd</p>
+                <p className="mt-1 text-2xl font-bold text-blue-950">
+                  {formatHoeveelheid(machinetijdUrenTotaal)} uur
+                </p>
+                <p className="mt-1 text-xs text-blue-700">
+                  {totalen.totaal} bakken × {MINUTEN_PER_BAK_IJS} minuten
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                <p className="text-sm font-semibold text-emerald-900">Benodigde draaitijd</p>
+                <p className="mt-1 text-2xl font-bold text-emerald-950">
+                  {formatHoeveelheid(productieUrenPerDag)} uur/dag
+                </p>
+                <p className="mt-1 text-xs text-emerald-700">
+                  bij {aantalMachines} machine{aantalMachines === 1 ? "" : "s"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Onderdeel</th>
+                    <th className="px-4 py-3 text-right">Waarde</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  <tr>
+                    <td className="px-4 py-3 font-semibold text-slate-900">Geplande bakken per dag</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-700">
+                      {formatHoeveelheid(bakkenPerDagGepland)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 font-semibold text-slate-900">Machinecapaciteit per uur</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-700">
+                      {formatHoeveelheid(capaciteitBakkenPerUur)} bakken
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 font-semibold text-slate-900">Benodigde draaitijd per dag</td>
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">
+                      {formatHoeveelheid(productieUrenPerDag)} uur
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-3 font-semibold text-slate-900">Benodigde draaitijd hele periode</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-slate-700">
+                      {formatHoeveelheid(productieUrenWeek)} uur kloktijd met {aantalMachines} machine{aantalMachines === 1 ? "" : "s"}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p className="mt-3 text-xs text-slate-500">
+              Rekenregel: iedere geplande bak vraagt {MINUTEN_PER_BAK_IJS} minuten machinetijd.
+              Met meerdere machines wordt de benodigde kloktijd gedeeld door het aantal machines.
             </p>
           </section>
 
