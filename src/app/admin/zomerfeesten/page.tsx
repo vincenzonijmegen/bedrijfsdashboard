@@ -66,6 +66,45 @@ type DetailResponse = {
   smaken: Smaak[];
 };
 
+type IngredientRegel = {
+  naam: string;
+  eenheid: string;
+  hoeveelheid_per_recept: number;
+  benodigde_hoeveelheid: number;
+};
+
+type IngredientControleSmaak = {
+  smaakplanning_id: number;
+  smaakcode: string;
+  smaaknaam: string;
+  aantal_bakken: number;
+  kostprijs_recept_id: number;
+  kostprijs_recept_naam: string;
+  opbrengst_bakken: number;
+  opbrengst_bron: string;
+  factor: number;
+  regels: IngredientRegel[];
+  waarschuwingen: string[];
+};
+
+type IngredientTotaal = {
+  naam: string;
+  eenheid: string;
+  totaal: number;
+  bronregels: number;
+};
+
+type IngredientControleResponse = {
+  success: boolean;
+  meta: {
+    line_table: string | null;
+    waarschuwingen?: string[];
+  };
+  smaken: IngredientControleSmaak[];
+  totalen: IngredientTotaal[];
+};
+
+
 type NieuweSmaak = {
   recept_id: number | null;
   smaakcode: string;
@@ -112,6 +151,13 @@ const formatEuro = (waarde: number) =>
     currency: "EUR",
     maximumFractionDigits: 0,
   }).format(waarde || 0);
+
+const formatHoeveelheid = (waarde: number) => {
+  if (!Number.isFinite(waarde)) return "0";
+  return new Intl.NumberFormat("nl-NL", {
+    maximumFractionDigits: waarde >= 100 ? 0 : 2,
+  }).format(waarde);
+};
 
 const datumVoorInput = (waarde?: string) => {
   if (!waarde) return "";
@@ -170,6 +216,14 @@ export default function ZomerfeestenPage() {
   const [nieuweSmaak, setNieuweSmaak] = useState<NieuweSmaak>(legeNieuweSmaak());
   const [melding, setMelding] = useState<string | null>(null);
   const [opslaanBezig, setOpslaanBezig] = useState(false);
+
+  const { data: ingredientenControle, error: ingredientenControleError } =
+    useSWR<IngredientControleResponse>(
+      planning.id
+        ? `/api/admin/zomerfeesten/ingredienten-controle?planning_id=${planning.id}`
+        : null,
+      fetcher
+    );
 
   const aantalDagen = useMemo(() => {
     const start = new Date(planning.start_datum);
@@ -911,6 +965,146 @@ export default function ZomerfeestenPage() {
                   Doorrekenbaar {koppelingTotalen.doorrekenbaar} · Later maken {koppelingTotalen.laterMaken} · Overslaan {koppelingTotalen.overslaan} · Actie nodig {koppelingTotalen.actieNodig}
                 </div>
               </div>
+          </section>
+
+
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">Ingrediëntencontrole</h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Eerste controle: doorrekenbare smaken worden opgeschaald vanuit het gekoppelde kostprijsrecept. Dit is nog géén bestellijst.
+                </p>
+              </div>
+              {ingredientenControle?.meta?.line_table && (
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                  Bron: {ingredientenControle.meta.line_table}
+                </span>
+              )}
+            </div>
+
+            {!planning.id && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                Sla de planning eerst op om de ingrediëntencontrole te laden.
+              </div>
+            )}
+
+            {planning.id && ingredientenControleError && (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                Ingrediëntencontrole kon niet worden opgehaald. Controleer de serverlog voor de exacte databasefout.
+              </div>
+            )}
+
+            {planning.id && ingredientenControle && (
+              <div className="space-y-5">
+                {(ingredientenControle.meta.waarschuwingen ?? []).map((waarschuwing, index) => (
+                  <div
+                    key={index}
+                    className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                  >
+                    {waarschuwing}
+                  </div>
+                ))}
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="text-sm text-slate-500">Doorrekenbare smaken</div>
+                    <div className="mt-1 text-2xl font-bold text-slate-900">
+                      {ingredientenControle.smaken.length}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="text-sm text-slate-500">Ingrediëntregels</div>
+                    <div className="mt-1 text-2xl font-bold text-slate-900">
+                      {ingredientenControle.smaken.reduce((sum, smaak) => sum + smaak.regels.length, 0)}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="text-sm text-slate-500">Gecombineerde ingrediënten</div>
+                    <div className="mt-1 text-2xl font-bold text-slate-900">
+                      {ingredientenControle.totalen.length}
+                    </div>
+                  </div>
+                </div>
+
+                {ingredientenControle.smaken.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200 overflow-hidden">
+                    <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
+                      Controle per smaak
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {ingredientenControle.smaken.map((smaak) => (
+                        <div key={smaak.smaakplanning_id} className="p-4">
+                          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                            <div>
+                              <div className="font-semibold text-slate-900">
+                                {smaak.smaakcode} · {smaak.smaaknaam}
+                              </div>
+                              <div className="text-sm text-slate-500">
+                                {smaak.aantal_bakken} bakken via {smaak.kostprijs_recept_naam} · opbrengst {formatHoeveelheid(smaak.opbrengst_bakken)} bak(ken) · factor {formatHoeveelheid(smaak.factor)}
+                              </div>
+                            </div>
+                            <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                              {smaak.regels.length} regels
+                            </span>
+                          </div>
+
+                          {smaak.waarschuwingen.length > 0 && (
+                            <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                              {smaak.waarschuwingen.join(" ")}
+                            </div>
+                          )}
+
+                          {smaak.regels.length > 0 && (
+                            <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                              {smaak.regels.slice(0, 8).map((regel, index) => (
+                                <div
+                                  key={`${smaak.smaakplanning_id}-${index}`}
+                                  className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm"
+                                >
+                                  <span className="min-w-0 truncate text-slate-700">{regel.naam}</span>
+                                  <span className="shrink-0 font-semibold text-slate-900">
+                                    {formatHoeveelheid(regel.benodigde_hoeveelheid)} {regel.eenheid}
+                                  </span>
+                                </div>
+                              ))}
+                              {smaak.regels.length > 8 && (
+                                <div className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-500">
+                                  + {smaak.regels.length - 8} extra regels
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {ingredientenControle.totalen.length > 0 && (
+                  <div className="rounded-2xl border border-slate-200 overflow-hidden">
+                    <div className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700">
+                      Gecombineerde ingrediëntencontrole
+                    </div>
+                    <div className="divide-y divide-slate-100">
+                      {ingredientenControle.totalen.map((totaal) => (
+                        <div
+                          key={`${totaal.naam}-${totaal.eenheid}`}
+                          className="grid grid-cols-[minmax(0,1fr)_140px_90px] gap-3 px-4 py-3 text-sm"
+                        >
+                          <div className="min-w-0 truncate font-medium text-slate-800">{totaal.naam}</div>
+                          <div className="text-right font-semibold text-slate-900">
+                            {formatHoeveelheid(totaal.totaal)} {totaal.eenheid}
+                          </div>
+                          <div className="text-right text-slate-500">{totaal.bronregels} regels</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
 
           {planning.id && (
