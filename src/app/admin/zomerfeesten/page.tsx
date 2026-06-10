@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR, { mutate } from "swr";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CalendarDays,
@@ -63,6 +63,19 @@ type Smaak = {
   koppeling_status?: KoppelingStatus | null;
   koppeling_opmerking?: string | null;
   doorrekenbaar?: boolean | null;
+};
+
+type VitrineNaam = "links" | "midden" | "rechts";
+
+type VitrinePositie = {
+  planning_id: number;
+  vitrine: VitrineNaam;
+  positie: number;
+  smaakcode: string | null;
+};
+
+type VitrineResponse = {
+  posities: VitrinePositie[];
 };
 
 type DetailResponse = {
@@ -170,6 +183,13 @@ const fetcher = async (url: string) => {
 
 const todayYear = new Date().getFullYear();
 const MINUTEN_PER_BAK_IJS = 15;
+const VITRINES: { key: VitrineNaam; label: string }[] = [
+  { key: "links", label: "Vitrine links" },
+  { key: "midden", label: "Vitrine midden" },
+  { key: "rechts", label: "Vitrine rechts" },
+];
+const VITRINE_POSITIES_PER_VITRINE = 14;
+const VITRINE_TOTAAL_MAX = 42;
 
 const legePlanning = () => ({
   id: null as number | null,
@@ -293,6 +313,40 @@ export default function ZomerfeestenPage() {
       fetcher,
     );
 
+  const { data: vitrineData } = useSWR<VitrineResponse>(
+    planning.id
+      ? `/api/admin/zomerfeesten/vitrine?planning_id=${planning.id}`
+      : null,
+    fetcher,
+  );
+
+  const [vitrineIndeling, setVitrineIndeling] = useState<
+    Record<string, string | null>
+  >({});
+  const [dragSmaakcode, setDragSmaakcode] = useState<string | null>(null);
+  const [vitrineOpslaanBezig, setVitrineOpslaanBezig] = useState(false);
+
+  useEffect(() => {
+    const volgende: Record<string, string | null> = {};
+
+    for (const vitrine of VITRINES) {
+      for (
+        let positie = 1;
+        positie <= VITRINE_POSITIES_PER_VITRINE;
+        positie += 1
+      ) {
+        volgende[`${vitrine.key}-${positie}`] = null;
+      }
+    }
+
+    for (const positie of vitrineData?.posities ?? []) {
+      volgende[`${positie.vitrine}-${positie.positie}`] =
+        positie.smaakcode || null;
+    }
+
+    setVitrineIndeling(volgende);
+  }, [vitrineData]);
+
   const aantalDagen = useMemo(() => {
     const start = new Date(planning.start_datum);
     const eind = new Date(planning.eind_datum);
@@ -315,6 +369,28 @@ export default function ZomerfeestenPage() {
       .reduce((sum, s) => sum + Number(s.aantal_bakken || 0), 0);
     return { melk, vrucht, overig, totaal: melk + vrucht + overig };
   }, [smaken]);
+
+  const smaakPerCode = useMemo(() => {
+    const map = new Map<string, Smaak>();
+    for (const smaak of smaken) {
+      const code = smaak.smaakcode?.trim().toUpperCase();
+      if (code) map.set(code, smaak);
+    }
+    return map;
+  }, [smaken]);
+
+  const vitrineTellingen = useMemo(() => {
+    const tellingen = new Map<string, number>();
+    let gevuld = 0;
+
+    for (const smaakcode of Object.values(vitrineIndeling)) {
+      if (!smaakcode) continue;
+      gevuld += 1;
+      tellingen.set(smaakcode, (tellingen.get(smaakcode) || 0) + 1);
+    }
+
+    return { gevuld, tellingen };
+  }, [vitrineIndeling]);
 
   const koppelingTotalen = useMemo(() => {
     const doorrekenbaar = smaken.filter((s) => s.doorrekenbaar).length;
@@ -378,7 +454,9 @@ export default function ZomerfeestenPage() {
   const verwachteBakkenMelk =
     opbrengstPerBakMelk > 0 ? Math.ceil(omzetMelk / opbrengstPerBakMelk) : 0;
   const verwachteBakkenVrucht =
-    opbrengstPerBakVrucht > 0 ? Math.ceil(omzetVrucht / opbrengstPerBakVrucht) : 0;
+    opbrengstPerBakVrucht > 0
+      ? Math.ceil(omzetVrucht / opbrengstPerBakVrucht)
+      : 0;
   const verwachteBakkenTotaal = verwachteBakkenMelk + verwachteBakkenVrucht;
   const verschilMelk = totalen.melk - verwachteBakkenMelk;
   const verschilVrucht = totalen.vrucht - verwachteBakkenVrucht;
@@ -388,11 +466,12 @@ export default function ZomerfeestenPage() {
   const machinetijdUrenTotaal = machinetijdMinutenTotaal / 60;
   const aantalMachines = Math.max(1, Number(planning.aantal_machines || 1));
   const productieUrenWeek = machinetijdUrenTotaal / aantalMachines;
-  const productieUrenPerDag = aantalDagen > 0 ? productieUrenWeek / aantalDagen : 0;
+  const productieUrenPerDag =
+    aantalDagen > 0 ? productieUrenWeek / aantalDagen : 0;
   const bakkenPerMachinePerUur = 60 / MINUTEN_PER_BAK_IJS;
   const capaciteitBakkenPerUur = aantalMachines * bakkenPerMachinePerUur;
-  const bakkenPerDagGepland = aantalDagen > 0 ? totalen.totaal / aantalDagen : 0;
-
+  const bakkenPerDagGepland =
+    aantalDagen > 0 ? totalen.totaal / aantalDagen : 0;
 
   const laadPlanning = async (id: number) => {
     setMelding(null);
@@ -409,8 +488,12 @@ export default function ZomerfeestenPage() {
       omzet_per_dag: Number(detail.planning.omzet_per_dag || 0),
       percentage_melk: Number(detail.planning.percentage_melk || 65),
       percentage_vruchten: Number(detail.planning.percentage_vruchten || 35),
-      opbrengst_per_bak_melk: Number(detail.planning.opbrengst_per_bak_melk || 90),
-      opbrengst_per_bak_vrucht: Number(detail.planning.opbrengst_per_bak_vrucht || 80),
+      opbrengst_per_bak_melk: Number(
+        detail.planning.opbrengst_per_bak_melk || 90,
+      ),
+      opbrengst_per_bak_vrucht: Number(
+        detail.planning.opbrengst_per_bak_vrucht || 80,
+      ),
       aantal_machines: Number(detail.planning.aantal_machines || 3),
       kastruimte_bakken: Number(detail.planning.kastruimte_bakken || 50),
       status: detail.planning.status || "concept",
@@ -531,6 +614,61 @@ export default function ZomerfeestenPage() {
       setSmaken([]);
       mutate("/api/admin/zomerfeesten/planningen");
       setMelding("Planning verwijderd.");
+    }
+  };
+
+  const zetVitrinePositie = (
+    vitrine: VitrineNaam,
+    positie: number,
+    smaakcode: string | null,
+  ) => {
+    setVitrineIndeling((prev) => ({
+      ...prev,
+      [`${vitrine}-${positie}`]: smaakcode,
+    }));
+  };
+
+  const opslaanVitrine = async () => {
+    if (!planning.id) {
+      setMelding(
+        "Sla eerst de Zomerfeestenplanning op voordat je de vitrine-indeling opslaat.",
+      );
+      return;
+    }
+
+    setVitrineOpslaanBezig(true);
+    setMelding(null);
+
+    try {
+      const posities = VITRINES.flatMap((vitrine) =>
+        Array.from({ length: VITRINE_POSITIES_PER_VITRINE }, (_, index) => {
+          const positie = index + 1;
+          return {
+            vitrine: vitrine.key,
+            positie,
+            smaakcode: vitrineIndeling[`${vitrine.key}-${positie}`] || null,
+          };
+        }),
+      );
+
+      const res = await fetch("/api/admin/zomerfeesten/vitrine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planning_id: planning.id, posities }),
+      });
+
+      const json = await res.json();
+      if (!res.ok)
+        throw new Error(json.error || "Vitrine-indeling opslaan mislukt");
+
+      setMelding("Vitrine-indeling opgeslagen.");
+      mutate(`/api/admin/zomerfeesten/vitrine?planning_id=${planning.id}`);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Vitrine-indeling opslaan mislukt";
+      setMelding(message);
+    } finally {
+      setVitrineOpslaanBezig(false);
     }
   };
 
@@ -908,7 +1046,9 @@ export default function ZomerfeestenPage() {
                 </label>
 
                 <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">Opbrengst/bak melk</span>
+                  <span className="font-medium text-slate-700">
+                    Opbrengst/bak melk
+                  </span>
                   <div className="relative">
                     <Euro className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                     <input
@@ -926,7 +1066,9 @@ export default function ZomerfeestenPage() {
                 </label>
 
                 <label className="space-y-1 text-sm">
-                  <span className="font-medium text-slate-700">Opbrengst/bak vrucht</span>
+                  <span className="font-medium text-slate-700">
+                    Opbrengst/bak vrucht
+                  </span>
                   <div className="relative">
                     <Euro className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                     <input
@@ -1014,7 +1156,8 @@ export default function ZomerfeestenPage() {
                   {formatEuro(weekOmzet)}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  {aantalDagen} dagen × {formatEuro(Number(planning.omzet_per_dag || 0))}
+                  {aantalDagen} dagen ×{" "}
+                  {formatEuro(Number(planning.omzet_per_dag || 0))}
                 </p>
               </div>
 
@@ -1032,7 +1175,9 @@ export default function ZomerfeestenPage() {
               </div>
 
               <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                <p className="text-sm font-semibold text-emerald-900">Vruchtenijs</p>
+                <p className="text-sm font-semibold text-emerald-900">
+                  Vruchtenijs
+                </p>
                 <p className="mt-1 text-sm text-emerald-800">
                   {percentageVruchten}% van de omzet = {formatEuro(omzetVrucht)}
                 </p>
@@ -1057,9 +1202,24 @@ export default function ZomerfeestenPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {[
-                    { label: "Melk", verwacht: verwachteBakkenMelk, gepland: totalen.melk, verschil: verschilMelk },
-                    { label: "Vrucht", verwacht: verwachteBakkenVrucht, gepland: totalen.vrucht, verschil: verschilVrucht },
-                    { label: "Totaal", verwacht: verwachteBakkenTotaal, gepland: totalen.totaal, verschil: verschilTotaal },
+                    {
+                      label: "Melk",
+                      verwacht: verwachteBakkenMelk,
+                      gepland: totalen.melk,
+                      verschil: verschilMelk,
+                    },
+                    {
+                      label: "Vrucht",
+                      verwacht: verwachteBakkenVrucht,
+                      gepland: totalen.vrucht,
+                      verschil: verschilVrucht,
+                    },
+                    {
+                      label: "Totaal",
+                      verwacht: verwachteBakkenTotaal,
+                      gepland: totalen.totaal,
+                      verschil: verschilTotaal,
+                    },
                   ].map((rij) => (
                     <tr key={rij.label}>
                       <td className="px-4 py-3 font-semibold text-slate-900">
@@ -1090,7 +1250,8 @@ export default function ZomerfeestenPage() {
             </div>
 
             <p className="mt-3 text-xs text-slate-500">
-              Dit is een planningscontrole. De app past aantallen per smaak nog niet automatisch aan.
+              Dit is een planningscontrole. De app past aantallen per smaak nog
+              niet automatisch aan.
             </p>
           </section>
 
@@ -1117,12 +1278,15 @@ export default function ZomerfeestenPage() {
                   {aantalMachines}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
-                  {formatHoeveelheid(capaciteitBakkenPerUur)} bakken per uur samen
+                  {formatHoeveelheid(capaciteitBakkenPerUur)} bakken per uur
+                  samen
                 </p>
               </div>
 
               <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                <p className="text-sm font-semibold text-blue-900">Totaal machinetijd</p>
+                <p className="text-sm font-semibold text-blue-900">
+                  Totaal machinetijd
+                </p>
                 <p className="mt-1 text-2xl font-bold text-blue-950">
                   {formatHoeveelheid(machinetijdUrenTotaal)} uur
                 </p>
@@ -1132,7 +1296,9 @@ export default function ZomerfeestenPage() {
               </div>
 
               <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
-                <p className="text-sm font-semibold text-emerald-900">Benodigde draaitijd</p>
+                <p className="text-sm font-semibold text-emerald-900">
+                  Benodigde draaitijd
+                </p>
                 <p className="mt-1 text-2xl font-bold text-emerald-950">
                   {formatHoeveelheid(productieUrenPerDag)} uur/dag
                 </p>
@@ -1152,27 +1318,36 @@ export default function ZomerfeestenPage() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   <tr>
-                    <td className="px-4 py-3 font-semibold text-slate-900">Geplande bakken per dag</td>
+                    <td className="px-4 py-3 font-semibold text-slate-900">
+                      Geplande bakken per dag
+                    </td>
                     <td className="px-4 py-3 text-right tabular-nums text-slate-700">
                       {formatHoeveelheid(bakkenPerDagGepland)}
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-4 py-3 font-semibold text-slate-900">Machinecapaciteit per uur</td>
+                    <td className="px-4 py-3 font-semibold text-slate-900">
+                      Machinecapaciteit per uur
+                    </td>
                     <td className="px-4 py-3 text-right tabular-nums text-slate-700">
                       {formatHoeveelheid(capaciteitBakkenPerUur)} bakken
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-4 py-3 font-semibold text-slate-900">Benodigde draaitijd per dag</td>
+                    <td className="px-4 py-3 font-semibold text-slate-900">
+                      Benodigde draaitijd per dag
+                    </td>
                     <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-900">
                       {formatHoeveelheid(productieUrenPerDag)} uur
                     </td>
                   </tr>
                   <tr>
-                    <td className="px-4 py-3 font-semibold text-slate-900">Benodigde draaitijd hele periode</td>
+                    <td className="px-4 py-3 font-semibold text-slate-900">
+                      Benodigde draaitijd hele periode
+                    </td>
                     <td className="px-4 py-3 text-right tabular-nums text-slate-700">
-                      {formatHoeveelheid(productieUrenWeek)} uur kloktijd met {aantalMachines} machine{aantalMachines === 1 ? "" : "s"}
+                      {formatHoeveelheid(productieUrenWeek)} uur kloktijd met{" "}
+                      {aantalMachines} machine{aantalMachines === 1 ? "" : "s"}
                     </td>
                   </tr>
                 </tbody>
@@ -1180,8 +1355,9 @@ export default function ZomerfeestenPage() {
             </div>
 
             <p className="mt-3 text-xs text-slate-500">
-              Rekenregel: iedere geplande bak vraagt {MINUTEN_PER_BAK_IJS} minuten machinetijd.
-              Met meerdere machines wordt de benodigde kloktijd gedeeld door het aantal machines.
+              Rekenregel: iedere geplande bak vraagt {MINUTEN_PER_BAK_IJS}{" "}
+              minuten machinetijd. Met meerdere machines wordt de benodigde
+              kloktijd gedeeld door het aantal machines.
             </p>
           </section>
 
@@ -1512,6 +1688,180 @@ export default function ZomerfeestenPage() {
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
+            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  Vitrine-indeling
+                </h2>
+                <p className="mt-1 text-sm text-slate-600">
+                  Sleep smaken naar de drie vitrines. Elke vitrine heeft 2 rijen
+                  van 7 bakken; samen maximaal {VITRINE_TOTAAL_MAX} bakken.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={opslaanVitrine}
+                disabled={!planning.id || vitrineOpslaanBezig}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" />
+                {vitrineOpslaanBezig ? "Opslaan..." : "Vitrine opslaan"}
+              </button>
+            </div>
+
+            <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+                <div className="font-semibold text-slate-900">
+                  Gevuld: {vitrineTellingen.gevuld} / {VITRINE_TOTAAL_MAX}{" "}
+                  bakken
+                </div>
+                <div className="text-slate-500">
+                  Sleep vanuit deze lijst naar een vak, of sleep een gevuld vak
+                  naar een andere plek.
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {smaken.map((smaak) => {
+                  const code = smaak.smaakcode?.trim().toUpperCase();
+                  if (!code) return null;
+                  const inVitrine = vitrineTellingen.tellingen.get(code) || 0;
+
+                  return (
+                    <button
+                      key={`vitrine-palette-${code}`}
+                      type="button"
+                      draggable
+                      onDragStart={() => setDragSmaakcode(code)}
+                      onDragEnd={() => setDragSmaakcode(null)}
+                      className="inline-flex cursor-grab items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-800 shadow-sm active:cursor-grabbing"
+                      title="Sleep naar de vitrine"
+                    >
+                      <span
+                        className="h-3 w-3 rounded-full border border-slate-300"
+                        style={{ backgroundColor: smaak.kleur || "#93c5fd" }}
+                      />
+                      <span>{smaak.smaaknaam}</span>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                        {inVitrine} in vitrine
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {smaken.length === 0 && (
+                  <div className="text-sm text-slate-500">
+                    Voeg eerst smaken toe aan de smaakplanning.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+              {VITRINES.map((vitrine) => (
+                <div
+                  key={vitrine.key}
+                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <h3 className="font-bold text-slate-900">
+                      {vitrine.label}
+                    </h3>
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                      {Array.from(
+                        { length: VITRINE_POSITIES_PER_VITRINE },
+                        (_, index) =>
+                          vitrineIndeling[`${vitrine.key}-${index + 1}`]
+                            ? 1
+                            : 0,
+                      ).reduce((a, b) => a + b, 0)}{" "}
+                      / {VITRINE_POSITIES_PER_VITRINE}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-2">
+                    {Array.from(
+                      { length: VITRINE_POSITIES_PER_VITRINE },
+                      (_, index) => {
+                        const positie = index + 1;
+                        const key = `${vitrine.key}-${positie}`;
+                        const smaakcode = vitrineIndeling[key] || null;
+                        const smaak = smaakcode
+                          ? smaakPerCode.get(smaakcode)
+                          : null;
+
+                        return (
+                          <div
+                            key={key}
+                            draggable={Boolean(smaakcode)}
+                            onDragStart={() =>
+                              smaakcode && setDragSmaakcode(smaakcode)
+                            }
+                            onDragEnd={() => setDragSmaakcode(null)}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (dragSmaakcode)
+                                zetVitrinePositie(
+                                  vitrine.key,
+                                  positie,
+                                  dragSmaakcode,
+                                );
+                            }}
+                            className={`group relative flex min-h-[74px] items-center justify-center rounded-xl border p-1 text-center text-[11px] font-bold leading-tight transition ${
+                              smaak
+                                ? "cursor-grab border-slate-300 text-slate-900 shadow-sm active:cursor-grabbing"
+                                : "border-dashed border-slate-300 bg-slate-50 text-slate-400 hover:border-blue-300 hover:bg-blue-50"
+                            }`}
+                            style={
+                              smaak
+                                ? { backgroundColor: smaak.kleur || "#bfdbfe" }
+                                : undefined
+                            }
+                            title={
+                              smaak
+                                ? `${positie}. ${smaak.smaaknaam}`
+                                : `Positie ${positie}`
+                            }
+                          >
+                            {smaak ? (
+                              <>
+                                <span className="line-clamp-2 drop-shadow-sm">
+                                  {smaak.smaakcode || smaak.smaaknaam}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    zetVitrinePositie(
+                                      vitrine.key,
+                                      positie,
+                                      null,
+                                    );
+                                  }}
+                                  className="absolute right-1 top-1 hidden rounded-full bg-white/80 px-1 text-[10px] font-bold text-slate-700 shadow-sm group-hover:block"
+                                  title="Vak leegmaken"
+                                >
+                                  ×
+                                </button>
+                                <span className="absolute bottom-1 right-1 rounded bg-white/70 px-1 text-[10px] font-semibold text-slate-700">
+                                  {positie}
+                                </span>
+                              </>
+                            ) : (
+                              <span>{positie}</span>
+                            )}
+                          </div>
+                        );
+                      },
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-bold text-slate-900">
@@ -1749,8 +2099,10 @@ export default function ZomerfeestenPage() {
                             Besteladvies per leverancier
                           </div>
                           <div className="mt-1 text-xs text-emerald-700 print:text-slate-600">
-                            Totaal te bestellen voor de volledige Zomerfeestenplanning.
-                            Regels met “Nog invullen” missen nog verpakkingsinformatie of een bruikbare eenheid.
+                            Totaal te bestellen voor de volledige
+                            Zomerfeestenplanning. Regels met “Nog invullen”
+                            missen nog verpakkingsinformatie of een bruikbare
+                            eenheid.
                           </div>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -1762,7 +2114,10 @@ export default function ZomerfeestenPage() {
                             <Printer className="h-4 w-4" /> Print
                           </button>
                           <div className="rounded-xl bg-white px-3 py-2 text-sm font-bold text-emerald-900 shadow-sm print:shadow-none print:border print:border-slate-200">
-                            Totaal: {formatEuroExact(ingredientenControle.meta.totale_kosten ?? 0)}
+                            Totaal:{" "}
+                            {formatEuroExact(
+                              ingredientenControle.meta.totale_kosten ?? 0,
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1771,10 +2126,13 @@ export default function ZomerfeestenPage() {
                           Leveranciers: {besteladviesPerLeverancier.length}
                         </span>
                         <span className="rounded-full bg-white px-2 py-1 font-semibold text-emerald-700 print:border print:border-slate-200 print:text-slate-700">
-                          Berekend: {ingredientenControle.meta.besteladvies_berekend ?? 0}
+                          Berekend:{" "}
+                          {ingredientenControle.meta.besteladvies_berekend ?? 0}
                         </span>
                         <span className="rounded-full bg-white px-2 py-1 font-semibold text-amber-700 print:border print:border-slate-200 print:text-slate-700">
-                          Nog invullen: {ingredientenControle.meta.besteladvies_controle_nodig ?? 0}
+                          Nog invullen:{" "}
+                          {ingredientenControle.meta
+                            .besteladvies_controle_nodig ?? 0}
                         </span>
                       </div>
                     </div>
@@ -1788,7 +2146,8 @@ export default function ZomerfeestenPage() {
                                 {groep.leverancier}
                               </div>
                               <div className="text-xs text-slate-500">
-                                {groep.berekend} berekend · {groep.controleNodig} nog invullen
+                                {groep.berekend} berekend ·{" "}
+                                {groep.controleNodig} nog invullen
                               </div>
                             </div>
                             <div className="text-sm font-bold text-slate-900">
@@ -1816,16 +2175,17 @@ export default function ZomerfeestenPage() {
 
                                 <div className="text-slate-700 lg:text-right">
                                   <span className="lg:hidden text-slate-500">
-                                    Nodig: {" "}
+                                    Nodig:{" "}
                                   </span>
                                   <span className="font-semibold">
-                                    {formatHoeveelheid(regel.totaal)} {regel.eenheid}
+                                    {formatHoeveelheid(regel.totaal)}{" "}
+                                    {regel.eenheid}
                                   </span>
                                 </div>
 
                                 <div className="text-slate-700 lg:text-right">
                                   <span className="lg:hidden text-slate-500">
-                                    Verpakking: {" "}
+                                    Verpakking:{" "}
                                   </span>
                                   {regel.verpakking_hoeveelheid_gebruikt
                                     ? `${formatHoeveelheid(regel.verpakking_hoeveelheid_gebruikt)} ${regel.verpakking_eenheid_gebruikt ?? ""}`
@@ -1834,7 +2194,7 @@ export default function ZomerfeestenPage() {
 
                                 <div className="text-slate-900 lg:text-right">
                                   <span className="lg:hidden text-slate-500">
-                                    Bestellen: {" "}
+                                    Bestellen:{" "}
                                   </span>
                                   <span className="font-bold">
                                     {regel.bestellen ?? "–"}
@@ -1843,7 +2203,7 @@ export default function ZomerfeestenPage() {
 
                                 <div className="text-slate-700 lg:text-right">
                                   <span className="lg:hidden text-slate-500">
-                                    Prijs: {" "}
+                                    Prijs:{" "}
                                   </span>
                                   {formatEuroExact(regel.huidige_prijs)}
                                 </div>
@@ -1875,7 +2235,8 @@ export default function ZomerfeestenPage() {
                     <h1>Besteladvies Zomerfeesten {planning.jaar}</h1>
                     <div className="print-meta">
                       <div>
-                        {planning.naam} · {datumVoorInput(planning.start_datum)} t/m {datumVoorInput(planning.eind_datum)}
+                        {planning.naam} · {datumVoorInput(planning.start_datum)}{" "}
+                        t/m {datumVoorInput(planning.eind_datum)}
                       </div>
                       <div>
                         Gegenereerd: {new Date().toLocaleDateString("nl-NL")}
@@ -1883,23 +2244,36 @@ export default function ZomerfeestenPage() {
                     </div>
 
                     <div className="print-total">
-                      Totaal te bestellen: {formatEuroExact(ingredientenControle.meta.totale_kosten ?? 0)}
+                      Totaal te bestellen:{" "}
+                      {formatEuroExact(
+                        ingredientenControle.meta.totale_kosten ?? 0,
+                      )}
                       <span className="print-subtle">
-                        {" "}· Leveranciers: {besteladviesPerLeverancier.length}
-                        {" "}· Regels: {ingredientenControle.meta.besteladvies_berekend ?? 0}
-                        {" "}· Nog invullen: {ingredientenControle.meta.besteladvies_controle_nodig ?? 0}
+                        {" "}
+                        · Leveranciers: {besteladviesPerLeverancier.length} ·
+                        Regels:{" "}
+                        {ingredientenControle.meta.besteladvies_berekend ?? 0} ·
+                        Nog invullen:{" "}
+                        {ingredientenControle.meta
+                          .besteladvies_controle_nodig ?? 0}
                       </span>
                     </div>
 
                     {besteladviesPerLeverancier.map((groep) => (
-                      <section key={`print-${groep.leverancier}`} className="print-leverancier">
+                      <section
+                        key={`print-${groep.leverancier}`}
+                        className="print-leverancier"
+                      >
                         <div className="print-leverancier-header">
                           <h2>{groep.leverancier}</h2>
                           <div>
                             Subtotaal: {formatEuroExact(groep.totaalKosten)}
                             <span className="print-subtle">
-                              {" "}· {groep.berekend} regels
-                              {groep.controleNodig > 0 ? ` · ${groep.controleNodig} nog invullen` : ""}
+                              {" "}
+                              · {groep.berekend} regels
+                              {groep.controleNodig > 0
+                                ? ` · ${groep.controleNodig} nog invullen`
+                                : ""}
                             </span>
                           </div>
                         </div>
@@ -1909,16 +2283,28 @@ export default function ZomerfeestenPage() {
                             <tr>
                               <th style={{ width: "30%" }}>Product</th>
                               <th style={{ width: "13%" }}>Bestelnr.</th>
-                              <th style={{ width: "12%" }} className="num">Nodig</th>
-                              <th style={{ width: "12%" }} className="num">Verpakking</th>
-                              <th style={{ width: "9%" }} className="num">Bestellen</th>
-                              <th style={{ width: "11%" }} className="num">Prijs</th>
-                              <th style={{ width: "13%" }} className="num">Totaal</th>
+                              <th style={{ width: "12%" }} className="num">
+                                Nodig
+                              </th>
+                              <th style={{ width: "12%" }} className="num">
+                                Verpakking
+                              </th>
+                              <th style={{ width: "9%" }} className="num">
+                                Bestellen
+                              </th>
+                              <th style={{ width: "11%" }} className="num">
+                                Prijs
+                              </th>
+                              <th style={{ width: "13%" }} className="num">
+                                Totaal
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
                             {groep.regels.map((regel) => (
-                              <tr key={`print-${groep.leverancier}-${regel.product_id ?? regel.naam}-${regel.eenheid}`}>
+                              <tr
+                                key={`print-${groep.leverancier}-${regel.product_id ?? regel.naam}-${regel.eenheid}`}
+                              >
                                 <td>
                                   <div className="print-product">
                                     {regel.product_naam || regel.naam}
@@ -1931,15 +2317,20 @@ export default function ZomerfeestenPage() {
                                 </td>
                                 <td>{regel.bestelnummer || "–"}</td>
                                 <td className="num">
-                                  {formatHoeveelheid(regel.totaal)} {regel.eenheid}
+                                  {formatHoeveelheid(regel.totaal)}{" "}
+                                  {regel.eenheid}
                                 </td>
                                 <td className="num">
                                   {regel.verpakking_hoeveelheid_gebruikt
                                     ? `${formatHoeveelheid(regel.verpakking_hoeveelheid_gebruikt)} ${regel.verpakking_eenheid_gebruikt ?? ""}`
                                     : "–"}
                                 </td>
-                                <td className="num">{regel.bestellen ?? "–"}</td>
-                                <td className="num">{formatEuroExact(regel.huidige_prijs)}</td>
+                                <td className="num">
+                                  {regel.bestellen ?? "–"}
+                                </td>
+                                <td className="num">
+                                  {formatEuroExact(regel.huidige_prijs)}
+                                </td>
                                 <td className="num">
                                   {regel.status === "berekend"
                                     ? formatEuroExact(regel.kosten)
@@ -1954,7 +2345,11 @@ export default function ZomerfeestenPage() {
 
                     <div className="print-grandtotal">
                       <span>Totaal Zomerfeesten</span>
-                      <span>{formatEuroExact(ingredientenControle.meta.totale_kosten ?? 0)}</span>
+                      <span>
+                        {formatEuroExact(
+                          ingredientenControle.meta.totale_kosten ?? 0,
+                        )}
+                      </span>
                     </div>
                   </div>
                 )}
