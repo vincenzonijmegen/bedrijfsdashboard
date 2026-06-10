@@ -1998,6 +1998,9 @@ export default function ZomerfeestenPage() {
                         const smaak = smaakcode
                           ? smaakPerCode.get(smaakcode)
                           : null;
+                        const donkereSmaakKleur = isDonkereKleur(
+                          smaak?.kleur || null,
+                        );
 
                         return (
                           <div
@@ -2017,14 +2020,17 @@ export default function ZomerfeestenPage() {
                                   dragSmaakcode,
                                 );
                             }}
-                            className={`group relative flex min-h-[74px] items-center justify-center rounded-xl border p-1 text-center text-[11px] font-bold leading-tight transition ${
+                            className={`group relative flex min-h-[80px] items-center justify-center overflow-hidden rounded-xl border p-1 text-center text-[11px] font-bold leading-tight transition ${
                               smaak
-                                ? "cursor-grab border-slate-300 text-slate-900 shadow-sm active:cursor-grabbing"
+                                ? "cursor-grab border-slate-300 shadow-sm active:cursor-grabbing"
                                 : "border-dashed border-slate-300 bg-slate-50 text-slate-400 hover:border-blue-300 hover:bg-blue-50"
                             }`}
                             style={
                               smaak
-                                ? { backgroundColor: smaak.kleur || "#bfdbfe" }
+                                ? {
+                                    backgroundColor: smaak.kleur || "#bfdbfe",
+                                    color: donkereSmaakKleur ? "#ffffff" : "#0f172a",
+                                  }
                                 : undefined
                             }
                             title={
@@ -2035,7 +2041,10 @@ export default function ZomerfeestenPage() {
                           >
                             {smaak ? (
                               <>
-                                <span className="line-clamp-2 drop-shadow-sm">
+                                <span
+                                  className="pointer-events-none select-none whitespace-nowrap text-[13px] font-black tracking-tight drop-shadow-sm"
+                                  style={{ transform: "rotate(-90deg)" }}
+                                >
                                   {smaak.smaakcode || smaak.smaaknaam}
                                 </span>
                                 <button
@@ -2048,12 +2057,20 @@ export default function ZomerfeestenPage() {
                                       null,
                                     );
                                   }}
-                                  className="absolute right-1 top-1 hidden rounded-full bg-white/80 px-1 text-[10px] font-bold text-slate-700 shadow-sm group-hover:block"
+                                  className={`absolute right-1 top-1 hidden rounded-full px-1 text-[10px] font-bold shadow-sm group-hover:block ${
+                                    donkereSmaakKleur
+                                      ? "bg-black/25 text-white"
+                                      : "bg-white/80 text-slate-700"
+                                  }`}
                                   title="Vak leegmaken"
                                 >
                                   ×
                                 </button>
-                                <span className="absolute bottom-1 right-1 rounded bg-white/70 px-1 text-[10px] font-semibold text-slate-700">
+                                <span className={`absolute bottom-1 right-1 rounded px-1 text-[10px] font-semibold shadow-sm ${
+                                  donkereSmaakKleur
+                                    ? "bg-white/20 text-white"
+                                    : "bg-white/70 text-slate-700"
+                                }`}>
                                   {positie}
                                 </span>
                               </>
