@@ -590,7 +590,7 @@ export default function ZomerfeestenPage() {
                   Smaak toevoegen
                 </h3>
 
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,2fr)_120px_minmax(170px,1.4fr)_120px_110px_minmax(160px,1fr)]">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,2fr)_120px_minmax(190px,1.5fr)_120px_110px]">
                   <label className="min-w-0 space-y-1 text-sm md:col-span-2 xl:col-span-1">
                     <span className="font-medium text-slate-700">Keukenrecept</span>
                     <select
@@ -669,7 +669,7 @@ export default function ZomerfeestenPage() {
                     />
                   </label>
 
-                  <div className="flex min-w-0 flex-wrap items-end gap-3">
+                  <div className="flex min-w-0 flex-wrap items-end gap-3 md:col-span-2 xl:col-span-5">
                     <label className="space-y-1 text-sm">
                       <span className="font-medium text-slate-700">Kleur</span>
                       <input
