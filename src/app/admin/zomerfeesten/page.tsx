@@ -902,50 +902,79 @@ export default function ZomerfeestenPage() {
     <main className="min-h-screen w-full bg-slate-100 px-4 py-6 sm:px-6 lg:px-8">
       <style jsx global>{`
         @media print {
-          body * {
+          html,
+          body {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            min-height: 0 !important;
+            height: auto !important;
+            overflow: visible !important;
+            background: #ffffff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          .print-only-vitrine-top,
+          .print-only-bewaarkast-top,
+          .print-only-bestellijst {
+            display: none !important;
+          }
+
+          body.print-mode-vitrine .screen-content,
+          body.print-mode-bewaarkast .screen-content {
+            display: none !important;
+          }
+
+          body.print-mode-vitrine .print-only-vitrine-top,
+          body.print-mode-bewaarkast .print-only-bewaarkast-top {
+            display: block !important;
+          }
+
+          body.print-mode-bestellijst * {
             visibility: hidden !important;
           }
 
           body.print-mode-bestellijst .print-only-bestellijst,
-          body.print-mode-bestellijst .print-only-bestellijst *,
-          body.print-mode-vitrine .print-only-vitrine,
-          body.print-mode-vitrine .print-only-vitrine *,
-          body.print-mode-bewaarkast .print-only-bewaarkast,
-          body.print-mode-bewaarkast .print-only-bewaarkast * {
+          body.print-mode-bestellijst .print-only-bestellijst * {
             visibility: visible !important;
           }
 
-          .print-only-bestellijst,
-          .print-only-vitrine,
-          .print-only-bewaarkast {
-            display: none !important;
+          body.print-mode-bestellijst .print-only-bestellijst {
+            display: block !important;
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
             margin: 0 !important;
             padding: 0 !important;
-            color: #0f172a !important;
-            background: white !important;
           }
 
-          body.print-mode-bestellijst .print-only-bestellijst,
-          body.print-mode-vitrine .print-only-vitrine,
-          body.print-mode-bewaarkast .print-only-bewaarkast {
-            display: block !important;
+          main {
+            min-height: 0 !important;
+            background: #ffffff !important;
+            padding: 0 !important;
           }
 
           .print-sheet {
+            width: 100% !important;
             color: #0f172a !important;
-            background: white !important;
+            background: #ffffff !important;
             font-size: 9.5pt !important;
             line-height: 1.25 !important;
+            page-break-after: avoid !important;
           }
 
           .print-sheet h1 {
             margin: 0 0 3mm 0 !important;
             font-size: 16pt !important;
             line-height: 1.15 !important;
+            font-weight: 800 !important;
           }
 
           .print-meta {
@@ -957,11 +986,116 @@ export default function ZomerfeestenPage() {
             font-size: 9pt !important;
           }
 
+          .print-layout-grid {
+            display: grid !important;
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 5mm !important;
+            align-items: start !important;
+          }
+
+          .print-card {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 4mm !important;
+            overflow: hidden !important;
+            background: #ffffff !important;
+          }
+
+          .print-card-header {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            padding: 3mm 4mm !important;
+            background: #cffafe !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+          }
+
+          .print-card-header h2 {
+            margin: 0 !important;
+            font-size: 12pt !important;
+            font-weight: 800 !important;
+          }
+
+          .print-pill {
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 999px !important;
+            padding: 1mm 2mm !important;
+            font-size: 8pt !important;
+            font-weight: 700 !important;
+            color: #475569 !important;
+            background: #ffffff !important;
+          }
+
+          .print-vitrine-grid {
+            display: grid !important;
+            grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+            gap: 2.2mm !important;
+            padding: 4mm !important;
+          }
+
+          .print-vak {
+            min-height: 32mm !important;
+            border: 1px solid rgba(15, 23, 42, 0.15) !important;
+            border-radius: 4mm !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            position: relative !important;
+            overflow: hidden !important;
+            font-weight: 800 !important;
+          }
+
+          .print-vak-code {
+            transform: rotate(-90deg) !important;
+            white-space: nowrap !important;
+            font-size: 11pt !important;
+            letter-spacing: 0.02em !important;
+          }
+
+          .print-vak-pos {
+            position: absolute !important;
+            right: 2mm !important;
+            bottom: 1.8mm !important;
+            min-width: 5.5mm !important;
+            height: 5.5mm !important;
+            border-radius: 999px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 7.5pt !important;
+            font-weight: 800 !important;
+          }
+
+          .print-bewaarkast-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+          }
+
+          .print-bewaarkast-table th,
+          .print-bewaarkast-table td {
+            border-bottom: 1px solid #e2e8f0 !important;
+            padding: 2.4mm 2.6mm !important;
+            font-size: 9pt !important;
+          }
+
+          .print-bewaarkast-table th {
+            background: #f8fafc !important;
+            color: #334155 !important;
+            text-align: left !important;
+            font-size: 8pt !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.04em !important;
+          }
+
+          .print-bewaarkast-smaak {
+            font-weight: 800 !important;
+          }
+
           .print-total {
             margin: 0 0 6mm 0 !important;
             padding: 3mm !important;
             border: 1px solid #cbd5e1 !important;
-            border-radius: 0 !important;
             font-size: 11pt !important;
             font-weight: 700 !important;
           }
@@ -1037,119 +1171,150 @@ export default function ZomerfeestenPage() {
             font-weight: 800 !important;
           }
 
-          .print-layout-grid {
-            display: grid !important;
-            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-            gap: 5mm !important;
-            align-items: start !important;
-          }
-
-          .print-card {
-            break-inside: avoid !important;
-            page-break-inside: avoid !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 4mm !important;
-            overflow: hidden !important;
-            background: white !important;
-          }
-
-          .print-card-header {
-            display: flex !important;
-            justify-content: space-between !important;
-            align-items: center !important;
-            padding: 3mm 4mm !important;
-            background: #e0f2fe !important;
-            border-bottom: 1px solid #cbd5e1 !important;
-          }
-
-          .print-card-header h2 {
-            margin: 0 !important;
-            font-size: 12pt !important;
-            font-weight: 800 !important;
-          }
-
-          .print-pill {
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 999px !important;
-            padding: 1mm 2mm !important;
-            font-size: 8pt !important;
-            font-weight: 700 !important;
-            color: #475569 !important;
-            background: white !important;
-          }
-
-          .print-vitrine-grid {
-            display: grid !important;
-            grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
-            gap: 2.2mm !important;
-            padding: 4mm !important;
-          }
-
-          .print-vak {
-            min-height: 32mm !important;
-            border: 1px solid rgba(15, 23, 42, 0.15) !important;
-            border-radius: 4mm !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            position: relative !important;
-            overflow: hidden !important;
-            font-weight: 800 !important;
-          }
-
-          .print-vak-code {
-            transform: rotate(-90deg) !important;
-            white-space: nowrap !important;
-            font-size: 11pt !important;
-            letter-spacing: 0.02em !important;
-          }
-
-          .print-vak-pos {
-            position: absolute !important;
-            right: 2mm !important;
-            bottom: 1.8mm !important;
-            min-width: 5.5mm !important;
-            height: 5.5mm !important;
-            border-radius: 999px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            font-size: 7.5pt !important;
-            font-weight: 800 !important;
-          }
-
-          .print-bewaarkast-table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-          }
-
-          .print-bewaarkast-table th,
-          .print-bewaarkast-table td {
-            border-bottom: 1px solid #e2e8f0 !important;
-            padding: 2.4mm 2.6mm !important;
-            font-size: 9pt !important;
-          }
-
-          .print-bewaarkast-table th {
-            background: #f8fafc !important;
-            color: #334155 !important;
-            text-align: left !important;
-            font-size: 8pt !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.04em !important;
-          }
-
-          .print-bewaarkast-smaak {
-            font-weight: 700 !important;
-          }
-
           @page {
             size: A4 landscape;
             margin: 10mm;
           }
         }
       `}</style>
-      <div className="mx-auto w-full max-w-[1180px] space-y-6">
+      <div className="print-only-vitrine-top hidden">
+        <div className="print-sheet">
+          <h1>Vitrine-indeling Zomerfeesten {planning.jaar}</h1>
+          <div className="print-meta">
+            <span>{planning.naam || "Zomerfeesten"}</span>
+            <span>
+              Periode: {planning.start_datum} t/m {planning.eind_datum}
+            </span>
+          </div>
+          <div className="print-layout-grid">
+            {VITRINES.map((vitrine) => (
+              <section key={`print-top-vitrine-${vitrine.key}`} className="print-card">
+                <div className="print-card-header">
+                  <h2>{vitrine.label}</h2>
+                  <span className="print-pill">
+                    {Array.from({ length: VITRINE_POSITIES_PER_VITRINE }).filter((_, index) =>
+                      Boolean(vitrineIndeling[`${vitrine.key}-${index + 1}`]),
+                    ).length} / {VITRINE_POSITIES_PER_VITRINE}
+                  </span>
+                </div>
+                <div className="print-vitrine-grid">
+                  {Array.from({ length: VITRINE_POSITIES_PER_VITRINE }, (_, index) => {
+                    const positie = index + 1;
+                    const smaakcode = vitrineIndeling[`${vitrine.key}-${positie}`] || null;
+                    const smaak = smaakcode ? smaakPerCode.get(smaakcode) : null;
+                    const donker = isDonkereKleur(smaak?.kleur || null);
+                    return (
+                      <div
+                        key={`print-top-vak-${vitrine.key}-${positie}`}
+                        className="print-vak"
+                        style={
+                          smaak
+                            ? {
+                                backgroundColor: smaak.kleur || "#bfdbfe",
+                                color: donker ? "#ffffff" : "#0f172a",
+                              }
+                            : { backgroundColor: "#f8fafc", color: "#94a3b8" }
+                        }
+                      >
+                        <span className="print-vak-code">
+                          {smaak ? smaak.smaakcode || smaak.smaaknaam : "—"}
+                        </span>
+                        <span
+                          className="print-vak-pos"
+                          style={
+                            smaak
+                              ? {
+                                  backgroundColor: donker
+                                    ? "rgba(255,255,255,0.18)"
+                                    : "rgba(255,255,255,0.72)",
+                                  color: donker ? "#ffffff" : "#334155",
+                                }
+                              : { backgroundColor: "#e2e8f0", color: "#64748b" }
+                          }
+                        >
+                          {positie}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="print-only-bewaarkast-top hidden">
+        <div className="print-sheet">
+          <h1>Bewaarkastindeling Zomerfeesten {planning.jaar}</h1>
+          <div className="print-meta">
+            <span>{planning.naam || "Zomerfeesten"}</span>
+            <span>
+              Periode: {planning.start_datum} t/m {planning.eind_datum}
+            </span>
+          </div>
+          <div className="print-layout-grid">
+            {BEWAARKASTEN.map((kast) => (
+              <section key={`print-top-bewaarkast-${kast.key}`} className="print-card">
+                <div className="print-card-header">
+                  <h2>{kast.label}</h2>
+                  <span className="print-pill">
+                    {Array.from({ length: BEWAARKAST_SCHAPPEN }).reduce<number>(
+                      (sum, _, index) =>
+                        sum +
+                        Number(
+                          bewaarkastIndeling[`${kast.key}-${index + 1}`]
+                            ?.aantal_bakken || 0,
+                        ),
+                      0,
+                    )} bakken
+                  </span>
+                </div>
+                <table className="print-bewaarkast-table">
+                  <thead>
+                    <tr>
+                      <th>Smaak</th>
+                      <th>Schap</th>
+                      <th>Aantal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from({ length: BEWAARKAST_SCHAPPEN }, (_, index) => {
+                      const schap = index + 1;
+                      const entry = bewaarkastIndeling[`${kast.key}-${schap}`];
+                      const smaak = entry?.smaakcode
+                        ? smaakPerCode.get(entry.smaakcode)
+                        : null;
+                      const donker = isDonkereKleur(smaak?.kleur || null);
+                      return (
+                        <tr key={`print-top-bewaarkast-row-${kast.key}-${schap}`}>
+                          <td
+                            className="print-bewaarkast-smaak"
+                            style={
+                              smaak
+                                ? {
+                                    backgroundColor: smaak.kleur || "#f8fafc",
+                                    color: donker ? "#ffffff" : "#0f172a",
+                                  }
+                                : undefined
+                            }
+                          >
+                            {smaak ? smaak.smaaknaam : "—"}
+                          </td>
+                          <td>{schap}</td>
+                          <td>{Number(entry?.aantal_bakken || 0)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </section>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="screen-content mx-auto w-full max-w-[1180px] space-y-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
