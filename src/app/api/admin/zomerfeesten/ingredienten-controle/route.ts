@@ -256,9 +256,12 @@ export async function GET(req: NextRequest) {
       const receptRegels = regelsPerRecept.get(kostprijsReceptId) || [];
 
       const regels = receptRegels.map((regel) => {
+        const ingredientIdColumn = lineTable.ingredientIdColumn;
         const naam = lineTable.nameColumn
           ? String(regel[lineTable.nameColumn] || "").trim()
-          : `${lineTable.ingredientIdColumn}: ${regel[lineTable.ingredientIdColumn]}`;
+          : ingredientIdColumn
+            ? `${ingredientIdColumn}: ${regel[ingredientIdColumn]}`
+            : "Onbekend ingrediënt";
         const eenheid = lineTable.unitColumn
           ? String(regel[lineTable.unitColumn] || "").trim()
           : "";
