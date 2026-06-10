@@ -9,6 +9,7 @@ import {
   Euro,
   IceCream,
   Plus,
+  Printer,
   Save,
   Trash2,
 } from "lucide-react";
@@ -112,6 +113,14 @@ type BestelAdviesRegel = IngredientTotaal & {
   kosten: number | null;
   status: "berekend" | "controle_nodig";
   melding: string | null;
+};
+
+type BestelAdviesLeverancierGroep = {
+  leverancier: string;
+  regels: BestelAdviesRegel[];
+  totaalKosten: number;
+  berekend: number;
+  controleNodig: number;
 };
 
 type TussenreceptControle = {
@@ -318,6 +327,38 @@ export default function ZomerfeestenPage() {
     ).length;
     return { doorrekenbaar, overslaan, laterMaken, actieNodig };
   }, [smaken]);
+
+  const besteladviesPerLeverancier = useMemo(() => {
+    const advies = ingredientenControle?.besteladvies ?? [];
+    const groepen = new Map<string, BestelAdviesLeverancierGroep>();
+
+    for (const regel of advies) {
+      const leverancier = regel.leverancier_naam || "Geen leverancier";
+      const groep = groepen.get(leverancier) || {
+        leverancier,
+        regels: [],
+        totaalKosten: 0,
+        berekend: 0,
+        controleNodig: 0,
+      };
+
+      groep.regels.push(regel);
+      if (regel.status === "berekend") {
+        groep.berekend += 1;
+        groep.totaalKosten += regel.kosten || 0;
+      } else {
+        groep.controleNodig += 1;
+      }
+
+      groepen.set(leverancier, groep);
+    }
+
+    return Array.from(groepen.values()).sort((a, b) => {
+      if (a.leverancier === "Geen leverancier") return 1;
+      if (b.leverancier === "Geen leverancier") return -1;
+      return a.leverancier.localeCompare(b.leverancier, "nl");
+    });
+  }, [ingredientenControle?.besteladvies]);
 
   const weekOmzet = Number(planning.omzet_per_dag || 0) * aantalDagen;
   const bakkenPerDag = aantalDagen > 0 ? totalen.totaal / aantalDagen : 0;
@@ -1319,93 +1360,131 @@ export default function ZomerfeestenPage() {
                 )}
 
                 {(ingredientenControle.besteladvies ?? []).length > 0 && (
-                  <div className="rounded-2xl border border-emerald-200 overflow-hidden">
-                    <div className="border-b border-emerald-100 bg-emerald-50 px-4 py-3">
+                  <div className="rounded-2xl border border-emerald-200 overflow-hidden print:border-slate-300">
+                    <div className="border-b border-emerald-100 bg-emerald-50 px-4 py-3 print:bg-white print:border-slate-300">
                       <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-                        <div className="text-sm font-bold text-emerald-800">
-                          Besteladvies (controleversie)
+                        <div>
+                          <div className="text-sm font-bold text-emerald-800 print:text-slate-900">
+                            Besteladvies per leverancier
+                          </div>
+                          <div className="mt-1 text-xs text-emerald-700 print:text-slate-600">
+                            Totaal te bestellen voor de volledige Zomerfeestenplanning.
+                            Regels met “Nog invullen” missen nog verpakkingsinformatie of een bruikbare eenheid.
+                          </div>
                         </div>
-                        <div className="text-sm font-semibold text-emerald-900">
-                          Totaal:{" "}
-                          {formatEuroExact(
-                            ingredientenControle.meta.totale_kosten ?? 0,
-                          )}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => window.print()}
+                            className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 shadow-sm hover:bg-emerald-50 print:hidden"
+                          >
+                            <Printer className="h-4 w-4" /> Print
+                          </button>
+                          <div className="rounded-xl bg-white px-3 py-2 text-sm font-bold text-emerald-900 shadow-sm print:shadow-none print:border print:border-slate-200">
+                            Totaal: {formatEuroExact(ingredientenControle.meta.totale_kosten ?? 0)}
+                          </div>
                         </div>
                       </div>
-                      <div className="mt-1 text-xs text-emerald-700">
-                        Bestelregels berekend: {" "}
-                        {ingredientenControle.meta.besteladvies_berekend ?? 0} ·
-                        Nog invullen/controleren: {" "}
-                        {ingredientenControle.meta
-                          .besteladvies_controle_nodig ?? 0}
-                        . Bij regels met “verpakking onbekend” kan de app nog niet bepalen hoeveel verpakkingen besteld moeten worden.
+                      <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                        <span className="rounded-full bg-white px-2 py-1 font-semibold text-emerald-700 print:border print:border-slate-200 print:text-slate-700">
+                          Leveranciers: {besteladviesPerLeverancier.length}
+                        </span>
+                        <span className="rounded-full bg-white px-2 py-1 font-semibold text-emerald-700 print:border print:border-slate-200 print:text-slate-700">
+                          Berekend: {ingredientenControle.meta.besteladvies_berekend ?? 0}
+                        </span>
+                        <span className="rounded-full bg-white px-2 py-1 font-semibold text-amber-700 print:border print:border-slate-200 print:text-slate-700">
+                          Nog invullen: {ingredientenControle.meta.besteladvies_controle_nodig ?? 0}
+                        </span>
                       </div>
                     </div>
-                    <div className="divide-y divide-emerald-100">
-                      {(ingredientenControle.besteladvies ?? []).map(
-                        (regel) => (
-                          <div
-                            key={`${regel.product_id ?? regel.naam}-${regel.eenheid}`}
-                            className="grid grid-cols-1 gap-3 px-4 py-3 text-sm lg:grid-cols-[minmax(0,1.3fr)_120px_120px_100px_110px_110px] lg:items-center"
-                          >
-                            <div className="min-w-0">
-                              <div className="truncate font-semibold text-slate-900">
-                                {regel.naam}
+
+                    <div className="divide-y divide-emerald-100 print:divide-slate-200">
+                      {besteladviesPerLeverancier.map((groep) => (
+                        <div key={groep.leverancier} className="bg-white">
+                          <div className="flex flex-col gap-1 border-b border-emerald-50 bg-emerald-50/60 px-4 py-3 md:flex-row md:items-center md:justify-between print:bg-slate-50 print:border-slate-200">
+                            <div>
+                              <div className="font-bold text-slate-900">
+                                {groep.leverancier}
                               </div>
-                              <div className="mt-0.5 text-xs text-slate-500">
-                                {regel.bestelnummer
-                                  ? `Bestelnr. ${regel.bestelnummer}`
-                                  : "Geen bestelnummer"}
-                                {regel.melding ? ` · ${regel.melding}` : ""}
+                              <div className="text-xs text-slate-500">
+                                {groep.berekend} berekend · {groep.controleNodig} nog invullen
                               </div>
                             </div>
-                            <div className="text-slate-700 lg:text-right">
-                              <span className="lg:hidden text-slate-500">
-                                Nodig:{" "}
-                              </span>
-                              <span className="font-semibold">
-                                {formatHoeveelheid(regel.totaal)}{" "}
-                                {regel.eenheid}
-                              </span>
-                            </div>
-                            <div className="text-slate-700 lg:text-right">
-                              <span className="lg:hidden text-slate-500">
-                                Verpakking:{" "}
-                              </span>
-                              {regel.verpakking_hoeveelheid_gebruikt
-                                ? `${formatHoeveelheid(regel.verpakking_hoeveelheid_gebruikt)} ${regel.verpakking_eenheid_gebruikt ?? ""}`
-                                : "verpakking onbekend"}
-                            </div>
-                            <div className="text-slate-900 lg:text-right">
-                              <span className="lg:hidden text-slate-500">
-                                Bestellen:{" "}
-                              </span>
-                              <span className="font-bold">
-                                {regel.bestellen ?? "–"}
-                              </span>
-                            </div>
-                            <div className="text-slate-700 lg:text-right">
-                              <span className="lg:hidden text-slate-500">
-                                Prijs:{" "}
-                              </span>
-                              {formatEuroExact(regel.huidige_prijs)}
-                            </div>
-                            <div className="flex items-center justify-between gap-2 lg:justify-end">
-                              <span
-                                className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                                  regel.status === "berekend"
-                                    ? "bg-emerald-50 text-emerald-700"
-                                    : "bg-amber-50 text-amber-700"
-                                }`}
-                              >
-                                {regel.status === "berekend"
-                                  ? formatEuroExact(regel.kosten)
-                                  : "Nog invullen"}
-                              </span>
+                            <div className="text-sm font-bold text-slate-900">
+                              {formatEuroExact(groep.totaalKosten)}
                             </div>
                           </div>
-                        ),
-                      )}
+
+                          <div className="divide-y divide-slate-100">
+                            {groep.regels.map((regel) => (
+                              <div
+                                key={`${groep.leverancier}-${regel.product_id ?? regel.naam}-${regel.eenheid}`}
+                                className="grid grid-cols-1 gap-3 px-4 py-3 text-sm lg:grid-cols-[minmax(0,1.4fr)_120px_120px_90px_100px_110px] lg:items-center"
+                              >
+                                <div className="min-w-0">
+                                  <div className="truncate font-semibold text-slate-900">
+                                    {regel.product_naam || regel.naam}
+                                  </div>
+                                  <div className="mt-0.5 text-xs text-slate-500">
+                                    {regel.bestelnummer
+                                      ? `Bestelnr. ${regel.bestelnummer}`
+                                      : "Geen bestelnummer"}
+                                    {regel.melding ? ` · ${regel.melding}` : ""}
+                                  </div>
+                                </div>
+
+                                <div className="text-slate-700 lg:text-right">
+                                  <span className="lg:hidden text-slate-500">
+                                    Nodig: {" "}
+                                  </span>
+                                  <span className="font-semibold">
+                                    {formatHoeveelheid(regel.totaal)} {regel.eenheid}
+                                  </span>
+                                </div>
+
+                                <div className="text-slate-700 lg:text-right">
+                                  <span className="lg:hidden text-slate-500">
+                                    Verpakking: {" "}
+                                  </span>
+                                  {regel.verpakking_hoeveelheid_gebruikt
+                                    ? `${formatHoeveelheid(regel.verpakking_hoeveelheid_gebruikt)} ${regel.verpakking_eenheid_gebruikt ?? ""}`
+                                    : "verpakking onbekend"}
+                                </div>
+
+                                <div className="text-slate-900 lg:text-right">
+                                  <span className="lg:hidden text-slate-500">
+                                    Bestellen: {" "}
+                                  </span>
+                                  <span className="font-bold">
+                                    {regel.bestellen ?? "–"}
+                                  </span>
+                                </div>
+
+                                <div className="text-slate-700 lg:text-right">
+                                  <span className="lg:hidden text-slate-500">
+                                    Prijs: {" "}
+                                  </span>
+                                  {formatEuroExact(regel.huidige_prijs)}
+                                </div>
+
+                                <div className="flex items-center justify-between gap-2 lg:justify-end">
+                                  <span
+                                    className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                                      regel.status === "berekend"
+                                        ? "bg-emerald-50 text-emerald-700"
+                                        : "bg-amber-50 text-amber-700"
+                                    }`}
+                                  >
+                                    {regel.status === "berekend"
+                                      ? formatEuroExact(regel.kosten)
+                                      : "Nog invullen"}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
