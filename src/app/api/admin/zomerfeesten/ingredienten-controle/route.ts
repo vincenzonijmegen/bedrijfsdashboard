@@ -14,6 +14,8 @@ type ProductInfo = {
   bestelnummer: string | null;
   besteleenheid: number | null;
   huidige_prijs: number | null;
+  inhoud: number | null;
+  eenheid_product: string | null;
   verpakking_hoeveelheid: number | null;
   verpakking_eenheid: string | null;
   label: string;
@@ -30,6 +32,8 @@ type TotaalItem = {
   bestelnummer: string | null;
   besteleenheid: number | null;
   huidige_prijs: number | null;
+  inhoud: number | null;
+  eenheid_product: string | null;
   verpakking_hoeveelheid: number | null;
   verpakking_eenheid: string | null;
 };
@@ -262,6 +266,12 @@ async function getProductMap(productIds: number[]) {
     productKolommen.has("huidige_prijs")
       ? "p.huidige_prijs"
       : "NULL AS huidige_prijs",
+    productKolommen.has("inhoud")
+      ? "p.inhoud"
+      : "NULL AS inhoud",
+    productKolommen.has("eenheid")
+      ? "p.eenheid AS eenheid_product"
+      : "NULL AS eenheid_product",
     productKolommen.has("verpakking_hoeveelheid")
       ? "p.verpakking_hoeveelheid"
       : "NULL AS verpakking_hoeveelheid",
@@ -303,6 +313,13 @@ async function getProductMap(productIds: number[]) {
         row.huidige_prijs === null || row.huidige_prijs === undefined
           ? null
           : toNumber(row.huidige_prijs, 0),
+      inhoud:
+        row.inhoud === null || row.inhoud === undefined
+          ? null
+          : toNumber(row.inhoud, 0),
+      eenheid_product: row.eenheid_product
+        ? String(row.eenheid_product)
+        : null,
       verpakking_hoeveelheid:
         row.verpakking_hoeveelheid === null ||
         row.verpakking_hoeveelheid === undefined
@@ -345,6 +362,8 @@ function addTotaal(
     bestelnummer: product?.bestelnummer ?? null,
     besteleenheid: product?.besteleenheid ?? null,
     huidige_prijs: product?.huidige_prijs ?? null,
+    inhoud: product?.inhoud ?? null,
+    eenheid_product: product?.eenheid_product ?? null,
     verpakking_hoeveelheid: product?.verpakking_hoeveelheid ?? null,
     verpakking_eenheid: product?.verpakking_eenheid ?? null,
   };
@@ -404,23 +423,40 @@ function converteerHoeveelheid(
 
 function maakBesteladvies(totalen: TotaalItem[]) {
   return totalen.map((totaal): BestelAdviesRegel => {
-    const kolomHoeveelheid =
+    const explicieteVerpakkingHoeveelheid =
       totaal.verpakking_hoeveelheid && totaal.verpakking_hoeveelheid > 0
         ? totaal.verpakking_hoeveelheid
         : null;
-    const kolomEenheid = totaal.verpakking_eenheid
+    const explicieteVerpakkingEenheid = totaal.verpakking_eenheid
       ? normaliseerEenheid(totaal.verpakking_eenheid)
       : null;
+
+    // De bestaande productenmodule heeft al velden `inhoud` en `eenheid`.
+    // Dat is in de praktijk de verpakkingsinhoud: bv. inhoud=1, eenheid=kilogram.
+    // De nieuwe kolommen verpakking_hoeveelheid/verpakking_eenheid zijn daarom
+    // alleen een fallback/toekomstige explicitering, niet de enige bron.
+    const bestaandeInhoudHoeveelheid =
+      totaal.inhoud && totaal.inhoud > 0 ? totaal.inhoud : null;
+    const bestaandeInhoudEenheid = totaal.eenheid_product
+      ? normaliseerEenheid(totaal.eenheid_product)
+      : null;
+
     const parsed = parseVerpakkingUitNaam(totaal.product_naam || totaal.naam);
 
-    const verpakkingHoeveelheid = kolomHoeveelheid || parsed.hoeveelheid;
-    const verpakkingEenheid = kolomEenheid || parsed.eenheid;
+    const verpakkingHoeveelheid =
+      explicieteVerpakkingHoeveelheid ||
+      bestaandeInhoudHoeveelheid ||
+      parsed.hoeveelheid;
+    const verpakkingEenheid =
+      explicieteVerpakkingEenheid || bestaandeInhoudEenheid || parsed.eenheid;
     const verpakkingBron =
-      kolomHoeveelheid && kolomEenheid
+      explicieteVerpakkingHoeveelheid && explicieteVerpakkingEenheid
         ? "kolom"
-        : parsed.hoeveelheid && parsed.eenheid
-          ? "productnaam"
-          : "ontbreekt";
+        : bestaandeInhoudHoeveelheid && bestaandeInhoudEenheid
+          ? "kolom"
+          : parsed.hoeveelheid && parsed.eenheid
+            ? "productnaam"
+            : "ontbreekt";
 
     if (!totaal.product_id) {
       return {
