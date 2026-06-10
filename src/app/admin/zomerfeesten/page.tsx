@@ -2791,6 +2791,7 @@ export default function ZomerfeestenPage() {
                 )}
 
                 {(ingredientenControle.besteladvies ?? []).length > 0 && (
+                  <>
                   <div className="print-only-bestellijst hidden">
                     <h1>Besteladvies Zomerfeesten {planning.jaar}</h1>
                     <div className="print-meta">
@@ -3024,6 +3025,7 @@ export default function ZomerfeestenPage() {
                       </div>
                     </div>
                   </div>
+                  </>
                 )}
 
                 {ingredientenControle.totalen.length > 0 && (
