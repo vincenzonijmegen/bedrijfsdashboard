@@ -1768,13 +1768,10 @@ export default function ZomerfeestenPage() {
                       {vitrine.label}
                     </h3>
                     <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
-                      {Array.from(
-                        { length: VITRINE_POSITIES_PER_VITRINE },
+                      {Array.from({ length: VITRINE_POSITIES_PER_VITRINE }).filter(
                         (_, index) =>
-                          vitrineIndeling[`${vitrine.key}-${index + 1}`]
-                            ? 1
-                            : 0,
-                      ).reduce((a, b) => a + b, 0)}{" "}
+                          Boolean(vitrineIndeling[`${vitrine.key}-${index + 1}`]),
+                      ).length}{" "}
                       / {VITRINE_POSITIES_PER_VITRINE}
                     </span>
                   </div>
