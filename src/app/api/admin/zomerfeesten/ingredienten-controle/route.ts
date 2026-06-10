@@ -137,6 +137,30 @@ function yieldForRecipe(recipeRow: RegelRij | undefined) {
   return { opbrengstBakken: 1, bron: "standaard 1 bak" };
 }
 
+
+async function getProductNaamMap(productIds: number[]) {
+  const uniekeIds = Array.from(new Set(productIds.filter((id) => id > 0)));
+  if (uniekeIds.length === 0) return new Map<number, string>();
+
+  const result = await db.query(
+    `SELECT
+       p.id,
+       p.naam AS product_naam,
+       l.naam AS leverancier_naam
+     FROM producten p
+     LEFT JOIN leveranciers l ON l.id = p.leverancier_id
+     WHERE p.id = ANY($1::int[])`,
+    [uniekeIds]
+  );
+
+  const map = new Map<number, string>();
+  for (const row of result.rows as { id: number; product_naam: string; leverancier_naam: string | null }[]) {
+    const leverancier = row.leverancier_naam ? `${row.leverancier_naam} · ` : "";
+    map.set(toNumber(row.id), `${leverancier}${row.product_naam}`);
+  }
+  return map;
+}
+
 export async function GET(req: NextRequest) {
   const planningId = req.nextUrl.searchParams.get("planning_id");
 
@@ -243,6 +267,14 @@ export async function GET(req: NextRequest) {
       regelsPerRecept.get(receptId)?.push(row);
     }
 
+    const productNaamMap = lineTable.ingredientIdColumn
+      ? await getProductNaamMap(
+          (regelsRes.rows as RegelRij[]).map((row) =>
+            toNumber(row[lineTable.ingredientIdColumn as string], 0)
+          )
+        )
+      : new Map<number, string>();
+
     const totalenMap = new Map<
       string,
       { naam: string; eenheid: string; totaal: number; bronregels: number }
@@ -257,11 +289,13 @@ export async function GET(req: NextRequest) {
 
       const regels = receptRegels.map((regel) => {
         const ingredientIdColumn = lineTable.ingredientIdColumn;
-        const naam = lineTable.nameColumn
-          ? String(regel[lineTable.nameColumn] || "").trim()
-          : ingredientIdColumn
-            ? `${ingredientIdColumn}: ${regel[ingredientIdColumn]}`
-            : "Onbekend ingrediënt";
+        const ingredientId = ingredientIdColumn ? toNumber(regel[ingredientIdColumn], 0) : 0;
+        const naamUitProduct = ingredientId > 0 ? productNaamMap.get(ingredientId) : null;
+        const naam = naamUitProduct
+          || (lineTable.nameColumn ? String(regel[lineTable.nameColumn] || "").trim() : "")
+          || (ingredientIdColumn && ingredientId > 0
+            ? `${ingredientIdColumn}: ${ingredientId}`
+            : "Onbekend ingrediënt");
         const eenheid = lineTable.unitColumn
           ? String(regel[lineTable.unitColumn] || "").trim()
           : "";
@@ -288,11 +322,8 @@ export async function GET(req: NextRequest) {
       });
 
       const waarschuwingen: string[] = [];
-      if (bron === "standaard 1 bak") {
-        waarschuwingen.push(
-          "Geen opbrengst/aantal bakken gevonden op het kostprijsrecept; gerekend alsof het recept 1 bak oplevert."
-        );
-      }
+      // De bestaande kostprijsrecepten zijn in de praktijk meestal per bak opgezet.
+      // Daarom tonen we de standaard-aanname niet als waarschuwing per smaak.
       if (regels.length === 0) {
         waarschuwingen.push("Geen receptregels gevonden voor dit kostprijsrecept.");
       }
@@ -323,6 +354,8 @@ export async function GET(req: NextRequest) {
         recept_id_column: lineTable.receptIdColumn,
         quantity_column: lineTable.quantityColumn,
         name_column: lineTable.nameColumn,
+        ingredient_id_column: lineTable.ingredientIdColumn,
+        productnamen_gekoppeld: lineTable.ingredientIdColumn ? true : false,
         unit_column: lineTable.unitColumn,
         waarschuwingen: [],
       },
