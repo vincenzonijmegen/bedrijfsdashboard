@@ -425,7 +425,7 @@ export default function ZomerfeestenPage() {
                   <span className="font-medium text-slate-700">Jaar</span>
                   <input
                     type="number"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
                     value={planning.jaar}
                     onChange={(e) =>
                       setPlanning((p) => ({ ...p, jaar: Number(e.target.value) }))
@@ -436,7 +436,7 @@ export default function ZomerfeestenPage() {
                 <label className="space-y-1 text-sm">
                   <span className="font-medium text-slate-700">Naam</span>
                   <input
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
                     value={planning.naam}
                     onChange={(e) =>
                       setPlanning((p) => ({ ...p, naam: e.target.value }))
@@ -448,7 +448,7 @@ export default function ZomerfeestenPage() {
                   <span className="font-medium text-slate-700">Startdatum</span>
                   <input
                     type="date"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
                     value={planning.start_datum}
                     onChange={(e) =>
                       setPlanning((p) => ({ ...p, start_datum: e.target.value }))
@@ -460,7 +460,7 @@ export default function ZomerfeestenPage() {
                   <span className="font-medium text-slate-700">Einddatum</span>
                   <input
                     type="date"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
                     value={planning.eind_datum}
                     onChange={(e) =>
                       setPlanning((p) => ({ ...p, eind_datum: e.target.value }))
@@ -490,7 +490,7 @@ export default function ZomerfeestenPage() {
                   <span className="font-medium text-slate-700">% melk</span>
                   <input
                     type="number"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
                     value={planning.percentage_melk}
                     onChange={(e) =>
                       setPlanning((p) => ({
@@ -505,7 +505,7 @@ export default function ZomerfeestenPage() {
                   <span className="font-medium text-slate-700">% vruchten</span>
                   <input
                     type="number"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
                     value={planning.percentage_vruchten}
                     onChange={(e) =>
                       setPlanning((p) => ({
@@ -519,7 +519,7 @@ export default function ZomerfeestenPage() {
                 <label className="space-y-1 text-sm">
                   <span className="font-medium text-slate-700">Status</span>
                   <select
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
                     value={planning.status}
                     onChange={(e) =>
                       setPlanning((p) => ({
@@ -538,7 +538,7 @@ export default function ZomerfeestenPage() {
                   <span className="font-medium text-slate-700">Machines</span>
                   <input
                     type="number"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
                     value={planning.aantal_machines}
                     onChange={(e) =>
                       setPlanning((p) => ({
@@ -553,7 +553,7 @@ export default function ZomerfeestenPage() {
                   <span className="font-medium text-slate-700">Kastruimte bakken</span>
                   <input
                     type="number"
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                    className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
                     value={planning.kastruimte_bakken}
                     onChange={(e) =>
                       setPlanning((p) => ({
@@ -590,11 +590,11 @@ export default function ZomerfeestenPage() {
                   Smaak toevoegen
                 </h3>
 
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
-                  <label className="space-y-1 text-sm md:col-span-2 xl:col-span-2">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,2fr)_120px_minmax(170px,1.4fr)_120px_110px_minmax(160px,1fr)]">
+                  <label className="min-w-0 space-y-1 text-sm md:col-span-2 xl:col-span-1">
                     <span className="font-medium text-slate-700">Keukenrecept</span>
                     <select
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
+                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2"
                       value={nieuweSmaak.recept_id ?? ""}
                       onChange={(e) =>
                         kiesNieuwRecept(e.target.value ? Number(e.target.value) : null)
@@ -613,7 +613,7 @@ export default function ZomerfeestenPage() {
                   <label className="space-y-1 text-sm">
                     <span className="font-medium text-slate-700">Code</span>
                     <input
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 uppercase"
+                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 uppercase"
                       value={nieuweSmaak.smaakcode}
                       onChange={(e) =>
                         setNieuweSmaak((s) => ({
@@ -624,10 +624,10 @@ export default function ZomerfeestenPage() {
                     />
                   </label>
 
-                  <label className="space-y-1 text-sm md:col-span-2 xl:col-span-1">
+                  <label className="min-w-0 space-y-1 text-sm md:col-span-2 xl:col-span-1">
                     <span className="font-medium text-slate-700">Smaaknaam</span>
                     <input
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
+                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2"
                       value={nieuweSmaak.smaaknaam}
                       onChange={(e) =>
                         setNieuweSmaak((s) => ({ ...s, smaaknaam: e.target.value }))
@@ -638,7 +638,7 @@ export default function ZomerfeestenPage() {
                   <label className="space-y-1 text-sm">
                     <span className="font-medium text-slate-700">Soort</span>
                     <select
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
+                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2"
                       value={nieuweSmaak.soort}
                       onChange={(e) =>
                         setNieuweSmaak((s) => ({
@@ -658,7 +658,7 @@ export default function ZomerfeestenPage() {
                     <input
                       type="number"
                       step="0.1"
-                      className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-right"
+                      className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2 text-right"
                       value={nieuweSmaak.aantal_bakken}
                       onChange={(e) =>
                         setNieuweSmaak((s) => ({
@@ -669,7 +669,7 @@ export default function ZomerfeestenPage() {
                     />
                   </label>
 
-                  <div className="flex items-end gap-3">
+                  <div className="flex min-w-0 flex-wrap items-end gap-3">
                     <label className="space-y-1 text-sm">
                       <span className="font-medium text-slate-700">Kleur</span>
                       <input
@@ -699,11 +699,11 @@ export default function ZomerfeestenPage() {
                     key={index}
                     className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
                   >
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1.4fr)_90px_minmax(180px,1fr)_120px_100px_90px_44px] xl:items-end">
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(170px,1.2fr)_78px_minmax(135px,1fr)_96px_78px_74px_86px] xl:items-end">
                       <label className="space-y-1 text-sm">
                         <span className="font-medium text-slate-700">Keukenrecept</span>
                         <select
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                          className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
                           value={smaak.recept_id ?? ""}
                           onChange={(e) =>
                             kiesBestaandRecept(
@@ -725,7 +725,7 @@ export default function ZomerfeestenPage() {
                       <label className="space-y-1 text-sm">
                         <span className="font-medium text-slate-700">Code</span>
                         <input
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 uppercase"
+                          className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2 uppercase"
                           value={smaak.smaakcode}
                           onChange={(e) =>
                             wijzigSmaak(index, {
@@ -738,7 +738,7 @@ export default function ZomerfeestenPage() {
                       <label className="space-y-1 text-sm">
                         <span className="font-medium text-slate-700">Smaaknaam</span>
                         <input
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                          className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
                           value={smaak.smaaknaam}
                           onChange={(e) =>
                             wijzigSmaak(index, { smaaknaam: e.target.value })
@@ -749,7 +749,7 @@ export default function ZomerfeestenPage() {
                       <label className="space-y-1 text-sm">
                         <span className="font-medium text-slate-700">Soort</span>
                         <select
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2"
+                          className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2"
                           value={smaak.soort}
                           onChange={(e) =>
                             wijzigSmaak(index, {
@@ -768,7 +768,7 @@ export default function ZomerfeestenPage() {
                         <input
                           type="number"
                           step="0.1"
-                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-right"
+                          className="w-full min-w-0 rounded-xl border border-slate-200 px-3 py-2 text-right"
                           value={smaak.aantal_bakken}
                           onChange={(e) =>
                             wijzigSmaak(index, {
@@ -780,14 +780,14 @@ export default function ZomerfeestenPage() {
 
                       <div className="space-y-1 text-sm">
                         <span className="font-medium text-slate-700">Per dag</span>
-                        <div className="rounded-xl bg-slate-50 px-3 py-2 text-right font-semibold text-slate-700">
+                        <div className="rounded-xl bg-slate-50 px-2 py-2 text-right font-semibold text-slate-700">
                           {aantalDagen > 0
                             ? (Number(smaak.aantal_bakken || 0) / aantalDagen).toFixed(1)
                             : "-"}
                         </div>
                       </div>
 
-                      <div className="flex items-end gap-2">
+                      <div className="flex min-w-0 items-end gap-2">
                         <label className="space-y-1 text-sm">
                           <span className="font-medium text-slate-700">Kleur</span>
                           <input
@@ -804,7 +804,7 @@ export default function ZomerfeestenPage() {
                           onClick={() =>
                             setSmaken((prev) => prev.filter((_, i) => i !== index))
                           }
-                          className="mb-0 rounded-xl p-3 text-red-600 hover:bg-red-50"
+                          className="mb-0 shrink-0 rounded-xl p-3 text-red-600 hover:bg-red-50"
                           title="Verwijderen"
                         >
                           <Trash2 className="h-4 w-4" />
