@@ -15,9 +15,13 @@ function maakLink(token: string) {
   return `${baseUrl.replace(/\/$/, "")}/beschikbaarheid/${token}`;
 }
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  _req: Request,
+  context: { params: Promise<{ id: string }> }
+) {
   try {
-    const rondeId = Number(params.id);
+    const { id } = await context.params;
+    const rondeId = Number(id);
 
     const result = await db.query(
       `SELECT
@@ -55,9 +59,13 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   }
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
-  try {
-    const rondeId = Number(params.id);
+export async function POST(
+      req: Request,
+      context: { params: Promise<{ id: string }> }
+    ) {
+      try {
+        const { id } = await context.params;
+        const rondeId = Number(id);
     const body = await req.json();
     const emails: string[] = body.emails || [];
     const alleenHerinneren: boolean = body.alleenHerinneren === true;
