@@ -576,7 +576,7 @@ export default function BeschikbaarheidsUitvragenPage() {
                 Nog geen medewerkers gekoppeld.
               </div>
             ) : (
-              <div className="grid gap-4 p-5 xl:grid-cols-2">
+              <div className="space-y-4 p-5">
                 {deelnames.map((deelname) => (
                   <div
                     key={deelname.id}
