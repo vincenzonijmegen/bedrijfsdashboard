@@ -551,73 +551,77 @@ export default function BeschikbaarheidsUitvragenPage() {
                   </div>
                 </section>
 
-                <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                  <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
-                    <h3 className="font-bold text-slate-950">Status en antwoorden</h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                      Per medewerker zie je status, beschikbaarheid per dag en toelichting.
-                    </p>
-                  </div>
+                <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+  <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+    <h3 className="font-bold text-slate-950">Status en antwoorden</h3>
+    <p className="mt-1 text-sm text-slate-500">
+      Per medewerker zie je status, maximale diensten en opgegeven beschikbaarheid.
+    </p>
+  </div>
 
-                  {!deelnames ? (
-                    <div className="px-5 py-8 text-sm text-slate-500">Deelnames laden…</div>
-                  ) : deelnames.length === 0 ? (
-                    <div className="px-5 py-8 text-sm text-slate-500">Nog geen medewerkers gekoppeld.</div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[760px] table-fixed text-sm">
-                        <colgroup>
-                        <col className="w-[24%]" />
-                        <col className="w-[15%]" />
-                        {dagen.map(([key]) => (
-                          <col key={key} className="w-[5.5%]" />
-                        ))}
-                        <col className="w-[7%]" />
-                        <col className="w-[15.5%]" />
-                      </colgroup>
-                        <thead className="bg-white text-xs uppercase tracking-wide text-slate-500">
-                          <tr>
-                            <th className="border-b border-slate-200 px-4 py-3 text-left">Naam</th>
-                            <th className="border-b border-slate-200 px-4 py-3 text-left">Status</th>
-                            {dagen.map(([, label]) => (
-                              <th key={label} className="border-b border-slate-200 px-2 py-3 text-center">
-                                {label}
-                              </th>
-                            ))}
-                            <th className="border-b border-slate-200 px-3 py-3 text-center">Max</th>
-                            <th className="border-b border-slate-200 px-4 py-3 text-left">Toelichting</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {deelnames.map((deelname) => (
-                            <tr key={deelname.id} className="align-top transition hover:bg-slate-50">
-                              <td className="px-4 py-3">
-                                <div className="font-semibold text-slate-950">{deelname.naam}</div>
-                                <div className="mt-0.5 truncate text-xs text-slate-400">
-                                  {deelname.medewerker_email}
-                                </div>
-                              </td>
-                              <td className="px-4 py-3">{statusPill(deelname.status, deelname.herinner_mij_op)}</td>
-                              {dagen.map(([key]) => (
-                                <td key={`${deelname.id}-${key}`} className="px-2 py-3 text-center">
-                                  {shiftCell(deelname, key)}
-                                </td>
-                              ))}
-                              <td className="px-3 py-3 text-center">
-                                <span className="inline-flex min-w-8 justify-center rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-700 ring-1 ring-slate-200">
-                                  {deelname.max_diensten_per_week || "—"}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-sm leading-5 text-slate-600">
-                                {deelname.toelichting || <span className="text-slate-300">—</span>}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+  {!deelnames ? (
+    <div className="px-5 py-8 text-sm text-slate-500">Deelnames laden…</div>
+  ) : deelnames.length === 0 ? (
+    <div className="px-5 py-8 text-sm text-slate-500">
+      Nog geen medewerkers gekoppeld.
+    </div>
+  ) : (
+    <div className="divide-y divide-slate-100">
+      {deelnames.map((deelname) => (
+        <div key={deelname.id} className="px-5 py-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h4 className="font-semibold text-slate-950">{deelname.naam}</h4>
+                {statusPill(deelname.status, deelname.herinner_mij_op)}
+              </div>
+
+              <div className="mt-0.5 truncate text-xs text-slate-400">
+                {deelname.medewerker_email}
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
+                {dagen.map(([key, label]) => (
+                  <div
+                    key={`${deelname.id}-${key}`}
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+                  >
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                      {label}
                     </div>
+                    <div className="mt-1">{shiftCell(deelname, key)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 xl:w-64">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Max per week
+                </span>
+                <span className="inline-flex min-w-8 justify-center rounded-full bg-white px-3 py-1 text-sm font-bold text-slate-800 ring-1 ring-slate-200">
+                  {deelname.max_diensten_per_week || "—"}
+                </span>
+              </div>
+
+              <div className="mt-4 border-t border-slate-200 pt-4">
+                <div className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Toelichting
+                </div>
+                <p className="mt-1 text-sm leading-5 text-slate-700">
+                  {deelname.toelichting || (
+                    <span className="text-slate-300">—</span>
                   )}
-                </section>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )}
+</section>
               </>
             ) : (
               <div className="rounded-2xl border border-slate-200 bg-white px-5 py-10 text-center text-sm text-slate-500 shadow-sm">
