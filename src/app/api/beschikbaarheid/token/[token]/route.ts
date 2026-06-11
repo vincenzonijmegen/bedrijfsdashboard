@@ -17,9 +17,13 @@ function uitersteHerinnerDatum(startDatum: string) {
   return d.toISOString().slice(0, 10);
 }
 
-export async function GET(_req: Request, { params }: { params: { token: string } }) {
+export async function GET(
+  _req: Request,
+  context: { params: Promise<{ token: string }> }
+) {
   try {
-    const tokenHash = hashToken(params.token);
+    const { token } = await context.params;
+    const tokenHash = hashToken(token);
 
     const result = await db.query(
       `SELECT
@@ -70,9 +74,13 @@ export async function GET(_req: Request, { params }: { params: { token: string }
   }
 }
 
-export async function POST(req: Request, { params }: { params: { token: string } }) {
+export async function POST(
+  req: Request,
+  context: { params: Promise<{ token: string }> }
+) {
   try {
-    const tokenHash = hashToken(params.token);
+    const { token } = await context.params;
+    const tokenHash = hashToken(token);
     const body = await req.json();
 
     const deelnameRes = await db.query(
