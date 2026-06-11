@@ -79,35 +79,40 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         continue;
       }
 
-      let token = crypto.randomBytes(32).toString("hex");
-      let tokenHash = hashToken(token);
+        const token = crypto.randomBytes(32).toString("hex");
+        const tokenHash = hashToken(token);
 
-      const bestaande = await db.query(
-        `SELECT id, token_hash, status FROM beschikbaarheids_deelnames WHERE ronde_id = $1 AND medewerker_email = $2`,
-        [rondeId, email]
-      );
+        const bestaande = await db.query(
+          `SELECT status
+          FROM beschikbaarheids_deelnames
+          WHERE ronde_id = $1 AND medewerker_email = $2`,
+          [rondeId, email]
+        );
 
-      if (bestaande.rowCount > 0) {
-        if (alleenHerinneren && bestaande.rows[0].status === "ingevuld") {
-          overgeslagen.push(email);
-          continue;
+        const bestaandeRij = bestaande?.rows?.[0] ?? null;
+
+        if (bestaandeRij) {
+          if (alleenHerinneren && bestaandeRij.status === "ingevuld") {
+            overgeslagen.push(email);
+            continue;
+          }
+
+          await db.query(
+            `UPDATE beschikbaarheids_deelnames
+            SET token_hash = $1,
+                laatste_herinnering_op = NOW(),
+                status = CASE WHEN status = 'uitgesteld' THEN 'open' ELSE status END
+            WHERE ronde_id = $2 AND medewerker_email = $3`,
+            [tokenHash, rondeId, email]
+          );
+        } else {
+          await db.query(
+            `INSERT INTO beschikbaarheids_deelnames
+              (ronde_id, medewerker_email, token_hash, verzonden_op, status)
+            VALUES ($1, $2, $3, NOW(), 'open')`,
+            [rondeId, email, tokenHash]
+          );
         }
-        await db.query(
-          `UPDATE beschikbaarheids_deelnames
-           SET token_hash = $1, verzonden_op = COALESCE(verzonden_op, NOW()), laatste_herinnering_op = NOW(),
-               status = CASE WHEN status = 'ingevuld' THEN status ELSE 'open' END,
-               herinner_mij_op = CASE WHEN status = 'ingevuld' THEN herinner_mij_op ELSE NULL END
-           WHERE ronde_id = $2 AND medewerker_email = $3`,
-          [tokenHash, rondeId, email]
-        );
-      } else {
-        await db.query(
-          `INSERT INTO beschikbaarheids_deelnames
-            (ronde_id, medewerker_email, token_hash, verzonden_op, status)
-           VALUES ($1, $2, $3, NOW(), 'open')`,
-          [rondeId, email, tokenHash]
-        );
-      }
 
       await sendBeschikbaarheidsOpgaveMail({
         naar: medewerker.email,
@@ -118,7 +123,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         deadline: ronde.deadline,
         toelichting: ronde.toelichting,
         link: maakLink(token),
-        herinnering: bestaande.rowCount > 0,
+        herinnering: Boolean(bestaandeRij),
       });
 
       verzonden.push(email);
