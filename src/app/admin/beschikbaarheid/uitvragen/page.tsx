@@ -360,7 +360,7 @@ export default function BeschikbaarheidsUitvragenPage() {
           </section>
         )}
 
-        <div className="grid items-start gap-6 lg:grid-cols-[320px_1fr]">
+        <div className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           <aside className="h-fit overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
               <h2 className="font-bold text-slate-950">Uitvragen</h2>
@@ -418,7 +418,7 @@ export default function BeschikbaarheidsUitvragenPage() {
             </div>
           </aside>
 
-          <main className="space-y-6">
+          <main className="min-w-0 space-y-6">
             {selectedRonde ? (
               <>
                 <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -565,16 +565,16 @@ export default function BeschikbaarheidsUitvragenPage() {
                     <div className="px-5 py-8 text-sm text-slate-500">Nog geen medewerkers gekoppeld.</div>
                   ) : (
                     <div className="overflow-x-auto">
-                      <table className="w-full min-w-[900px] table-fixed text-sm">
+                      <table className="w-full min-w-[760px] table-fixed text-sm">
                         <colgroup>
-                          <col className="w-[22%]" />
-                          <col className="w-[14%]" />
-                          {dagen.map(([key]) => (
-                            <col key={key} className="w-[6%]" />
-                          ))}
-                          <col className="w-[7%]" />
-                          <col className="w-[15%]" />
-                        </colgroup>
+                        <col className="w-[24%]" />
+                        <col className="w-[15%]" />
+                        {dagen.map(([key]) => (
+                          <col key={key} className="w-[5.5%]" />
+                        ))}
+                        <col className="w-[7%]" />
+                        <col className="w-[15.5%]" />
+                      </colgroup>
                         <thead className="bg-white text-xs uppercase tracking-wide text-slate-500">
                           <tr>
                             <th className="border-b border-slate-200 px-4 py-3 text-left">Naam</th>
