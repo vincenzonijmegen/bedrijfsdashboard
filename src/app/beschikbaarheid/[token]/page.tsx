@@ -229,6 +229,18 @@ export default function BeschikbaarheidInvullenPage() {
             Je had deze beschikbaarheid al ingevuld. Je kunt hem hieronder nog aanpassen en opnieuw opslaan.
           </p>
         )}
+        {data.status === "ingevuld" && (
+          <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
+            Je hebt je beschikbaarheid al doorgegeven. Je kunt je antwoord hieronder nog aanpassen zolang de uitvraag open is.
+          </p>
+        )}
+
+        {data.status === "uitgesteld" && (
+          <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">
+            Je had eerder aangegeven dat je het nog niet wist. Je kunt nu alsnog je beschikbaarheid invullen of je keuze hieronder aanpassen.
+          </p>
+        )}
+
         {data.status === "niet_beschikbaar" && (
           <p className="mt-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-800">
             Je had eerder aangegeven dat je voor deze periode niet beschikbaar bent. Je kunt je keuze hieronder nog aanpassen.
@@ -360,18 +372,20 @@ export default function BeschikbaarheidInvullenPage() {
           </>
         )}
 
-        <button
-          disabled={opslaan}
-          className="w-full rounded-xl bg-blue-600 px-4 py-4 text-lg font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
-        >
-          {opslaan
-            ? "Bezig met opslaan..."
-            : modus === "uitstellen"
-              ? "Herinnerdatum opslaan"
-              : modus === "niet_beschikbaar"
-                ? "Doorgeven dat ik niet beschikbaar ben"
-                : "Beschikbaarheid versturen"}
-        </button>
+        {!succes && (
+          <button
+            disabled={opslaan}
+            className="w-full rounded-xl bg-blue-600 px-4 py-4 text-lg font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+          >
+            {opslaan
+              ? "Bezig met opslaan..."
+              : modus === "uitstellen"
+                ? "Herinnerdatum opslaan"
+                : modus === "niet_beschikbaar"
+                  ? "Doorgeven dat ik niet beschikbaar ben"
+                  : "Beschikbaarheid versturen"}
+          </button>
+)}
       </form>
     </main>
   );
