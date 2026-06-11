@@ -396,7 +396,7 @@ export default function AdminDashboard() {
           <LinkCard href="/admin/beschikbaarheid/periode" label="Beschikbaarheid per periode" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid per periode" />
           <LinkCard href="/admin/planning/zomerfeesten" label="Zomerfeesten (planning maken)"  color="orange" Icon={CalendarDays} breadcrumb="Planning – Zomerfeesten"/>
           <LinkCard href="/admin/zomerfeesten" label="Zomerfeesten voorbereiding" color="orange" Icon={PartyPopper} breadcrumb="Planning – Zomerfeesten voorbereiden"/>
-
+          <LinkCard href="/admin/beschikbaarheid" label="Beschikbaarheids-opgave" color="orange" Icon={CalendarDays} breadcrumb="Beschikbaarheids-opgave"  />
         </Section>
 
         <Section id="rapportages" title="📊 Rapportages" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
