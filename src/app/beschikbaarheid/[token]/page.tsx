@@ -40,6 +40,8 @@ type ShiftField =
   | "za_shift_1" | "za_shift_2"
   | "zo_shift_1" | "zo_shift_2";
 
+type Modus = "invullen" | "uitstellen" | "niet_beschikbaar";
+
 type FormState = {
   ma_shift_1: boolean;
   ma_shift_2: boolean;
@@ -104,7 +106,7 @@ export default function BeschikbaarheidInvullenPage() {
   const token = params.token as string;
   const [data, setData] = useState<BeschikbaarheidData | null>(null);
   const [form, setForm] = useState<FormState>(legeForm);
-  const [modus, setModus] = useState<"invullen" | "uitstellen">("invullen");
+  const [modus, setModus] = useState<Modus>("invullen");
   const [herinnerMijOp, setHerinnerMijOp] = useState("");
   const [laden, setLaden] = useState(true);
   const [opslaan, setOpslaan] = useState(false);
@@ -143,6 +145,14 @@ export default function BeschikbaarheidInvullenPage() {
         toelichting: json.opgave_toelichting || "",
       });
       setHerinnerMijOp(json.herinner_mij_op || "");
+
+      if (json.status === "uitgesteld") {
+        setModus("uitstellen");
+      } else if (json.status === "niet_beschikbaar") {
+        setModus("niet_beschikbaar");
+      } else {
+        setModus("invullen");
+      }
     };
 
     if (token) laad();
@@ -158,9 +168,12 @@ export default function BeschikbaarheidInvullenPage() {
     setSucces(null);
     setOpslaan(true);
 
-    const body = modus === "uitstellen"
-      ? { actie: "uitstellen", herinner_mij_op: herinnerMijOp }
-      : { actie: "invullen", ...form };
+    const body =
+      modus === "uitstellen"
+        ? { actie: "uitstellen", herinner_mij_op: herinnerMijOp }
+        : modus === "niet_beschikbaar"
+          ? { actie: "niet_beschikbaar" }
+          : { actie: "invullen", ...form };
 
     const res = await fetch(`/api/beschikbaarheid/token/${token}`, {
       method: "POST",
@@ -178,7 +191,9 @@ export default function BeschikbaarheidInvullenPage() {
     setSucces(
       modus === "uitstellen"
         ? "Dank je. We herinneren je opnieuw op de gekozen datum."
-        : "Dank je. Je beschikbaarheid is opgeslagen."
+        : modus === "niet_beschikbaar"
+          ? "Dank je. We hebben opgeslagen dat je voor deze periode niet beschikbaar bent."
+          : "Dank je. Je beschikbaarheid is opgeslagen."
     );
   };
 
@@ -199,12 +214,12 @@ export default function BeschikbaarheidInvullenPage() {
   return (
     <main className="mx-auto max-w-2xl space-y-5 p-4 sm:p-6">
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-800">Beschikbaarheid invullen</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Beschikbaarheid doorgeven</h1>
         <p className="mt-1 text-sm text-slate-600">
           {data.ronde_naam} · {datum(data.start_datum)} t/m {datum(data.eind_datum)}
         </p>
         <p className="mt-2 text-sm text-slate-600">
-          Hoi {data.medewerker_naam || data.medewerker_email}, vul hieronder je beschikbaarheid in.
+          Hoi {data.medewerker_naam || data.medewerker_email}, geef hieronder aan wat voor jou geldt.
         </p>
         {data.ronde_toelichting && (
           <p className="mt-3 rounded-xl bg-blue-50 p-3 text-sm text-blue-900">{data.ronde_toelichting}</p>
@@ -214,6 +229,11 @@ export default function BeschikbaarheidInvullenPage() {
             Je had deze beschikbaarheid al ingevuld. Je kunt hem hieronder nog aanpassen en opnieuw opslaan.
           </p>
         )}
+        {data.status === "niet_beschikbaar" && (
+          <p className="mt-3 rounded-xl bg-rose-50 p-3 text-sm text-rose-800">
+            Je had eerder aangegeven dat je voor deze periode niet beschikbaar bent. Je kunt je keuze hieronder nog aanpassen.
+          </p>
+        )}
       </section>
 
       {fout && <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-800">❌ {fout}</div>}
@@ -221,25 +241,48 @@ export default function BeschikbaarheidInvullenPage() {
 
       <form onSubmit={verstuur} className="space-y-5">
         <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-3 text-lg font-semibold text-slate-800">Weet je je beschikbaarheid al?</h2>
+          <h2 className="mb-3 text-lg font-semibold text-slate-800">Wat wil je doorgeven?</h2>
           <div className="space-y-2">
-            <label className="flex cursor-pointer items-center gap-3 rounded-xl border p-3 hover:bg-slate-50">
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border p-3 hover:bg-slate-50">
               <input
                 type="radio"
                 name="modus"
+                className="mt-1"
                 checked={modus === "invullen"}
                 onChange={() => setModus("invullen")}
               />
-              <span>Ja, ik vul mijn beschikbaarheid nu in</span>
+              <span>
+                <span className="block font-medium text-slate-800">Ik vul mijn beschikbaarheid nu in</span>
+                <span className="block text-sm text-slate-500">Geef per weekdag aan of je shift 1 en/of shift 2 kunt werken.</span>
+              </span>
             </label>
-            <label className="flex cursor-pointer items-center gap-3 rounded-xl border p-3 hover:bg-slate-50">
+
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border p-3 hover:bg-slate-50">
               <input
                 type="radio"
                 name="modus"
+                className="mt-1"
                 checked={modus === "uitstellen"}
                 onChange={() => setModus("uitstellen")}
               />
-              <span>Nee, ik weet het nog niet. Herinner mij opnieuw op een datum</span>
+              <span>
+                <span className="block font-medium text-slate-800">Ik weet het nog niet, maar wil wel werken</span>
+                <span className="block text-sm text-slate-500">Kies een datum waarop we je opnieuw mogen herinneren.</span>
+              </span>
+            </label>
+
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border p-3 hover:bg-slate-50">
+              <input
+                type="radio"
+                name="modus"
+                className="mt-1"
+                checked={modus === "niet_beschikbaar"}
+                onChange={() => setModus("niet_beschikbaar")}
+              />
+              <span>
+                <span className="block font-medium text-slate-800">Ik ben niet meer beschikbaar voor deze periode</span>
+                <span className="block text-sm text-slate-500">Je hoeft dan geen schema in te vullen en krijgt hiervoor geen herinnering meer.</span>
+              </span>
             </label>
           </div>
 
@@ -321,7 +364,13 @@ export default function BeschikbaarheidInvullenPage() {
           disabled={opslaan}
           className="w-full rounded-xl bg-blue-600 px-4 py-4 text-lg font-semibold text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
         >
-          {opslaan ? "Bezig met opslaan..." : modus === "uitstellen" ? "Herinnerdatum opslaan" : "Beschikbaarheid versturen"}
+          {opslaan
+            ? "Bezig met opslaan..."
+            : modus === "uitstellen"
+              ? "Herinnerdatum opslaan"
+              : modus === "niet_beschikbaar"
+                ? "Doorgeven dat ik niet beschikbaar ben"
+                : "Beschikbaarheid versturen"}
         </button>
       </form>
     </main>

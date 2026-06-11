@@ -41,7 +41,7 @@ type Deelname = {
   id: number;
   medewerker_email: string;
   naam: string;
-  status: "open" | "ingevuld" | "uitgesteld" | "gesloten";
+  status: "open" | "ingevuld" | "uitgesteld" | "niet_beschikbaar" | "gesloten";
   verzonden_op: string | null;
   laatste_herinnering_op: string | null;
   herinner_mij_op: string | null;
@@ -95,6 +95,14 @@ function statusPill(status: Deelname["status"], herinnerMijOp?: string | null) {
       </span>
     );
   }
+
+  if (status === "niet_beschikbaar") {
+  return (
+    <span className="inline-flex items-center rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 ring-1 ring-rose-100">
+      niet beschikbaar
+    </span>
+  );
+}
 
   if (status === "gesloten") {
     return (
@@ -170,7 +178,12 @@ export default function BeschikbaarheidsUitvragenPage() {
   const openstaandeEmails = useMemo(
     () =>
       (deelnames || [])
-        .filter((deelname) => deelname.status !== "ingevuld" && deelname.status !== "gesloten")
+        .filter(
+        (deelname) =>
+          deelname.status !== "ingevuld" &&
+          deelname.status !== "niet_beschikbaar" &&
+          deelname.status !== "gesloten"
+      )
         .map((deelname) => deelname.medewerker_email),
     [deelnames]
   );
@@ -182,6 +195,11 @@ export default function BeschikbaarheidsUitvragenPage() {
         .map(([email]) => email),
     [selectedEmails]
   );
+
+  const aantalNietBeschikbaar = useMemo(
+      () => (deelnames || []).filter((deelname) => deelname.status === "niet_beschikbaar").length,
+      [deelnames]
+    );
 
   async function createRonde() {
     setIsSaving(true);
@@ -435,7 +453,7 @@ export default function BeschikbaarheidsUitvragenPage() {
                         Periode {fmt(selectedRonde.start_datum)} – {fmt(selectedRonde.eind_datum)} · deadline {fmt(selectedRonde.deadline)}
                       </p>
 
-                      <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                      <div className="mt-4 grid gap-3 sm:grid-cols-5">
                         <div className="rounded-xl bg-slate-50 px-4 py-3 ring-1 ring-slate-100">
                           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Totaal</div>
                           <div className="mt-1 text-2xl font-bold text-slate-950">{selectedRonde.aantal_deelnemers}</div>
@@ -452,8 +470,15 @@ export default function BeschikbaarheidsUitvragenPage() {
                           <div className="text-xs font-semibold uppercase tracking-wide text-amber-600">Uitgesteld</div>
                           <div className="mt-1 text-2xl font-bold text-amber-800">{selectedRonde.aantal_uitgesteld}</div>
                         </div>
+                        <div className="rounded-xl bg-rose-50 px-4 py-3 ring-1 ring-rose-100">
+                          <div className="text-xs font-semibold uppercase tracking-wide text-rose-600">
+                            Niet beschikbaar
+                          </div>
+                          <div className="mt-1 text-2xl font-bold text-rose-800">
+                            {aantalNietBeschikbaar}
+                          </div>
+                        </div>
                       </div>
-
                       {selectedRonde.toelichting && (
                         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
                           {selectedRonde.toelichting}
@@ -593,19 +618,25 @@ export default function BeschikbaarheidsUitvragenPage() {
                           {deelname.medewerker_email}
                         </div>
 
-                        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-                          {dagen.map(([key, label]) => (
-                            <div
-                              key={`${deelname.id}-${key}`}
-                              className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center"
-                            >
-                              <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                                {label}
+                        {deelname.status === "niet_beschikbaar" ? (
+                          <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+                            Niet beschikbaar voor deze periode.
+                          </div>
+                        ) : (
+                          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
+                            {dagen.map(([key, label]) => (
+                              <div
+                                key={`${deelname.id}-${key}`}
+                                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+                              >
+                                <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                                  {label}
+                                </div>
+                                <div className="mt-1">{shiftCell(deelname, key)}</div>
                               </div>
-                              <div className="mt-1">{shiftCell(deelname, key)}</div>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       <div className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 2xl:w-64">

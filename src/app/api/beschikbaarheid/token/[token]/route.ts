@@ -66,6 +66,8 @@ export async function GET(
     const row = result.rows[0];
     return NextResponse.json({
       ...row,
+      medewerker_naam: row.naam,
+      ronde_toelichting: row.toelichting,
       uiterste_herinnerdatum: uitersteHerinnerDatum(row.start_datum),
     });
   } catch (error) {
@@ -123,12 +125,31 @@ export async function POST(
 
       await db.query(
         `UPDATE beschikbaarheids_deelnames
-         SET status = 'uitgesteld', herinner_mij_op = $1
+         SET status = 'uitgesteld',
+             herinner_mij_op = $1,
+             ingevuld_op = NULL
          WHERE id = $2`,
         [herinnerMijOp, deelname.id]
       );
 
       return NextResponse.json({ success: true, status: "uitgesteld" });
+    }
+
+    if (body.actie === "niet_beschikbaar") {
+      await db.query(
+        `UPDATE beschikbaarheids_deelnames
+         SET status = 'niet_beschikbaar',
+             ingevuld_op = NOW(),
+             herinner_mij_op = NULL
+         WHERE id = $1`,
+        [deelname.id]
+      );
+
+      return NextResponse.json({ success: true, status: "niet_beschikbaar" });
+    }
+
+    if (body.actie !== "invullen") {
+      return NextResponse.json({ error: "Ongeldige actie" }, { status: 400 });
     }
 
     const values: Record<string, boolean> = {};
