@@ -123,7 +123,7 @@ async function openShifts(): Promise<DashboardItem> {
       titel: "Open shifts",
       waarde: aantal,
       subtitel: aantal === 0 ? "Geen open diensten gevonden voor vandaag." : `${aantal} open dienst(en) in Shiftbase.`,
-      href: "/openshifts",
+      href: "/open-diensten",
       status: aantal > 0 ? "waarschuwing" : "goed",
     };
   } catch (error) {
@@ -132,7 +132,7 @@ async function openShifts(): Promise<DashboardItem> {
       titel: "Open shifts",
       waarde: null,
       subtitel: "Open diensten konden niet uit Shiftbase worden geladen.",
-      href: "/openshifts",
+      href: "/open-diensten",
       status: "onbekend",
     };
   }
@@ -171,7 +171,7 @@ async function medewerkersVandaag(): Promise<DashboardItem> {
       titel: "Medewerkers vandaag",
       waarde: aantal,
       subtitel: aantal === 0 ? "Nog geen Shiftbase-bezetting/timesheets gevonden." : `${aantal} medewerker(s) gevonden in Shiftbase.`,
-      href: "/admin/planning/rooster",
+      href: "/admin/shiftbase/rooster",
       status: aantal > 0 ? "neutraal" : "onbekend",
     };
   } catch (error) {
@@ -180,7 +180,7 @@ async function medewerkersVandaag(): Promise<DashboardItem> {
       titel: "Medewerkers vandaag",
       waarde: null,
       subtitel: "Rooster/timesheets konden niet uit Shiftbase worden geladen.",
-      href: "/admin/planning/rooster",
+      href: "/admin/shiftbase/rooster",
       status: "onbekend",
     };
   }
@@ -206,7 +206,7 @@ async function haccpVandaag(): Promise<DashboardItem> {
       titel: "HACCP",
       waarde: open,
       subtitel: open === 0 ? "Geen open periodieke routines gevonden." : `${open} routine(s) vragen aandacht.`,
-      href: "/admin/schoonmaakroutines",
+      href: "/admin/haccp-controle",
       status: open > 0 ? "waarschuwing" : "goed",
     };
   } catch (error) {
@@ -215,7 +215,7 @@ async function haccpVandaag(): Promise<DashboardItem> {
       titel: "HACCP",
       waarde: null,
       subtitel: "HACCP/routine-koppeling kon niet geladen worden.",
-      href: "/admin/schoonmaakroutines",
+      href: "/admin/haccp-controle",
       status: "onbekend",
     };
   }
@@ -234,7 +234,7 @@ async function productieVandaag(): Promise<DashboardItem> {
       titel: "Productie",
       waarde: aantal,
       subtitel: aantal === 1 ? "bak/productie vandaag geregistreerd" : "bakken/producties vandaag geregistreerd",
-      href: "/admin/suikervrij",
+      href: "/admin/keuken/productie-log",
       status: aantal > 0 ? "neutraal" : "onbekend",
     };
   } catch (error) {
@@ -243,7 +243,7 @@ async function productieVandaag(): Promise<DashboardItem> {
       titel: "Productie",
       waarde: null,
       subtitel: "Productiegegevens konden niet geladen worden.",
-      href: "/keuken/maaklijst",
+      href: "/admin/keuken/productie-log",
       status: "onbekend",
     };
   }
