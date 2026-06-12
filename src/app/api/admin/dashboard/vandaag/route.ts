@@ -188,33 +188,54 @@ async function medewerkersVandaag(): Promise<DashboardItem> {
 
 async function haccpVandaag(): Promise<DashboardItem> {
   try {
-    // Voorlopige veilige koppeling op de bestaande routine-structuur:
-    // actieve routines waarvan de laatste uitvoering ontbreekt of ouder is dan frequentie-dagen.
-    const result = await db.query(`
-      SELECT COUNT(*)::int AS open
-      FROM schoonmaakroutines
-      WHERE actief = true
-        AND EXTRACT(MONTH FROM CURRENT_DATE)::int BETWEEN periode_start AND periode_eind
-        AND (
-          laatst_uitgevoerd IS NULL
-          OR laatst_uitgevoerd::date <= CURRENT_DATE - (frequentie::int * INTERVAL '1 day')
-        )
-    `);
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL || "https://werkinstructies-app.vercel.app";
 
-    const open = Number(result.rows[0]?.open || 0);
+    const res = await fetch(`${baseUrl.replace(/\/$/, "")}/api/admin/briefing`, {
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      const details = await res.text();
+      throw new Error(`Briefing API gaf ${res.status}: ${details}`);
+    }
+
+    const json = await res.json();
+    const haccp = json?.onderdelen?.haccp;
+
+    if (haccp?.status !== "ok") {
+      throw new Error(haccp?.melding || "HACCP-status niet ok");
+    }
+
+    const haccpData = haccp?.data || {};
+    const openTaken = Array.isArray(haccpData.openTaken) ? haccpData.openTaken : [];
+    const routines = Array.isArray(haccpData.routines) ? haccpData.routines : [];
+    const samenvatting = haccpData.samenvatting || null;
+
+    const routinesMetOpenTaken = routines.filter(
+      (routine: any) => Number(routine.openTaken || 0) > 0
+    );
+
+    const aantalOpen = Number(samenvatting?.openTaken ?? openTaken.length);
+    const aantalLijsten = routinesMetOpenTaken.length;
+
     return {
       titel: "HACCP",
-      waarde: open,
-      subtitel: open === 0 ? "Geen open periodieke routines gevonden." : `${open} routine(s) vragen aandacht.`,
+      waarde: aantalOpen,
+      subtitel:
+        aantalOpen === 0
+          ? "Alle HACCP-taken zijn afgerond."
+          : `${aantalOpen} open taak/taken · ${aantalLijsten} lijst(en)`,
       href: "/admin/haccp-controle",
-      status: open > 0 ? "waarschuwing" : "goed",
+      status: aantalOpen > 0 ? "waarschuwing" : "goed",
     };
   } catch (error) {
-    console.error("Dashboard HACCP/routines kon niet geladen worden:", error);
+    console.error("Dashboard HACCP kon niet geladen worden:", error);
+
     return {
       titel: "HACCP",
       waarde: null,
-      subtitel: "HACCP/routine-koppeling kon niet geladen worden.",
+      subtitel: "HACCP-status kon niet geladen worden.",
       href: "/admin/haccp-controle",
       status: "onbekend",
     };
