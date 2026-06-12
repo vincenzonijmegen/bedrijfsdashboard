@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   ChefHat,
   CloudSun,
-  Euro,
   Loader2,
   ShieldCheck,
   Users,
@@ -26,7 +25,6 @@ type DashboardData = {
   datumLabel: string;
   bijgewerktOp: string;
   items: {
-    omzet: DashboardItem;
     weer: DashboardItem;
     medewerkers: DashboardItem;
     openShifts: DashboardItem;
@@ -38,7 +36,6 @@ type DashboardData = {
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 const iconen = {
-  omzet: Euro,
   weer: CloudSun,
   medewerkers: Users,
   openShifts: CalendarDays,
@@ -58,6 +55,17 @@ function waardeTekst(waarde: string | number | null) {
   return String(waarde);
 }
 
+function titelFallback(key: string) {
+  const titels: Record<string, string> = {
+    weer: "Weer & terras",
+    medewerkers: "Medewerkers vandaag",
+    openShifts: "Open shifts",
+    haccp: "HACCP",
+    productie: "Productie",
+  };
+  return titels[key] || key;
+}
+
 export default function VandaagDashboard() {
   const { data, error, isLoading } = useSWR<DashboardData>(
     "/api/admin/dashboard/vandaag",
@@ -75,12 +83,16 @@ export default function VandaagDashboard() {
               Dagsturing Vincenzo
             </h2>
             <p className="mt-1 text-sm text-slate-500">
-              {data?.datumLabel || "Actuele stand van de belangrijkste dagelijkse onderdelen."}
+              {data?.datumLabel || "Actuele stand van de dagelijkse operatie."}
             </p>
           </div>
 
           <div className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4" />
+            )}
             {data?.bijgewerktOp ? `Bijgewerkt ${data.bijgewerktOp}` : "Wordt geladen"}
           </div>
         </div>
@@ -94,13 +106,13 @@ export default function VandaagDashboard() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-5">
           {(Object.keys(iconen) as Array<keyof typeof iconen>).map((key) => {
             const Icon = iconen[key];
             const item = data?.items?.[key];
             const status = item?.status || "onbekend";
             const inhoud = (
-              <div className="flex h-full flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md">
+              <div className="flex h-full min-h-40 flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-slate-700">
@@ -115,7 +127,7 @@ export default function VandaagDashboard() {
                   </div>
                 </div>
 
-                <p className="mt-3 min-h-10 text-sm leading-5 text-slate-500">
+                <p className="mt-3 text-sm leading-5 text-slate-500">
                   {item?.subtitel || "Nog niet gekoppeld."}
                 </p>
               </div>
@@ -135,16 +147,4 @@ export default function VandaagDashboard() {
       )}
     </section>
   );
-}
-
-function titelFallback(key: string) {
-  const titels: Record<string, string> = {
-    omzet: "Omzet",
-    weer: "Weer & terras",
-    medewerkers: "Medewerkers vandaag",
-    openShifts: "Open shifts",
-    haccp: "HACCP",
-    productie: "Productie",
-  };
-  return titels[key] || key;
 }
