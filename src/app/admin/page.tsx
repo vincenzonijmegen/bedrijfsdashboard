@@ -391,8 +391,8 @@ export default function AdminDashboard() {
           <LinkCard href="/admin/shiftbase/rooster-medewerker" label="Rooster per medewerker" color="orange" Icon={CalendarDays} breadcrumb="Planning – Rooster per medewerker" />          
           <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} breadcrumb="Planning – Open Shifts" />
           <LinkCard href="/admin/rapportages/timesheets" label="Klokuren" color="orange" Icon={Clock} breadcrumb="Planning – Klokuren" />
-          <LinkCard href="/admin/beschikbaarheid/nieuw" label="Beschikbaarheid ingeven" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid ingeven" />
-          <LinkCard href="/admin/beschikbaarheid" label="Beschikbaarheid per medewerker" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid per medewerker" />
+          <LinkCard href="/admin/beschikbaarheid/uitvragen" label="Beschikbaarheids-opgave" color="orange" Icon={CalendarDays} breadcrumb="Planning – Klokuren"/>
+          <LinkCard href="/admin/beschikbaarheid" label="Beschikbaarheid per medewerker" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheids-opgave" />
           <LinkCard href="/admin/beschikbaarheid/periode" label="Beschikbaarheid per periode" color="orange" Icon={Activity} breadcrumb="Planning – Beschikbaarheid per periode" />
           <LinkCard href="/admin/planning/zomerfeesten" label="Zomerfeesten (planning maken)"  color="orange" Icon={CalendarDays} breadcrumb="Planning – Zomerfeesten"/>
           <LinkCard href="/admin/zomerfeesten" label="Zomerfeesten voorbereiding" color="orange" Icon={PartyPopper} breadcrumb="Planning – Zomerfeesten voorbereiden"/>
