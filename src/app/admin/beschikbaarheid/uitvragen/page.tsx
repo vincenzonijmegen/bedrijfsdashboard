@@ -453,7 +453,7 @@ export default function BeschikbaarheidsUitvragenPage() {
                         Periode {fmt(selectedRonde.start_datum)} – {fmt(selectedRonde.eind_datum)} · deadline {fmt(selectedRonde.deadline)}
                       </p>
 
-                      <div className="mt-4 grid max-w-2xl gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                        <div className="mt-4 grid max-w-2xl gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         <div className="rounded-xl bg-slate-50 px-4 py-3 ring-1 ring-slate-100">
                           <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Totaal</div>
                           <div className="mt-1 text-2xl font-bold text-slate-950">{selectedRonde.aantal_deelnemers}</div>

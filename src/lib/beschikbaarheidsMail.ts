@@ -1,14 +1,4 @@
-import nodemailer from "nodemailer";
-
-const transporter = nodemailer.createTransport({
-  host: "mail.infomaniak.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: "bestelling@ijssalonvincenzo.nl",
-    pass: process.env.EMAIL_PASSWORD!,
-  },
-});
+import { Resend } from "resend";
 
 function esc(v: string | null | undefined) {
   return String(v || "")
@@ -39,9 +29,11 @@ export async function sendBeschikbaarheidsOpgaveMail({
   toelichting?: string | null;
   herinnering?: boolean;
 }) {
-  if (!process.env.EMAIL_PASSWORD) {
-    throw new Error("EMAIL_PASSWORD ontbreekt voor beschikbaarheidsmail.");
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY ontbreekt voor beschikbaarheidsmail.");
   }
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
 
   const subject = herinnering
     ? `Herinnering: vul je beschikbaarheid in voor ${rondeNaam}`
@@ -58,6 +50,7 @@ export async function sendBeschikbaarheidsOpgaveMail({
   const html = `
     <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827;line-height:1.55;">
       <p>Hoi ${esc(naam)},</p>
+
       <p>${
         herinnering
           ? "Je gaf eerder aan dat je je beschikbaarheid nog niet wist, of je hebt nog niet gereageerd."
@@ -108,33 +101,25 @@ export async function sendBeschikbaarheidsOpgaveMail({
     `Link: ${link}\n\n` +
     `Groet,\nErik en Herman`;
 
-  console.log("📧 Beschikbaarheidsmail verzenden:", {
+  console.log("📧 Beschikbaarheidsmail via Resend verzenden:", {
     naar,
     subject,
     link,
   });
 
-  const result = await transporter.sendMail({
-    from: "IJssalon Vincenzo <bestelling@ijssalonvincenzo.nl>",
+  const result = await resend.emails.send({
+    from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
     to: naar,
-    replyTo: "herman@ijssalonvincenzo.nl",
     subject,
-    text,
     html,
+    text,
   });
 
-  console.log("📧 Beschikbaarheidsmail resultaat:", {
-    messageId: result.messageId,
-    accepted: result.accepted,
-    rejected: result.rejected,
-    response: result.response,
-  });
+  console.log("✅ Beschikbaarheidsmail Resend resultaat:", result);
 
-  if (!result.accepted || result.accepted.length === 0) {
+  if (result.error) {
     throw new Error(
-      `Beschikbaarheidsmail niet geaccepteerd door SMTP. Rejected: ${JSON.stringify(
-        result.rejected || []
-      )}`
+      `Resend fout bij beschikbaarheidsmail: ${JSON.stringify(result.error)}`
     );
   }
 
