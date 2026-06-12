@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import useSWR from "swr";
+import VandaagDashboard from "@/components/admin/VandaagDashboard";
 
 import {
   User,
@@ -354,7 +355,7 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
-
+<VandaagDashboard />
         <Section
           id="meest"
           title="👥 Meest gebruikte onderdelen"
