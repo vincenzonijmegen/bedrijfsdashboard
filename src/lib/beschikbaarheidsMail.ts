@@ -39,6 +39,10 @@ export async function sendBeschikbaarheidsOpgaveMail({
   toelichting?: string | null;
   herinnering?: boolean;
 }) {
+  if (!process.env.EMAIL_PASSWORD) {
+    throw new Error("EMAIL_PASSWORD ontbreekt voor beschikbaarheidsmail.");
+  }
+
   const subject = herinnering
     ? `Herinnering: vul je beschikbaarheid in voor ${rondeNaam}`
     : `Beschikbaarheid doorgeven voor ${rondeNaam}`;
@@ -54,24 +58,63 @@ export async function sendBeschikbaarheidsOpgaveMail({
   const html = `
     <div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#111827;line-height:1.55;">
       <p>Hoi ${esc(naam)},</p>
-      <p>${herinnering ? "Je gaf eerder aan dat je je beschikbaarheid nog niet wist, of je hebt nog niet gereageerd." : "We vragen je om je beschikbaarheid opnieuw door te geven."}</p>
-      <p><strong>Periode:</strong> ${esc(periode)}<br>
-      <strong>Uitvraag:</strong> ${esc(rondeNaam)}</p>
-      ${toelichting ? `<div style="border-left:4px solid #2563eb;padding:8px 12px;background:#eff6ff;margin:12px 0;">${esc(toelichting).replace(/\n/g, "<br>")}</div>` : ""}
+      <p>${
+        herinnering
+          ? "Je gaf eerder aan dat je je beschikbaarheid nog niet wist, of je hebt nog niet gereageerd."
+          : "We vragen je om je beschikbaarheid opnieuw door te geven."
+      }</p>
+
+      <p>
+        <strong>Periode:</strong> ${esc(periode)}<br>
+        <strong>Uitvraag:</strong> ${esc(rondeNaam)}
+      </p>
+
+      ${
+        toelichting
+          ? `<div style="border-left:4px solid #2563eb;padding:8px 12px;background:#eff6ff;margin:12px 0;">${esc(
+              toelichting
+            ).replace(/\n/g, "<br>")}</div>`
+          : ""
+      }
+
       <p>${esc(deadlineTekst)}</p>
+
       <p>
         <a href="${esc(link)}" style="display:inline-block;background:#2563eb;color:white;text-decoration:none;padding:10px 16px;border-radius:10px;font-weight:bold;">
           Beschikbaarheid invullen
         </a>
       </p>
-      <p>Weet je het nog niet? Dan kun je via dezelfde link aangeven op welke datum je opnieuw herinnerd wilt worden.</p>
+
+      <p>
+        Via de link kun je je beschikbaarheid invullen, aangeven dat je het nog niet weet,
+        of doorgeven dat je voor deze periode niet beschikbaar bent.
+      </p>
+
       <p>Groet,<br><strong>Erik en Herman</strong></p>
     </div>
   `;
 
-  const text = `Hoi ${naam},\n\n${herinnering ? "Herinnering: vul je beschikbaarheid alsnog in." : "We vragen je om je beschikbaarheid opnieuw door te geven."}\n\nPeriode: ${periode}\nUitvraag: ${rondeNaam}\n\n${toelichting || ""}\n\n${deadlineTekst}\n\nLink: ${link}\n\nGroet,\nErik en Herman`;
+  const text =
+    `Hoi ${naam},\n\n` +
+    `${
+      herinnering
+        ? "Herinnering: vul je beschikbaarheid alsnog in."
+        : "We vragen je om je beschikbaarheid opnieuw door te geven."
+    }\n\n` +
+    `Periode: ${periode}\n` +
+    `Uitvraag: ${rondeNaam}\n\n` +
+    `${toelichting || ""}\n\n` +
+    `${deadlineTekst}\n\n` +
+    `Link: ${link}\n\n` +
+    `Groet,\nErik en Herman`;
 
-  return transporter.sendMail({
+  console.log("📧 Beschikbaarheidsmail verzenden:", {
+    naar,
+    subject,
+    link,
+  });
+
+  const result = await transporter.sendMail({
     from: "IJssalon Vincenzo <bestelling@ijssalonvincenzo.nl>",
     to: naar,
     replyTo: "herman@ijssalonvincenzo.nl",
@@ -79,4 +122,21 @@ export async function sendBeschikbaarheidsOpgaveMail({
     text,
     html,
   });
+
+  console.log("📧 Beschikbaarheidsmail resultaat:", {
+    messageId: result.messageId,
+    accepted: result.accepted,
+    rejected: result.rejected,
+    response: result.response,
+  });
+
+  if (!result.accepted || result.accepted.length === 0) {
+    throw new Error(
+      `Beschikbaarheidsmail niet geaccepteerd door SMTP. Rejected: ${JSON.stringify(
+        result.rejected || []
+      )}`
+    );
+  }
+
+  return result;
 }
