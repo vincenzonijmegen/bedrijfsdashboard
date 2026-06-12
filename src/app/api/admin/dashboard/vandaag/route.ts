@@ -224,18 +224,25 @@ async function haccpVandaag(): Promise<DashboardItem> {
 async function productieVandaag(): Promise<DashboardItem> {
   try {
     const result = await db.query(`
-      SELECT COALESCE(SUM(aantal::numeric), 0) AS aantal
-      FROM ijs_productie
-      WHERE datum::date = CURRENT_DATE
+      SELECT
+        COALESCE(SUM(aantal::numeric), 0) AS totaal_gemaakt,
+        COUNT(*)::int AS batches
+      FROM keuken_productie_log
+      WHERE aangemaakt_op::date = CURRENT_DATE
     `);
 
-    const aantal = Number(result.rows[0]?.aantal || 0);
+    const totaalGemaakt = Number(result.rows[0]?.totaal_gemaakt || 0);
+    const batches = Number(result.rows[0]?.batches || 0);
+
     return {
       titel: "Productie",
-      waarde: aantal,
-      subtitel: aantal === 1 ? "bak/productie vandaag geregistreerd" : "bakken/producties vandaag geregistreerd",
+      waarde: totaalGemaakt,
+      subtitel:
+        batches === 1
+          ? "1 batch vandaag geregistreerd"
+          : `${batches} batches vandaag geregistreerd`,
       href: "/admin/keuken/productie-log",
-      status: aantal > 0 ? "neutraal" : "onbekend",
+      status: totaalGemaakt > 0 ? "neutraal" : "onbekend",
     };
   } catch (error) {
     console.error("Dashboard productie kon niet geladen worden:", error);
