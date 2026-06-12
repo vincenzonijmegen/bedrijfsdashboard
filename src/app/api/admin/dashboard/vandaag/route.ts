@@ -228,7 +228,7 @@ async function productieVandaag(): Promise<DashboardItem> {
         COALESCE(SUM(aantal::numeric), 0) AS totaal_gemaakt,
         COUNT(*)::int AS batches
       FROM keuken_productie_log
-      WHERE aangemaakt_op::date = CURRENT_DATE
+      WHERE afgehandeld_op::date = CURRENT_DATE
     `);
 
     const totaalGemaakt = Number(result.rows[0]?.totaal_gemaakt || 0);
