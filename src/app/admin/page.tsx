@@ -399,7 +399,6 @@ export default function AdminDashboard() {
         </Section>
 
         <Section id="productie" title="🍦 Productie & keuken" color="pink" activeSection={activeSection} setActiveSection={setActiveSection}>
-          <LinkCard href="/keuken/login" label="Keuken-app openen" color="pink" Icon={Wrench} breadcrumb="Productie & keuken – Keuken-app" target="_blank" rel="noopener noreferrer" />
           <LinkCard href="/admin/keuken/productie-log" label="Productie keuken" color="pink" Icon={BarChart2} breadcrumb="Productie & keuken – Productie keuken" />
           <LinkCard href="/admin/keuken/categorieen" label="Categorie Keuken" color="pink" Icon={Folder} breadcrumb="Productie & keuken – Categorie Keuken" />
           <LinkCard href="/admin/suikervrij" label="Suikervrij productie" color="pink" Icon={IceCream} breadcrumb="Productie & keuken – Suikervrij productie" />
@@ -420,6 +419,8 @@ export default function AdminDashboard() {
           <LinkCard href="/admin/rapportage/haccp" label="HACCP Rapportage" color="blue" Icon={BarChart2} breadcrumb="Kwaliteit & HACCP – HACCP Rapportage" />
           <LinkCard href="/admin/producten/allergenen" label="Allergenenregistratie" color="blue" Icon={List} breadcrumb="Kwaliteit & HACCP – Allergenenregistratie" />
           <LinkCard href="/admin/recepten/allergenen" label="Allergenenkaart" color="blue" Icon={List} breadcrumb="Kwaliteit & HACCP – Allergenenkaart" />
+          <LinkCard href="/keuken/login" label="Keuken-app openen" color="blue" Icon={Wrench} breadcrumb="Productie & keuken – Keuken-app" target="_blank" rel="noopener noreferrer" />
+          <LinkCard href="/winkel/login" label="Winkel-app openen" color="blue" Icon={Wrench} breadcrumb="Systeembeheer & import – Winkel-app" target="_blank" rel="noopener noreferrer" />
         </Section>
 
         <Section id="rapportages" title="📊 Rapportages & analyse" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
@@ -446,7 +447,6 @@ export default function AdminDashboard() {
           <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="slate" Icon={Wrench} breadcrumb="Systeembeheer & import – Omzet inlezen" />
           <LinkCard href="/admin/aftekenlijsten/upload" label="Upload formulieren" color="slate" Icon={Archive} breadcrumb="Systeembeheer & import – Upload formulieren" />
           <LinkCard href="/admin/omzet/omzetdagen" label="Omzetdagen aanpassen" color="slate" Icon={Wrench} breadcrumb="Systeembeheer & import – Omzetdagen aanpassen" />
-          <LinkCard href="/winkel/login" label="Winkel-app openen" color="slate" Icon={Wrench} breadcrumb="Systeembeheer & import – Winkel-app" target="_blank" rel="noopener noreferrer" />
         </Section>
 
         <VandaagDashboard />
