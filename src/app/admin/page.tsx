@@ -384,12 +384,6 @@ export default function AdminDashboard() {
             <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" Icon={Eye} breadcrumb="Personeel & opleiding – Instructies medewerkers" />
           </SubSection>
 
-          <SubSection title="🧠 Skills" color="amber">
-            <LinkCard href="/admin/skills/categorieen" label="Beheer categorieën" color="amber" Icon={Tag} breadcrumb="Personeel & opleiding – Beheer categorieën" />
-            <LinkCard href="/admin/skills" label="Skills beheer" color="amber" Icon={Layers} breadcrumb="Personeel & opleiding – Skills beheer" />
-            <LinkCard href="/admin/skills/toewijzen" label="Skills toewijzen" color="amber" Icon={Activity} breadcrumb="Personeel & opleiding – Skills toewijzen" />
-            <LinkCard href="/skills" label="Skills medewerkers" color="amber" Icon={Layers} breadcrumb="Personeel & opleiding – Skills medewerkers" />
-          </SubSection>
         </Section>
 
         <Section id="planning" title="📅 Planning & bezetting" color="orange" activeSection={activeSection} setActiveSection={setActiveSection}>
