@@ -356,7 +356,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        <VandaagDashboard />
+
 
         <Section id="meest" title="⭐ Meest gebruikt" color="slate" activeSection={activeSection} setActiveSection={setActiveSection}>
           <LinkCard href="/admin/acties" label="Actielijsten" color="blue" Icon={CheckSquare} breadcrumb="Meest gebruikt – Actielijsten" />
@@ -455,6 +455,8 @@ export default function AdminDashboard() {
           <LinkCard href="/admin/omzet/omzetdagen" label="Omzetdagen aanpassen" color="slate" Icon={Wrench} breadcrumb="Systeembeheer & import – Omzetdagen aanpassen" />
           <LinkCard href="/winkel/login" label="Winkel-app openen" color="slate" Icon={Wrench} breadcrumb="Systeembeheer & import – Winkel-app" target="_blank" rel="noopener noreferrer" />
         </Section>
+
+        <VandaagDashboard />
 
       </div>
     </main>
