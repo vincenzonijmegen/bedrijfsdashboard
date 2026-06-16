@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
-import StapVoorStapMetToets from "@/components/instructie/StapVoorStapMetToets";
-import GelezenRegistratie from "@/components/instructie/GelezenRegistratie";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export default async function Page(props: {
   params: Promise<{ slug: string }>;
@@ -8,26 +10,55 @@ export default async function Page(props: {
   const { slug } = await props.params;
 
   const result = await db.query(
-    "SELECT * FROM instructies WHERE slug = $1",
+    `
+    SELECT id, titel, nummer, inhoud
+    FROM instructies
+    WHERE slug = $1
+    LIMIT 1
+    `,
     [slug]
   );
 
   const instructie = result.rows[0];
 
   if (!instructie) {
-    return null;
+    return (
+      <main className="min-h-screen bg-slate-50 p-4 md:p-6">
+        <div className="mx-auto max-w-4xl">
+          <Link href="/keuken/instructies-skills" className="text-slate-600">
+            ← Terug naar keukeninstructies
+          </Link>
+
+          <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-700">
+            Instructie niet gevonden.
+          </div>
+        </div>
+      </main>
+    );
   }
 
   return (
-    <>
-      <GelezenRegistratie instructie_id={instructie.id} />
-      <StapVoorStapMetToets
-        html={instructie.inhoud}
-        instructie_id={instructie.id}
-        titel={instructie.titel}
-        terugHref="/keuken/instructies-skills"
-        terugLabel="Terug naar keukeninstructies"
-      />
-    </>
+    <main className="min-h-screen bg-slate-50 p-4 md:p-6">
+      <div className="mx-auto max-w-4xl">
+        <Link
+          href="/keuken/instructies-skills"
+          className="mb-6 inline-flex items-center text-slate-600"
+        >
+          ← Terug naar keukeninstructies
+        </Link>
+
+        <article className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h1 className="text-3xl font-bold text-slate-900">
+            {instructie.nummer ? `${instructie.nummer}. ` : ""}
+            {instructie.titel}
+          </h1>
+
+          <div
+            className="prose prose-slate mt-6 max-w-none"
+            dangerouslySetInnerHTML={{ __html: instructie.inhoud || "" }}
+          />
+        </article>
+      </div>
+    </main>
   );
 }

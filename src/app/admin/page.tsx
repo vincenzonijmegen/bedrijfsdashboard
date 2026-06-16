@@ -377,8 +377,7 @@ export default function AdminDashboard() {
           <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} breadcrumb="Personeel & opleiding – Functies" />
           <LinkCard href="/admin/sollicitaties" label="Sollicitaties" color="green" Icon={UserPlus} breadcrumb="Personeel & opleiding – Sollicitaties" />
           <LinkCard href="/admin/sollicitaties/afspraken" label="Sollicitatiegesprekken" color="green" Icon={CalendarDays} breadcrumb="Personeel & opleiding – Sollicitatiegesprekken" />
-          <LinkCard href="/sollicitatie/pdf" label="Sollicitatiemails" color="green" Icon={FileText} breadcrumb="Personeel & opleiding – Sollicitatiemails" />
-
+          
           <SubSection title="📘 Instructies" color="blue">
             <LinkCard href="/admin/instructies" label="Instructies beheren" color="blue" Icon={FileText} breadcrumb="Personeel & opleiding – Instructies beheren" />
             <LinkCard href="/admin/instructie-vragen" label="Instructievragen beheren" color="blue" Icon={ClipboardList} breadcrumb="Personeel & opleiding – Instructievragen beheren" />

@@ -92,10 +92,7 @@ export default function KeukenInstructiesPage() {
 
       const functies = i.functies.map((f) => f.toLowerCase().trim());
 
-      return (
-        functies.length > 0 &&
-        functies.every((f) => toegestaneFuncties.includes(f))
-      );
+return functies.some((f) => toegestaneFuncties.includes(f));
     })
     .sort((a, b) => {
       const na = a.nummer || "";
