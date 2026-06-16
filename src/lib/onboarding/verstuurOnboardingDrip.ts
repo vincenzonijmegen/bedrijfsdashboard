@@ -444,8 +444,7 @@ export async function verstuurOnboardingDrip({
     const verzonden: any[] = [];
     const fouten: any[] = [];
 
-    const veiligeOrigin =
-      process.env.APP_URL || origin || "https://werkinstructies-app.vercel.app";
+    const veiligeOrigin = "https://werkinstructies-app.vercel.app";
 
     for (const opdracht of opdrachten) {
       const bevestigUrl = new URL(

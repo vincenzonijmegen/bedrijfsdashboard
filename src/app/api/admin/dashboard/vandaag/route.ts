@@ -20,6 +20,7 @@ function vandaagIso() {
 
 function tijdNl() {
   return new Date().toLocaleTimeString("nl-NL", {
+    timeZone: "Europe/Amsterdam",
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -290,6 +291,7 @@ export async function GET() {
 
   return NextResponse.json({
     datumLabel: now.toLocaleDateString("nl-NL", {
+      timeZone: "Europe/Amsterdam",
       weekday: "long",
       day: "numeric",
       month: "long",
