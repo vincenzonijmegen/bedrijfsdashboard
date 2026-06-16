@@ -78,26 +78,20 @@ export default function WinkelInstructiesPage() {
     );
   }
 
-  const toegestaneFuncties = [
-    "scheppers",
-    "winkelmedewerkers",
-    "verkoop",
-    "kassa",
-  ];
+const winkelInstructies = [...instructies]
+  .filter((i) => {
+    if (!i.functies || i.functies.length === 0) return false;
 
-  const winkelInstructies = [...instructies]
-    .filter((i) => {
-      if (!i.functies || i.functies.length === 0) return false;
+    const functies = i.functies.map((f) => f.toLowerCase().trim());
 
-      const functies = i.functies.map((f) => f.toLowerCase().trim());
-
-      return functies.some((f) => toegestaneFuncties.includes(f));
-    })
-    .sort((a, b) => {
-      const na = a.nummer || "";
-      const nb = b.nummer || "";
-      return na.localeCompare(nb, "nl");
-    });
+    return functies.some(
+      (f) =>
+        f.includes("schep") ||
+        f.includes("winkel") ||
+        f.includes("kassa") ||
+        f.includes("verkoop")
+    );
+  })
 
   return (
     <main className="min-h-screen bg-slate-50 p-4 md:p-6">
