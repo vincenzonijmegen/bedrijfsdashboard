@@ -40,7 +40,7 @@ const fetcher = async (url: string): Promise<Instructie[]> => {
   }));
 };
 
-export default function KeukenInstructiesPage() {
+export default function WinkelInstructiesPage() {
   const { data: instructies, error } = useSWR<Instructie[]>(
     "/api/instructies",
     fetcher
@@ -50,10 +50,7 @@ export default function KeukenInstructiesPage() {
     return (
       <main className="min-h-screen bg-slate-50 p-4 md:p-6">
         <div className="mx-auto max-w-6xl">
-          <Link
-            href="/winkel"
-            className="mb-6 inline-flex items-center text-slate-600"
-          >
+          <Link href="/winkel" className="mb-6 inline-flex text-slate-600">
             ← Terug
           </Link>
 
@@ -69,10 +66,7 @@ export default function KeukenInstructiesPage() {
     return (
       <main className="min-h-screen bg-slate-50 p-4 md:p-6">
         <div className="mx-auto max-w-6xl">
-          <Link
-            href="/winkel"
-            className="mb-6 inline-flex items-center text-slate-600"
-          >
+          <Link href="/winkel" className="mb-6 inline-flex text-slate-600">
             ← Terug
           </Link>
 
@@ -84,18 +78,20 @@ export default function KeukenInstructiesPage() {
     );
   }
 
-  const toegestaneFuncties = [".", "."];
+  const toegestaneFuncties = [
+    "scheppers",
+    "winkelmedewerkers",
+    "verkoop",
+    "kassa",
+  ];
 
-  const keukenInstructies = [...instructies]
+  const winkelInstructies = [...instructies]
     .filter((i) => {
       if (!i.functies || i.functies.length === 0) return false;
 
       const functies = i.functies.map((f) => f.toLowerCase().trim());
 
-      return (
-        functies.length > 0 &&
-        functies.every((f) => toegestaneFuncties.includes(f))
-      );
+      return functies.some((f) => toegestaneFuncties.includes(f));
     })
     .sort((a, b) => {
       const na = a.nummer || "";
@@ -106,32 +102,28 @@ export default function KeukenInstructiesPage() {
   return (
     <main className="min-h-screen bg-slate-50 p-4 md:p-6">
       <div className="mx-auto max-w-6xl">
-        <Link
-          href="/winkel"
-          className="mb-6 inline-flex items-center text-slate-600"
-        >
+        <Link href="/winkel" className="mb-6 inline-flex text-slate-600">
           ← Terug
         </Link>
 
         <h1 className="text-3xl font-bold text-slate-900 md:text-4xl">
-          Werkinstructies & Skills
+          Werkinstructies winkel
         </h1>
 
         <p className="mt-2 text-slate-600">
-          Open instructies voor de winkel.
+          Open instructies voor winkel, kassa en ijsscheppen.
         </p>
 
-        {keukenInstructies.length === 0 ? (
+        {winkelInstructies.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-white p-5 text-slate-500">
-            Er zijn nog geen winkelinstructies gekoppeld aan de functie
-            “winkel”.
+            Er zijn nog geen winkelinstructies gekoppeld.
           </div>
         ) : (
           <div className="mt-6 grid grid-cols-2 gap-4">
-            {keukenInstructies.map((item) => (
+            {winkelInstructies.map((item) => (
               <Link
                 key={item.id}
-                href={`/winkel/instructies-skills/${item.slug}`}
+                href={`/winkel/instructies/${item.slug}`}
                 className="flex h-[96px] items-center justify-center rounded-2xl border border-slate-200 bg-white px-3 py-3 text-center shadow-sm transition active:scale-95"
               >
                 <span className="block max-w-[170px] text-lg font-semibold leading-snug text-slate-900">

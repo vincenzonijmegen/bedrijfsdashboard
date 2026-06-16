@@ -13,6 +13,11 @@ const tegels = [
   titel: "Winkel - afsluitroutine",
   omschrijving: "Werk de lijst af.",
 },
+  {
+    href: "/winkel/instructies",
+    titel: "Werkinstructies / naslag",
+    omschrijving: "Open werkinstructies / naslag.",
+  },
 ];
 
 export default function KeukenHomePage() {

@@ -4,6 +4,11 @@ import Link from "next/link";
 
 const tegels = [
   {
+    href: "/keuken/maaklijst",
+    titel: "Maaklijst",
+    omschrijving: "Klik aan wat bijgemaakt moet worden.",
+  },
+  {
     href: "/keuken/recepturen",
     titel: "Recepturen",
     omschrijving: "Bekijk recepturen per categorie.",
@@ -12,11 +17,6 @@ const tegels = [
     href: "/keuken/instructies-skills",
     titel: "Werkinstructies / skills",
     omschrijving: "Open keukeninstructies en skills.",
-  },
-  {
-    href: "/keuken/maaklijst",
-    titel: "Maaklijst",
-    omschrijving: "Klik aan wat bijgemaakt moet worden.",
   },
     {
     href: "/routines/keuken-opstart",
