@@ -231,9 +231,11 @@ async function verstuurReminderType({
   };
 }
 
-export async function GET(req: Request) {
+const APP_ORIGIN = "https://werkinstructies-app.vercel.app";
+
+export async function GET() {
   try {
-    const origin = new URL(req.url).origin;
+    const origin = APP_ORIGIN;
 
     const reminder2d = await verstuurReminderType({
       type: "reminder_2d",
