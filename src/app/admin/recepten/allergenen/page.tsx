@@ -63,7 +63,7 @@ export default function AllergenenKaart() {
       const recepten = gegroepeerdPerSoort[soort] || [];
       if (rows.length > 1) rows.push([]);
       rows.push(['🧾 Allergenenkaart IJssalon Vincenzo']);
-    rows.push(['ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJF']);
+    rows.push(['ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJ']);
     rows.push([]);
     rows.push([soort === "overig" ? "OVERIG" : "ROOMIJS"]);
 
@@ -78,7 +78,7 @@ export default function AllergenenKaart() {
 
     rows.push(
       [],
-      ["ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJF"],
+      ["ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJ"],
       [
         "Geen vis, selderij, zwaveldioxide, mosterd, weekdieren, schaaldieren, lupine, sesamzaad in ons ijs",
       ],
@@ -138,11 +138,11 @@ export default function AllergenenKaart() {
     <main className="max-w-6xl mx-auto p-6 space-y-6" id="pdf-content">
       <h1 className="text-2xl font-bold text-center">🧾 Allergenenkaart IJssalon Vincenzo</h1>
       <p className="text-center bg-blue-600 text-yellow-300 font-bold text-xl uppercase py-2 rounded">
-        ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJF
+        ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJ
       </p>
       <h1 className="text-2xl font-bold text-center">🧾 Allergenenkaart IJssalon Vincenzo</h1>
 <p className="text-center bg-blue-600 text-yellow-300 font-bold text-xl uppercase py-2 rounded">
-  ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJF
+  ALLE SORBETSMAKEN ZIJN VEGANISTISCH EN ALLERGENENVRIJ
 </p>
 <div className="space-x-2 print:hidden">
         <button

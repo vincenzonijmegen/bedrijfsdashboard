@@ -259,9 +259,9 @@ function renderWeer(briefing: BriefingData) {
           : `${Math.round(Number(uur.temperatuur))}°C`;
 
       const regen =
-        uur.neerslagKans === null || uur.neerslagKans === undefined
-          ? "-"
-          : `${Math.round(Number(uur.neerslagKans))}%`;
+  uur.neerslagMm === null || uur.neerslagMm === undefined
+    ? "-"
+    : `${Number(uur.neerslagMm).toFixed(1).replace(".", ",")} mm`;
 
       return `
         <tr>
@@ -296,7 +296,7 @@ function renderWeer(briefing: BriefingData) {
               <tr>
                 <th align="left" style="padding: 6px 8px; border-bottom: 1px solid #cbd5e1; color: #475569;">Tijd</th>
                 <th align="left" style="padding: 6px 8px; border-bottom: 1px solid #cbd5e1; color: #475569;">Temp.</th>
-                <th align="left" style="padding: 6px 8px; border-bottom: 1px solid #cbd5e1; color: #475569;">Regen</th>
+                <th align="left" style="padding: 6px 8px; border-bottom: 1px solid #cbd5e1; color: #475569;">Neerslag</th>
               </tr>
               ${compacteUren}
             </table>

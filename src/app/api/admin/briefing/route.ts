@@ -84,9 +84,7 @@ async function haalWeerOp(datum: string): Promise<BriefingOnderdeel<{
       ].join(",")
     );
 
-    const res = await fetch(url.toString(), {
-      cache: "no-store",
-    });
+    const res = await fetch(url.toString(), { cache: "no-store" });
 
     if (!res.ok) {
       return {
@@ -142,21 +140,23 @@ async function haalWeerOp(datum: string): Promise<BriefingOnderdeel<{
       .map((uur) => uur.temperatuur)
       .filter((value): value is number => value !== null);
 
-    const regenKansenBekend = uren
-      .map((uur) => uur.neerslagKans)
+    const neerslagBekend = uren
+      .map((uur) => uur.neerslagMm)
       .filter((value): value is number => value !== null);
 
     const minTemp =
       temperaturenBekend.length > 0 ? Math.round(Math.min(...temperaturenBekend)) : null;
+
     const maxTemp =
       temperaturenBekend.length > 0 ? Math.round(Math.max(...temperaturenBekend)) : null;
-    const maxRegenKans =
-      regenKansenBekend.length > 0 ? Math.max(...regenKansenBekend) : null;
+
+    const totaleNeerslagMm =
+      neerslagBekend.length > 0
+        ? neerslagBekend.reduce((som, waarde) => som + waarde, 0)
+        : 0;
 
     const natteUren = uren.filter(
-      (uur) =>
-        (uur.neerslagKans !== null && uur.neerslagKans >= 40) ||
-        (uur.neerslagMm !== null && uur.neerslagMm >= 0.5)
+      (uur) => uur.neerslagMm !== null && uur.neerslagMm >= 0.5
     );
 
     const eersteNatUur = natteUren[0]?.uur || null;
@@ -165,16 +165,21 @@ async function haalWeerOp(datum: string): Promise<BriefingOnderdeel<{
     let drukteverwachting = "Normale drukteverwachting.";
 
     if (minTemp !== null && maxTemp !== null) {
-      if (maxRegenKans !== null && maxRegenKans >= 50 && eersteNatUur) {
-        samenvatting = `${minTemp}–${maxTemp}°C tussen 12:00 en 22:00. Verhoogde kans op regen vanaf ongeveer ${eersteNatUur}.`;
+      const regenTekst =
+        totaleNeerslagMm >= 1
+          ? `${totaleNeerslagMm.toFixed(1).replace(".", ",")} mm regen verwacht`
+          : "vrijwel droog";
+
+      if (totaleNeerslagMm >= 2 && eersteNatUur) {
+        samenvatting = `${minTemp}–${maxTemp}°C tussen 12:00 en 22:00. Regen vanaf ongeveer ${eersteNatUur}.`;
         drukteverwachting =
-          "Middag mogelijk goed, maar avond kan rustiger worden door regenrisico.";
-      } else if (maxTemp >= 22 && (maxRegenKans === null || maxRegenKans < 35)) {
-        samenvatting = `${minTemp}–${maxTemp}°C tussen 12:00 en 22:00. Grotendeels geschikt terrasweer.`;
+          "Mogelijk rustiger door regen, vooral rond de natte uren.";
+      } else if (maxTemp >= 22 && totaleNeerslagMm < 1) {
+        samenvatting = `${minTemp}–${maxTemp}°C tussen 12:00 en 22:00. Goed terrasweer, ${regenTekst}.`;
         drukteverwachting =
-          "Kans op extra drukte in de middag en vroege avond, vooral tussen 14:00 en 17:00.";
-      } else if (maxTemp >= 18 && (maxRegenKans === null || maxRegenKans < 45)) {
-        samenvatting = `${minTemp}–${maxTemp}°C tussen 12:00 en 22:00. Redelijk terrasweer.`;
+          "Kans op extra drukte in de middag en vroege avond.";
+      } else if (maxTemp >= 18 && totaleNeerslagMm < 1.5) {
+        samenvatting = `${minTemp}–${maxTemp}°C tussen 12:00 en 22:00. Redelijk terrasweer, ${regenTekst}.`;
         drukteverwachting =
           "Redelijke drukte mogelijk, afhankelijk van zon en wind.";
       } else {
