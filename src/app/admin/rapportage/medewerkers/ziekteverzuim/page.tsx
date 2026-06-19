@@ -257,8 +257,14 @@ export default function ZiekteverzuimRapportage() {
                               )}
                             </td>
 
-                            <td className="px-4 py-3 text-slate-700">
-                              {v.opmerking || "—"}
+                            <td className="px-4 py-3 align-top text-slate-700">
+                              {v.opmerking ? (
+                                <div className="whitespace-pre-wrap break-words leading-relaxed">
+                                  {v.opmerking}
+                                </div>
+                              ) : (
+                                "—"
+                              )}
                             </td>
                           </tr>
                         ))}

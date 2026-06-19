@@ -639,26 +639,21 @@ export default function DossierOverzicht() {
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="mb-4 text-lg font-bold">Ziekteverzuim</h2>
 
-              <div className="grid gap-3 md:grid-cols-[160px_160px_1fr_auto]">
+              <div className="grid gap-3 md:grid-cols-[160px_160px_auto] md:items-start">
                 <input
                   type="date"
                   value={van}
                   onChange={(e) => setVan(e.target.value)}
                   className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 />
+
                 <input
                   type="date"
                   value={tot}
                   onChange={(e) => setTot(e.target.value)}
                   className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 />
-                <input
-                  type="text"
-                  value={opmerkingZiekte}
-                  onChange={(e) => setOpmerkingZiekte(e.target.value)}
-                  placeholder="Toelichting"
-                  className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                />
+
                 <button
                   onClick={voegZiekteverzuimToe}
                   className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-blue-700"
@@ -666,6 +661,14 @@ export default function DossierOverzicht() {
                   Toevoegen
                 </button>
               </div>
+
+              <textarea
+                value={opmerkingZiekte}
+                onChange={(e) => setOpmerkingZiekte(e.target.value)}
+                placeholder="Toelichting"
+                rows={4}
+                className="mt-3 min-h-[110px] w-full rounded-xl border border-slate-300 px-3 py-2 text-sm leading-relaxed outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              />
 
               {Array.isArray(verzuim) && verzuim.length > 0 && (
                 <ul className="mt-4 space-y-3">
