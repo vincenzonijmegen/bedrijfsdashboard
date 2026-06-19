@@ -86,6 +86,46 @@ function datumNl(datum: string) {
   });
 }
 
+function DashboardRij({
+  titel,
+  waarde,
+  subtitel,
+  status,
+  icon: Icon,
+  isLoading,
+}: {
+  titel: string;
+  waarde: string | number | null;
+  subtitel: React.ReactNode;
+  status: "goed" | "waarschuwing" | "neutraal" | "onbekend";
+  icon: React.ElementType;
+  isLoading?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 items-start gap-4">
+          <div className={`shrink-0 rounded-xl border p-2 ${kleurClass[status]}`}>
+            <Icon className="h-5 w-5" />
+          </div>
+
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-slate-700">{titel}</div>
+
+            <div className="mt-1 text-2xl font-bold tracking-tight text-slate-950">
+              {isLoading ? "…" : waardeTekst(waarde)}
+            </div>
+          </div>
+        </div>
+
+        <div className="min-w-0 text-sm leading-5 text-slate-500 md:max-w-2xl md:text-right">
+          {subtitel}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function VandaagDashboard() {
   const { data, error, isLoading } = useSWR<DashboardData>(
     "/api/admin/dashboard/vandaag",
@@ -141,76 +181,48 @@ export default function VandaagDashboard() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="space-y-3 p-5">
           {(Object.keys(iconen) as Array<keyof typeof iconen>).map((key) => {
             const Icon = iconen[key];
             const item = data?.items?.[key];
             const status = item?.status || "onbekend";
 
             const inhoud = (
-              <div className="flex h-full min-h-40 flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-700">
-                      {item?.titel || titelFallback(key)}
-                    </div>
-
-                    <div className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
-                      {isLoading ? "…" : waardeTekst(item?.waarde ?? null)}
-                    </div>
-                  </div>
-
-                  <div className={`rounded-xl border p-2 ${kleurClass[status]}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
-                </div>
-
-                <p className="mt-3 text-sm leading-5 text-slate-500">
-                  {item?.subtitel || "Nog niet gekoppeld."}
-                </p>
-              </div>
+              <DashboardRij
+                titel={item?.titel || titelFallback(key)}
+                waarde={item?.waarde ?? null}
+                subtitel={item?.subtitel || "Nog niet gekoppeld."}
+                status={status}
+                icon={Icon}
+                isLoading={isLoading}
+              />
             );
 
             return item?.href ? (
-              <Link key={key} href={item.href} className="block h-full">
+              <Link key={key} href={item.href} className="block">
                 {inhoud}
               </Link>
             ) : (
-              <div key={key} className="h-full">
-                {inhoud}
-              </div>
+              <div key={key}>{inhoud}</div>
             );
           })}
 
           <Link
-            href="/admin/rapportages/ziekteverzuim"
-            className="block h-full"
+            href="/admin/rapportage/medewerkers/ziekteverzuim"
+            className="block"
           >
-            <div className="flex h-full min-h-40 flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-slate-700">
-                    Open ziekmeldingen
-                  </div>
-
-                  <div className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
-                    {verzuimLoading ? "…" : openZiekmeldingen.length}
-                  </div>
-                </div>
-
-                <div
-                  className={`rounded-xl border p-2 ${
-                    openZiekmeldingen.length > 0
-                      ? kleurClass.waarschuwing
-                      : kleurClass.goed
-                  }`}
-                >
-                  <HeartPulse className="h-5 w-5" />
-                </div>
-              </div>
-
-              <div className="mt-3 text-sm leading-5 text-slate-500">
-                {verzuimError ? (
+            <DashboardRij
+              titel="Open ziekmeldingen"
+              waarde={verzuimLoading ? null : openZiekmeldingen.length}
+              status={
+                openZiekmeldingen.length > 0
+                  ? "waarschuwing"
+                  : "goed"
+              }
+              icon={HeartPulse}
+              isLoading={verzuimLoading}
+              subtitel={
+                verzuimError ? (
                   "Ziekmeldingen konden niet geladen worden."
                 ) : verzuimLoading ? (
                   "Ziekmeldingen laden..."
@@ -218,25 +230,24 @@ export default function VandaagDashboard() {
                   "Geen open ziekmeldingen."
                 ) : (
                   <div className="space-y-1">
-                    {openZiekmeldingen.slice(0, 3).map((melding) => (
+                    {openZiekmeldingen.slice(0, 4).map((melding) => (
                       <div key={melding.id}>
                         <span className="font-semibold text-slate-700">
                           {melding.medewerker_naam}
-                        </span>
-                        <br />
+                        </span>{" "}
                         <span>Ziek sinds {datumNl(melding.van)}</span>
                       </div>
                     ))}
 
-                    {openZiekmeldingen.length > 3 ? (
+                    {openZiekmeldingen.length > 4 ? (
                       <div className="pt-1 font-medium text-slate-600">
-                        + {openZiekmeldingen.length - 3} meer
+                        + {openZiekmeldingen.length - 4} meer
                       </div>
                     ) : null}
                   </div>
-                )}
-              </div>
-            </div>
+                )
+              }
+            />
           </Link>
         </div>
       )}
