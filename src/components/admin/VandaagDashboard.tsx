@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   ChefHat,
   CloudSun,
+  HeartPulse,
   Loader2,
   ShieldCheck,
   Users,
@@ -31,6 +32,14 @@ type DashboardData = {
     haccp: DashboardItem;
     productie: DashboardItem;
   };
+};
+
+type VerzuimItem = {
+  id: number;
+  medewerker_naam: string;
+  van: string;
+  tot: string | null;
+  opmerking?: string | null;
 };
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -66,12 +75,32 @@ function titelFallback(key: string) {
   return titels[key] || key;
 }
 
+function datumNl(datum: string) {
+  if (!datum) return "onbekend";
+
+  return new Date(datum).toLocaleDateString("nl-NL", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export default function VandaagDashboard() {
   const { data, error, isLoading } = useSWR<DashboardData>(
     "/api/admin/dashboard/vandaag",
     fetcher,
     { refreshInterval: 5 * 60 * 1000 }
   );
+
+  const {
+    data: verzuim,
+    error: verzuimError,
+    isLoading: verzuimLoading,
+  } = useSWR<VerzuimItem[]>("/api/admin/rapportage/ziekteverzuim", fetcher, {
+    refreshInterval: 5 * 60 * 1000,
+  });
+
+  const openZiekmeldingen = (verzuim || []).filter((melding) => !melding.tot);
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -93,7 +122,9 @@ export default function VandaagDashboard() {
             ) : (
               <CheckCircle2 className="h-4 w-4" />
             )}
-            {data?.bijgewerktOp ? `Bijgewerkt ${data.bijgewerktOp}` : "Wordt geladen"}
+            {data?.bijgewerktOp
+              ? `Bijgewerkt ${data.bijgewerktOp}`
+              : "Wordt geladen"}
           </div>
         </div>
       </div>
@@ -106,11 +137,12 @@ export default function VandaagDashboard() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-6">
           {(Object.keys(iconen) as Array<keyof typeof iconen>).map((key) => {
             const Icon = iconen[key];
             const item = data?.items?.[key];
             const status = item?.status || "onbekend";
+
             const inhoud = (
               <div className="flex h-full min-h-40 flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md">
                 <div className="flex items-start justify-between gap-3">
@@ -143,6 +175,63 @@ export default function VandaagDashboard() {
               </div>
             );
           })}
+
+          <Link
+            href="/admin/rapportages/ziekteverzuim"
+            className="block h-full"
+          >
+            <div className="flex h-full min-h-40 flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-700">
+                    Open ziekmeldingen
+                  </div>
+
+                  <div className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
+                    {verzuimLoading ? "…" : openZiekmeldingen.length}
+                  </div>
+                </div>
+
+                <div
+                  className={`rounded-xl border p-2 ${
+                    openZiekmeldingen.length > 0
+                      ? kleurClass.waarschuwing
+                      : kleurClass.goed
+                  }`}
+                >
+                  <HeartPulse className="h-5 w-5" />
+                </div>
+              </div>
+
+              <div className="mt-3 text-sm leading-5 text-slate-500">
+                {verzuimError ? (
+                  "Ziekmeldingen konden niet geladen worden."
+                ) : verzuimLoading ? (
+                  "Ziekmeldingen laden..."
+                ) : openZiekmeldingen.length === 0 ? (
+                  "Geen open ziekmeldingen."
+                ) : (
+                  <div className="space-y-1">
+                    {openZiekmeldingen.slice(0, 3).map((melding) => (
+                      <div key={melding.id}>
+                        <span className="font-semibold text-slate-700">
+                          {melding.medewerker_naam}
+                        </span>
+                        <br />
+                        <span>Ziek sinds {datumNl(melding.van)}</span>
+                      </div>
+                    ))}
+
+                    {openZiekmeldingen.length > 3 ? (
+                      <div className="pt-1 font-medium text-slate-600">
+                        + {openZiekmeldingen.length - 3} meer
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            </div>
+          </Link>
         </div>
       )}
     </section>
