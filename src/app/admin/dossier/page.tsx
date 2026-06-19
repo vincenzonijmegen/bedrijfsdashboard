@@ -721,21 +721,28 @@ export default function DossierOverzicht() {
                         </>
                       ) : (
                         <div className="flex items-start justify-between gap-4">
-                          <p className="text-sm leading-6">
-                            <strong>{formatDate(v.van)}</strong>
-                            {v.tot && v.van !== v.tot && (
-                              <>
-                                <span> t/m </span>
-                                <strong>{formatDate(v.tot)}</strong>
-                              </>
+                          <div className="min-w-0 text-sm leading-6">
+                            <div>
+                              <strong>{formatDate(v.van)}</strong>
+                              {v.tot && v.van !== v.tot && (
+                                <>
+                                  <span> t/m </span>
+                                  <strong>{formatDate(v.tot)}</strong>
+                                </>
+                              )}
+                              {!v.tot && (
+                                <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">
+                                  nog ziekgemeld
+                                </span>
+                              )}
+                            </div>
+
+                            {v.opmerking && (
+                              <div className="mt-2 whitespace-pre-wrap break-words text-slate-900">
+                                {v.opmerking}
+                              </div>
                             )}
-                            {!v.tot && (
-                              <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">
-                                nog ziekgemeld
-                              </span>
-                            )}
-                            <span> – {v.opmerking}</span>
-                          </p>
+                          </div>
 
                           <div className="flex shrink-0 gap-2">
                             <button
