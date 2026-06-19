@@ -72,6 +72,7 @@ function titelFallback(key: string) {
     haccp: "HACCP",
     productie: "Productie",
   };
+
   return titels[key] || key;
 }
 
@@ -108,9 +109,11 @@ export default function VandaagDashboard() {
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="text-sm font-semibold text-blue-600">Vandaag</div>
+
             <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">
               Dagsturing Vincenzo
             </h2>
+
             <p className="mt-1 text-sm text-slate-500">
               {data?.datumLabel || "Actuele stand van de dagelijkse operatie."}
             </p>
@@ -122,6 +125,7 @@ export default function VandaagDashboard() {
             ) : (
               <CheckCircle2 className="h-4 w-4" />
             )}
+
             {data?.bijgewerktOp
               ? `Bijgewerkt ${data.bijgewerktOp}`
               : "Wordt geladen"}
@@ -150,10 +154,12 @@ export default function VandaagDashboard() {
                     <div className="text-sm font-semibold text-slate-700">
                       {item?.titel || titelFallback(key)}
                     </div>
+
                     <div className="mt-2 text-3xl font-bold tracking-tight text-slate-950">
                       {isLoading ? "…" : waardeTekst(item?.waarde ?? null)}
                     </div>
                   </div>
+
                   <div className={`rounded-xl border p-2 ${kleurClass[status]}`}>
                     <Icon className="h-5 w-5" />
                   </div>

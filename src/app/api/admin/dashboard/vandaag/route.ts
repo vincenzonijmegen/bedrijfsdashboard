@@ -14,6 +14,14 @@ type DashboardItem = {
   status: Status;
 };
 
+type WeerUur = {
+  tijd: string;
+  uur: string;
+  temperatuur: number | null;
+  neerslagMm: number | null;
+  windKmh: number | null;
+};
+
 function vandaagIso() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -24,6 +32,11 @@ function tijdNl() {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function veiligGetal(value: unknown): number | null {
+  const getal = Number(value);
+  return Number.isFinite(getal) ? getal : null;
 }
 
 function haalArray(data: any): any[] {
@@ -62,39 +75,132 @@ async function shiftbaseFetch(path: string, params?: Record<string, string>) {
 
 async function weer(): Promise<DashboardItem> {
   try {
+    const vandaag = vandaagIso();
+
     // Nijmegen centrum, zonder API-key via Open-Meteo.
     const url = new URL("https://api.open-meteo.com/v1/forecast");
+
     url.searchParams.set("latitude", "51.8425");
     url.searchParams.set("longitude", "5.8528");
-    url.searchParams.set("current", "temperature_2m,precipitation,wind_speed_10m");
-    url.searchParams.set("hourly", "precipitation_probability");
-    url.searchParams.set("forecast_days", "1");
     url.searchParams.set("timezone", "Europe/Amsterdam");
+    url.searchParams.set("start_date", vandaag);
+    url.searchParams.set("end_date", vandaag);
+    url.searchParams.set(
+      "hourly",
+      [
+        "temperature_2m",
+        "precipitation_probability",
+        "precipitation",
+        "wind_speed_10m",
+      ].join(",")
+    );
 
     const res = await fetch(url.toString(), { cache: "no-store" });
     if (!res.ok) throw new Error(await res.text());
+
     const json = await res.json();
 
-    const temp = Math.round(Number(json.current?.temperature_2m));
-    const regenNu = Number(json.current?.precipitation || 0);
-    const wind = Math.round(Number(json.current?.wind_speed_10m || 0));
-    const kansen: number[] = (json.hourly?.precipitation_probability || []).map((v: any) => Number(v));
-    const maxRegenKans = kansen.length ? Math.max(...kansen) : 0;
+    const tijden: string[] = json?.hourly?.time || [];
+    const temperaturen: unknown[] = json?.hourly?.temperature_2m || [];
+    const neerslagMm: unknown[] = json?.hourly?.precipitation || [];
+    const wind: unknown[] = json?.hourly?.wind_speed_10m || [];
 
-    let terras = "goed terrasweer";
-    let status: Status = "goed";
-    if (regenNu > 0 || maxRegenKans >= 60 || wind >= 35) {
-      terras = "terras minder gunstig";
-      status = "waarschuwing";
-    } else if (temp < 16 || maxRegenKans >= 35) {
-      terras = "terras twijfelachtig";
-      status = "neutraal";
+    const uren: WeerUur[] = tijden
+      .map((tijd, index) => {
+        const uur = tijd.slice(11, 16);
+
+        return {
+          tijd,
+          uur,
+          temperatuur: veiligGetal(temperaturen[index]),
+          neerslagMm: veiligGetal(neerslagMm[index]),
+          windKmh: veiligGetal(wind[index]),
+        };
+      })
+      .filter((item) => item.uur >= "12:00" && item.uur <= "22:00");
+
+    if (uren.length === 0) {
+      return {
+        titel: "Weer & terras",
+        waarde: null,
+        subtitel: "Geen weerdata gevonden voor 12:00–22:00.",
+        status: "onbekend",
+      };
+    }
+
+    const temperaturenBekend = uren
+      .map((uur) => uur.temperatuur)
+      .filter((value): value is number => value !== null);
+
+    const neerslagBekend = uren
+      .map((uur) => uur.neerslagMm)
+      .filter((value): value is number => value !== null);
+
+    const windBekend = uren
+      .map((uur) => uur.windKmh)
+      .filter((value): value is number => value !== null);
+
+    const minTemp =
+      temperaturenBekend.length > 0
+        ? Math.round(Math.min(...temperaturenBekend))
+        : null;
+
+    const maxTemp =
+      temperaturenBekend.length > 0
+        ? Math.round(Math.max(...temperaturenBekend))
+        : null;
+
+    const maxWind =
+      windBekend.length > 0
+        ? Math.round(Math.max(...windBekend))
+        : null;
+
+    const totaleNeerslagMm =
+      neerslagBekend.length > 0
+        ? neerslagBekend.reduce((som, waarde) => som + waarde, 0)
+        : 0;
+
+    const natteUren = uren.filter(
+      (uur) => uur.neerslagMm !== null && uur.neerslagMm >= 0.5
+    );
+
+    const eersteNatUur = natteUren[0]?.uur || null;
+
+    const neerslagTekst = `${totaleNeerslagMm
+      .toFixed(1)
+      .replace(".", ",")} mm`;
+
+    let subtitel = "Weerdata beschikbaar.";
+    let status: Status = "neutraal";
+
+    if (minTemp !== null && maxTemp !== null) {
+      if (totaleNeerslagMm >= 2 && eersteNatUur) {
+        subtitel = `${minTemp}–${maxTemp}°C. Regen vanaf ongeveer ${eersteNatUur} · totaal ${neerslagTekst}`;
+        status = "waarschuwing";
+      } else if (maxTemp >= 22 && totaleNeerslagMm < 1) {
+        subtitel = `${minTemp}–${maxTemp}°C. Goed terrasweer, vrijwel droog.`;
+        status = "goed";
+      } else if (maxTemp >= 18 && totaleNeerslagMm < 1.5) {
+        subtitel = `${minTemp}–${maxTemp}°C. Redelijk terrasweer, ${neerslagTekst} neerslag.`;
+        status = "goed";
+      } else {
+        subtitel = `${minTemp}–${maxTemp}°C. Beperkt terrasweer, ${neerslagTekst} neerslag.`;
+        status = "neutraal";
+      }
+
+      if (maxWind !== null && maxWind >= 35) {
+        subtitel = `${subtitel} · wind ${maxWind} km/u`;
+        status = "waarschuwing";
+      }
     }
 
     return {
       titel: "Weer & terras",
-      waarde: Number.isFinite(temp) ? `${temp}°C` : null,
-      subtitel: `${terras}. Regenkans max. ${maxRegenKans}% · wind ${wind} km/u`,
+      waarde:
+        minTemp !== null && maxTemp !== null
+          ? `${minTemp}–${maxTemp}°C`
+          : null,
+      subtitel,
       status,
     };
   } catch (error) {
@@ -123,7 +229,10 @@ async function openShifts(): Promise<DashboardItem> {
     return {
       titel: "Open shifts",
       waarde: aantal,
-      subtitel: aantal === 0 ? "Geen open diensten gevonden voor vandaag." : `${aantal} open dienst(en) in Shiftbase.`,
+      subtitel:
+        aantal === 0
+          ? "Geen open diensten gevonden voor vandaag."
+          : `${aantal} open dienst(en) in Shiftbase.`,
       href: "/open-diensten",
       status: aantal > 0 ? "waarschuwing" : "goed",
     };
@@ -163,6 +272,7 @@ async function medewerkersVandaag(): Promise<DashboardItem> {
         row?.name ||
         row?.Employee?.name ||
         row?.employee_name;
+
       if (id) medewerkers.add(String(id));
     }
 
@@ -171,7 +281,10 @@ async function medewerkersVandaag(): Promise<DashboardItem> {
     return {
       titel: "Medewerkers vandaag",
       waarde: aantal,
-      subtitel: aantal === 0 ? "Nog geen Shiftbase-bezetting/timesheets gevonden." : `${aantal} medewerker(s) gevonden in Shiftbase.`,
+      subtitel:
+        aantal === 0
+          ? "Nog geen Shiftbase-bezetting/timesheets gevonden."
+          : `${aantal} medewerker(s) gevonden in Shiftbase.`,
       href: "/admin/shiftbase/rooster",
       status: aantal > 0 ? "neutraal" : "onbekend",
     };
