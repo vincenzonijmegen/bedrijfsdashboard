@@ -1,8 +1,18 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { verifyJWT } from "@/lib/auth";
 import { db } from "@/lib/db";
 import slugify from "slugify";
 
 const geldigeFases = ["voor_eerste_shift", "binnen_2_weken", "taakgericht"];
+
+const TOEGESTANE_LEESROLLEN = ["beheerder", "accountant"];
+const TOEGESTANE_SCHRIJFROLLEN = ["beheerder"];
+
+type RouteContext = {
+  params: Promise<{
+    slug: string;
+  }>;
+};
 
 const normaliseerOnboardingFase = (fase: unknown) => {
   if (typeof fase !== "string") return "taakgericht";
@@ -14,8 +24,67 @@ const normaliseerVolgorde = (waarde: unknown) => {
   return Number.isFinite(nummer) ? nummer : 999;
 };
 
-export async function POST(req: Request) {
+async function haalRolUitSessie(req: NextRequest) {
+  const gebruikerJWT = verifyJWT(req);
+
+  const result = await db.query(
+    `SELECT rol
+     FROM medewerkers
+     WHERE lower(email) = lower($1)
+     LIMIT 1`,
+    [gebruikerJWT.email]
+  );
+
+  const gebruiker = result.rows[0];
+
+  if (!gebruiker) {
+    return null;
+  }
+
+  return String(gebruiker.rol || "").toLowerCase();
+}
+
+async function magLezen(req: NextRequest) {
   try {
+    const rol = await haalRolUitSessie(req);
+    return !!rol && TOEGESTANE_LEESROLLEN.includes(rol);
+  } catch {
+    return false;
+  }
+}
+
+async function magSchrijven(req: NextRequest) {
+  try {
+    const rol = await haalRolUitSessie(req);
+    return !!rol && TOEGESTANE_SCHRIJFROLLEN.includes(rol);
+  } catch {
+    return false;
+  }
+}
+
+function parseFuncties(functies: unknown) {
+  if (Array.isArray(functies)) return functies;
+
+  if (typeof functies === "string") {
+    try {
+      const parsed = JSON.parse(functies);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const toegestaan = await magSchrijven(req);
+
+    if (!toegestaan) {
+      return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+    }
+
     const {
       titel,
       inhoud,
@@ -27,23 +96,15 @@ export async function POST(req: Request) {
     } = await req.json();
 
     if (!titel?.trim()) {
-      return NextResponse.json({ error: "Titel is verplicht" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Titel is verplicht" },
+        { status: 400 }
+      );
     }
 
-    const slug = slugify(titel, { lower: true, strict: true });
+    const slug = slugify(String(titel), { lower: true, strict: true });
     const created_at = new Date().toISOString();
-
-    const functiesGeparsed = Array.isArray(functies)
-      ? functies
-      : typeof functies === "string"
-      ? (() => {
-          try {
-            return JSON.parse(functies);
-          } catch {
-            return [];
-          }
-        })()
-      : [];
+    const functiesGeparsed = parseFuncties(functies);
 
     await db.query(
       `
@@ -74,82 +135,70 @@ export async function POST(req: Request) {
       ]
     );
 
-    return new NextResponse(JSON.stringify({ slug }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return NextResponse.json({ slug }, { status: 200 });
   } catch (err) {
-    console.error("🛑 Fout bij POST:", err);
-    return NextResponse.json({ error: "Fout bij opslaan" }, { status: 500 });
+    console.error("🛑 Fout bij POST /api/instructies/[slug]:", err);
+
+    return NextResponse.json(
+      { error: "Fout bij opslaan" },
+      { status: 500 }
+    );
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function GET(req: Request, context: any) {
-  const slug = context?.params?.slug;
+export async function GET(req: NextRequest, context: RouteContext) {
+  try {
+    const toegestaan = await magLezen(req);
 
-  if (slug) {
-    try {
-      const result = await db.query(
-        `
-          SELECT
-            id,
-            titel,
-            inhoud,
-            nummer,
-            functies,
-            COALESCE(onboarding_fase, 'taakgericht') AS onboarding_fase,
-            COALESCE(onboarding_verplicht, false) AS onboarding_verplicht,
-            COALESCE(onboarding_volgorde, 999) AS onboarding_volgorde
-          FROM instructies
-          WHERE slug = $1
-        `,
-        [Array.isArray(slug) ? slug[0] : slug]
-      );
-
-      if (result.rows.length === 0) {
-        return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
-      }
-
-      return NextResponse.json(result.rows[0], { status: 200 });
-    } catch (err) {
-      console.error("🛑 Fout bij GET (één instructie):", err);
-      return NextResponse.json({ error: "Ophalen mislukt" }, { status: 500 });
+    if (!toegestaan) {
+      return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
     }
-  }
 
-  try {
-    const result = await db.query(`
-      SELECT
-        id,
-        titel,
-        slug,
-        nummer,
-        functies,
-        COALESCE(onboarding_fase, 'taakgericht') AS onboarding_fase,
-        COALESCE(onboarding_verplicht, false) AS onboarding_verplicht,
-        COALESCE(onboarding_volgorde, 999) AS onboarding_volgorde
-      FROM instructies
-      ORDER BY
-        onboarding_volgorde ASC,
-        nummer ASC NULLS LAST,
-        created_at DESC
-    `);
+    const { slug } = await context.params;
 
-    return NextResponse.json(result.rows, { status: 200 });
+    const result = await db.query(
+      `
+        SELECT
+          id,
+          titel,
+          inhoud,
+          nummer,
+          functies,
+          COALESCE(onboarding_fase, 'taakgericht') AS onboarding_fase,
+          COALESCE(onboarding_verplicht, false) AS onboarding_verplicht,
+          COALESCE(onboarding_volgorde, 999) AS onboarding_volgorde
+        FROM instructies
+        WHERE slug = $1
+        LIMIT 1
+      `,
+      [slug]
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
+    }
+
+    return NextResponse.json(result.rows[0], { status: 200 });
   } catch (err) {
-    console.error("🛑 Fout bij ophalen instructies:", err);
-    return NextResponse.json({ error: "Fout bij ophalen" }, { status: 500 });
+    console.error("🛑 Fout bij GET /api/instructies/[slug]:", err);
+
+    return NextResponse.json(
+      { error: "Ophalen mislukt" },
+      { status: 500 }
+    );
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function PUT(req: Request, context: any) {
-  const slug = Array.isArray(context.params.slug)
-    ? context.params.slug[0]
-    : context.params.slug;
-
+export async function PUT(req: NextRequest, context: RouteContext) {
   try {
+    const toegestaan = await magSchrijven(req);
+
+    if (!toegestaan) {
+      return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+    }
+
+    const { slug } = await context.params;
+
     const {
       titel,
       inhoud,
@@ -160,17 +209,14 @@ export async function PUT(req: Request, context: any) {
       onboarding_volgorde,
     } = await req.json();
 
-    const functiesGeparsed = Array.isArray(functies)
-      ? functies
-      : typeof functies === "string"
-      ? (() => {
-          try {
-            return JSON.parse(functies);
-          } catch {
-            return [];
-          }
-        })()
-      : [];
+    if (!titel?.trim()) {
+      return NextResponse.json(
+        { error: "Titel is verplicht" },
+        { status: 400 }
+      );
+    }
+
+    const functiesGeparsed = parseFuncties(functies);
 
     await db.query(
       `
@@ -199,22 +245,34 @@ export async function PUT(req: Request, context: any) {
 
     return NextResponse.json({ slug }, { status: 200 });
   } catch (err) {
-    console.error("🛑 Fout bij PUT:", err);
-    return NextResponse.json({ error: "Update mislukt" }, { status: 500 });
+    console.error("🛑 Fout bij PUT /api/instructies/[slug]:", err);
+
+    return NextResponse.json(
+      { error: "Update mislukt" },
+      { status: 500 }
+    );
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function DELETE(_req: Request, context: any) {
-  const slug = Array.isArray(context.params.slug)
-    ? context.params.slug[0]
-    : context.params.slug;
-
+export async function DELETE(req: NextRequest, context: RouteContext) {
   try {
+    const toegestaan = await magSchrijven(req);
+
+    if (!toegestaan) {
+      return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+    }
+
+    const { slug } = await context.params;
+
     await db.query("DELETE FROM instructies WHERE slug = $1", [slug]);
+
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("🛑 Fout bij DELETE:", err);
-    return NextResponse.json({ error: "Verwijderen mislukt" }, { status: 500 });
+    console.error("🛑 Fout bij DELETE /api/instructies/[slug]:", err);
+
+    return NextResponse.json(
+      { error: "Verwijderen mislukt" },
+      { status: 500 }
+    );
   }
 }
