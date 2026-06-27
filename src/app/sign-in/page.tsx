@@ -32,14 +32,14 @@ export default function SignInPage() {
         return;
       }
 
-      if (data.rol === "accountant") {
-        localStorage.setItem("gebruiker", JSON.stringify(data));
+      const rol = String(data.rol || "").toLowerCase();
+
+      if (rol === "accountant") {
         router.push("/accountant");
         return;
       }
 
-      if (data.rol === "beheerder") {
-        localStorage.setItem("gebruiker", JSON.stringify(data));
+      if (rol === "beheerder") {
         router.push("/admin");
         return;
       }
@@ -63,9 +63,11 @@ export default function SignInPage() {
             <p className="text-sm font-medium text-blue-700">
               IJssalon Vincenzo
             </p>
+
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               Beheer login
             </h1>
+
             <p className="text-sm text-slate-600">
               Deze login is alleen bedoeld voor beheerders en accountanttoegang.
               Medewerkers ontvangen werkinstructies via persoonlijke links per
@@ -77,6 +79,7 @@ export default function SignInPage() {
             <span className="text-sm font-medium text-slate-700">
               E-mailadres
             </span>
+
             <input
               type="email"
               placeholder="naam@ijssalonvincenzo.nl"
@@ -91,6 +94,7 @@ export default function SignInPage() {
             <span className="text-sm font-medium text-slate-700">
               Wachtwoord
             </span>
+
             <input
               type="password"
               placeholder="Wachtwoord"

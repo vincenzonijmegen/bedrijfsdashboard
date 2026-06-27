@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 
 export default function ResetWachtwoord() {
   const router = useRouter();
+
   const [token, setToken] = useState<string>("");
   const [wachtwoord, setWachtwoord] = useState<string>("");
   const [herhaal, setHerhaal] = useState<string>("");
@@ -14,11 +15,15 @@ export default function ResetWachtwoord() {
   useEffect(() => {
     const url = new URL(window.location.href);
     const t = url.searchParams.get("token");
-    if (t) setToken(t);
+
+    if (t) {
+      setToken(t);
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
     setFout("");
     setSucces("");
 
@@ -41,33 +46,42 @@ export default function ResetWachtwoord() {
 
       const data = await res.json();
 
-      if (data.success && data.email) {
-        const loginRes = await fetch("/api/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: data.email, wachtwoord }),
-        });
-
-        const loginData = await loginRes.json();
-
-        if (loginData.success) {
-          localStorage.setItem("gebruiker", JSON.stringify(loginData));
-          if (loginData.functie === "beheerder") {
-            router.push("/admin");
-          } else {
-            router.push("/instructies");
-          }
-          return;
-        }
-
-        setFout("Wachtwoord is gewijzigd, maar automatisch inloggen is mislukt.");
+      if (!data.success || !data.email) {
+        setFout(data.error || "Ongeldige of verlopen link.");
         return;
       }
 
-      setFout(data.error || "Ongeldige of verlopen link.");
+      const loginRes = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: data.email, wachtwoord }),
+      });
+
+      const loginData = await loginRes.json();
+
+      if (!loginRes.ok || !loginData.success) {
+        setSucces("Wachtwoord is gewijzigd.");
+        setFout("Automatisch inloggen is mislukt. Log opnieuw in.");
+        return;
+      }
+
+      const rol = String(loginData.rol || "").toLowerCase();
+
+      if (rol === "beheerder") {
+        router.push("/admin");
+        return;
+      }
+
+      if (rol === "accountant") {
+        router.push("/accountant");
+        return;
+      }
+
+      setSucces("Wachtwoord is gewijzigd.");
+      router.push("/sign-in");
     } catch (err) {
-      setFout("Er is iets misgegaan.");
       console.error(err);
+      setFout("Er is iets misgegaan.");
     }
   };
 
