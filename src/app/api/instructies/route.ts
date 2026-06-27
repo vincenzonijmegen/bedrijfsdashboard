@@ -1,8 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { verifyJWT } from "@/lib/auth";
 import slugify from "slugify";
 
 const geldigeFases = ["voor_eerste_shift", "binnen_2_weken", "taakgericht"];
+
+const TOEGESTANE_LEESROLLEN = ["beheerder", "accountant"];
+const TOEGESTANE_SCHRIJFROLLEN = ["beheerder"];
 
 const normaliseerOnboardingFase = (fase: unknown) => {
   if (typeof fase !== "string") return "taakgericht";
@@ -14,8 +18,52 @@ const normaliseerVolgorde = (waarde: unknown) => {
   return Number.isFinite(nummer) ? nummer : 999;
 };
 
-export async function POST(req: Request) {
+async function haalRolUitSessie(req: NextRequest) {
+  const gebruikerJWT = verifyJWT(req);
+
+  const result = await db.query(
+    `SELECT rol
+     FROM medewerkers
+     WHERE lower(email) = lower($1)
+     LIMIT 1`,
+    [gebruikerJWT.email]
+  );
+
+  const gebruiker = result.rows[0];
+
+  if (!gebruiker) {
+    return null;
+  }
+
+  return String(gebruiker.rol || "").toLowerCase();
+}
+
+async function magLezen(req: NextRequest) {
   try {
+    const rol = await haalRolUitSessie(req);
+    return !!rol && TOEGESTANE_LEESROLLEN.includes(rol);
+  } catch {
+    return false;
+  }
+}
+
+async function magSchrijven(req: NextRequest) {
+  try {
+    const rol = await haalRolUitSessie(req);
+    return !!rol && TOEGESTANE_SCHRIJFROLLEN.includes(rol);
+  } catch {
+    return false;
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const toegestaan = await magSchrijven(req);
+
+    if (!toegestaan) {
+      return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+    }
+
     const {
       titel,
       inhoud,
@@ -26,7 +74,14 @@ export async function POST(req: Request) {
       onboarding_volgorde,
     } = await req.json();
 
-    const slug = slugify(titel, { lower: true, strict: true });
+    if (!titel || !inhoud) {
+      return NextResponse.json(
+        { error: "Titel en inhoud zijn verplicht." },
+        { status: 400 }
+      );
+    }
+
+    const slug = slugify(String(titel), { lower: true, strict: true });
     const created_at = new Date().toISOString();
 
     const functiesGeparsed = Array.isArray(functies)
@@ -34,7 +89,8 @@ export async function POST(req: Request) {
       : typeof functies === "string"
       ? (() => {
           try {
-            return JSON.parse(functies);
+            const parsed = JSON.parse(functies);
+            return Array.isArray(parsed) ? parsed : [];
           } catch {
             return [];
           }
@@ -70,18 +126,25 @@ export async function POST(req: Request) {
       ]
     );
 
-    return new NextResponse(JSON.stringify({ slug }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return NextResponse.json({ slug }, { status: 200 });
   } catch (err) {
-    console.error("🛑 Fout bij POST:", err);
-    return NextResponse.json({ error: "Fout bij opslaan" }, { status: 500 });
+    console.error("🛑 Fout bij POST /api/instructies:", err);
+
+    return NextResponse.json(
+      { error: "Fout bij opslaan" },
+      { status: 500 }
+    );
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const toegestaan = await magLezen(req);
+
+    if (!toegestaan) {
+      return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+    }
+
     const result = await db.query(`
       SELECT
         id,
@@ -101,7 +164,11 @@ export async function GET() {
 
     return NextResponse.json(result.rows, { status: 200 });
   } catch (err) {
-    console.error("🛑 Fout bij ophalen instructies:", err);
-    return NextResponse.json({ error: "Fout bij ophalen" }, { status: 500 });
+    console.error("🛑 Fout bij GET /api/instructies:", err);
+
+    return NextResponse.json(
+      { error: "Fout bij ophalen" },
+      { status: 500 }
+    );
   }
 }
