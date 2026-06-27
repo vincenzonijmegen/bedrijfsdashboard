@@ -27,7 +27,7 @@ export default function ResetWachtwoord() {
     setFout("");
     setSucces("");
 
-    if (wachtwoord.length < 6) {
+    if (wachtwoord.length < 8) {
       setFout("Wachtwoord moet minstens 6 tekens zijn.");
       return;
     }
