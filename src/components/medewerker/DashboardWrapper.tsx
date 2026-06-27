@@ -89,18 +89,14 @@ export default function DashboardWrapper({ email, functie, naam, readonly = fals
           <h2 className="font-semibold mb-2">📚 Werkinstructies</h2>
           <p><strong>Gelezen:</strong> {status.gelezen} / {status.totaal}</p>
           <p><strong>Geslaagd:</strong> {status.geslaagd}</p>
-        {readonly ? (
-          <Link
-            href={`/admin/medewerker/${encodeURIComponent(email)}/instructies`}
-            className="inline-block mt-2 text-blue-600 underline"
-          >
-            ➤ Bekijk alle instructies
-          </Link>
-        ) : (
-          <Link href="/instructies" className="inline-block mt-2 text-blue-600 underline">
-            ➤ Bekijk instructies
-          </Link>
-        )}
+        {readonly && (
+  <Link
+    href={`/admin/medewerker/${encodeURIComponent(email)}/instructies`}
+    className="inline-block mt-2 text-blue-600 underline"
+  >
+    ➤ Bekijk alle instructies
+  </Link>
+)}
 
         </div>
 
@@ -110,13 +106,13 @@ export default function DashboardWrapper({ email, functie, naam, readonly = fals
           <p><strong>Nog te doen:</strong> {nogTeLeren}</p>
           <p><strong>Met deadline &lt; 3 dagen:</strong> {deadlinesBinnen3Dagen}</p>
         {readonly && (
-          <Link
-            href={`/admin/medewerker/${encodeURIComponent(email)}/skills`}
-            className="inline-block mt-2 text-blue-600 underline"
-          >
-            ➤ Bekijk alle skills
-          </Link>
-        )}
+  <Link
+    href={`/admin/medewerker/${encodeURIComponent(email)}/skills`}
+    className="inline-block mt-2 text-blue-600 underline"
+  >
+    ➤ Bekijk alle skills
+  </Link>
+)}
         </div>
       </section>
     </main>
