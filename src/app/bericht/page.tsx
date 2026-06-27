@@ -1,73 +1,49 @@
-// ✅ Bestand: src/app/bericht/page.tsx
-"use client";
+import Link from "next/link";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-
-interface Vraag {
-  id: number;
-  vraag: string;
-  antwoord?: string;
-  aangemaakt_op: string;
-}
- 
 export default function BerichtPagina() {
-  const router = useRouter();
-  const [vraag, setVraag] = useState("");
-  
-  const [vragen, setVragen] = useState<Vraag[]>([]);
-
-  useEffect(() => {
-    fetch("/api/vragen")
-      .then((res) => res.json())
-      .then(setVragen);
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await fetch("/api/vragen", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vraag }),
-    });
-    if (res.ok) {
-      setVraag("");
-      const nieuwe = await res.json();
-      setVragen((prev) => [nieuwe, ...prev]);
-    }
-  };
-
   return (
-    <main className="max-w-2xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold">📩 Vraag aan de leiding</h1>
+    <main className="min-h-screen bg-slate-50 px-4 py-10">
+      <div className="mx-auto flex min-h-[70vh] max-w-xl items-center">
+        <section className="w-full rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="space-y-4">
+            <p className="text-sm font-medium text-blue-700">
+              IJssalon Vincenzo
+            </p>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Textarea
-          value={vraag}
-          onChange={(e) => setVraag(e.target.value)}
-          required
-          placeholder="Typ hier je vraag, bijvoorbeeld: 'Mag ik morgen eerder weg?'"
-        />
-        <Button type="submit">Verstuur vraag</Button>
-      </form>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Deze vragenpagina wordt niet meer gebruikt
+            </h1>
 
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold mt-6">Eerdere vragen</h2>
-        {vragen.length === 0 && <p className="text-sm text-gray-500">Nog geen vragen gesteld.</p>}
-        <ul className="divide-y divide-gray-200">
-          {vragen.map((v) => (
-            <li key={v.id} className="py-2">
-              <p className="text-sm text-gray-500">🗓️ {new Date(v.aangemaakt_op).toLocaleDateString()}</p>
-              <p className="text-base">{v.vraag}</p>
-              {v.antwoord && (
-                <p className="text-green-700 mt-1">💬 Antwoord: {v.antwoord}</p>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
+            <p className="text-sm leading-6 text-slate-600">
+              Deze oude medewerkerpagina voor vragen aan de leiding wordt niet
+              meer gebruikt. Medewerkers hoeven geen account meer te gebruiken
+              voor werkinstructies of communicatie via het oude portaal.
+            </p>
+
+            <p className="text-sm leading-6 text-slate-600">
+              Heb je een vraag over je werk, planning, instructies of
+              beschikbaarheid? Neem dan contact op met je leidinggevende via de
+              gebruikelijke manier.
+            </p>
+
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+              <Link
+                href="/sign-in"
+                className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
+              >
+                Naar beheerlogin
+              </Link>
+
+              <Link
+                href="/"
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Terug naar start
+              </Link>
+            </div>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
