@@ -1,31 +1,65 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+type Gebruiker = {
+  naam: string;
+  email: string;
+  rol?: string;
+};
+
 export default function WachtwoordWijzigen() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      const param = url.searchParams.get("email");
-      setEmail(param || "");
-    }
-  }, []);
-  
+  const [gebruiker, setGebruiker] = useState<Gebruiker | null>(null);
+  const [geladen, setGeladen] = useState(false);
   const [wachtwoord, setWachtwoord] = useState("");
   const [herhaal, setHerhaal] = useState("");
   const [fout, setFout] = useState("");
   const [succes, setSucces] = useState("");
 
-  async function handleSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    let actief = true;
+
+    async function haalGebruikerOp() {
+      try {
+        const res = await fetch("/api/user", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          router.push("/sign-in");
+          return;
+        }
+
+        const data: Gebruiker = await res.json();
+
+        if (!actief) return;
+
+        setGebruiker(data);
+        setGeladen(true);
+      } catch {
+        router.push("/sign-in");
+      }
+    }
+
+    haalGebruikerOp();
+
+    return () => {
+      actief = false;
+    };
+  }, [router]);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
     setFout("");
     setSucces("");
 
-    if (wachtwoord.length < 6) {
-      setFout("Wachtwoord moet minstens 6 tekens zijn.");
+    if (wachtwoord.length < 8) {
+      setFout("Wachtwoord moet minstens 8 tekens zijn.");
       return;
     }
 
@@ -34,18 +68,44 @@ export default function WachtwoordWijzigen() {
       return;
     }
 
-    const res = await fetch("/api/wachtwoord-wijzigen", {
-      method: "POST",
-      body: JSON.stringify({ email, nieuwWachtwoord: wachtwoord }),
-    });
+    try {
+      const res = await fetch("/api/wachtwoord-wijzigen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nieuwWachtwoord: wachtwoord }),
+      });
 
-    const data = await res.json();
-    if (data.success) {
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        setFout(data.error || "Er ging iets mis.");
+        return;
+      }
+
       setSucces("Wachtwoord gewijzigd. Je wordt doorgestuurd...");
-      setTimeout(() => router.push("/instructies"), 2000);
-    } else {
-      setFout(data.error || "Er ging iets mis.");
+
+      const rol = String(gebruiker?.rol || "").toLowerCase();
+
+      setTimeout(() => {
+        if (rol === "accountant") {
+          router.push("/accountant");
+          return;
+        }
+
+        router.push("/admin");
+      }, 1200);
+    } catch (err) {
+      console.error(err);
+      setFout("Er is iets misgegaan.");
     }
+  }
+
+  if (!geladen) {
+    return (
+      <div className="max-w-sm mx-auto mt-20">
+        <p className="text-sm text-gray-600">Bezig met laden...</p>
+      </div>
+    );
   }
 
   return (
@@ -54,7 +114,7 @@ export default function WachtwoordWijzigen() {
 
       <input
         type="email"
-        value={email}
+        value={gebruiker?.email || ""}
         readOnly
         className="w-full p-2 border rounded bg-gray-100"
       />
