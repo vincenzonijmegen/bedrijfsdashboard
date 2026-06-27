@@ -2,7 +2,7 @@
 
 export type RouteEntry = { href: string; breadcrumb: string };
 
-// Vooraf ingevuld op basis van jouw admin/page.tsx
+// Vooraf ingevuld op basis van admin/page.tsx
 const registry: RouteEntry[] = [
   // Management
   { href: "/admin/acties", breadcrumb: "Management – Actielijsten" },
@@ -58,7 +58,6 @@ const registry: RouteEntry[] = [
   { href: "/admin/planning/forecast", breadcrumb: "Prognosetools – Forecast planning" },
 ];
 
-// Optioneel: runtime-registratie (voorkomt dubbele entries)
 export function registerRoute(href: string, breadcrumb?: string) {
   if (!breadcrumb) return;
 
@@ -67,7 +66,6 @@ export function registerRoute(href: string, breadcrumb?: string) {
   }
 }
 
-// Vind de beste match (langste prefix)
 export function matchRoute(pathname: string): RouteEntry | undefined {
   const path = pathname.split("?")[0].replace(/\/$/, "");
   const sorted = [...registry].sort((a, b) => b.href.length - a.href.length);
