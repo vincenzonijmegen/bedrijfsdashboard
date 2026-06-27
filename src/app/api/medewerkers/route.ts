@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
-import { NextResponse } from "next/server";
+import { sendUitnodiging } from "@/lib/mail";
 import bcrypt from "bcryptjs";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -13,16 +13,26 @@ export async function GET(req: Request) {
   }
 
   const result = await db.query(
-    "SELECT id, naam, email, functie FROM medewerkers ORDER BY naam"
+    `SELECT id, naam, email, functie, geboortedatum
+     FROM medewerkers
+     ORDER BY naam`
   );
 
   return NextResponse.json(result.rows);
 }
 
 export async function POST(req: Request) {
-  const { naam, email, functie } = await req.json();
-
   try {
+    const body = await req.json();
+    const { naam, email, functie, geboortedatum } = body;
+
+    if (!naam || !email || !functie) {
+      return NextResponse.json(
+        { success: false, error: "Naam, e-mail en functie zijn verplicht." },
+        { status: 400 }
+      );
+    }
+
     const check = await db.query("SELECT 1 FROM medewerkers WHERE email = $1", [
       email,
     ]);
@@ -35,28 +45,41 @@ export async function POST(req: Request) {
     }
 
     /*
-      Medewerkers gebruiken de werkinstructies inmiddels via onboardingmails
-      met een unieke token/hash. Ze hoeven dus geen wachtwoord of accountmail
-      meer te ontvangen.
+      Medewerkers gebruiken de werkinstructies via onboardingmails
+      met een persoonlijke link. Ze hebben dus geen zichtbaar wachtwoord
+      of accountmail meer nodig.
 
-      We vullen wachtwoord nog wel technisch met een onbekend random wachtwoord,
-      zodat bestaande databasekolommen zoals wachtwoord NOT NULL geen deployment
-      kapotmaken.
+      We slaan nog wel technisch een onbekend random wachtwoord op,
+      zodat bestaande databasekolommen zoals wachtwoord NOT NULL
+      geen fout geven.
     */
     const verborgenWachtwoord = crypto.randomUUID();
     const hashedWachtwoord = await bcrypt.hash(verborgenWachtwoord, 10);
 
     await db.query(
-      `INSERT INTO medewerkers 
-        (naam, email, functie, wachtwoord, moet_wachtwoord_wijzigen) 
-       VALUES 
-        ($1, $2, $3, $4, false)`,
-      [naam, email, functie, hashedWachtwoord]
+      `INSERT INTO medewerkers
+        (naam, email, functie, wachtwoord, moet_wachtwoord_wijzigen, geboortedatum)
+       VALUES
+        ($1, $2, $3, $4, false, $5)`,
+      [naam, email, functie, hashedWachtwoord, geboortedatum || null]
     );
 
-    return NextResponse.json({ success: true });
+    let mailVerstuurd = false;
+
+    try {
+      await sendUitnodiging(email, naam);
+      mailVerstuurd = true;
+    } catch (mailError) {
+      console.error("Medewerker aangemaakt, maar welkomstmail mislukt:", mailError);
+    }
+
+    return NextResponse.json({
+      success: true,
+      mailVerstuurd,
+    });
   } catch (err) {
     console.error("Fout bij toevoegen medewerker:", err);
+
     return NextResponse.json(
       { success: false, error: "Toevoegen mislukt" },
       { status: 500 }
@@ -77,6 +100,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("Fout bij verwijderen medewerker:", err);
+
     return NextResponse.json(
       { success: false, error: "Verwijderen mislukt" },
       { status: 500 }
@@ -87,24 +111,32 @@ export async function DELETE(req: Request) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, naam, email, functie: functieId } = body;
+    const { id, naam, email, functie: functieId, geboortedatum } = body;
 
     if (!id || !naam || !email || !functieId) {
-      return NextResponse.json({ error: "Vul alle velden in." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Vul alle verplichte velden in." },
+        { status: 400 }
+      );
     }
 
     await db.query(
       `UPDATE medewerkers
        SET naam = $1,
            email = $2,
-           functie = $3
-       WHERE id = $4`,
-      [naam, email, functieId, id]
+           functie = $3,
+           geboortedatum = $4
+       WHERE id = $5`,
+      [naam, email, functieId, geboortedatum || null, id]
     );
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Fout bij bijwerken medewerker:", error);
-    return NextResponse.json({ error: "Interne serverfout" }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Interne serverfout" },
+      { status: 500 }
+    );
   }
 }
