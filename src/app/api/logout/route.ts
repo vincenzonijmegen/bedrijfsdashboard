@@ -1,20 +1,15 @@
 import { NextResponse } from "next/server";
 
 export async function POST() {
-  const res = new NextResponse(JSON.stringify({ success: true }), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
+  const response = NextResponse.json({ success: true });
 
-  res.cookies.set("v_app", "", {
+  response.cookies.set("sessie_token", "", {
     httpOnly: true,
+    sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
     path: "/",
-    maxAge: 0, // directe verwijdering
+    maxAge: 0,
   });
 
-  return res;
+  return response;
 }
