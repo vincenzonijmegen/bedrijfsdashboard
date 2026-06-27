@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default async function Page() {
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10">
@@ -25,19 +27,19 @@ export default async function Page() {
             </p>
 
             <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-              <a
+              <Link
                 href="/sign-in"
                 className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
               >
                 Naar beheerlogin
-              </a>
+              </Link>
 
-              <a
+              <Link
                 href="/"
                 className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 Terug naar start
-              </a>
+              </Link>
             </div>
           </div>
         </section>
