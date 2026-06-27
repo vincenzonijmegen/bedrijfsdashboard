@@ -25,8 +25,9 @@ type Instructie = {
   onboarding_fase: string;
   onboarding_fase_label: string;
   gelezen: boolean;
+  gelezen_op?: string | null;
 
-  // Nieuw: status uit onboarding_opdrachten
+  // Status uit onboarding_opdrachten
   onboarding_status?: "wacht" | "verzonden" | "afgerond" | string | null;
   onboarding_verzonden_op?: string | null;
   onboarding_afgerond_op?: string | null;
@@ -135,7 +136,26 @@ function pastBinnenOpenFilter(instructie: Instructie, openFilter: OpenFilter) {
 }
 
 function OnboardingStatusLabel({ instructie }: { instructie: Instructie }) {
-  if (instructie.gelezen) return null;
+  if (instructie.gelezen) {
+    const datum =
+      instructie.gelezen_op ||
+      instructie.onboarding_afgerond_op ||
+      null;
+
+    if (!datum) {
+      return (
+        <div className="mt-1 text-xs font-medium text-emerald-700">
+          Gelezen
+        </div>
+      );
+    }
+
+    return (
+      <div className="mt-1 text-xs font-medium text-emerald-700">
+        Gelezen op {formatDatumTijd(datum)}
+      </div>
+    );
+  }
 
   if (instructie.onboarding_laatste_fout) {
     return (
