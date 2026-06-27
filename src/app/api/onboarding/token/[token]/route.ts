@@ -48,6 +48,13 @@ async function haalOpdracht(token: string) {
   return result.rows[0] || null;
 }
 
+function isTokenVerlopen(opdracht: any) {
+  return (
+    opdracht.token_verloopt_op &&
+    new Date(opdracht.token_verloopt_op).getTime() < Date.now()
+  );
+}
+
 async function haalVragenVoorWeergave(instructieId: string) {
   const vragenResult = await db.query(
     `
@@ -180,10 +187,7 @@ async function markeerAfgerond(opdracht: any) {
     ON CONFLICT (email, instructie_id)
     DO UPDATE SET gelezen_op = COALESCE(gelezen_instructies.gelezen_op, NOW())
     `,
-    [
-      String(opdracht.medewerker_email).toLowerCase(),
-      opdracht.instructie_id,
-    ]
+    [String(opdracht.medewerker_email).toLowerCase(), opdracht.instructie_id]
   );
 
   await db.query(
@@ -211,6 +215,16 @@ export async function GET(_req: NextRequest, { params }: Params) {
           error: "Onboardinglink niet gevonden.",
         },
         { status: 404 }
+      );
+    }
+
+    if (isTokenVerlopen(opdracht)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Deze onboardinglink is verlopen.",
+        },
+        { status: 410 }
       );
     }
 
@@ -248,10 +262,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       );
     }
 
-    if (
-      opdracht.token_verloopt_op &&
-      new Date(opdracht.token_verloopt_op).getTime() < Date.now()
-    ) {
+    if (isTokenVerlopen(opdracht)) {
       return NextResponse.json(
         {
           success: false,
@@ -321,7 +332,12 @@ export async function POST(req: NextRequest, { params }: Params) {
 
     let aantalCorrect = 0;
 
-    const controleResultaten = vragen.map((vraag) => {
+    const teControlerenVragen = vragen.filter((vraag) => {
+      const vraagId = String(vraag.id);
+      return vraag.verplicht || antwoordPerVraag.has(vraagId);
+    });
+
+    const controleResultaten = teControlerenVragen.map((vraag) => {
       const gekozenOptieId = antwoordPerVraag.get(String(vraag.id)) || null;
 
       const gekozenOptie = vraag.opties.find(
@@ -341,8 +357,8 @@ export async function POST(req: NextRequest, { params }: Params) {
       };
     });
 
-    const aantalVragen = vragen.length;
-    const geslaagd = aantalVragen > 0 && aantalCorrect === aantalVragen;
+    const aantalVragen = teControlerenVragen.length;
+    const geslaagd = aantalVragen === 0 || aantalCorrect === aantalVragen;
 
     const resultaatInsert = await db.query(
       `
