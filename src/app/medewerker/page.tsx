@@ -1,135 +1,55 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 
-interface Gebruiker {
-  naam: string;
-  email: string;
-  functie: string;
-}
-
-interface StatusRecord {
-  slug: string;
-  gelezen_op?: string;
-  score?: number;
-  totaal?: number;
-  juist?: number;
-}
-
-interface Status {
-  gelezen: number;
-  totaal: number;
-  geslaagd: number;
-}
-
-interface Skill {
-  status: "geleerd" | "niet_geleerd";
-  deadline?: string;
-}
-
-export default function DashboardPagina() {
+export default function MedewerkerPagina() {
   const router = useRouter();
-  const [gebruiker, setGebruiker] = useState<Gebruiker | null>(null);
-  const [instructies, setInstructies] = useState<any[]>([]);
-  const [instructieStatus, setInstructieStatus] = useState<Status | null>(null);
-  const [skills, setSkills] = useState<Skill[]>([]);
-
-  useEffect(() => {
-    fetch("/api/user")
-      .then((res) => {
-        if (!res.ok) throw new Error("Niet ingelogd");
-        return res.json();
-      })
-      .then(setGebruiker)
-      .catch(() => router.push("/sign-in"));
-  }, [router]);
-
-  useEffect(() => {
-    if (!gebruiker?.email) return;
-
-    fetch("/api/instructies")
-      .then((res) => res.json())
-      .then((all) => {
-        setInstructies(all);
-        const totaal = all.length;
-
-        fetch(`/api/instructiestatus?email=${gebruiker.email}`)
-          .then((res) => res.json())
-          .then((data: StatusRecord[]) => {
-            const gelezen = data.filter((r) => r.gelezen_op).length;
-            const geslaagd = data.filter((r) => r.score !== undefined && r.juist !== undefined && r.score === 100).length;
-            setInstructieStatus({ gelezen, totaal, geslaagd });
-          });
-      });
-
-    fetch("/api/skills/mijn", { headers: { "x-user-email": gebruiker.email } })
-      .then((res) => res.json())
-      .then((data) => setSkills(data.skills || []));
-  }, [gebruiker]);
-
-  const nogTeLeren = skills.filter((s) => s.status === "niet_geleerd").length;
-  const deadlinesBinnen3Dagen = skills.filter((s) => {
-    if (!s.deadline) return false;
-    const diff = (new Date(s.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-    return diff >= 0 && diff <= 3;
-  }).length;
-
-  if (!gebruiker || !instructieStatus) return <div className="p-6">Laden...</div>;
 
   return (
-    <main className="max-w-4xl mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Welkom, {gebruiker.naam}</h1>
-        <button
-          onClick={async () => {
-            await fetch("/api/logout", { method: "POST" });
-            router.push("/sign-in");
-          }}
-          className="text-sm text-red-600 underline"
-        >
-          Uitloggen
-        </button>
+    <main className="min-h-screen bg-slate-50 px-4 py-10">
+      <div className="mx-auto flex min-h-[70vh] max-w-xl items-center">
+        <section className="w-full rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="space-y-4">
+            <p className="text-sm font-medium text-blue-700">
+              IJssalon Vincenzo
+            </p>
+
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              Werkinstructies ontvang je per mail
+            </h1>
+
+            <p className="text-sm leading-6 text-slate-600">
+              Medewerkers hebben geen apart account meer nodig voor de
+              werkinstructies. Je ontvangt de instructies stap voor stap per
+              mail, met daarin een persoonlijke link waarmee je de instructie
+              direct kunt openen.
+            </p>
+
+            <p className="text-sm leading-6 text-slate-600">
+              Heb je een vraag over je instructies of mis je een mail? Neem dan
+              contact op met je leidinggevende.
+            </p>
+
+            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => router.push("/sign-in")}
+                className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100"
+              >
+                Naar beheerlogin
+              </button>
+
+              <button
+                type="button"
+                onClick={() => router.push("/")}
+                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Terug naar start
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
-
-      <section className="space-y-4">
-        <div className="p-4 border rounded bg-white shadow">
-          <h2 className="font-semibold mb-2">👤 Persoonlijke gegevens</h2>
-          <p><strong>Naam:</strong> {gebruiker.naam}</p>
-          <p><strong>Email:</strong> {gebruiker.email}</p>
-          <p><strong>Functie:</strong> {gebruiker.functie}</p>
-        </div>
-
-        <div className="p-4 border rounded bg-white shadow">
-          <h2 className="font-semibold mb-2">📚 Werkinstructies</h2>
-          <p><strong>Gelezen:</strong> {instructieStatus.gelezen} / {instructieStatus.totaal}</p>
-          <p><strong>Geslaagd:</strong> {instructieStatus.geslaagd}</p>
-          <Link href="/instructies" className="inline-block mt-2 text-blue-600 underline">
-            ➤ Bekijk instructies
-          </Link>
-        </div>
-
-        <div className="p-4 border rounded bg-white shadow">
-          <h2 className="font-semibold mb-2">🧠 Skills</h2>
-          <p><strong>Geleerd:</strong> {skills.length - nogTeLeren} / {skills.length}</p>
-          <p><strong>Nog te doen:</strong> {nogTeLeren}</p>
-          <p><strong>Met deadline &lt; 3 dagen:</strong> {deadlinesBinnen3Dagen}</p>
-          <Link href="/skills" className="inline-block mt-2 text-blue-600 underline">
-            ➤ Bekijk skills
-          </Link>
-        </div>
-
-        <div className="p-4 border rounded bg-white shadow">
-          <h2 className="font-semibold mb-2">📩 Vragen aan de leiding</h2>
-          <p className="text-sm text-gray-700">
-            Heb je een korte vraag over je shift, werktijden of iets anders? Stuur een bericht naar de leiding.
-          </p>
-          <Link href="/bericht" className="inline-block mt-2 text-blue-600 underline">
-            ➤ Stel je vraag
-          </Link>
-        </div>
-      </section>
     </main>
   );
 }
