@@ -2,11 +2,53 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { verifyJWT } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type OnboardingFase = "voor_eerste_shift" | "binnen_2_weken" | "taakgericht";
+
+const TOEGESTANE_LEESROLLEN = ["beheerder", "accountant"];
+const TOEGESTANE_SCHRIJFROLLEN = ["beheerder"];
+
+async function haalRolUitSessie(req: NextRequest) {
+  const gebruikerJWT = verifyJWT(req);
+
+  const result = await db.query(
+    `SELECT rol
+     FROM medewerkers
+     WHERE lower(email) = lower($1)
+     LIMIT 1`,
+    [gebruikerJWT.email]
+  );
+
+  const gebruiker = result.rows[0];
+
+  if (!gebruiker) {
+    return null;
+  }
+
+  return String(gebruiker.rol || "").toLowerCase();
+}
+
+async function magLezen(req: NextRequest) {
+  try {
+    const rol = await haalRolUitSessie(req);
+    return !!rol && TOEGESTANE_LEESROLLEN.includes(rol);
+  } catch {
+    return false;
+  }
+}
+
+async function magSchrijven(req: NextRequest) {
+  try {
+    const rol = await haalRolUitSessie(req);
+    return !!rol && TOEGESTANE_SCHRIJFROLLEN.includes(rol);
+  } catch {
+    return false;
+  }
+}
 
 function normalizeFuncties(value: unknown): string[] {
   if (Array.isArray(value)) return value.map(String);
@@ -193,7 +235,7 @@ async function haalOnboardingDataOp() {
           gelezen,
           gelezen_op: gelezenRow?.gelezen_op || opdrachtRow?.afgerond_op || null,
 
-          // Nieuw voor dashboardcontrole
+          // Voor dashboardcontrole
           onboarding_status: opdrachtRow?.status || null,
           onboarding_verzonden_op: opdrachtRow?.verzonden_op || null,
           onboarding_afgerond_op: opdrachtRow?.afgerond_op || null,
@@ -269,8 +311,14 @@ async function haalOnboardingDataOp() {
   };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const toegestaan = await magLezen(req);
+
+    if (!toegestaan) {
+      return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+    }
+
     const data = await haalOnboardingDataOp();
 
     return NextResponse.json({
@@ -290,6 +338,12 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const toegestaan = await magSchrijven(req);
+
+    if (!toegestaan) {
+      return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+    }
+
     const body = await req.json();
 
     const email = String(body?.email || "").trim().toLowerCase();
