@@ -245,23 +245,6 @@ export default function AdminDashboard() {
     }
   }, [hideOmzet]);
 
-  let user = null;
-
-  if (typeof window !== "undefined") {
-    try {
-      user = JSON.parse(localStorage.getItem("gebruiker") || "null");
-    } catch {
-      user = null;
-    }
-  }
-
-  if (!user || user.rol !== "beheerder") {
-    if (typeof window !== "undefined") {
-      window.location.href = "/sign-in";
-    }
-    return null;
-  }
-
   const setActiveSection = (id: string) => {
     setActive(id);
     localStorage.setItem("activeSection", id);
