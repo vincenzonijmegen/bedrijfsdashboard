@@ -381,9 +381,7 @@ export default function AdminDashboard() {
           <SubSection title="📘 Instructies" color="blue">
             <LinkCard href="/admin/instructies" label="Instructies beheren" color="blue" Icon={FileText} breadcrumb="Personeel & opleiding – Instructies beheren" />
             <LinkCard href="/admin/instructie-vragen" label="Instructievragen beheren" color="blue" Icon={ClipboardList} breadcrumb="Personeel & opleiding – Instructievragen beheren" />
-            <LinkCard href="/instructies" label="Instructies medewerkers" color="blue" Icon={Eye} breadcrumb="Personeel & opleiding – Instructies medewerkers" />
           </SubSection>
-
         </Section>
 
         <Section id="planning" title="📅 Planning & bezetting" color="orange" activeSection={activeSection} setActiveSection={setActiveSection}>

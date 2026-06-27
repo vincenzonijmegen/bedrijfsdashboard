@@ -1,14 +1,36 @@
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
 
-export async function sendUitnodiging(email: string, naam: string, wachtwoord: string) {
-  const subject = "Je werkinstructie-account bij IJssalon Vincenzo";
+export async function sendUitnodiging(
+  email: string,
+  naam: string,
+  _wachtwoord?: string
+) {
+  const subject = "Welkom bij IJssalon Vincenzo";
+
   const body = `
-    <p>Hallo ${naam},</p>
-    <p>Je bent toegevoegd aan het werkinstructiesysteem van IJssalon Vincenzo.</p>
-    <p><strong>Loginpagina:</strong> <a href="https://werkinstructies-app.vercel.app/sign-in">klik hier om in te loggen</a></p>
-    <p><strong>Tijdelijk wachtwoord:</strong> ${wachtwoord}</p>
-    <p>Wijzig dit wachtwoord na je eerste login.</p>
+    <p>Hallo ${esc(naam)},</p>
+
+    <p>Welkom bij IJssalon Vincenzo! Leuk dat je bij ons team komt.</p>
+
+    <p>
+      De komende periode ontvang je druppelsgewijs onze werkinstructies per mail.
+      Daarmee leer je stap voor stap hoe we werken.
+    </p>
+
+    <p>
+      Je hoeft hiervoor geen account aan te maken en je hebt geen wachtwoord nodig.
+      In elke instructiemail staat een persoonlijke link waarmee je de instructie direct kunt openen.
+    </p>
+
+    <p>
+      De eerste instructies ontvang je vanaf morgen automatisch.
+    </p>
+
+    <p>
+      Heb je vragen, stel ze gerust aan ons of aan je leidinggevende.
+    </p>
+
     <p>Met vriendelijke groet,<br/>Erik en Herman</p>
   `;
 
@@ -21,9 +43,8 @@ export async function sendUitnodiging(email: string, naam: string, wachtwoord: s
     html: body,
   });
 
-  console.log("✅ Resend result:", result);
+  console.log("✅ Welkomstmail verzonden:", result);
 }
-
 export async function sendSkillMail(email: string, naam: string, skillnaam: string, deadline: number) {
   const subject = `📘 Nieuwe skill toegewezen: ${skillnaam}`;
   const body = `

@@ -1,7 +1,6 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { sendUitnodiging } from "@/lib/mail";
 import { NextRequest } from "next/server";
 
 export async function GET(req: Request) {
@@ -13,17 +12,15 @@ export async function GET(req: Request) {
     return NextResponse.json(result.rows);
   }
 
-  const result = await db.query(`
-    SELECT id, naam, email, functie, geboortedatum
-    FROM medewerkers
-    ORDER BY naam
-  `);
+  const result = await db.query(
+    "SELECT id, naam, email, functie FROM medewerkers ORDER BY naam"
+  );
 
   return NextResponse.json(result.rows);
 }
 
 export async function POST(req: Request) {
-  const { naam, email, functie, geboortedatum } = await req.json();
+  const { naam, email, functie } = await req.json();
 
   try {
     const check = await db.query("SELECT 1 FROM medewerkers WHERE email = $1", [
@@ -37,20 +34,25 @@ export async function POST(req: Request) {
       );
     }
 
-    const tijdelijkWachtwoord = Math.random().toString(36).slice(-8);
-    const hashedWachtwoord = await bcrypt.hash(tijdelijkWachtwoord, 10);
+    /*
+      Medewerkers gebruiken de werkinstructies inmiddels via onboardingmails
+      met een unieke token/hash. Ze hoeven dus geen wachtwoord of accountmail
+      meer te ontvangen.
+
+      We vullen wachtwoord nog wel technisch met een onbekend random wachtwoord,
+      zodat bestaande databasekolommen zoals wachtwoord NOT NULL geen deployment
+      kapotmaken.
+    */
+    const verborgenWachtwoord = crypto.randomUUID();
+    const hashedWachtwoord = await bcrypt.hash(verborgenWachtwoord, 10);
 
     await db.query(
-      `
-      INSERT INTO medewerkers
-        (naam, email, functie, geboortedatum, wachtwoord, moet_wachtwoord_wijzigen)
-      VALUES
-        ($1, $2, $3, $4::date, $5, true)
-      `,
-      [naam, email, functie, geboortedatum || null, hashedWachtwoord]
+      `INSERT INTO medewerkers 
+        (naam, email, functie, wachtwoord, moet_wachtwoord_wijzigen) 
+       VALUES 
+        ($1, $2, $3, $4, false)`,
+      [naam, email, functie, hashedWachtwoord]
     );
-
-    await sendUitnodiging(email, naam, tijdelijkWachtwoord);
 
     return NextResponse.json({ success: true });
   } catch (err) {
@@ -85,25 +87,19 @@ export async function DELETE(req: Request) {
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, naam, email, functie: functieId, geboortedatum } = body;
+    const { id, naam, email, functie: functieId } = body;
 
     if (!id || !naam || !email || !functieId) {
-      return NextResponse.json(
-        { error: "Vul alle verplichte velden in." },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Vul alle velden in." }, { status: 400 });
     }
 
     await db.query(
-      `
-      UPDATE medewerkers
-      SET naam = $1,
-          email = $2,
-          functie = $3,
-          geboortedatum = $4::date
-      WHERE id = $5
-      `,
-      [naam, email, functieId, geboortedatum || null, id]
+      `UPDATE medewerkers
+       SET naam = $1,
+           email = $2,
+           functie = $3
+       WHERE id = $4`,
+      [naam, email, functieId, id]
     );
 
     return NextResponse.json({ success: true });

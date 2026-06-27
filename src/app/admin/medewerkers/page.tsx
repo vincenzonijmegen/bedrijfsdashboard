@@ -32,7 +32,6 @@ export default function MedewerkersBeheer() {
     naam: "",
     email: "",
     functie: "",
-    wachtwoord: "",
     geboortedatum: "",
   });
   const [fout, setFout] = useState<string | null>(null);
@@ -89,7 +88,6 @@ export default function MedewerkersBeheer() {
         naam: "",
         email: "",
         functie: "",
-        wachtwoord: "",
         geboortedatum: "",
       });
     } else {
@@ -156,15 +154,6 @@ export default function MedewerkersBeheer() {
               </option>
             ))}
           </select>
-
-          <input
-            type="text"
-            placeholder="Tijdelijk wachtwoord"
-            className="rounded border p-2"
-            value={form.wachtwoord}
-            onChange={(e) => setForm({ ...form, wachtwoord: e.target.value })}
-            required
-          />
         </div>
 
         <button
@@ -175,7 +164,11 @@ export default function MedewerkersBeheer() {
         </button>
 
         {fout && <p className="text-red-600">❌ {fout}</p>}
-        {succes && <p className="text-green-700">✅ Toegevoegd</p>}
+        {succes && (
+          <p className="text-green-700">
+            ✅ Toegevoegd. Er is geen inlogmail verstuurd.
+          </p>
+        )}
       </form>
 
       <div className="rounded bg-white p-4 shadow">
