@@ -1,22 +1,60 @@
 export const dynamic = "force-dynamic";
 
 import { db } from "@/lib/db";
-import { UUID } from "crypto";
-import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import { verifyJWT } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
 
+const TOEGESTANE_LEESROLLEN = ["beheerder", "accountant"];
+const TOEGESTANE_SCHRIJFROLLEN = ["beheerder"];
 
+async function haalRolUitSessie(req: NextRequest) {
+  const gebruikerJWT = verifyJWT(req);
 
-type Fout = {
-  vraag: string;
-  gegeven: string;
-  gekozenTekst: string;
-};
+  const result = await db.query(
+    `SELECT rol
+     FROM medewerkers
+     WHERE lower(email) = lower($1)
+     LIMIT 1`,
+    [gebruikerJWT.email]
+  );
 
-export async function POST(req: Request) {
-  const resend = new Resend(process.env.RESEND_API_KEY ?? "");
+  const gebruiker = result.rows[0];
+
+  if (!gebruiker) {
+    return null;
+  }
+
+  return String(gebruiker.rol || "").toLowerCase();
+}
+
+async function magLezen(req: NextRequest) {
   try {
+    const rol = await haalRolUitSessie(req);
+    return !!rol && TOEGESTANE_LEESROLLEN.includes(rol);
+  } catch {
+    return false;
+  }
+}
+
+async function magSchrijven(req: NextRequest) {
+  try {
+    const rol = await haalRolUitSessie(req);
+    return !!rol && TOEGESTANE_SCHRIJFROLLEN.includes(rol);
+  } catch {
+    return false;
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const toegestaan = await magSchrijven(req);
+
+    if (!toegestaan) {
+      return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+    }
+
     const body = await req.json();
+
     const {
       naam,
       email,
@@ -24,129 +62,129 @@ export async function POST(req: Request) {
       juist,
       totaal,
       instructie_id,
-      titel,
       tijdstip,
       functie,
-      fouten,
-    }: {
-      naam: string;
-      email: string;
-      score: number;
-      juist: number;
-      totaal: number;
-      instructie_id: UUID;
-      titel: string;
-      tijdstip?: string;
-      functie: string;
-      fouten?: Fout[];
     } = body;
 
-await db.query(
-  `INSERT INTO toetsresultaten (naam, email, score, juist, totaal, instructie_id, tijdstip, functie)
-   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-   ON CONFLICT (email, instructie_id)
-   DO UPDATE SET
-     score = EXCLUDED.score,
-     juist = EXCLUDED.juist,
-     totaal = EXCLUDED.totaal,
-     tijdstip = EXCLUDED.tijdstip,
-     functie = EXCLUDED.functie`,
+    if (
+      !naam ||
+      !email ||
+      score == null ||
+      juist == null ||
+      totaal == null ||
+      !instructie_id
+    ) {
+      return NextResponse.json(
+        { error: "Onvolledige resultaatgegevens." },
+        { status: 400 }
+      );
+    }
+
+    await db.query(
+      `INSERT INTO toetsresultaten
+        (naam, email, score, juist, totaal, instructie_id, tijdstip, functie)
+       VALUES
+        ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (email, instructie_id)
+       DO UPDATE SET
+         score = EXCLUDED.score,
+         juist = EXCLUDED.juist,
+         totaal = EXCLUDED.totaal,
+         tijdstip = EXCLUDED.tijdstip,
+         functie = EXCLUDED.functie`,
       [
         naam,
         email,
-        score,
-        juist,
-        totaal,
+        Number(score),
+        Number(juist),
+        Number(totaal),
         instructie_id,
         tijdstip || new Date(),
-        functie
+        functie || null,
       ]
     );
 
-    // ⏱️ Haal leestijd op
-    const duurRes = await db.query(
-      `SELECT gelezen_duur_seconden FROM gelezen_instructies
-       WHERE email = $1 AND instructie_id = $2`,
-      [email, instructie_id]
-    );
-    const duur_seconden = typeof duurRes.rows[0]?.gelezen_duur_seconden === "number"
-  ? duurRes.rows[0].gelezen_duur_seconden
-  : "-";
-
-    const foutenLijst =
-      fouten && fouten.length > 0
-        ? (fouten as Fout[])
-            .map(
-              (f, i) =>
-                `${i + 1}. Vraag: ${f.vraag}
-   Antwoord (${f.gegeven}): ${f.gekozenTekst}
-`
-            )
-            .join("\n")
-        : "✅ Alles correct beantwoord.";
-
-    const mailContent = `
-Toetsresultaat van ${naam} (${email})
-
-📘 Titel: ${titel}
-🎯 Score: ${score}% (${juist} van ${totaal} juist)
-🕒 Leestijd: ${duur_seconden} seconden
-
-Fout beantwoorde vragen:
-${foutenLijst}
-    `;
-
-    await resend.emails.send({
-      from: "IJssalon Vincenzo <noreply@ijssalonvincenzo.nl>",
-      to: "herman@ijssalonvincenzo.nl",
-      subject: `Nieuw toetsresultaat: ${titel} – ${naam}`,
-      text: mailContent,
-    });
-
     return NextResponse.json({ success: true });
   } catch (err) {
-    console.error("❌ Fout bij opslaan of verzenden:", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+    console.error("❌ Fout bij opslaan resultaat:", err);
+
+    return NextResponse.json(
+      { error: "Opslaan resultaat mislukt." },
+      { status: 500 }
+    );
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const toegestaan = await magLezen(req);
+
+    if (!toegestaan) {
+      return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+    }
+
     const result = await db.query(
-      `SELECT t.naam, t.email, t.score, t.juist, t.totaal, i.titel, t.tijdstip, t.functie,
+      `SELECT t.naam,
+              t.email,
+              t.score,
+              t.juist,
+              t.totaal,
+              i.titel,
+              t.tijdstip,
+              t.functie,
               g.gelezen_duur_seconden AS duur_seconden
        FROM toetsresultaten t
-       LEFT JOIN instructies i ON t.instructie_id = i.id
+       LEFT JOIN instructies i
+         ON t.instructie_id = i.id
        LEFT JOIN gelezen_instructies g
-         ON g.email = t.email AND g.instructie_id = t.instructie_id
+         ON lower(g.email) = lower(t.email)
+        AND g.instructie_id = t.instructie_id
        ORDER BY t.tijdstip DESC`
     );
 
     return NextResponse.json(result.rows);
   } catch (err) {
     console.error("❌ Fout bij ophalen resultaten:", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Ophalen resultaten mislukt." },
+      { status: 500 }
+    );
   }
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
   try {
-    const url = new URL(req.url);
-    const email = url.searchParams.get("email");
-    const titel = url.searchParams.get("titel");
+    const toegestaan = await magSchrijven(req);
+
+    if (!toegestaan) {
+      return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+    }
+
+    const email = req.nextUrl.searchParams.get("email");
+    const titel = req.nextUrl.searchParams.get("titel");
 
     if (!email || !titel) {
-      return NextResponse.json({ error: "email en titel zijn verplicht" }, { status: 400 });
+      return NextResponse.json(
+        { error: "email en titel zijn verplicht" },
+        { status: 400 }
+      );
     }
 
     await db.query(
-      `DELETE FROM toetsresultaten WHERE email = $1 AND titel = $2`,
+      `DELETE FROM toetsresultaten
+       WHERE lower(email) = lower($1)
+         AND titel = $2`,
       [email, titel]
     );
 
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("❌ Fout bij verwijderen resultaat:", err);
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Verwijderen resultaat mislukt." },
+      { status: 500 }
+    );
   }
 }
