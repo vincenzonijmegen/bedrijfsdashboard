@@ -5,7 +5,13 @@ import slugify from "slugify";
 
 const geldigeFases = ["voor_eerste_shift", "binnen_2_weken", "taakgericht"];
 
-const TOEGESTANE_LEESROLLEN = ["beheerder", "accountant"];
+const TOEGESTANE_LEESROLLEN = [
+  "beheerder",
+  "accountant",
+  "medewerker",
+  "keuken",
+  "winkel",
+];
 const TOEGESTANE_SCHRIJFROLLEN = ["beheerder"];
 
 const normaliseerOnboardingFase = (fase: unknown) => {
@@ -137,14 +143,8 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const toegestaan = await magLezen(req);
-
-    if (!toegestaan) {
-      return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
-    }
-
     const result = await db.query(`
       SELECT
         id,
@@ -156,6 +156,7 @@ export async function GET(req: NextRequest) {
         COALESCE(onboarding_verplicht, false) AS onboarding_verplicht,
         COALESCE(onboarding_volgorde, 999) AS onboarding_volgorde
       FROM instructies
+      WHERE status = 'actief'
       ORDER BY
         onboarding_volgorde ASC,
         nummer ASC NULLS LAST,
