@@ -343,7 +343,7 @@ export default function KasboekComponent({
   };
 
   return (
-    <div className="p-3 md:p-4 max-w-6xl mx-auto space-y-4">
+    <div className="p-3 md:p-4 max-w-6xl mx-auto space-y-3">
       <div className="grid grid-cols-1 xl:grid-cols-[300px_1fr] gap-4 items-start">
         <aside className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
@@ -428,10 +428,10 @@ export default function KasboekComponent({
           </div>
 
           {dagId && (
-            <div className="p-4 space-y-4">
-              <div className="space-y-4">
+            <div className="p-3 space-y-3">
+              <div className="space-y-3">
                 <section className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                  <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+                  <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200">
                     <h3 className="font-bold text-sm text-gray-950">
                       Fysieke kasbewegingen
                     </h3>
@@ -440,7 +440,7 @@ export default function KasboekComponent({
                     </p>
                   </div>
 
-                  <div className="hidden md:grid grid-cols-[1fr_115px_70px_135px] gap-2 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-500 border-b border-gray-100">
+                  <div className="hidden md:grid grid-cols-[1fr_115px_70px_135px] gap-2 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-gray-500 border-b border-gray-100">
                     <div>Categorie</div>
                     <div>Kas-effect</div>
                     <div>BTW</div>
@@ -456,24 +456,24 @@ export default function KasboekComponent({
                       return (
                         <div
                           key={key}
-                          className={`grid grid-cols-[1fr_115px] md:grid-cols-[1fr_115px_70px_135px] gap-2 items-center px-3 py-2 ${rijStijl(key)}`}
+                          className={`grid grid-cols-[1fr_115px] md:grid-cols-[1fr_115px_70px_135px] gap-2 items-center px-3 py-1 ${rijStijl(key)}`}
                         >
                           <div>
-                            <div className="text-sm font-medium text-gray-950">
+                            <div className="text-sm font-medium leading-tight text-gray-950">
                               {cat.label ?? key}
                             </div>
                             <div className="md:hidden mt-1 flex flex-wrap gap-1 text-xs">
-                              <span className="rounded-full px-2 py-0.5 bg-white text-gray-700 border border-gray-200">
+                              <span className="rounded-full px-1.5 py-0 bg-white text-gray-700 border border-gray-200">
                                 {kasLabel(key, cat.type)}
                               </span>
-                              <span className="rounded-full px-2 py-0.5 bg-white text-gray-700 border border-gray-200">
+                              <span className="rounded-full px-1.5 py-0 bg-white text-gray-700 border border-gray-200">
                                 BTW: {btwLabel(key, cat.btw)}
                               </span>
                             </div>
                           </div>
 
                           <div className="hidden md:block">
-                            <span className="rounded-full px-2 py-0.5 text-[11px] font-medium bg-white text-gray-700 border border-gray-200">
+                            <span className="rounded-full px-1.5 py-0 text-[10px] font-medium bg-white text-gray-700 border border-gray-200">
                               {kasLabel(key, cat.type)}
                             </span>
                           </div>
@@ -492,7 +492,7 @@ export default function KasboekComponent({
                                 [key]: e.target.value,
                               })
                             }
-                            className="border border-gray-300 rounded-md px-2 py-1.5 w-full text-right bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="border border-gray-300 rounded-md px-2 py-1 w-full text-right text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             disabled={alleenLezen}
                           />
                         </div>
@@ -502,13 +502,13 @@ export default function KasboekComponent({
                     {inkoopRijen.map((val, i) => (
                       <div
                         key={`inkoop-${i}`}
-                        className="grid grid-cols-[1fr_115px] md:grid-cols-[1fr_115px_70px_135px] gap-2 items-center px-3 py-2 border-green-200 bg-green-50"
+                        className="grid grid-cols-[1fr_115px] md:grid-cols-[1fr_115px_70px_135px] gap-2 items-center px-3 py-1 border-green-200 bg-green-50"
                       >
-                        <div className="text-sm font-medium text-gray-950">
+                        <div className="text-sm font-medium leading-tight text-gray-950">
                           Contant betaalde inkoop
                         </div>
                         <div className="hidden md:block">
-                          <span className="rounded-full px-2 py-0.5 text-[11px] font-medium bg-white text-gray-700 border border-gray-200">
+                          <span className="rounded-full px-1.5 py-0 text-[10px] font-medium bg-white text-gray-700 border border-gray-200">
                             Kas eruit
                           </span>
                         </div>
@@ -524,7 +524,7 @@ export default function KasboekComponent({
                             kopie[i] = e.target.value;
                             setInkoopRijen(kopie);
                           }}
-                          className="border border-gray-300 rounded-md px-2 py-1.5 w-full text-right bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="border border-gray-300 rounded-md px-2 py-1 w-full text-right text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           disabled={alleenLezen}
                         />
                       </div>
@@ -532,10 +532,10 @@ export default function KasboekComponent({
                   </div>
 
                   {!alleenLezen && (
-                    <div className="px-3 py-2 border-t border-gray-100">
+                    <div className="px-3 py-1.5 border-t border-gray-100">
                       <button
                         type="button"
-                        className="text-blue-700 underline text-sm"
+                        className="text-blue-700 underline text-xs"
                         onClick={() => setInkoopRijen([...inkoopRijen, ""])}
                       >
                         + Extra inkoopregel
@@ -545,14 +545,14 @@ export default function KasboekComponent({
                 </section>
 
                 <section className="rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
-                  <div className="px-3 py-2 bg-amber-100/70 border-b border-amber-200">
+                  <div className="px-3 py-1.5 bg-amber-100/70 border-b border-amber-200">
                     <h3 className="font-bold text-sm text-amber-950">Cadeaubonnen</h3>
                     <p className="text-xs text-amber-900 mt-0.5">
                       MPV: verkoop naar 2215, omzet/btw pas bij inlevering. Geen kas-effect.
                     </p>
                   </div>
 
-                  <div className="hidden md:grid grid-cols-[1fr_115px_70px_135px] gap-2 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-amber-900 border-b border-amber-200">
+                  <div className="hidden md:grid grid-cols-[1fr_115px_70px_135px] gap-2 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-900 border-b border-amber-200">
                     <div>Categorie</div>
                     <div>Kas-effect</div>
                     <div>BTW</div>
@@ -568,17 +568,17 @@ export default function KasboekComponent({
                       return (
                         <div
                           key={key}
-                          className="grid grid-cols-[1fr_115px] md:grid-cols-[1fr_115px_70px_135px] gap-2 items-center px-3 py-2 bg-amber-50"
+                          className="grid grid-cols-[1fr_115px] md:grid-cols-[1fr_115px_70px_135px] gap-2 items-center px-3 py-1 bg-amber-50"
                         >
                           <div>
-                            <div className="text-sm font-medium text-amber-950">
+                            <div className="text-sm font-medium leading-tight text-amber-950">
                               {cat.label ?? key}
                             </div>
                             <div className="md:hidden mt-1 flex flex-wrap gap-1 text-xs">
-                              <span className="rounded-full px-2 py-0.5 bg-white text-amber-800 border border-amber-200">
+                              <span className="rounded-full px-1.5 py-0 bg-white text-amber-800 border border-amber-200">
                                 Kas-neutraal
                               </span>
-                              <span className="rounded-full px-2 py-0.5 bg-white text-amber-800 border border-amber-200">
+                              <span className="rounded-full px-1.5 py-0 bg-white text-amber-800 border border-amber-200">
                                 {key === "verkoop_kadobonnen"
                                   ? "MPV / geen btw"
                                   : "BTW bij inlevering: 9%"}
@@ -587,7 +587,7 @@ export default function KasboekComponent({
                           </div>
 
                           <div className="hidden md:block">
-                            <span className="rounded-full px-2 py-0.5 text-[11px] font-medium bg-white text-amber-800 border border-amber-200">
+                            <span className="rounded-full px-1.5 py-0 text-[10px] font-medium bg-white text-amber-800 border border-amber-200">
                               Kas-neutraal
                             </span>
                           </div>
@@ -606,7 +606,7 @@ export default function KasboekComponent({
                                 [key]: e.target.value,
                               })
                             }
-                            className="border border-amber-300 rounded-md px-2 py-1.5 w-full text-right bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                            className="border border-amber-300 rounded-md px-2 py-1 w-full text-right text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                             disabled={alleenLezen}
                           />
                         </div>
