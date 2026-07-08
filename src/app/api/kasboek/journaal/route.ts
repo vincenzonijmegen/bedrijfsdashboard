@@ -3,8 +3,11 @@ import { query as dbQuery } from '@/lib/db';
 
 const BTW_LAAG = 9;
 
+const rondAf = (waarde: number) => Math.round(waarde * 100) / 100;
+
 export async function GET(req: NextRequest) {
   const maand = req.nextUrl.searchParams.get('maand');
+
   if (!maand || !/^\d{4}-\d{2}$/.test(maand)) {
     return NextResponse.json({ error: 'Geef ?maand=YYYY-MM mee' }, { status: 400 });
   }
@@ -45,7 +48,7 @@ export async function GET(req: NextRequest) {
 
   // Boekingsregels verzamelen
   let omzetLaag = 0;
-  let omzetKadobon = 0;
+  let verkoopKadobonnen = 0;
   let ingenomenKadobon = 0;
   let kasverschil = 0;
   let priveOpnameHerman = 0;
@@ -56,52 +59,101 @@ export async function GET(req: NextRequest) {
 
   for (const t of res.rows) {
     const bedrag = Number(t.bedrag || 0);
-    const cat = t.categorie;
+    const cat = String(t.categorie);
+
     switch (cat) {
-      case 'verkopen_laag': omzetLaag += bedrag; break;
-      case 'verkoop_kadobonnen': omzetKadobon += bedrag; break;
-      case 'ingenomen_kadobon': ingenomenKadobon += bedrag; break;
-      case 'prive_opname_herman': priveOpnameHerman += bedrag; break;
-      case 'prive_opname_erik': priveOpnameErik += bedrag; break;
-      case 'kasverschil': kasverschil += bedrag; break;
-      case 'naar_bank_afgestort': afstorting += bedrag; break;
-      case 'wisselgeld_van_bank': wisselgeld += bedrag; break;
-    }
-    if (cat === 'mypos_kosten') {
-      myposKosten += bedrag;
+      case 'verkopen_laag':
+        omzetLaag += bedrag;
+        break;
+      case 'verkoop_kadobonnen':
+        verkoopKadobonnen += bedrag;
+        break;
+      case 'ingenomen_kadobon':
+        ingenomenKadobon += bedrag;
+        break;
+      case 'prive_opname_herman':
+        priveOpnameHerman += bedrag;
+        break;
+      case 'prive_opname_erik':
+        priveOpnameErik += bedrag;
+        break;
+      case 'kasverschil':
+        kasverschil += bedrag;
+        break;
+      case 'naar_bank_afgestort':
+        afstorting += bedrag;
+        break;
+      case 'wisselgeld_van_bank':
+        wisselgeld += bedrag;
+        break;
+      case 'mypos_kosten':
+        myposKosten += bedrag;
+        break;
     }
   }
 
-  // Kadobonnen: verkoop = positief, ingenomen = negatief
-  const kadobonnen = omzetKadobon - ingenomenKadobon;
+  /*
+    MPV-logica cadeaubonnen:
 
-  // Bruto totaalomzet = ijs + kadobonnen
-  const brutoOmzet = omzetLaag + kadobonnen;
+    Verkochte cadeaubonnen:
+    - geen omzet
+    - geen btw
+    - wel opbouw verplichting op 2215
+
+    Ingenomen cadeaubonnen:
+    - omzet ontstaat bij inlevering
+    - btw ontstaat bij inlevering
+    - verplichting op 2215 valt vrij
+  */
+
+  // Bruto omzet waar 9% btw uit gehaald moet worden:
+  // gewone kasomzet + ingenomen cadeaubonnen.
+  // Verkochte cadeaubonnen zitten hier bewust NIET in.
+  const brutoOmzet = omzetLaag + ingenomenKadobon;
   const nettoOmzet = brutoOmzet / (1 + BTW_LAAG / 100);
   const btwTotaal = brutoOmzet - nettoOmzet;
 
-  // Voor de regels: splits netto omzet ijs en kadobonnen apart, maar BTW alleen totaal
   const nettoOmzetIjs = omzetLaag / (1 + BTW_LAAG / 100);
-  const nettoOmzetKado = kadobonnen / (1 + BTW_LAAG / 100);
+  const nettoOmzetKadobonnenIngenomen = ingenomenKadobon / (1 + BTW_LAAG / 100);
 
   const regels: { gb: string; omschrijving: string; bedrag: number }[] = [];
 
-  // 8001: netto omzet ijs (alleen als niet nul)
+  // 8001: netto omzet ijs
   if (nettoOmzetIjs !== 0) {
     regels.push({
       gb: '8001',
       omschrijving: 'Omzet ijs (excl. BTW)',
-      bedrag: Math.round(nettoOmzetIjs * 100) / 100,
+      bedrag: rondAf(nettoOmzetIjs),
     });
   }
-  // 8003: netto kadobonnen
-  if (nettoOmzetKado !== 0) {
+
+  // 8003: omzet bij inlevering cadeaubonnen
+  if (nettoOmzetKadobonnenIngenomen !== 0) {
     regels.push({
       gb: '8003',
-      omschrijving: 'Kadobonnen: verkoop - ingenomen (excl. BTW)',
-      bedrag: Math.round(nettoOmzetKado * 100) / 100,
+      omschrijving: 'Kadobonnen ingenomen (excl. BTW)',
+      bedrag: rondAf(nettoOmzetKadobonnenIngenomen),
     });
   }
+
+  // 2215: verkochte cadeaubonnen = verplichting omhoog
+  if (verkoopKadobonnen !== 0) {
+    regels.push({
+      gb: '2215',
+      omschrijving: 'Tussenrekening cadeaubonnen - verkocht',
+      bedrag: rondAf(verkoopKadobonnen),
+    });
+  }
+
+  // 2215: ingenomen cadeaubonnen = verplichting omlaag / vrijval
+  if (ingenomenKadobon !== 0) {
+    regels.push({
+      gb: '2215',
+      omschrijving: 'Tussenrekening cadeaubonnen - ingenomen',
+      bedrag: -rondAf(ingenomenKadobon),
+    });
+  }
+
   if (priveOpnameHerman !== 0) {
     regels.push({
       gb: '620',
@@ -109,6 +161,7 @@ export async function GET(req: NextRequest) {
       bedrag: -Math.abs(priveOpnameHerman),
     });
   }
+
   if (priveOpnameErik !== 0) {
     regels.push({
       gb: '670',
@@ -116,6 +169,7 @@ export async function GET(req: NextRequest) {
       bedrag: -Math.abs(priveOpnameErik),
     });
   }
+
   if (kasverschil !== 0) {
     regels.push({
       gb: '8880',
@@ -124,32 +178,34 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Kruisposten: wisselgeld - afstorting (want afstorting is positief)
+  // Kruisposten: wisselgeld - afstorting
   const kruisposten = wisselgeld - afstorting;
+
   if (kruisposten !== 0) {
     regels.push({
       gb: '1221',
       omschrijving: 'Kruisposten wisselgeld',
-      bedrag: kruisposten,
+      bedrag: rondAf(kruisposten),
     });
   }
+
   // BTW-regel als laatste en markeer als italic in frontend
   if (btwTotaal !== 0) {
     regels.push({
       gb: '0000',
-      omschrijving: 'BTW 9% over totale omzet',
-      bedrag: Math.round(btwTotaal * 100) / 100,
+      omschrijving: 'BTW 9% over omzet',
+      bedrag: rondAf(btwTotaal),
     });
   }
-  // Saldo-controle = eindsaldo laatste dag - beginsaldo eerste dag
-const saldocontrole = regels.reduce((t, regel) => t + regel.bedrag, 0);
-regels.push({
-  gb: '',
-  omschrijving: 'Saldo controle (niet boeken)',
-  bedrag: Math.round(saldocontrole * 100) / 100,
-});
 
+  // Saldo-controle = som van de regels, niet boeken
+  const saldocontrole = regels.reduce((t, regel) => t + regel.bedrag, 0);
 
+  regels.push({
+    gb: '',
+    omschrijving: 'Saldo controle (niet boeken)',
+    bedrag: rondAf(saldocontrole),
+  });
 
   return NextResponse.json({
     maand,
