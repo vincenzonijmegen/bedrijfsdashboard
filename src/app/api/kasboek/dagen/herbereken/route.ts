@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
           COALESCE(SUM(
             CASE
               WHEN type = 'ontvangst'
-               AND COALESCE(categorie, '') NOT IN (
+               AND COALESCE(categorie::text, '') NOT IN (
                  'verkoop_kadobonnen',
                  'ingenomen_kadobon'
                )
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
           COALESCE(SUM(
             CASE
               WHEN type = 'uitgave'
-               AND COALESCE(categorie, '') NOT IN (
+               AND COALESCE(categorie::text, '') NOT IN (
                  'verkoop_kadobonnen',
                  'ingenomen_kadobon'
                )
