@@ -343,24 +343,24 @@ export default function KasboekComponent({
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
-      <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-6 items-start">
-        <aside className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <div className="p-3 md:p-4 max-w-6xl mx-auto space-y-4">
+      <div className="grid grid-cols-1 xl:grid-cols-[300px_1fr] gap-4 items-start">
+        <aside className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
             <div>
-              <h1 className="text-xl font-bold">Kasboek</h1>
-              <p className="text-sm text-gray-500">{datum.slice(0, 7)}</p>
+              <h1 className="text-lg font-bold">Kasboek</h1>
+              <p className="text-xs text-gray-500">{datum.slice(0, 7)}</p>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={vorigeMaand}
-                className="w-9 h-9 border rounded-lg hover:bg-gray-50"
+                className="w-8 h-8 border rounded-md hover:bg-gray-50 text-sm"
               >
                 ←
               </button>
               <button
                 onClick={volgendeMaand}
-                className="w-9 h-9 border rounded-lg hover:bg-gray-50"
+                className="w-8 h-8 border rounded-md hover:bg-gray-50 text-sm"
               >
                 →
               </button>
@@ -374,7 +374,7 @@ export default function KasboekComponent({
             </div>
           )}
 
-          <div className="p-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-1 max-h-[620px] overflow-auto">
+          <div className="p-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-1 max-h-[620px] overflow-auto">
             {alleDagenVanMaand.map((dag) => {
               const formatted = format(dag, "yyyy-MM-dd");
               const record = dagenArr.find((d: any) => d.datum === formatted);
@@ -390,7 +390,7 @@ export default function KasboekComponent({
                   key={formatted}
                   type="button"
                   onClick={() => setDatum(formatted)}
-                  className={`text-left px-3 py-2 rounded-lg text-sm transition ${
+                  className={`text-left px-3 py-1.5 rounded-md text-sm transition ${
                     active
                       ? "bg-blue-100 font-bold text-blue-950"
                       : "hover:bg-gray-50"
@@ -404,11 +404,11 @@ export default function KasboekComponent({
           </div>
         </aside>
 
-        <main className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        <main className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
             <div>
-              <h2 className="font-bold text-xl">Geselecteerde dag: {datum}</h2>
-              <p className="text-sm text-gray-600 mt-1">
+              <h2 className="font-bold text-lg">Geselecteerde dag: {datum}</h2>
+              <p className="text-sm text-gray-600 mt-0.5">
                 Startbedrag:{" "}
                 <span className="font-semibold text-gray-900">
                   {startbedrag ? formatEuro(toNumber(startbedrag)) : "–"}
@@ -428,20 +428,19 @@ export default function KasboekComponent({
           </div>
 
           {dagId && (
-            <div className="p-5 space-y-5">
-              <div className="space-y-5">
-                <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-                  <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                    <h3 className="font-bold text-gray-950">
+            <div className="p-4 space-y-4">
+              <div className="space-y-4">
+                <section className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+                  <div className="px-3 py-2 bg-gray-50 border-b border-gray-200">
+                    <h3 className="font-bold text-sm text-gray-950">
                       Fysieke kasbewegingen
                     </h3>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Alleen deze regels kunnen het verwachte kassaldo verhogen
-                      of verlagen.
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Alleen regels die het fysieke kassaldo wijzigen.
                     </p>
                   </div>
 
-                  <div className="hidden md:grid grid-cols-[1fr_130px_90px_160px] gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wide text-gray-500 border-b border-gray-100">
+                  <div className="hidden md:grid grid-cols-[1fr_115px_70px_135px] gap-2 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-500 border-b border-gray-100">
                     <div>Categorie</div>
                     <div>Kas-effect</div>
                     <div>BTW</div>
@@ -457,10 +456,10 @@ export default function KasboekComponent({
                       return (
                         <div
                           key={key}
-                          className={`grid grid-cols-[1fr_130px] md:grid-cols-[1fr_130px_90px_160px] gap-2 items-center px-4 py-3 ${rijStijl(key)}`}
+                          className={`grid grid-cols-[1fr_115px] md:grid-cols-[1fr_115px_70px_135px] gap-2 items-center px-3 py-2 ${rijStijl(key)}`}
                         >
                           <div>
-                            <div className="font-medium text-gray-950">
+                            <div className="text-sm font-medium text-gray-950">
                               {cat.label ?? key}
                             </div>
                             <div className="md:hidden mt-1 flex flex-wrap gap-1 text-xs">
@@ -474,12 +473,12 @@ export default function KasboekComponent({
                           </div>
 
                           <div className="hidden md:block">
-                            <span className="rounded-full px-2 py-1 text-xs font-medium bg-white text-gray-700 border border-gray-200">
+                            <span className="rounded-full px-2 py-0.5 text-[11px] font-medium bg-white text-gray-700 border border-gray-200">
                               {kasLabel(key, cat.type)}
                             </span>
                           </div>
 
-                          <div className="hidden md:block text-sm font-medium text-gray-700">
+                          <div className="hidden md:block text-sm text-gray-700">
                             {btwLabel(key, cat.btw)}
                           </div>
 
@@ -493,7 +492,7 @@ export default function KasboekComponent({
                                 [key]: e.target.value,
                               })
                             }
-                            className="border border-gray-300 rounded-lg px-3 py-2 w-full text-right bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="border border-gray-300 rounded-md px-2 py-1.5 w-full text-right bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             disabled={alleenLezen}
                           />
                         </div>
@@ -503,13 +502,13 @@ export default function KasboekComponent({
                     {inkoopRijen.map((val, i) => (
                       <div
                         key={`inkoop-${i}`}
-                        className="grid grid-cols-[1fr_130px] md:grid-cols-[1fr_130px_90px_160px] gap-2 items-center px-4 py-3 border-green-200 bg-green-50"
+                        className="grid grid-cols-[1fr_115px] md:grid-cols-[1fr_115px_70px_135px] gap-2 items-center px-3 py-2 border-green-200 bg-green-50"
                       >
-                        <div className="font-medium text-gray-950">
+                        <div className="text-sm font-medium text-gray-950">
                           Contant betaalde inkoop
                         </div>
                         <div className="hidden md:block">
-                          <span className="rounded-full px-2 py-1 text-xs font-medium bg-white text-gray-700 border border-gray-200">
+                          <span className="rounded-full px-2 py-0.5 text-[11px] font-medium bg-white text-gray-700 border border-gray-200">
                             Kas eruit
                           </span>
                         </div>
@@ -525,7 +524,7 @@ export default function KasboekComponent({
                             kopie[i] = e.target.value;
                             setInkoopRijen(kopie);
                           }}
-                          className="border border-gray-300 rounded-lg px-3 py-2 w-full text-right bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          className="border border-gray-300 rounded-md px-2 py-1.5 w-full text-right bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           disabled={alleenLezen}
                         />
                       </div>
@@ -533,7 +532,7 @@ export default function KasboekComponent({
                   </div>
 
                   {!alleenLezen && (
-                    <div className="px-4 py-3 border-t border-gray-100">
+                    <div className="px-3 py-2 border-t border-gray-100">
                       <button
                         type="button"
                         className="text-blue-700 underline text-sm"
@@ -545,17 +544,15 @@ export default function KasboekComponent({
                   )}
                 </section>
 
-                <section className="rounded-2xl border border-amber-200 bg-amber-50 overflow-hidden">
-                  <div className="px-4 py-3 bg-amber-100/70 border-b border-amber-200">
-                    <h3 className="font-bold text-amber-950">Cadeaubonnen</h3>
-                    <p className="text-xs text-amber-900 mt-1">
-                      MPV: verkoop is waarde/verplichting op 2215. Omzet en btw
-                      ontstaan pas bij inlevering. Geen van beide regels
-                      beïnvloedt de fysieke kas.
+                <section className="rounded-xl border border-amber-200 bg-amber-50 overflow-hidden">
+                  <div className="px-3 py-2 bg-amber-100/70 border-b border-amber-200">
+                    <h3 className="font-bold text-sm text-amber-950">Cadeaubonnen</h3>
+                    <p className="text-xs text-amber-900 mt-0.5">
+                      MPV: verkoop naar 2215, omzet/btw pas bij inlevering. Geen kas-effect.
                     </p>
                   </div>
 
-                  <div className="hidden md:grid grid-cols-[1fr_130px_90px_160px] gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wide text-amber-900 border-b border-amber-200">
+                  <div className="hidden md:grid grid-cols-[1fr_115px_70px_135px] gap-2 px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide text-amber-900 border-b border-amber-200">
                     <div>Categorie</div>
                     <div>Kas-effect</div>
                     <div>BTW</div>
@@ -571,10 +568,10 @@ export default function KasboekComponent({
                       return (
                         <div
                           key={key}
-                          className="grid grid-cols-[1fr_130px] md:grid-cols-[1fr_130px_90px_160px] gap-2 items-center px-4 py-3 bg-amber-50"
+                          className="grid grid-cols-[1fr_115px] md:grid-cols-[1fr_115px_70px_135px] gap-2 items-center px-3 py-2 bg-amber-50"
                         >
                           <div>
-                            <div className="font-medium text-amber-950">
+                            <div className="text-sm font-medium text-amber-950">
                               {cat.label ?? key}
                             </div>
                             <div className="md:hidden mt-1 flex flex-wrap gap-1 text-xs">
@@ -590,12 +587,12 @@ export default function KasboekComponent({
                           </div>
 
                           <div className="hidden md:block">
-                            <span className="rounded-full px-2 py-1 text-xs font-medium bg-white text-amber-800 border border-amber-200">
+                            <span className="rounded-full px-2 py-0.5 text-[11px] font-medium bg-white text-amber-800 border border-amber-200">
                               Kas-neutraal
                             </span>
                           </div>
 
-                          <div className="hidden md:block text-sm font-medium text-amber-900">
+                          <div className="hidden md:block text-sm text-amber-900">
                             {key === "verkoop_kadobonnen" ? "MPV" : "9%"}
                           </div>
 
@@ -609,7 +606,7 @@ export default function KasboekComponent({
                                 [key]: e.target.value,
                               })
                             }
-                            className="border border-amber-300 rounded-lg px-3 py-2 w-full text-right bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                            className="border border-amber-300 rounded-md px-2 py-1.5 w-full text-right bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
                             disabled={alleenLezen}
                           />
                         </div>
@@ -619,41 +616,41 @@ export default function KasboekComponent({
                 </section>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="rounded-xl border border-green-200 bg-green-50 p-4">
-                  <div className="text-sm text-gray-600">Kas erbij</div>
-                  <div className="text-xl font-bold mt-1">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+                  <div className="text-xs text-gray-600">Kas erbij</div>
+                  <div className="text-base font-bold mt-0.5">
                     {formatEuro(totals.ontvangsten)}
                   </div>
                 </div>
-                <div className="rounded-xl border border-red-200 bg-red-50 p-4">
-                  <div className="text-sm text-gray-600">Kas eruit</div>
-                  <div className="text-xl font-bold mt-1">
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2">
+                  <div className="text-xs text-gray-600">Kas eruit</div>
+                  <div className="text-base font-bold mt-0.5">
                     {formatEuro(totals.uitgavenTotaal)}
                   </div>
                 </div>
-                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
-                  <div className="text-sm text-gray-600">
+                <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                  <div className="text-xs text-gray-600">
                     Verwacht eindsaldo fysieke kas
                   </div>
-                  <div className="text-xl font-bold mt-1">
+                  <div className="text-base font-bold mt-0.5">
                     {formatEuro(eindsaldo)}
                   </div>
                 </div>
               </div>
 
               {!alleenLezen && (
-                <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                <div className="flex flex-col sm:flex-row gap-2 pt-1">
                   <button
                     onClick={opslaan}
-                    className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg disabled:opacity-50"
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md disabled:opacity-50"
                     disabled={isOpslaan}
                   >
                     {isOpslaan ? "Opslaan..." : "Sla transacties op"}
                   </button>
                   <button
                     onClick={herbereken}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg disabled:opacity-50"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md disabled:opacity-50"
                     disabled={isHerberekenen}
                   >
                     {isHerberekenen ? "Herberekenen..." : "Herbereken"}
