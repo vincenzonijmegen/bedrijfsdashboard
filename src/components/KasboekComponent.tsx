@@ -36,44 +36,52 @@ function Journaalpost({ maand }: { maand: string }) {
   if (!maand) return null;
 
   return (
-    <div className="mt-8 bg-white p-4 rounded shadow max-w-3xl">
-      <h2 className="text-lg font-bold mb-2">
-        Maandelijkse journaalpost – {maand}
-      </h2>
-      {loading && <div className="mb-2">Journaalpost wordt opgehaald...</div>}
-      {error && <div className="text-red-700 mb-2">{error}</div>}
-      {!loading && !error && (
-        <table className="w-full text-sm border">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="text-left px-2 py-1">Grootboek</th>
-              <th className="text-left px-2 py-1">Omschrijving</th>
-              <th className="text-right px-2 py-1">Bedrag</th>
-            </tr>
-          </thead>
-          <tbody>
-            {regels.map((r, i) => (
-              <tr
-                key={i}
-                className={
-                  r.gb === ''
-                    ? 'bg-yellow-100'
-                    : r.gb === '0000'
-                    ? 'italic text-blue-700'
-                    : ''
-                }
-              >
-                <td className="px-2 py-1">{r.gb}</td>
-                <td className="px-2 py-1">{r.omschrijving}</td>
-                <td className="px-2 py-1 text-right">
-                  {r.bedrag.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
+    <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100">
+        <h2 className="text-lg font-bold">Maandelijkse journaalpost – {maand}</h2>
+        <p className="text-xs text-gray-500 mt-1">
+          Verkochte cadeaubonnen gaan naar 2215. Ingenomen cadeaubonnen vallen vrij naar omzet en btw.
+        </p>
+      </div>
+
+      <div className="p-5">
+        {loading && <div className="mb-2 text-sm text-gray-600">Journaalpost wordt opgehaald...</div>}
+        {error && <div className="text-red-700 mb-2 text-sm">{error}</div>}
+        {!loading && !error && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="text-left px-3 py-2 w-28">Grootboek</th>
+                  <th className="text-left px-3 py-2">Omschrijving</th>
+                  <th className="text-right px-3 py-2 w-40">Bedrag</th>
+                </tr>
+              </thead>
+              <tbody>
+                {regels.map((r, i) => (
+                  <tr
+                    key={i}
+                    className={
+                      r.gb === ''
+                        ? 'bg-yellow-100 font-medium'
+                        : r.gb === '0000'
+                        ? 'italic text-blue-700'
+                        : 'border-t border-gray-100'
+                    }
+                  >
+                    <td className="px-3 py-2 whitespace-nowrap">{r.gb}</td>
+                    <td className="px-3 py-2">{r.omschrijving}</td>
+                    <td className="px-3 py-2 text-right whitespace-nowrap font-medium">
+                      {r.bedrag.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 // ====== EINDE JOURNAALPOST ======
@@ -94,6 +102,29 @@ const KAS_NEUTRALE_CATEGORIEEN = new Set([
   'verkoop_kadobonnen',
   'ingenomen_kadobon',
 ]);
+
+const rijStijl = (key: string) => {
+  if (key === 'verkopen_laag') return 'border-blue-200 bg-blue-50';
+  if (key === 'verkoop_kadobonnen' || key === 'ingenomen_kadobon') {
+    return 'border-amber-200 bg-amber-50';
+  }
+  if (key === 'prive_opname_herman' || key === 'prive_opname_erik') return 'border-purple-200 bg-purple-50';
+  if (key === 'wisselgeld_van_bank' || key === 'naar_bank_afgestort') return 'border-orange-200 bg-orange-50';
+  if (key === 'kasverschil') return 'border-red-200 bg-red-50';
+  return 'border-gray-200 bg-white';
+};
+
+const kasLabel = (key: string, type?: string) => {
+  if (KAS_NEUTRALE_CATEGORIEEN.has(key)) return 'Kas-neutraal';
+  if (type === 'ontvangst') return 'Kas erbij';
+  if (type === 'uitgave') return 'Kas eruit';
+  return '—';
+};
+
+const btwLabel = (key: string, btw?: 0 | 9 | 21 | '-') => {
+  if (key === 'verkoop_kadobonnen') return 'MPV';
+  return formatBtw(btw);
+};
 
 export default function KasboekComponent({ alleenLezen = false }: { alleenLezen?: boolean }) {
   const [datum, setDatum] = useState(() => format(new Date(), 'yyyy-MM-dd'));
@@ -288,186 +319,211 @@ export default function KasboekComponent({ alleenLezen = false }: { alleenLezen?
   };
 
   return (
-    <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-6xl">
-      <div>
-        <div className="flex items-center justify-between mb-2">
-          <h1 className="text-xl font-bold">Kasboek {datum.slice(0, 7)}</h1>
-          <div className="space-x-2">
-            <button onClick={vorigeMaand} className="px-2 py-1 border rounded">←</button>
-            <button onClick={volgendeMaand} className="px-2 py-1 border rounded">→</button>
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
+      <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-6 items-start">
+        <aside className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
+            <div>
+              <h1 className="text-xl font-bold">Kasboek</h1>
+              <p className="text-sm text-gray-500">{datum.slice(0, 7)}</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={vorigeMaand} className="w-9 h-9 border rounded-lg hover:bg-gray-50">←</button>
+              <button onClick={volgendeMaand} className="w-9 h-9 border rounded-lg hover:bg-gray-50">→</button>
+            </div>
           </div>
-        </div>
 
-        {dagenArr.length === 0 && (
-          <div className="text-gray-500 mb-2">
-            Geen dagen gevonden voor {datum.slice(0, 7)}. Klik “Dag aanmaken” om te starten.
+          {dagenArr.length === 0 && (
+            <div className="text-gray-500 text-sm p-4 border-b border-gray-100">
+              Geen dagen gevonden voor {datum.slice(0, 7)}. Klik “Dag aanmaken” om te starten.
+            </div>
+          )}
+
+          <div className="p-3 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 gap-1 max-h-[620px] overflow-auto">
+            {alleDagenVanMaand.map((dag) => {
+              const formatted = format(dag, 'yyyy-MM-dd');
+              const record = dagenArr.find((d: any) => d.datum === formatted);
+              const count = typeof record?.aantal_transacties === 'number'
+                ? record.aantal_transacties
+                : parseInt(record?.aantal_transacties as any, 10) || 0;
+              const status = count > 0 ? '✅' : '⬜';
+              const active = datum === formatted;
+
+              return (
+                <button
+                  key={formatted}
+                  type="button"
+                  onClick={() => setDatum(formatted)}
+                  className={`text-left px-3 py-2 rounded-lg text-sm transition ${
+                    active ? 'bg-blue-100 font-bold text-blue-950' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="mr-2">{status}</span>
+                  {formatted}
+                </button>
+              );
+            })}
           </div>
-        )}
+        </aside>
 
-        <div className="space-y-1">
-          {alleDagenVanMaand.map((dag) => {
-            const formatted = format(dag, 'yyyy-MM-dd');
-            const record = dagenArr.find((d: any) => d.datum === formatted);
-            const count = typeof record?.aantal_transacties === 'number'
-              ? record.aantal_transacties
-              : parseInt(record?.aantal_transacties as any, 10) || 0;
-            const status = count > 0 ? '✅' : '⬜';
-            const active = datum === formatted;
+        <main className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-gray-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div>
+              <h2 className="font-bold text-xl">Geselecteerde dag: {datum}</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                Startbedrag: <span className="font-semibold text-gray-900">{startbedrag ? formatEuro(toNumber(startbedrag)) : '–'}</span>
+              </p>
+            </div>
 
-            return (
-              <div
-                key={formatted}
-                onClick={() => setDatum(formatted)}
-                className={`cursor-pointer px-2 py-0.5 rounded text-sm leading-tight ${active ? 'bg-blue-100 font-bold' : ''}`}
+            {!dagId && !alleenLezen && (
+              <button
+                onClick={maakDagAan}
+                className="px-4 py-2 border rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50"
+                disabled={isCreating}
               >
-                {status} {formatted}
+                {isCreating ? 'Bezig…' : 'Dag aanmaken'}
+              </button>
+            )}
+          </div>
+
+          {dagId && (
+            <div className="p-5 space-y-5">
+              <div className="grid grid-cols-[1fr_130px] md:grid-cols-[1fr_130px_100px_160px] gap-2 px-3 text-xs font-bold uppercase tracking-wide text-gray-500">
+                <div>Categorie</div>
+                <div className="hidden md:block">Kas-effect</div>
+                <div className="hidden md:block">BTW</div>
+                <div className="text-right">Bedrag</div>
               </div>
-            );
-          })}
-        </div>
-      </div>
 
-      <div>
-        <h2 className="font-semibold text-lg mb-2">Geselecteerde dag: {datum}</h2>
-        <p className="mb-2">Startbedrag: € {startbedrag || '–'}</p>
-
-        {!dagId && !alleenLezen && (
-          <button
-            onClick={maakDagAan}
-            className="px-3 py-1 border rounded mb-3 disabled:opacity-50"
-            disabled={isCreating}
-          >
-            {isCreating ? 'Bezig…' : 'Dag aanmaken'}
-          </button>
-        )}
-
-        {dagId && (
-          <>
-            <table className="w-full text-sm border mt-2">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="text-left px-2 py-1">Categorie</th>
-                  <th>Type</th>
-                  <th>BTW</th>
-                  <th>Bedrag</th>
-                </tr>
-              </thead>
-              <tbody>
+              <div className="space-y-2">
                 {CATEGORIEEN.map((cat) => {
                   const key = cat.key;
-                  let kleur = '';
-                  if (key === 'verkopen_laag') kleur = 'bg-blue-50';
-                  if (key === 'verkoop_kadobonnen' || key === 'ingenomen_kadobon') kleur = 'bg-yellow-50';
-                  if (key === 'prive_opname_herman' || key === 'prive_opname_erik') kleur = 'bg-purple-50';
-                  if (key === 'wisselgeld_van_bank' || key === 'naar_bank_afgestort') kleur = 'bg-orange-50';
-                  if (key === 'kasverschil') kleur = 'bg-red-50';
+                  const neutraal = KAS_NEUTRALE_CATEGORIEEN.has(key);
+
                   return (
-                    <tr key={key} className={`border-t ${kleur}`}>
-                      <td className="px-2 py-1">{cat.label ?? key}</td>
-                      <td>{cat.type ?? '—'}</td>
-                      <td>{formatBtw(cat.btw)}</td>
-                      <td>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={bedragen[key] || ''}
-                          onChange={(e) =>
-                            setBedragen({ ...bedragen, [key]: e.target.value })
-                          }
-                          className="border px-2 w-32"
-                          disabled={alleenLezen}
-                        />
-                      </td>
-                    </tr>
-                  );
-                })}
-                {inkoopRijen.map((val, i) => (
-                  <tr key={`inkoop-${i}`} className="border-t bg-green-100">
-                    <td className="px-2 py-1">Contant betaalde inkoop</td>
-                    <td>uitgave</td>
-                    <td>–</td>
-                    <td>
+                    <div
+                      key={key}
+                      className={`grid grid-cols-[1fr_130px] md:grid-cols-[1fr_130px_100px_160px] gap-2 items-center rounded-xl border px-3 py-3 ${rijStijl(key)}`}
+                    >
+                      <div>
+                        <div className="font-medium text-gray-950">{cat.label ?? key}</div>
+                        <div className="md:hidden mt-1 flex flex-wrap gap-1 text-xs">
+                          <span className={`rounded-full px-2 py-0.5 ${neutraal ? 'bg-white text-amber-800 border border-amber-200' : 'bg-white text-gray-700 border border-gray-200'}`}>
+                            {kasLabel(key, cat.type)}
+                          </span>
+                          <span className="rounded-full px-2 py-0.5 bg-white text-gray-700 border border-gray-200">
+                            BTW: {btwLabel(key, cat.btw)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="hidden md:block">
+                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${neutraal ? 'bg-white text-amber-800 border border-amber-200' : 'bg-white text-gray-700 border border-gray-200'}`}>
+                          {kasLabel(key, cat.type)}
+                        </span>
+                      </div>
+
+                      <div className="hidden md:block text-sm font-medium text-gray-700">
+                        {btwLabel(key, cat.btw)}
+                      </div>
+
                       <input
                         type="number"
                         step="0.01"
-                        value={val}
-                        onChange={(e) => {
-                          const kopie = [...inkoopRijen];
-                          kopie[i] = e.target.value;
-                          setInkoopRijen(kopie);
-                        }}
-                        className="border px-2 w-32"
+                        value={bedragen[key] || ''}
+                        onChange={(e) =>
+                          setBedragen({ ...bedragen, [key]: e.target.value })
+                        }
+                        className="border border-gray-300 rounded-lg px-3 py-2 w-full text-right bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         disabled={alleenLezen}
                       />
-                    </td>
-                  </tr>
+                    </div>
+                  );
+                })}
+
+                {inkoopRijen.map((val, i) => (
+                  <div
+                    key={`inkoop-${i}`}
+                    className="grid grid-cols-[1fr_130px] md:grid-cols-[1fr_130px_100px_160px] gap-2 items-center rounded-xl border border-green-200 bg-green-50 px-3 py-3"
+                  >
+                    <div className="font-medium text-gray-950">Contant betaalde inkoop</div>
+                    <div className="hidden md:block">
+                      <span className="rounded-full px-2 py-1 text-xs font-medium bg-white text-gray-700 border border-gray-200">
+                        Kas eruit
+                      </span>
+                    </div>
+                    <div className="hidden md:block text-sm font-medium text-gray-700">—</div>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={val}
+                      onChange={(e) => {
+                        const kopie = [...inkoopRijen];
+                        kopie[i] = e.target.value;
+                        setInkoopRijen(kopie);
+                      }}
+                      className="border border-gray-300 rounded-lg px-3 py-2 w-full text-right bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      disabled={alleenLezen}
+                    />
+                  </div>
                 ))}
+              </div>
 
-                <tr>
-                  <td colSpan={4}>
-                    {!alleenLezen && (
-                      <button
-                        className="text-blue-600 underline px-2 mt-2"
-                        onClick={() => setInkoopRijen([...inkoopRijen, ''])}
-                      >
-                        + Extra inkoopregel
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              </tbody>
-              <tfoot className="bg-gray-50">
-                <tr className="border-t">
-                  <td className="px-2 py-1 font-semibold" colSpan={3}>Kas erbij</td>
-                  <td className="px-2 py-1 font-semibold">{formatEuro(totals.ontvangsten)}</td>
-                </tr>
-                <tr>
-                </tr>
-                <tr>
-                </tr>
-                <tr className="border-t">
-                  <td className="px-2 py-1 font-semibold" colSpan={3}>Kas eruit</td>
-                  <td className="px-2 py-1 font-semibold">{formatEuro(totals.uitgavenTotaal)}</td>
-                </tr>
-                <tr>
-                </tr>
-                <tr className="border-t">
-                  <td className="px-2 py-1 font-bold" colSpan={3}>Verwacht eindsaldo fysieke kas</td>
-                  <td className="px-2 py-1 font-bold">{formatEuro(eindsaldo)}</td>
-                </tr>
-              </tfoot>
-            </table>
-
-            <div className="mt-4 space-x-2">
               {!alleenLezen && (
-                <>
+                <button
+                  type="button"
+                  className="text-blue-700 underline text-sm"
+                  onClick={() => setInkoopRijen([...inkoopRijen, ''])}
+                >
+                  + Extra inkoopregel
+                </button>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+                  <div className="text-sm text-gray-600">Kas erbij</div>
+                  <div className="text-xl font-bold mt-1">{formatEuro(totals.ontvangsten)}</div>
+                </div>
+                <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+                  <div className="text-sm text-gray-600">Kas eruit</div>
+                  <div className="text-xl font-bold mt-1">{formatEuro(totals.uitgavenTotaal)}</div>
+                </div>
+                <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                  <div className="text-sm text-gray-600">Verwacht eindsaldo fysieke kas</div>
+                  <div className="text-xl font-bold mt-1">{formatEuro(eindsaldo)}</div>
+                </div>
+              </div>
+
+              {!alleenLezen && (
+                <div className="flex flex-col sm:flex-row gap-3 pt-1">
                   <button
                     onClick={opslaan}
-                    className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
+                    className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg disabled:opacity-50"
                     disabled={isOpslaan}
                   >
                     {isOpslaan ? 'Opslaan...' : 'Sla transacties op'}
                   </button>
                   <button
                     onClick={herbereken}
-                    className="bg-blue-600 text-white px-4 py-2 rounded disabled:opacity-50"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg disabled:opacity-50"
                     disabled={isHerberekenen}
                   >
                     {isHerberekenen ? 'Herberekenen...' : 'Herbereken'}
                   </button>
-                </>
+                </div>
               )}
             </div>
-          </>
-        )}
+          )}
+        </main>
       </div>
+
+      <Journaalpost maand={datum.slice(0, 7)} />
 
       {snackbar.open && (
         <div className="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded shadow">
           {snackbar.message}
         </div>
       )}
-      <Journaalpost maand={datum.slice(0, 7)} />
     </div>
   );
 }
