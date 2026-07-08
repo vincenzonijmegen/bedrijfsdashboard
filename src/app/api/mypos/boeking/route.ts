@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
 
   const beginDatum = `${maand}-01`;
 
+  // Haal alle MyPOS-transacties op voor deze maand
   let transacties;
 
   try {
@@ -48,18 +49,19 @@ export async function GET(req: NextRequest) {
     const rekening = tx.ledger_account;
     const bedrag = parseFloat(tx.amount);
 
-    if (!rekening) continue;
+    if (!rekening || Number.isNaN(bedrag)) continue;
 
     totalen[rekening] = (totalen[rekening] ?? 0) + bedrag;
   }
 
   /*
-    Verkochte cadeaubonnen worden in de kasstaat vastgelegd
-    en in de kas-JP geboekt op 2215.
+    Verkochte cadeaubonnen uit het kasboek.
 
-    Omdat we cadeaubonnen boekhoudkundig behandelen alsof ze via pin zijn betaald,
-    moeten ze uit de MyPOS-omzetbasis worden gehaald.
-    Anders wordt er in deze JP opnieuw omzet/btw over berekend.
+    Deze worden boekhoudkundig niet als omzet behandeld.
+    Ze worden bruto van de MyPOS-ontvangsten afgehaald voordat btw wordt berekend.
+
+    Belangrijk:
+    Als MyPOS nog niet is geïmporteerd, mogen we hierdoor geen negatieve omzet/btw maken.
   */
   let verkochteCadeaubonnen = 0;
 
@@ -83,9 +85,35 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  // MyPOS 8001 bevat de bruto ontvangsten.
-  // Daar halen we de verkochte cadeaubonnen uit voordat we btw berekenen.
   const brutoMyposOntvangsten = totalen["8001"] ?? 0;
+
+  /*
+    Geen MyPOS-omzet geïmporteerd:
+    dan ook geen omzet/btw berekenen.
+    Anders ontstaat er onterecht negatieve omzet en negatieve btw
+    door alvast verkochte cadeaubonnen af te trekken van 0.
+  */
+  if (brutoMyposOntvangsten === 0) {
+    return NextResponse.json({
+      maand,
+      regels: [],
+      saldo: 0,
+      melding:
+        "Geen MyPOS-omzet geïmporteerd voor deze maand. Verkochte cadeaubonnen worden pas verwerkt zodra de MyPOS-omzet aanwezig is.",
+      controle: {
+        brutoMyposOntvangsten: 0,
+        verkochteCadeaubonnen: rondAf(verkochteCadeaubonnen),
+        brutoOmzetNaCorrectie: 0,
+      },
+    });
+  }
+
+  /*
+    Correcte volgorde:
+    1. Bruto MyPOS-ontvangsten
+    2. Min bruto verkochte cadeaubonnen
+    3. Daarna pas btw uit het restant halen
+  */
   const brutoOmzet = brutoMyposOntvangsten - verkochteCadeaubonnen;
 
   const nettoOmzet = brutoOmzet / (1 + BTW_LAAG / 100);
@@ -111,7 +139,6 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  
   if (totalen["4567"]) {
     regels.push({
       rekening: "4567",
