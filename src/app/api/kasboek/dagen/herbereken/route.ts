@@ -7,13 +7,6 @@ export const dynamic = 'force-dynamic';
 const NORM = (alias: string) =>
   `to_date(substr(${alias}.datum::text, 1, 10), 'YYYY-MM-DD')`;
 
-// Deze categorieën zijn boekhoudkundig/administratief relevant,
-// maar mogen het fysieke kassaldo niet beïnvloeden.
-const KAS_NEUTRALE_CATEGORIEEN = [
-  'verkoop_kadobonnen',
-  'ingenomen_kadobon',
-];
-
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const vanaf = String(body?.vanafDatum ?? '').slice(0, 10);
@@ -31,7 +24,9 @@ export async function POST(req: NextRequest) {
     await client.query('BEGIN');
 
     // Herberekening van fysieke kassaldi.
-    // Let op: kas-neutrale categorieën worden niet meegenomen in inkomsten/uitgaven.
+    // Kadobonnen zijn kas-neutraal:
+    // - verkoop_kadobonnen: meestal pin, eventuele contante correctie later via memoriaal/rapportage
+    // - ingenomen_kadobon: MPV-vrijval/omzet, maar geen fysieke kasbeweging
     const sql = `
       WITH seed AS (
         SELECT COALESCE((
@@ -54,7 +49,10 @@ export async function POST(req: NextRequest) {
           COALESCE(SUM(
             CASE
               WHEN type = 'ontvangst'
-               AND categorie <> ALL($2::text[])
+               AND COALESCE(categorie, '') NOT IN (
+                 'verkoop_kadobonnen',
+                 'ingenomen_kadobon'
+               )
               THEN bedrag
               ELSE 0
             END
@@ -62,7 +60,10 @@ export async function POST(req: NextRequest) {
           COALESCE(SUM(
             CASE
               WHEN type = 'uitgave'
-               AND categorie <> ALL($2::text[])
+               AND COALESCE(categorie, '') NOT IN (
+                 'verkoop_kadobonnen',
+                 'ingenomen_kadobon'
+               )
               THEN bedrag
               ELSE 0
             END
@@ -109,7 +110,7 @@ export async function POST(req: NextRequest) {
       RETURNING d.id;
     `;
 
-    const r = await client.query(sql, [vanaf, KAS_NEUTRALE_CATEGORIEEN]);
+    const r = await client.query(sql, [vanaf]);
 
     await client.query('COMMIT');
 
