@@ -7,18 +7,31 @@ export const dynamic = 'force-dynamic';
 const NORM = (alias: string) =>
   `to_date(substr(${alias}.datum::text, 1, 10), 'YYYY-MM-DD')`;
 
+// Deze categorieën zijn boekhoudkundig/administratief relevant,
+// maar mogen het fysieke kassaldo niet beïnvloeden.
+const KAS_NEUTRALE_CATEGORIEEN = [
+  'verkoop_kadobonnen',
+  'ingenomen_kadobon',
+];
+
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const vanaf = String(body?.vanafDatum ?? '').slice(0, 10);
+
   if (!vanaf) {
-    return NextResponse.json({ error: 'vanafDatum (YYYY-MM-DD) is verplicht' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'vanafDatum (YYYY-MM-DD) is verplicht' },
+      { status: 400 }
+    );
   }
 
   const client = await getClient();
+
   try {
     await client.query('BEGIN');
 
-    // Snelle herberekening via window function
+    // Herberekening van fysieke kassaldi.
+    // Let op: kas-neutrale categorieën worden niet meegenomen in inkomsten/uitgaven.
     const sql = `
       WITH seed AS (
         SELECT COALESCE((
@@ -38,8 +51,22 @@ export async function POST(req: NextRequest) {
       sums AS (
         SELECT
           dag_id,
-          COALESCE(SUM(CASE WHEN type = 'ontvangst' THEN bedrag ELSE 0 END), 0)::numeric AS inkomsten,
-          COALESCE(SUM(CASE WHEN type = 'uitgave'   THEN bedrag ELSE 0 END), 0)::numeric AS uitgaven
+          COALESCE(SUM(
+            CASE
+              WHEN type = 'ontvangst'
+               AND categorie <> ALL($2::text[])
+              THEN bedrag
+              ELSE 0
+            END
+          ), 0)::numeric AS inkomsten,
+          COALESCE(SUM(
+            CASE
+              WHEN type = 'uitgave'
+               AND categorie <> ALL($2::text[])
+              THEN bedrag
+              ELSE 0
+            END
+          ), 0)::numeric AS uitgaven
         FROM kasboek_transacties
         WHERE dag_id IN (SELECT id FROM d)
         GROUP BY dag_id
@@ -57,7 +84,7 @@ export async function POST(req: NextRequest) {
       roll AS (
         SELECT
           j.*,
-          -- cumulatief (inkomsten - uitgaven) + start_prev
+          -- cumulatief fysieke kasmutatie + start_prev
           (SUM(j.inkomsten - j.uitgaven) OVER (ORDER BY j.datum))
           + (SELECT start_prev FROM seed) AS eindsaldo_calc
         FROM j
@@ -67,7 +94,10 @@ export async function POST(req: NextRequest) {
           id,
           datum,
           -- startbedrag is vorige eindsaldo of seed.start_prev voor de 1e dag
-          COALESCE(LAG(eindsaldo_calc) OVER (ORDER BY datum), (SELECT start_prev FROM seed)) AS startbedrag_new,
+          COALESCE(
+            LAG(eindsaldo_calc) OVER (ORDER BY datum),
+            (SELECT start_prev FROM seed)
+          ) AS startbedrag_new,
           eindsaldo_calc AS eindsaldo_new
         FROM roll
       )
@@ -79,14 +109,26 @@ export async function POST(req: NextRequest) {
       RETURNING d.id;
     `;
 
-    const r = await client.query(sql, [vanaf]);
+    const r = await client.query(sql, [vanaf, KAS_NEUTRALE_CATEGORIEEN]);
+
     await client.query('COMMIT');
 
-    return NextResponse.json({ status: 'ok', vanafDatum: vanaf, bijgewerkt: r.rowCount ?? 0 });
+    return NextResponse.json({
+      status: 'ok',
+      vanafDatum: vanaf,
+      bijgewerkt: r.rowCount ?? 0,
+    });
   } catch (err) {
-    try { await client.query('ROLLBACK'); } catch {}
+    try {
+      await client.query('ROLLBACK');
+    } catch {}
+
     console.error('POST /api/kasboek/dagen/herbereken error', err);
-    return NextResponse.json({ error: 'Herberekenen mislukt' }, { status: 500 });
+
+    return NextResponse.json(
+      { error: 'Herberekenen mislukt' },
+      { status: 500 }
+    );
   } finally {
     client.release();
   }

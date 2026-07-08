@@ -90,6 +90,11 @@ const toNumber = (v?: string) => {
 const formatEuro = (n: number) =>
   new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(n);
 
+const KAS_NEUTRALE_CATEGORIEEN = new Set([
+  'verkoop_kadobonnen',
+  'ingenomen_kadobon',
+]);
+
 export default function KasboekComponent({ alleenLezen = false }: { alleenLezen?: boolean }) {
   const [datum, setDatum] = useState(() => format(new Date(), 'yyyy-MM-dd'));
   const [dagId, setDagId] = useState<number | null>(null);
@@ -161,6 +166,13 @@ export default function KasboekComponent({ alleenLezen = false }: { alleenLezen?
 
     CATEGORIEEN.forEach((cat) => {
       const val = toNumber(bedragen[cat.key]);
+
+      // Kadobonnen beïnvloeden het fysieke kassaldo niet.
+      // Verkochte kadobonnen behandelen we pragmatisch als pin/neutraal;
+      // eventuele contante bonverkoop corrigeren we later via rapportage/memoriaal.
+      // Ingenomen kadobonnen zijn MPV-vrijval/omzetlogica en geen kasbeweging.
+      if (KAS_NEUTRALE_CATEGORIEEN.has(cat.key)) return;
+
       if (cat.type === 'ontvangst') ontvangsten += val;
       if (cat.type === 'uitgave') uitgaven += val;
     });
@@ -406,7 +418,7 @@ export default function KasboekComponent({ alleenLezen = false }: { alleenLezen?
               </tbody>
               <tfoot className="bg-gray-50">
                 <tr className="border-t">
-                  <td className="px-2 py-1 font-semibold" colSpan={3}>Totaal ontvangsten</td>
+                  <td className="px-2 py-1 font-semibold" colSpan={3}>Kas erbij</td>
                   <td className="px-2 py-1 font-semibold">{formatEuro(totals.ontvangsten)}</td>
                 </tr>
                 <tr>
@@ -414,13 +426,13 @@ export default function KasboekComponent({ alleenLezen = false }: { alleenLezen?
                 <tr>
                 </tr>
                 <tr className="border-t">
-                  <td className="px-2 py-1 font-semibold" colSpan={3}>Totaal uitgaven</td>
+                  <td className="px-2 py-1 font-semibold" colSpan={3}>Kas eruit</td>
                   <td className="px-2 py-1 font-semibold">{formatEuro(totals.uitgavenTotaal)}</td>
                 </tr>
                 <tr>
                 </tr>
                 <tr className="border-t">
-                  <td className="px-2 py-1 font-bold" colSpan={3}>Eindsaldo (start + netto)</td>
+                  <td className="px-2 py-1 font-bold" colSpan={3}>Verwacht eindsaldo fysieke kas</td>
                   <td className="px-2 py-1 font-bold">{formatEuro(eindsaldo)}</td>
                 </tr>
               </tfoot>
