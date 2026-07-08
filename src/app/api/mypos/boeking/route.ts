@@ -111,16 +111,7 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // Informatieve correctieregel, niet op grootboek boeken.
-  // Hiermee zie je waarom de MyPOS-omzet lager is dan de bruto ontvangsten.
-  if (verkochteCadeaubonnen !== 0) {
-    regels.push({
-      rekening: null,
-      omschrijving: "Correctie verkochte cadeaubonnen via kas-JP/2215",
-      bedrag: -rondAf(verkochteCadeaubonnen),
-    });
-  }
-
+  
   if (totalen["4567"]) {
     regels.push({
       rekening: "4567",
