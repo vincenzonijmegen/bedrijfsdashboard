@@ -64,7 +64,6 @@ export async function GET(req: NextRequest) {
   let priveOpnameErik = 0;
   let afstorting = 0;
   let wisselgeld = 0;
-  let myposKosten = 0;
 
   for (const t of res.rows) {
     const bedrag = Number(t.bedrag || 0);
@@ -111,9 +110,6 @@ export async function GET(req: NextRequest) {
         wisselgeld += bedrag;
         break;
 
-      case 'mypos_kosten':
-        myposKosten += bedrag;
-        break;
     }
   }
 

@@ -7,13 +7,14 @@ export type KasCategorie = {
 
 export const CATEGORIEEN: KasCategorie[] = [
   { key: 'verkopen_laag',        label: 'Verkopen (laag tarief)', type: 'ontvangst', btw: 9 },
-  { key: 'verkoop_kadobonnen',   label: 'Verkoop cadeaubonnen',   type: 'ontvangst', btw: 9 },
+  { key: 'verkopen_hoog',        label: 'Verkopen (hoog tarief)', type: 'ontvangst', btw: 21 },
+  { key: 'verkoop_kadobonnen',   label: 'Verkoop cadeaubonnen',   type: 'ontvangst', btw: '-' },
   { key: 'wisselgeld_van_bank',  label: 'Wisselgeld van bank',    type: 'ontvangst', btw: '-' },
   { key: 'prive_opname_herman',  label: 'Privé opname Herman',    type: 'uitgave',   btw: '-' },
   { key: 'prive_opname_erik',    label: 'Privé opname Erik',      type: 'uitgave',   btw: '-' },
-  { key: 'ingenomen_kadobon',    label: 'Ingenomen cadeaubon',    type: 'uitgave',    btw: 9 },
+  { key: 'ingenomen_kadobon',    label: 'Ingenomen cadeaubon',    type: 'uitgave',   btw: 9 },
   { key: 'naar_bank_afgestort',  label: 'Naar bank afgestort',    type: 'uitgave',   btw: '-' },
-  { key: 'kasverschil',          label: 'Kasverschil',            type: 'uitgave',    btw: '-' },
+  { key: 'kasverschil',          label: 'Kasverschil',            type: 'uitgave',   btw: '-' },
 ];
 
 // Handige helper
