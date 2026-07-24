@@ -2,21 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query as dbQuery } from '@/lib/db';
 
 const BTW_LAAG = 9;
+const BTW_HOOG = 21;
 
 const rondAf = (waarde: number) => Math.round(waarde * 100) / 100;
+
+const nettoUitBruto = (bruto: number, btwPercentage: number) =>
+  bruto / (1 + btwPercentage / 100);
 
 export async function GET(req: NextRequest) {
   const maand = req.nextUrl.searchParams.get('maand');
 
   if (!maand || !/^\d{4}-\d{2}$/.test(maand)) {
-    return NextResponse.json({ error: 'Geef ?maand=YYYY-MM mee' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Geef ?maand=YYYY-MM mee' },
+      { status: 400 }
+    );
   }
 
   const maandStart = `${maand}-01`;
   const [y, m] = maand.split('-').map(Number);
   const maandEind = new Date(y, m, 0).toISOString().slice(0, 10);
 
-  // Transacties ophalen
   const res = await dbQuery(
     `
     SELECT t.*, to_char(d.datum::date, 'YYYY-MM-DD') as dagdatum
@@ -27,7 +33,6 @@ export async function GET(req: NextRequest) {
     [maandStart, maandEind]
   );
 
-  // Kasdaggegevens ophalen voor saldo
   const dagen = await dbQuery(
     `
     SELECT
@@ -46,10 +51,14 @@ export async function GET(req: NextRequest) {
   const beginsaldo = eersteDag?.startbedrag ?? 0;
   const eindsaldo = laatsteDag?.eindsaldo ?? 0;
 
-  // Boekingsregels verzamelen
   let omzetLaag = 0;
+  let omzetHoog = 0;
+
   let verkoopKadobonnen = 0;
-  let ingenomenKadobon = 0;
+
+  let ingenomenKadobonLaag = 0;
+  let ingenomenKadobonHoog = 0;
+
   let kasverschil = 0;
   let priveOpnameHerman = 0;
   let priveOpnameErik = 0;
@@ -65,27 +74,43 @@ export async function GET(req: NextRequest) {
       case 'verkopen_laag':
         omzetLaag += bedrag;
         break;
+
+      case 'verkopen_hoog':
+        omzetHoog += bedrag;
+        break;
+
       case 'verkoop_kadobonnen':
         verkoopKadobonnen += bedrag;
         break;
+
       case 'ingenomen_kadobon':
-        ingenomenKadobon += bedrag;
+        ingenomenKadobonLaag += bedrag;
         break;
+
+      case 'ingenomen_kadobon_hoog':
+        ingenomenKadobonHoog += bedrag;
+        break;
+
       case 'prive_opname_herman':
         priveOpnameHerman += bedrag;
         break;
+
       case 'prive_opname_erik':
         priveOpnameErik += bedrag;
         break;
+
       case 'kasverschil':
         kasverschil += bedrag;
         break;
+
       case 'naar_bank_afgestort':
         afstorting += bedrag;
         break;
+
       case 'wisselgeld_van_bank':
         wisselgeld += bedrag;
         break;
+
       case 'mypos_kosten':
         myposKosten += bedrag;
         break;
@@ -104,39 +129,66 @@ export async function GET(req: NextRequest) {
     - omzet ontstaat bij inlevering
     - btw ontstaat bij inlevering
     - verplichting op 2215 valt vrij
+
+    Voor 21%-artikelen zoals merchandise moet de inlevering apart kunnen worden geboekt.
   */
 
-  // Bruto omzet waar 9% btw uit gehaald moet worden:
-  // gewone kasomzet + ingenomen cadeaubonnen.
-  // Verkochte cadeaubonnen zitten hier bewust NIET in.
-  const brutoOmzet = omzetLaag + ingenomenKadobon;
-  const nettoOmzet = brutoOmzet / (1 + BTW_LAAG / 100);
-  const btwTotaal = brutoOmzet - nettoOmzet;
+  const brutoLaag = omzetLaag + ingenomenKadobonLaag;
+  const brutoHoog = omzetHoog + ingenomenKadobonHoog;
 
-  const nettoOmzetIjs = omzetLaag / (1 + BTW_LAAG / 100);
-  const nettoOmzetKadobonnenIngenomen = ingenomenKadobon / (1 + BTW_LAAG / 100);
+  const nettoOmzetLaag = nettoUitBruto(omzetLaag, BTW_LAAG);
+  const nettoOmzetHoog = nettoUitBruto(omzetHoog, BTW_HOOG);
+
+  const nettoKadobonnenIngenomenLaag = nettoUitBruto(
+    ingenomenKadobonLaag,
+    BTW_LAAG
+  );
+
+  const nettoKadobonnenIngenomenHoog = nettoUitBruto(
+    ingenomenKadobonHoog,
+    BTW_HOOG
+  );
+
+  const nettoTotaalLaag = nettoUitBruto(brutoLaag, BTW_LAAG);
+  const btwLaag = brutoLaag - nettoTotaalLaag;
+
+  const nettoTotaalHoog = nettoUitBruto(brutoHoog, BTW_HOOG);
+  const btwHoog = brutoHoog - nettoTotaalHoog;
 
   const regels: { gb: string; omschrijving: string; bedrag: number }[] = [];
 
-  // 8001: netto omzet ijs
-  if (nettoOmzetIjs !== 0) {
+  if (nettoOmzetLaag !== 0) {
     regels.push({
       gb: '8001',
-      omschrijving: 'Omzet ijs (excl. BTW)',
-      bedrag: rondAf(nettoOmzetIjs),
+      omschrijving: 'Omzet laag 9% (excl. BTW)',
+      bedrag: rondAf(nettoOmzetLaag),
     });
   }
 
-  // 8003: omzet bij inlevering cadeaubonnen
-  if (nettoOmzetKadobonnenIngenomen !== 0) {
+  if (nettoOmzetHoog !== 0) {
+    regels.push({
+      gb: '8002',
+      omschrijving: 'Omzet hoog 21% (excl. BTW)',
+      bedrag: rondAf(nettoOmzetHoog),
+    });
+  }
+
+  if (nettoKadobonnenIngenomenLaag !== 0) {
     regels.push({
       gb: '8003',
-      omschrijving: 'Kadobonnen ingenomen (excl. BTW)',
-      bedrag: rondAf(nettoOmzetKadobonnenIngenomen),
+      omschrijving: 'Kadobonnen ingenomen 9% (excl. BTW)',
+      bedrag: rondAf(nettoKadobonnenIngenomenLaag),
     });
   }
 
-  // 2215: verkochte cadeaubonnen = verplichting omhoog
+  if (nettoKadobonnenIngenomenHoog !== 0) {
+    regels.push({
+      gb: '8004',
+      omschrijving: 'Kadobonnen ingenomen 21% (excl. BTW)',
+      bedrag: rondAf(nettoKadobonnenIngenomenHoog),
+    });
+  }
+
   if (verkoopKadobonnen !== 0) {
     regels.push({
       gb: '2215',
@@ -145,12 +197,14 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // 2215: ingenomen cadeaubonnen = verplichting omlaag / vrijval
-  if (ingenomenKadobon !== 0) {
+  const totaalIngenomenKadobonnen =
+    ingenomenKadobonLaag + ingenomenKadobonHoog;
+
+  if (totaalIngenomenKadobonnen !== 0) {
     regels.push({
       gb: '2215',
       omschrijving: 'Tussenrekening cadeaubonnen - ingenomen',
-      bedrag: -rondAf(ingenomenKadobon),
+      bedrag: -rondAf(totaalIngenomenKadobonnen),
     });
   }
 
@@ -174,11 +228,10 @@ export async function GET(req: NextRequest) {
     regels.push({
       gb: '8880',
       omschrijving: 'Kasverschil',
-      bedrag: -kasverschil, // Teken omgedraaid
+      bedrag: -kasverschil,
     });
   }
 
-  // Kruisposten: wisselgeld - afstorting
   const kruisposten = wisselgeld - afstorting;
 
   if (kruisposten !== 0) {
@@ -189,16 +242,22 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  // BTW-regel als laatste en markeer als italic in frontend
-  if (btwTotaal !== 0) {
+  if (btwLaag !== 0) {
     regels.push({
       gb: '0000',
       omschrijving: 'BTW 9% over omzet',
-      bedrag: rondAf(btwTotaal),
+      bedrag: rondAf(btwLaag),
     });
   }
 
-  // Saldo-controle = som van de regels, niet boeken
+  if (btwHoog !== 0) {
+    regels.push({
+      gb: '0000',
+      omschrijving: 'BTW 21% over omzet',
+      bedrag: rondAf(btwHoog),
+    });
+  }
+
   const saldocontrole = regels.reduce((t, regel) => t + regel.bedrag, 0);
 
   regels.push({
