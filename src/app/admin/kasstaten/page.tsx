@@ -44,6 +44,12 @@ const euro = (value: number) =>
     maximumFractionDigits: 2,
   })}`;
 
+const numberInputValue = (value: number | undefined) =>
+  value === 0 || value == null ? "" : value;
+
+const parseInput = (value: string) =>
+  parseFloat(value.replace(",", ".")) || 0;
+
 export default function KasstatenPage() {
   const [datum, setDatum] = useState(format(new Date(), "yyyy-MM-dd"));
   const [kasstaat, setKasstaat] = useState<Kasstaat | null>(null);
@@ -59,7 +65,10 @@ export default function KasstatenPage() {
   };
 
   const { data: kassadata } = useSWR(
-    () => (datum ? `/api/kassa/omzet?start=${formatDMY(datum)}&totalen=1` : null),
+    () =>
+      datum
+        ? `/api/kassa/omzet?start=${formatDMY(datum)}&totalen=1`
+        : null,
     fetcher
   );
 
@@ -80,7 +89,7 @@ export default function KasstatenPage() {
   const kassaPin = record ? parseFloat(record.Pin) || 0 : 0;
   const kassaBon = record ? parseFloat(record.Bon) || 0 : 0;
   const kassaIsvoucher = record ? parseFloat(record.isvoucher) || 0 : 0;
-  const kassaTotaal: number = kassaContant + kassaPin + kassaBon;
+  const kassaTotaal = kassaContant + kassaPin + kassaBon;
 
   const advies = kasboekAdviesData?.kasboekadvies;
   const onbekendeProducten = kasboekAdviesData?.onbekendeProducten ?? [];
@@ -109,10 +118,10 @@ export default function KasstatenPage() {
         bon: kassaIsvoucher,
         cadeaubon: kassaBon,
         datum,
-        contant: 0.0,
-        pin: 0.0,
+        contant: 0,
+        pin: 0,
         opmerking: "",
-        totaal: 0.0,
+        totaal: 0,
       });
     } else {
       setKasstaat(json);
@@ -165,7 +174,9 @@ export default function KasstatenPage() {
   }
 
   async function verwijderen() {
-    if (!confirm("Weet je zeker dat je deze kasstaat wilt verwijderen?")) return;
+    if (!confirm("Weet je zeker dat je deze kasstaat wilt verwijderen?")) {
+      return;
+    }
 
     await fetch(`/api/kasstaten?datum=${datum}`, { method: "DELETE" });
 
@@ -174,14 +185,12 @@ export default function KasstatenPage() {
     setTimeout(() => setMessage(null), 3000);
   }
 
-  const verschil = (geteld: number, kassa: number) =>
-    (geteld - kassa).toFixed(2);
+  const verschil = (geteld: number, kassa: number) => geteld - kassa;
 
-  const verschilClass = (waarde: string) => {
-    const nummer = parseFloat(waarde);
-    if (nummer > 0) return "text-green-600";
-    if (nummer < 0) return "text-red-600";
-    return "";
+  const verschilClass = (waarde: number) => {
+    if (waarde > 0) return "text-emerald-700";
+    if (waarde < 0) return "text-red-600";
+    return "text-slate-700";
   };
 
   const totaalGeteld =
@@ -189,205 +198,154 @@ export default function KasstatenPage() {
     Number(kasstaat?.pin ?? 0) +
     Number(kasstaat?.cadeaubon ?? 0);
 
+  const totaalVerschil = verschil(totaalGeteld, kassaTotaal);
+
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Dagomzet</h1>
-
-      <div className="flex items-center space-x-2 mb-4">
-        <button
-          onClick={() => wijzigDatum(-1)}
-          className="px-2 py-1 bg-gray-200 rounded"
-        >
-          ◀
-        </button>
-
-        <input
-          type="date"
-          value={datum}
-          onChange={(e) => setDatum(e.target.value)}
-          className="border px-2 py-1 rounded"
-        />
-
-        <button
-          onClick={() => wijzigDatum(1)}
-          className="px-2 py-1 bg-gray-200 rounded"
-        >
-          ▶
-        </button>
-      </div>
-
-      {loading && (
-        <p className="mb-3 text-sm text-gray-500">Kasstaat wordt geladen...</p>
-      )}
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border border-gray-300">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="p-2 text-left">Categorie</th>
-              <th className="p-2 text-right">Geteld</th>
-              <th className="p-2 text-right">Kassa</th>
-              <th className="p-2 text-right">Verschil</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr>
-              <td className="p-2">Contant</td>
-              <td className="p-2 text-right">
-                <input
-                  type="number"
-                  step="0.01"
-                  inputMode="decimal"
-                  className="w-full text-right border rounded px-1"
-                  value={kasstaat?.contant === 0 ? "" : kasstaat?.contant}
-                  onChange={(e) =>
-                    updateField(
-                      "contant",
-                      parseFloat(e.target.value.replace(",", ".")) || 0
-                    )
-                  }
-                />
-              </td>
-              <td className="p-2 text-right">
-                {Number(kassaContant).toFixed(2)}
-              </td>
-              <td className="p-2 text-right">
-                <span
-                  className={verschilClass(
-                    verschil(kasstaat?.contant ?? 0, kassaContant)
-                  )}
-                >
-                  {verschil(kasstaat?.contant ?? 0, kassaContant)}
-                </span>
-              </td>
-            </tr>
-
-            <tr>
-              <td className="p-2">Pin</td>
-              <td className="p-2 text-right">
-                <input
-                  type="number"
-                  step="0.01"
-                  inputMode="decimal"
-                  className="w-full text-right border rounded px-1"
-                  value={kasstaat?.pin === 0 ? "" : kasstaat?.pin}
-                  onChange={(e) =>
-                    updateField(
-                      "pin",
-                      parseFloat(e.target.value.replace(",", ".")) || 0
-                    )
-                  }
-                />
-              </td>
-              <td className="p-2 text-right">{Number(kassaPin).toFixed(2)}</td>
-              <td className="p-2 text-right">
-                <span
-                  className={verschilClass(
-                    verschil(kasstaat?.pin ?? 0, kassaPin)
-                  )}
-                >
-                  {verschil(kasstaat?.pin ?? 0, kassaPin)}
-                </span>
-              </td>
-            </tr>
-
-            <tr>
-              <td className="p-2">Cadeaubon</td>
-              <td className="p-2 text-right">
-                <input
-                  type="number"
-                  step="0.01"
-                  inputMode="decimal"
-                  className="w-full text-right border rounded px-1"
-                  value={
-                    kasstaat?.cadeaubon === 0 ? "" : kasstaat?.cadeaubon
-                  }
-                  onChange={(e) =>
-                    updateField(
-                      "cadeaubon",
-                      parseFloat(e.target.value.replace(",", ".")) || 0
-                    )
-                  }
-                />
-              </td>
-              <td className="p-2 text-right">{Number(kassaBon).toFixed(2)}</td>
-              <td className="p-2 text-right">
-                <span
-                  className={verschilClass(
-                    verschil(kasstaat?.cadeaubon ?? 0, kassaBon)
-                  )}
-                >
-                  {verschil(kasstaat?.cadeaubon ?? 0, kassaBon)}
-                </span>
-              </td>
-            </tr>
-
-            <tr className="font-bold border-t">
-              <td className="p-2">TOTAAL</td>
-              <td className="p-2 text-right">{totaalGeteld.toFixed(2)}</td>
-              <td className="p-2 text-right">{kassaTotaal.toFixed(2)}</td>
-              <td className="p-2 text-right">
-                <span className={verschilClass(verschil(totaalGeteld, kassaTotaal))}>
-                  {verschil(totaalGeteld, kassaTotaal)}
-                </span>
-              </td>
-            </tr>
-
-            <tr className="text-gray-600">
-              <td className="p-2">Bonnen verkocht</td>
-              <td className="p-2 text-right">
-                <input
-                  type="number"
-                  step="0.01"
-                  inputMode="decimal"
-                  className="w-full text-right border rounded px-1"
-                  value={kasstaat?.bon === 0 ? "" : kasstaat?.bon}
-                  onChange={(e) =>
-                    updateField(
-                      "bon",
-                      parseFloat(e.target.value.replace(",", ".")) || 0
-                    )
-                  }
-                />
-              </td>
-              <td className="p-2 text-right">
-                {Number(kassaIsvoucher).toFixed(2)}
-              </td>
-              <td className="p-2 text-right">
-                <span
-                  className={verschilClass(
-                    verschil(kasstaat?.bon ?? 0, kassaIsvoucher)
-                  )}
-                >
-                  {verschil(kasstaat?.bon ?? 0, kassaIsvoucher)}
-                </span>
-              </td>
-            </tr>
-
-            <tr>
-              <td className="p-2 align-top">Opmerking</td>
-              <td colSpan={3} className="p-2">
-                <input
-                  type="text"
-                  className="w-full border rounded px-2 py-1"
-                  value={kasstaat?.opmerking}
-                  onChange={(e) => updateField("opmerking", e.target.value)}
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <section className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="font-bold text-blue-950">Kasboekadvies</h2>
-              <p className="text-xs text-blue-800">
-                Te gebruiken bij het invullen van het kasboek. Pinomzet blijft
-                buiten dit advies.
-              </p>
+    <main className="min-h-screen bg-slate-100 p-4 sm:p-6">
+      <div className="mx-auto max-w-4xl space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <div className="text-sm font-medium text-blue-600">
+              Import / Invoer / Kasstaat invullen
             </div>
+            <h1 className="mt-1 text-2xl font-bold text-slate-950">
+              Dagomzet
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => wijzigDatum(-1)}
+              className="h-10 rounded-xl bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+            >
+              ◀
+            </button>
+
+            <input
+              type="date"
+              value={datum}
+              onChange={(e) => setDatum(e.target.value)}
+              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+            />
+
+            <button
+              onClick={() => wijzigDatum(1)}
+              className="h-10 rounded-xl bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+            >
+              ▶
+            </button>
+          </div>
+        </div>
+
+        {loading && (
+          <p className="rounded-xl bg-white px-4 py-3 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
+            Kasstaat wordt geladen...
+          </p>
+        )}
+
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-100 px-5 py-4">
+            <h2 className="text-lg font-bold text-slate-950">Kascontrole</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Vul de getelde bedragen in en vergelijk ze met de kassatotalen.
+            </p>
+          </div>
+
+          <div className="divide-y divide-slate-100">
+            <KasControleRow
+              label="Contant"
+              value={numberInputValue(kasstaat?.contant)}
+              onChange={(value) => updateField("contant", parseInput(value))}
+              kassa={kassaContant}
+              verschil={verschil(kasstaat?.contant ?? 0, kassaContant)}
+              verschilClass={verschilClass}
+            />
+
+            <KasControleRow
+              label="Pin"
+              value={numberInputValue(kasstaat?.pin)}
+              onChange={(value) => updateField("pin", parseInput(value))}
+              kassa={kassaPin}
+              verschil={verschil(kasstaat?.pin ?? 0, kassaPin)}
+              verschilClass={verschilClass}
+            />
+
+            <KasControleRow
+              label="Cadeaubon"
+              value={numberInputValue(kasstaat?.cadeaubon)}
+              onChange={(value) =>
+                updateField("cadeaubon", parseInput(value))
+              }
+              kassa={kassaBon}
+              verschil={verschil(kasstaat?.cadeaubon ?? 0, kassaBon)}
+              verschilClass={verschilClass}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:grid-cols-3">
+            <SummaryCard label="Geteld totaal" value={euro(totaalGeteld)} />
+            <SummaryCard label="Kassa totaal" value={euro(kassaTotaal)} />
+            <SummaryCard
+              label="Verschil"
+              value={euro(totaalVerschil)}
+              valueClass={verschilClass(totaalVerschil)}
+            />
+          </div>
+
+          <div className="space-y-3 border-t border-slate-100 px-5 py-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[170px_1fr_150px_150px] md:items-center">
+              <div>
+                <div className="font-medium text-slate-950">
+                  Bonnen verkocht
+                </div>
+                <div className="text-xs text-slate-500">
+                  Verkoop cadeaubonnen
+                </div>
+              </div>
+
+              <input
+                type="number"
+                step="0.01"
+                inputMode="decimal"
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-right text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                value={numberInputValue(kasstaat?.bon)}
+                onChange={(e) => updateField("bon", parseInput(e.target.value))}
+              />
+
+              <div className="rounded-xl bg-slate-50 px-3 py-2 text-right text-sm text-slate-700 ring-1 ring-slate-200">
+                {euro(kassaIsvoucher)}
+              </div>
+
+              <div
+                className={`rounded-xl px-3 py-2 text-right text-sm font-semibold ring-1 ${
+                  verschil(kasstaat?.bon ?? 0, kassaIsvoucher) === 0
+                    ? "bg-slate-50 text-slate-700 ring-slate-200"
+                    : "bg-red-50 text-red-700 ring-red-100"
+                }`}
+              >
+                {euro(verschil(kasstaat?.bon ?? 0, kassaIsvoucher))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[170px_1fr] md:items-center">
+              <label className="font-medium text-slate-950">Opmerking</label>
+              <input
+                type="text"
+                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                value={kasstaat?.opmerking ?? ""}
+                onChange={(e) => updateField("opmerking", e.target.value)}
+              />
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm shadow-sm">
+          <div className="mb-4">
+            <h2 className="font-bold text-blue-950">Kasboekadvies</h2>
+            <p className="mt-1 text-xs text-blue-800">
+              Te gebruiken bij het invullen van het kasboek. Pinomzet blijft
+              buiten dit advies.
+            </p>
           </div>
 
           {kasboekAdviesLoading && (
@@ -395,13 +353,13 @@ export default function KasstatenPage() {
           )}
 
           {kasboekAdviesError && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-red-700 ring-1 ring-red-200">
+            <p className="rounded-xl bg-red-50 px-3 py-2 text-red-700 ring-1 ring-red-200">
               Kasboekadvies kon niet worden opgehaald.
             </p>
           )}
 
           {!kasboekAdviesLoading && !kasboekAdviesError && advies && (
-            <div className="space-y-1">
+            <div className="space-y-2">
               <AdviesRow label="Verkopen laag 9%" value={advies.verkopenLaag} />
               <AdviesRow label="Verkopen hoog 21%" value={advies.verkopenHoog} />
               <AdviesRow
@@ -414,35 +372,21 @@ export default function KasstatenPage() {
               />
 
               {waarschuwingen.length > 0 && (
-                <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200">
-                  <div className="font-bold">Waarschuwing</div>
-                  <ul className="mt-1 list-disc pl-4">
-                    {waarschuwingen.map((melding) => (
-                      <li key={melding}>{melding}</li>
-                    ))}
-                  </ul>
-                </div>
+                <AlertBlock title="Waarschuwing" items={waarschuwingen} />
               )}
 
               {onbekendeProducten.length > 0 && (
-                <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200">
-                  <div className="font-bold">Onbekende producten</div>
-                  <ul className="mt-1 list-disc pl-4">
-                    {onbekendeProducten.map((product) => (
-                      <li key={product}>{product}</li>
-                    ))}
-                  </ul>
-                </div>
+                <AlertBlock title="Onbekende producten" items={onbekendeProducten} />
               )}
             </div>
           )}
         </section>
 
-        <div className="flex space-x-2 pt-4">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <button
             type="button"
             onClick={opslaan}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
+            className="h-11 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
           >
             Opslaan
           </button>
@@ -451,14 +395,87 @@ export default function KasstatenPage() {
             <button
               type="button"
               onClick={verwijderen}
-              className="bg-red-600 text-white px-4 py-2 rounded"
+              className="h-11 rounded-xl bg-red-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
             >
               Verwijderen
             </button>
           )}
         </div>
 
-        {message && <p className="text-green-700 font-medium pt-2">{message}</p>}
+        {message && (
+          <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 ring-1 ring-emerald-100">
+            {message}
+          </p>
+        )}
+      </div>
+    </main>
+  );
+}
+
+function KasControleRow({
+  label,
+  value,
+  onChange,
+  kassa,
+  verschil,
+  verschilClass,
+}: {
+  label: string;
+  value: string | number;
+  onChange: (value: string) => void;
+  kassa: number;
+  verschil: number;
+  verschilClass: (waarde: number) => string;
+}) {
+  const isOk = verschil === 0;
+
+  return (
+    <div className="grid grid-cols-1 gap-3 px-5 py-4 md:grid-cols-[170px_1fr_150px_150px] md:items-center">
+      <div>
+        <div className="font-medium text-slate-950">{label}</div>
+        <div className="text-xs text-slate-500">Geteld tegenover kassa</div>
+      </div>
+
+      <input
+        type="number"
+        step="0.01"
+        inputMode="decimal"
+        className="h-10 w-full rounded-xl border border-slate-200 px-3 text-right text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+
+      <div className="rounded-xl bg-slate-50 px-3 py-2 text-right text-sm text-slate-700 ring-1 ring-slate-200">
+        {euro(kassa)}
+      </div>
+
+      <div
+        className={`rounded-xl px-3 py-2 text-right text-sm font-semibold ring-1 ${
+          isOk
+            ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
+            : "bg-red-50 text-red-700 ring-red-100"
+        }`}
+      >
+        {euro(verschil)}
+      </div>
+    </div>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  valueClass = "text-slate-950",
+}: {
+  label: string;
+  value: string;
+  valueClass?: string;
+}) {
+  return (
+    <div className="rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
+      <div className="text-xs font-medium text-slate-500">{label}</div>
+      <div className={`mt-1 text-lg font-bold tabular-nums ${valueClass}`}>
+        {value}
       </div>
     </div>
   );
@@ -466,11 +483,24 @@ export default function KasstatenPage() {
 
 function AdviesRow({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex justify-between gap-4">
-      <span>{label}</span>
+    <div className="flex justify-between gap-4 rounded-xl bg-white/70 px-3 py-2 ring-1 ring-blue-100">
+      <span className="text-blue-950">{label}</span>
       <span className="font-semibold tabular-nums text-blue-950">
         {euro(value)}
       </span>
+    </div>
+  );
+}
+
+function AlertBlock({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200">
+      <div className="font-bold">{title}</div>
+      <ul className="mt-1 list-disc pl-4">
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
     </div>
   );
 }
