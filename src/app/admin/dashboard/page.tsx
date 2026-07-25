@@ -32,7 +32,10 @@ export default function DashboardPage() {
     data: totalen,
     error: errorTotal,
     mutate: mutateTotal,
-  } = useSWR(`/api/kassa/omzet?start=${formatDMY(singleDate)}&totalen=1`, fetcher);
+  } = useSWR(
+    `/api/kassa/omzet?start=${formatDMY(singleDate)}&totalen=1`,
+    fetcher
+  );
 
   const record = Array.isArray(totalen)
     ? (totalen[0] as Record<string, string>)
@@ -43,14 +46,6 @@ export default function DashboardPage() {
   const bon = record ? parseFloat(record.Bon) || 0 : 0;
   const isvoucher = record ? parseFloat(record.isvoucher) || 0 : 0;
   const total = cash + pin + bon;
-  const omzetLaag = record ? parseFloat(String(record.omzetLaag)) || 0 : 0;
-  const omzetHoog = record ? parseFloat(String(record.omzetHoog)) || 0 : 0;
-  const verkoopCadeaubonnen = record
-    ? parseFloat(String(record.verkoopCadeaubonnen)) || 0
-    : 0;
-  const onbekendeProducten = record && Array.isArray(record.onbekendeProducten)
-    ? record.onbekendeProducten
-    : [];
 
   return (
     <main className="min-h-screen bg-slate-100 p-4 sm:p-6">
@@ -90,32 +85,6 @@ export default function DashboardPage() {
                 <span>Bonnen verkocht</span>
                 <span>{euro(isvoucher)}</span>
               </div>
-
-              <div className="my-3 border-t border-slate-200" />
-
-              <div className="rounded-xl bg-slate-50 p-3 ring-1 ring-slate-200">
-                <div className="mb-2 text-sm font-bold text-slate-950">
-                  Overnemen in kasboek
-                </div>
-
-                <div className="space-y-1 text-sm">
-                  <Row label="Verkopen laag 9%" value={euro(omzetLaag)} />
-                  <Row label="Verkopen hoog 21%" value={euro(omzetHoog)} />
-                  <Row label="Verkoop cadeaubonnen" value={euro(verkoopCadeaubonnen)} />
-                  <Row label="Ingenomen cadeaubon" value={euro(bon)} />
-                </div>
-              </div>
-
-              {onbekendeProducten.length > 0 && (
-                <div className="mt-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-900 ring-1 ring-amber-200">
-                  <div className="font-bold">Onbekende producten</div>
-                  <ul className="mt-1 list-disc pl-4">
-                    {onbekendeProducten.map((product: string) => (
-                      <li key={product}>{product}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </div>
           )}
 
@@ -152,7 +121,9 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between text-slate-700">
       <span>{label}</span>
-      <span className="font-semibold tabular-nums text-slate-950">{value}</span>
+      <span className="font-semibold tabular-nums text-slate-950">
+        {value}
+      </span>
     </div>
   );
 }
