@@ -187,10 +187,16 @@ export default function KasstatenPage() {
 
   const verschil = (geteld: number, kassa: number) => geteld - kassa;
 
-  const verschilClass = (waarde: number) => {
+  const verschilTextClass = (waarde: number) => {
     if (waarde > 0) return "text-emerald-700";
-    if (waarde < 0) return "text-red-600";
+    if (waarde < 0) return "text-red-700";
     return "text-slate-700";
+  };
+
+  const verschilBadgeClass = (waarde: number) => {
+    if (waarde > 0) return "bg-emerald-50 text-emerald-700 ring-emerald-100";
+    if (waarde < 0) return "bg-red-50 text-red-700 ring-red-100";
+    return "bg-slate-50 text-slate-700 ring-slate-200";
   };
 
   const totaalGeteld =
@@ -199,10 +205,11 @@ export default function KasstatenPage() {
     Number(kasstaat?.cadeaubon ?? 0);
 
   const totaalVerschil = verschil(totaalGeteld, kassaTotaal);
+  const bonnenVerschil = verschil(kasstaat?.bon ?? 0, kassaIsvoucher);
 
   return (
-    <main className="min-h-screen bg-slate-100 p-4 sm:p-6">
-      <div className="mx-auto max-w-4xl space-y-4">
+    <main className="min-h-screen bg-slate-100 p-4 sm:p-5">
+      <div className="mx-auto max-w-4xl space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="text-sm font-medium text-blue-600">
@@ -216,7 +223,7 @@ export default function KasstatenPage() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => wijzigDatum(-1)}
-              className="h-10 rounded-xl bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+              className="h-9 rounded-lg bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
             >
               ◀
             </button>
@@ -225,12 +232,12 @@ export default function KasstatenPage() {
               type="date"
               value={datum}
               onChange={(e) => setDatum(e.target.value)}
-              className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+              className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
             />
 
             <button
               onClick={() => wijzigDatum(1)}
-              className="h-10 rounded-xl bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
+              className="h-9 rounded-lg bg-white px-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:bg-slate-50"
             >
               ▶
             </button>
@@ -238,15 +245,15 @@ export default function KasstatenPage() {
         </div>
 
         {loading && (
-          <p className="rounded-xl bg-white px-4 py-3 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
+          <p className="rounded-xl bg-white px-4 py-2 text-sm text-slate-500 shadow-sm ring-1 ring-slate-200">
             Kasstaat wordt geladen...
           </p>
         )}
 
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-5 py-4">
-            <h2 className="text-lg font-bold text-slate-950">Kascontrole</h2>
-            <p className="mt-1 text-xs text-slate-500">
+          <div className="border-b border-slate-100 px-4 py-3">
+            <h2 className="text-base font-bold text-slate-950">Kascontrole</h2>
+            <p className="mt-0.5 text-xs text-slate-500">
               Vul de getelde bedragen in en vergelijk ze met de kassatotalen.
             </p>
           </div>
@@ -258,7 +265,7 @@ export default function KasstatenPage() {
               onChange={(value) => updateField("contant", parseInput(value))}
               kassa={kassaContant}
               verschil={verschil(kasstaat?.contant ?? 0, kassaContant)}
-              verschilClass={verschilClass}
+              verschilBadgeClass={verschilBadgeClass}
             />
 
             <KasControleRow
@@ -267,38 +274,36 @@ export default function KasstatenPage() {
               onChange={(value) => updateField("pin", parseInput(value))}
               kassa={kassaPin}
               verschil={verschil(kasstaat?.pin ?? 0, kassaPin)}
-              verschilClass={verschilClass}
+              verschilBadgeClass={verschilBadgeClass}
             />
 
             <KasControleRow
               label="Cadeaubon"
               value={numberInputValue(kasstaat?.cadeaubon)}
-              onChange={(value) =>
-                updateField("cadeaubon", parseInput(value))
-              }
+              onChange={(value) => updateField("cadeaubon", parseInput(value))}
               kassa={kassaBon}
               verschil={verschil(kasstaat?.cadeaubon ?? 0, kassaBon)}
-              verschilClass={verschilClass}
+              verschilBadgeClass={verschilBadgeClass}
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:grid-cols-3">
+          <div className="grid grid-cols-3 gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3">
             <SummaryCard label="Geteld totaal" value={euro(totaalGeteld)} />
             <SummaryCard label="Kassa totaal" value={euro(kassaTotaal)} />
             <SummaryCard
               label="Verschil"
               value={euro(totaalVerschil)}
-              valueClass={verschilClass(totaalVerschil)}
+              valueClass={verschilTextClass(totaalVerschil)}
             />
           </div>
 
-          <div className="space-y-3 border-t border-slate-100 px-5 py-4">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-[170px_1fr_150px_150px] md:items-center">
+          <div className="space-y-2 border-t border-slate-100 px-4 py-3">
+            <div className="grid grid-cols-[140px_1fr_130px_130px] items-center gap-3">
               <div>
-                <div className="font-medium text-slate-950">
+                <div className="font-semibold text-slate-950">
                   Bonnen verkocht
                 </div>
-                <div className="text-xs text-slate-500">
+                <div className="text-[11px] text-slate-500">
                   Verkoop cadeaubonnen
                 </div>
               </div>
@@ -307,31 +312,29 @@ export default function KasstatenPage() {
                 type="number"
                 step="0.01"
                 inputMode="decimal"
-                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-right text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                className="h-9 w-full rounded-lg border border-slate-200 px-3 text-right text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
                 value={numberInputValue(kasstaat?.bon)}
                 onChange={(e) => updateField("bon", parseInput(e.target.value))}
               />
 
-              <div className="rounded-xl bg-slate-50 px-3 py-2 text-right text-sm text-slate-700 ring-1 ring-slate-200">
+              <div className="rounded-lg bg-slate-50 px-3 py-1.5 text-right text-sm text-slate-700 ring-1 ring-slate-200">
                 {euro(kassaIsvoucher)}
               </div>
 
               <div
-                className={`rounded-xl px-3 py-2 text-right text-sm font-semibold ring-1 ${
-                  verschil(kasstaat?.bon ?? 0, kassaIsvoucher) === 0
-                    ? "bg-slate-50 text-slate-700 ring-slate-200"
-                    : "bg-red-50 text-red-700 ring-red-100"
-                }`}
+                className={`rounded-lg px-3 py-1.5 text-right text-sm font-semibold ring-1 ${verschilBadgeClass(
+                  bonnenVerschil
+                )}`}
               >
-                {euro(verschil(kasstaat?.bon ?? 0, kassaIsvoucher))}
+                {euro(bonnenVerschil)}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-[170px_1fr] md:items-center">
-              <label className="font-medium text-slate-950">Opmerking</label>
+            <div className="grid grid-cols-[140px_1fr] items-center gap-3">
+              <label className="font-semibold text-slate-950">Opmerking</label>
               <input
                 type="text"
-                className="h-10 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+                className="h-9 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
                 value={kasstaat?.opmerking ?? ""}
                 onChange={(e) => updateField("opmerking", e.target.value)}
               />
@@ -339,10 +342,10 @@ export default function KasstatenPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm shadow-sm">
-          <div className="mb-4">
+        <section className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm shadow-sm">
+          <div className="mb-3">
             <h2 className="font-bold text-blue-950">Kasboekadvies</h2>
-            <p className="mt-1 text-xs text-blue-800">
+            <p className="mt-0.5 text-xs text-blue-800">
               Te gebruiken bij het invullen van het kasboek. Pinomzet blijft
               buiten dit advies.
             </p>
@@ -359,7 +362,7 @@ export default function KasstatenPage() {
           )}
 
           {!kasboekAdviesLoading && !kasboekAdviesError && advies && (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <AdviesRow label="Verkopen laag 9%" value={advies.verkopenLaag} />
               <AdviesRow label="Verkopen hoog 21%" value={advies.verkopenHoog} />
               <AdviesRow
@@ -376,7 +379,10 @@ export default function KasstatenPage() {
               )}
 
               {onbekendeProducten.length > 0 && (
-                <AlertBlock title="Onbekende producten" items={onbekendeProducten} />
+                <AlertBlock
+                  title="Onbekende producten"
+                  items={onbekendeProducten}
+                />
               )}
             </div>
           )}
@@ -386,7 +392,7 @@ export default function KasstatenPage() {
           <button
             type="button"
             onClick={opslaan}
-            className="h-11 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
+            className="h-10 rounded-lg bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700"
           >
             Opslaan
           </button>
@@ -395,7 +401,7 @@ export default function KasstatenPage() {
             <button
               type="button"
               onClick={verwijderen}
-              className="h-11 rounded-xl bg-red-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
+              className="h-10 rounded-lg bg-red-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-red-700"
             >
               Verwijderen
             </button>
@@ -403,7 +409,7 @@ export default function KasstatenPage() {
         </div>
 
         {message && (
-          <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 ring-1 ring-emerald-100">
+          <p className="rounded-xl bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-800 ring-1 ring-emerald-100">
             {message}
           </p>
         )}
@@ -418,43 +424,39 @@ function KasControleRow({
   onChange,
   kassa,
   verschil,
-  verschilClass,
+  verschilBadgeClass,
 }: {
   label: string;
   value: string | number;
   onChange: (value: string) => void;
   kassa: number;
   verschil: number;
-  verschilClass: (waarde: number) => string;
+  verschilBadgeClass: (waarde: number) => string;
 }) {
-  const isOk = verschil === 0;
-
   return (
-    <div className="grid grid-cols-1 gap-3 px-5 py-4 md:grid-cols-[170px_1fr_150px_150px] md:items-center">
+    <div className="grid grid-cols-[140px_1fr_130px_130px] items-center gap-3 px-4 py-2.5">
       <div>
-        <div className="font-medium text-slate-950">{label}</div>
-        <div className="text-xs text-slate-500">Geteld tegenover kassa</div>
+        <div className="font-semibold text-slate-950">{label}</div>
+        <div className="text-[11px] text-slate-500">Geteld / kassa</div>
       </div>
 
       <input
         type="number"
         step="0.01"
         inputMode="decimal"
-        className="h-10 w-full rounded-xl border border-slate-200 px-3 text-right text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+        className="h-9 w-full rounded-lg border border-slate-200 px-3 text-right text-sm outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
 
-      <div className="rounded-xl bg-slate-50 px-3 py-2 text-right text-sm text-slate-700 ring-1 ring-slate-200">
+      <div className="rounded-lg bg-slate-50 px-3 py-1.5 text-right text-sm text-slate-700 ring-1 ring-slate-200">
         {euro(kassa)}
       </div>
 
       <div
-        className={`rounded-xl px-3 py-2 text-right text-sm font-semibold ring-1 ${
-          isOk
-            ? "bg-emerald-50 text-emerald-700 ring-emerald-100"
-            : "bg-red-50 text-red-700 ring-red-100"
-        }`}
+        className={`rounded-lg px-3 py-1.5 text-right text-sm font-semibold ring-1 ${verschilBadgeClass(
+          verschil
+        )}`}
       >
         {euro(verschil)}
       </div>
@@ -472,9 +474,9 @@ function SummaryCard({
   valueClass?: string;
 }) {
   return (
-    <div className="rounded-xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
-      <div className="text-xs font-medium text-slate-500">{label}</div>
-      <div className={`mt-1 text-lg font-bold tabular-nums ${valueClass}`}>
+    <div className="rounded-xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-200">
+      <div className="text-[11px] font-medium text-slate-500">{label}</div>
+      <div className={`mt-0.5 text-base font-bold tabular-nums ${valueClass}`}>
         {value}
       </div>
     </div>
@@ -483,7 +485,7 @@ function SummaryCard({
 
 function AdviesRow({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex justify-between gap-4 rounded-xl bg-white/70 px-3 py-2 ring-1 ring-blue-100">
+    <div className="flex justify-between gap-4 rounded-lg bg-white/70 px-3 py-1.5 ring-1 ring-blue-100">
       <span className="text-blue-950">{label}</span>
       <span className="font-semibold tabular-nums text-blue-950">
         {euro(value)}
