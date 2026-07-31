@@ -58,7 +58,7 @@ export default function Productbeheer() {
     Leverancier[]
   >("/api/leveranciers", fetcher);
 
-  const { data: producten } = useSWR<Product[]>(
+  const { data: producten, error: productenError } = useSWR<Product[]>(
     leverancierId ? `/api/producten?leverancier=${leverancierId}` : null,
     fetcher
   );
@@ -181,35 +181,47 @@ export default function Productbeheer() {
             onSubmit={async (e) => {
               e.preventDefault();
 
-              const response = await fetch("/api/producten", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  id: productId,
-                  leverancier_id: leverancierId,
-                  nieuwe_leverancier: nieuweLeverancier || undefined,
-                  naam,
-                  bestelnummer,
-                  minimum_voorraad: minimumVoorraad,
-                  besteleenheid,
-                  prijs: isSamengesteld ? undefined : prijs,
-                  inhoud,
-                  eenheid,
-                  is_samengesteld: isSamengesteld,
-                  actief,
-                  volgorde,
-                }),
-              });
+              try {
+                const response = await fetch("/api/producten", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    id: productId,
+                    leverancier_id: leverancierId,
+                    nieuwe_leverancier: nieuweLeverancier || undefined,
+                    naam,
+                    bestelnummer,
+                    minimum_voorraad: minimumVoorraad,
+                    besteleenheid,
+                    prijs: isSamengesteld ? undefined : prijs,
+                    inhoud,
+                    eenheid,
+                    is_samengesteld: isSamengesteld,
+                    actief,
+                    volgorde,
+                  }),
+                });
 
-              if (response.ok) {
+                const result = await response.json().catch(() => null);
+
+                if (!response.ok) {
+                  alert(
+                    "Fout: " +
+                      (result?.error ?? "Product kon niet worden opgeslagen.")
+                  );
+                  return;
+                }
+
                 resetForm();
+
                 if (leverancierId) {
                   mutate(`/api/producten?leverancier=${leverancierId}`);
                 }
+
                 mutate("/api/leveranciers");
-              } else {
-                const fout = await response.json();
-                alert("Fout: " + fout.error);
+              } catch (err) {
+                console.error("Fout bij opslaan product:", err);
+                alert("Product kon niet worden opgeslagen door een netwerkfout.");
               }
             }}
           >
@@ -440,7 +452,11 @@ export default function Productbeheer() {
               </div>
             </div>
 
-            {!producten ? (
+            {productenError ? (
+              <div className="px-4 py-10 text-center text-sm text-red-600">
+                Fout bij laden producten.
+              </div>
+            ) : !producten ? (
               <div className="px-4 py-10 text-center text-sm text-slate-500">
                 Laden…
               </div>
@@ -556,13 +572,39 @@ export default function Productbeheer() {
                                   return;
                                 }
 
-                                await fetch(`/api/producten?id=${p.id}`, {
-                                  method: "DELETE",
-                                });
+                                try {
+                                  const response = await fetch(
+                                    `/api/producten?id=${p.id}`,
+                                    {
+                                      method: "DELETE",
+                                    }
+                                  );
 
-                                if (leverancierId) {
-                                  mutate(
-                                    `/api/producten?leverancier=${leverancierId}`
+                                  const result = await response
+                                    .json()
+                                    .catch(() => null);
+
+                                  if (!response.ok) {
+                                    alert(
+                                      "Fout: " +
+                                        (result?.error ??
+                                          "Product kon niet worden verwijderd.")
+                                    );
+                                    return;
+                                  }
+
+                                  if (leverancierId) {
+                                    mutate(
+                                      `/api/producten?leverancier=${leverancierId}`
+                                    );
+                                  }
+                                } catch (err) {
+                                  console.error(
+                                    "Fout bij verwijderen product:",
+                                    err
+                                  );
+                                  alert(
+                                    "Product kon niet worden verwijderd door een netwerkfout."
                                   );
                                 }
                               }}
