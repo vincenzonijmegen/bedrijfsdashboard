@@ -141,20 +141,23 @@ const { data: producten } = useSWR<Product[]>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onderhanden, leverancierId]);
 
-  useEffect(() => {
-    if (leverancierId == null) return;
-    if (loadedLeverancierId !== leverancierId) return;
-    if (Date.now() < suppressUntilRef.current) return;
+useEffect(() => {
+  if (leverancierId == null) return;
+  if (loadedLeverancierId !== leverancierId) return;
+  if (Date.now() < suppressUntilRef.current) return;
 
-    const hasItems = Object.values(invoer).some((n) => Number(n) > 0);
-    if (!hasItems) return;
-
-    fetch("/api/bestelling/onderhanden", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ leverancier_id: leverancierId, data: invoer, referentie }),
-    }).catch(() => {});
-  }, [invoer, leverancierId, referentie, loadedLeverancierId]);
+  fetch("/api/bestelling/onderhanden", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      leverancier_id: leverancierId,
+      data: invoer,
+      referentie,
+    }),
+  }).catch((err) => {
+    console.error("Fout bij automatisch opslaan bestelling:", err);
+  });
+}, [invoer, leverancierId, referentie, loadedLeverancierId]);
 
   const wijzigAantal = (id: number, delta: number) => {
     lastLocalChangeAtRef.current = Date.now();
