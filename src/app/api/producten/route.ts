@@ -3,26 +3,70 @@
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 
+function foutmelding(err: unknown) {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function leesOptioneelGetal(waarde: unknown) {
+  if (waarde === undefined || waarde === null || waarde === "") {
+    return null;
+  }
+
+  const nummer = Number(waarde);
+  return Number.isFinite(nummer) ? nummer : NaN;
+}
+
 export async function DELETE(req: Request) {
   const { searchParams } = new URL(req.url);
-  const id = searchParams.get("id");
+  const id = Number(searchParams.get("id"));
 
-  if (!id) {
-    return NextResponse.json({ error: "id ontbreekt" }, { status: 400 });
+  if (!Number.isInteger(id) || id <= 0) {
+    return NextResponse.json(
+      { error: "Geldig product-ID ontbreekt" },
+      { status: 400 }
+    );
   }
 
   try {
-    await db.query(`DELETE FROM producten WHERE id = $1`, [id]);
+    const result = await db.query(
+      `DELETE FROM producten
+       WHERE id = $1
+       RETURNING id`,
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      return NextResponse.json(
+        { error: "Product niet gevonden" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({ status: "verwijderd" });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === "23503") {
+      return NextResponse.json(
+        {
+          error:
+            "Dit product kan niet worden verwijderd omdat het nog ergens wordt gebruikt. Zet het product eventueel op inactief.",
+        },
+        { status: 409 }
+      );
+    }
+
     console.error("Fout bij verwijderen product:", err);
-    return NextResponse.json({ error: "Serverfout" }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Serverfout bij verwijderen product" },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const data = await req.json();
+    const data = await req.json().catch(() => ({}));
+
     const {
       id,
       leverancier_id,
@@ -39,42 +83,155 @@ export async function POST(req: Request) {
       volgorde,
     } = data;
 
-    let lid = leverancier_id;
+    const productId =
+      id === undefined || id === null || id === "" ? null : Number(id);
 
-    if (!lid && nieuwe_leverancier) {
-      const result = await db.query(
-        `INSERT INTO leveranciers (naam)
-         VALUES ($1)
-         ON CONFLICT (naam) DO UPDATE SET naam = EXCLUDED.naam
-         RETURNING id`,
-        [nieuwe_leverancier]
-      );
-      lid = result.rows[0].id;
-    }
-
-    if (!lid || !naam) {
+    if (
+      productId !== null &&
+      (!Number.isInteger(productId) || productId <= 0)
+    ) {
       return NextResponse.json(
-        { error: "leverancier en naam verplicht" },
+        { error: "Ongeldig product-ID" },
         { status: 400 }
       );
     }
 
-    let pid = id;
-    let vorigePrijs = null;
-    let nieuwePrijs = prijs;
+    const productNaam =
+      typeof naam === "string" ? naam.trim() : "";
 
-    if (id) {
-      const check = await db.query(
-        `SELECT huidige_prijs FROM producten WHERE id = $1`,
-        [id]
+    if (!productNaam) {
+      return NextResponse.json(
+        { error: "Productnaam is verplicht" },
+        { status: 400 }
       );
+    }
+
+    const minimumVoorraad = leesOptioneelGetal(minimum_voorraad);
+    const bestelEenheid =
+      besteleenheid === undefined || besteleenheid === null
+        ? 1
+        : Number(besteleenheid);
+    const productPrijs = leesOptioneelGetal(prijs);
+    const productInhoud = leesOptioneelGetal(inhoud);
+    const productVolgorde = leesOptioneelGetal(volgorde);
+
+    if (
+      Number.isNaN(minimumVoorraad) ||
+      (minimumVoorraad !== null && minimumVoorraad < 0)
+    ) {
+      return NextResponse.json(
+        { error: "Minimumvoorraad moet 0 of hoger zijn" },
+        { status: 400 }
+      );
+    }
+
+    if (!Number.isFinite(bestelEenheid) || bestelEenheid <= 0) {
+      return NextResponse.json(
+        { error: "Besteleenheid moet groter zijn dan 0" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      Number.isNaN(productPrijs) ||
+      (productPrijs !== null && productPrijs < 0)
+    ) {
+      return NextResponse.json(
+        { error: "Prijs moet 0 of hoger zijn" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      Number.isNaN(productInhoud) ||
+      (productInhoud !== null && productInhoud < 0)
+    ) {
+      return NextResponse.json(
+        { error: "Inhoud moet 0 of hoger zijn" },
+        { status: 400 }
+      );
+    }
+
+    if (
+      Number.isNaN(productVolgorde) ||
+      (productVolgorde !== null && !Number.isInteger(productVolgorde))
+    ) {
+      return NextResponse.json(
+        { error: "Volgorde moet een geheel getal zijn" },
+        { status: 400 }
+      );
+    }
+
+    const leverancierId =
+      leverancier_id === undefined ||
+      leverancier_id === null ||
+      leverancier_id === ""
+        ? null
+        : Number(leverancier_id);
+
+    const nieuweLeverancier =
+      typeof nieuwe_leverancier === "string"
+        ? nieuwe_leverancier.trim()
+        : "";
+
+    let lid = leverancierId;
+
+    if (
+      lid !== null &&
+      (!Number.isInteger(lid) || lid <= 0)
+    ) {
+      return NextResponse.json(
+        { error: "Ongeldige leverancier" },
+        { status: 400 }
+      );
+    }
+
+    if (!lid && nieuweLeverancier) {
+      const result = await db.query(
+        `INSERT INTO leveranciers (naam)
+         VALUES ($1)
+         ON CONFLICT (naam)
+         DO UPDATE SET naam = EXCLUDED.naam
+         RETURNING id`,
+        [nieuweLeverancier]
+      );
+
+      lid = result.rows[0].id;
+    }
+
+    if (!lid) {
+      return NextResponse.json(
+        { error: "Leverancier is verplicht" },
+        { status: 400 }
+      );
+    }
+
+    let pid = productId;
+    let vorigePrijs: number | null = null;
+    let nieuwePrijs = productPrijs;
+
+    if (productId) {
+      const check = await db.query(
+        `SELECT huidige_prijs
+         FROM producten
+         WHERE id = $1`,
+        [productId]
+      );
+
+      if (check.rowCount === 0) {
+        return NextResponse.json(
+          { error: "Product niet gevonden" },
+          { status: 404 }
+        );
+      }
+
       vorigePrijs = check.rows[0]?.huidige_prijs ?? null;
 
       if (prijs === undefined) {
         nieuwePrijs = vorigePrijs;
       }
 
-      await db.query(
+      const update = await db.query(
         `UPDATE producten
          SET leverancier_id = $1,
              naam = $2,
@@ -87,22 +244,32 @@ export async function POST(req: Request) {
              is_samengesteld = $9,
              actief = $10,
              volgorde = $11
-         WHERE id = $12`,
+         WHERE id = $12
+         RETURNING id`,
         [
           lid,
-          naam,
-          bestelnummer ?? null,
-          minimum_voorraad ?? null,
-          besteleenheid ?? 1,
-          nieuwePrijs ?? null,
-          inhoud ?? null,
-          eenheid ?? null,
-          is_samengesteld ?? false,
-          actief ?? true,
-          volgorde ?? null,
-          id,
+          productNaam,
+          typeof bestelnummer === "string"
+            ? bestelnummer.trim() || null
+            : null,
+          minimumVoorraad,
+          bestelEenheid,
+          nieuwePrijs,
+          productInhoud,
+          typeof eenheid === "string" ? eenheid : null,
+          Boolean(is_samengesteld),
+          actief === undefined ? true : Boolean(actief),
+          productVolgorde,
+          productId,
         ]
       );
+
+      if (update.rowCount === 0) {
+        return NextResponse.json(
+          { error: "Product niet gevonden" },
+          { status: 404 }
+        );
+      }
     } else {
       const insert = await db.query(
         `INSERT INTO producten
@@ -123,40 +290,82 @@ export async function POST(req: Request) {
          RETURNING id`,
         [
           lid,
-          naam,
-          bestelnummer ?? null,
-          minimum_voorraad ?? null,
-          besteleenheid ?? 1,
-          prijs ?? null,
-          inhoud ?? null,
-          eenheid ?? null,
-          is_samengesteld ?? false,
-          actief ?? true,
-          volgorde ?? null,
+          productNaam,
+          typeof bestelnummer === "string"
+            ? bestelnummer.trim() || null
+            : null,
+          minimumVoorraad,
+          bestelEenheid,
+          Boolean(is_samengesteld) ? null : productPrijs,
+          productInhoud,
+          typeof eenheid === "string" ? eenheid : null,
+          Boolean(is_samengesteld),
+          actief === undefined ? true : Boolean(actief),
+          productVolgorde,
         ]
       );
 
       pid = insert.rows[0].id;
+      nieuwePrijs = Boolean(is_samengesteld) ? null : productPrijs;
     }
 
-    if (nieuwePrijs != null && nieuwePrijs !== vorigePrijs) {
+    if (
+      pid &&
+      nieuwePrijs !== null &&
+      Number(nieuwePrijs) !== Number(vorigePrijs)
+    ) {
       await db.query(
-        `INSERT INTO productprijzen (product_id, prijs) VALUES ($1, $2)`,
+        `INSERT INTO productprijzen (product_id, prijs)
+         VALUES ($1, $2)`,
         [pid, nieuwePrijs]
       );
     }
 
     return NextResponse.json({ status: "ok", id: pid });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === "23503") {
+      return NextResponse.json(
+        { error: "De gekozen leverancier bestaat niet" },
+        { status: 400 }
+      );
+    }
+
+    if (err?.code === "23505") {
+      return NextResponse.json(
+        { error: "Dit product of deze leverancier bestaat al" },
+        { status: 409 }
+      );
+    }
+
     console.error("Fout bij opslaan product:", err);
-    return NextResponse.json({ error: "Serverfout" }, { status: 500 });
+
+    return NextResponse.json(
+      {
+        error: "Serverfout bij opslaan product",
+        detail: foutmelding(err),
+      },
+      { status: 500 }
+    );
   }
 }
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const leverancierId = searchParams.get("leverancier");
+  const leverancierParameter = searchParams.get("leverancier");
   const alleenActief = searchParams.get("alleenActief") === "true";
+
+  let leverancierId: number | null = null;
+
+  if (leverancierParameter !== null) {
+    leverancierId = Number(leverancierParameter);
+
+    if (!Number.isInteger(leverancierId) || leverancierId <= 0) {
+      return NextResponse.json(
+        { error: "Ongeldige leverancier" },
+        { status: 400 }
+      );
+    }
+  }
 
   try {
     let result;
@@ -203,6 +412,10 @@ export async function GET(req: Request) {
     return NextResponse.json(result.rows);
   } catch (err) {
     console.error("Fout bij ophalen producten:", err);
-    return NextResponse.json({ error: "Serverfout" }, { status: 500 });
+
+    return NextResponse.json(
+      { error: "Serverfout bij ophalen producten" },
+      { status: 500 }
+    );
   }
 }
