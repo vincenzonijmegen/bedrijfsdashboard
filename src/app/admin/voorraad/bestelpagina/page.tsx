@@ -224,44 +224,71 @@ Opmerkingen: ${opmerking.trim()}`;
   const mailBestelling = async () => {
     if (!leverancierId) return;
 
+    const heeftBestelregels = Object.values(invoer).some(
+      (aantal) => Number(aantal) > 0
+    );
+
+    if (!heeftBestelregels) {
+      alert("Voeg eerst minimaal één artikel toe aan de bestelling.");
+      return;
+    }
+
     const naar = prompt(
       "Naar welk e-mailadres?",
       "bestelling@ijssalonvincenzo.nl"
     );
     if (!naar) return;
 
-    await fetch("/api/mail/bestelling", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        naar,
-        onderwerp: `Bestelling IJssalon Vincenzo – ${
-          geselecteerdeLeverancier?.naam ?? "Onbekend"
-        } – ${referentie}`,
-        tekst: genereerTekst(),
-      }),
-    });
+    try {
+      const mailResponse = await fetch("/api/mail/bestelling", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          naar,
+          onderwerp: `Bestelling IJssalon Vincenzo – ${
+            geselecteerdeLeverancier?.naam ?? "Onbekend"
+          } – ${referentie}`,
+          tekst: genereerTekst(),
+        }),
+      });
 
-    const response = await fetch(`/api/bestelling/historie`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        leverancier_id: leverancierId,
-        data: invoer,
-        referentie,
-        opmerking,
-      }),
-    });
+      const mailResult = await mailResponse.json().catch(() => null);
 
-    const result = await response.json();
+      if (!mailResponse.ok) {
+        alert(
+          "❌ Bestelling is NIET verzonden:\n" +
+            (mailResult?.error ?? "Onbekende fout bij verzenden")
+        );
+        return;
+      }
 
-    if (!response.ok) {
-      alert("❌ Historie NIET opgeslagen:\n" + JSON.stringify(result));
-      return;
+      const historieResponse = await fetch("/api/bestelling/historie", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leverancier_id: leverancierId,
+          data: invoer,
+          referentie,
+          opmerking,
+        }),
+      });
+
+      const historieResult = await historieResponse.json().catch(() => null);
+
+      if (!historieResponse.ok) {
+        alert(
+          "⚠️ Bestelling is wel verzonden, maar de historie is NIET opgeslagen:\n" +
+            (historieResult?.error ?? "Onbekende fout bij opslaan historie")
+        );
+        return;
+      }
+
+      await resetBestelling();
+      alert("Bestelling is verzonden!");
+    } catch (err) {
+      console.error("Fout bij versturen bestelling:", err);
+      alert("❌ Bestelling is NIET verzonden door een netwerk- of serverfout.");
     }
-
-    await resetBestelling();
-    alert("Bestelling is verzonden!");
   };
 
   if (!leveranciers) {

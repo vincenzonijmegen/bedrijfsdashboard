@@ -144,7 +144,23 @@ export async function sendBestellingMail(
     </div>`,
   });
 
-  console.log("✅ Bestelmail verzonden via Infomaniak:", result);
+  const geaccepteerd = result.accepted?.map(String) ?? [];
+  const geweigerd = result.rejected?.map(String) ?? [];
+
+  if (geaccepteerd.length === 0 || geweigerd.length > 0) {
+    throw new Error(
+      geweigerd.length > 0
+        ? `E-mailadres geweigerd: ${geweigerd.join(", ")}`
+        : "De mailserver heeft geen ontvanger geaccepteerd."
+    );
+  }
+
+  console.log("✅ Bestelmail verzonden via Infomaniak:", {
+    messageId: result.messageId,
+    accepted: geaccepteerd,
+  });
+
+  return result;
 }
 
 function esc(v: string) {
