@@ -1,5 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { verifyJWT } from "@/lib/auth";
+
+const TOEGESTANE_LEESROLLEN = ["beheerder", "accountant"];
+const TOEGESTANE_SCHRIJFROLLEN = ["beheerder"];
+
+async function haalRolUitSessie(req: NextRequest) {
+  const gebruikerJWT = verifyJWT(req);
+
+  const result = await db.query(
+    `SELECT rol
+     FROM medewerkers
+     WHERE lower(email) = lower($1)
+     LIMIT 1`,
+    [gebruikerJWT.email]
+  );
+
+  const gebruiker = result.rows[0];
+
+  if (!gebruiker) {
+    return null;
+  }
+
+  return String(gebruiker.rol || "").toLowerCase();
+}
+
+async function magLezen(req: NextRequest) {
+  try {
+    const rol = await haalRolUitSessie(req);
+    return !!rol && TOEGESTANE_LEESROLLEN.includes(rol);
+  } catch {
+    return false;
+  }
+}
+
+async function magSchrijven(req: NextRequest) {
+  try {
+    const rol = await haalRolUitSessie(req);
+    return !!rol && TOEGESTANE_SCHRIJFROLLEN.includes(rol);
+  } catch {
+    return false;
+  }
+}
 
 function bad(msg: string, code = 400) {
   return NextResponse.json({ error: msg }, { status: code });
@@ -17,6 +59,12 @@ function isEmptyData(obj: any) {
 
 /** GET /api/bestelling/onderhanden?leverancier=ID */
 export async function GET(req: NextRequest) {
+  const toegestaan = await magLezen(req);
+
+  if (!toegestaan) {
+    return bad("Geen toegang", 403);
+  }
+
   const url = new URL(req.url);
   const leverancier = url.searchParams.get("leverancier");
 
@@ -32,17 +80,24 @@ export async function GET(req: NextRequest) {
 
   try {
     const { rows } = await db.query(
-      `select id, leverancier_id, referentie, data, aangemaakt_op, laatst_bewerkt
+      `select id,
+              leverancier_id,
+              referentie,
+              data,
+              aangemaakt_op,
+              laatst_bewerkt
          from public.onderhanden_bestellingen
         where leverancier_id = $1
         limit 1`,
       [leverancierId]
     );
 
-    return NextResponse.json(rows[0] ?? {
-      leverancier_id: leverancierId,
-      data: {},
-    });
+    return NextResponse.json(
+      rows[0] ?? {
+        leverancier_id: leverancierId,
+        data: {},
+      }
+    );
   } catch (err) {
     console.error("Fout bij ophalen onderhanden bestelling:", err);
     return bad("Serverfout", 500);
@@ -57,6 +112,12 @@ export async function GET(req: NextRequest) {
  * - Niet-lege data wordt per leverancier opgeslagen.
  */
 export async function POST(req: NextRequest) {
+  const toegestaan = await magSchrijven(req);
+
+  if (!toegestaan) {
+    return bad("Geen toegang", 403);
+  }
+
   try {
     const body = await req.json().catch(() => ({}));
     const leverancierId = Number(body?.leverancier_id);
@@ -89,7 +150,13 @@ export async function POST(req: NextRequest) {
 
     await db.query(
       `insert into public.onderhanden_bestellingen
-         (leverancier_id, referentie, data, aangemaakt_op, laatst_bewerkt)
+         (
+           leverancier_id,
+           referentie,
+           data,
+           aangemaakt_op,
+           laatst_bewerkt
+         )
        values ($1, $2, $3::jsonb, now(), now())
        on conflict (leverancier_id)
        do update set
@@ -103,7 +170,12 @@ export async function POST(req: NextRequest) {
     );
 
     const { rows } = await db.query(
-      `select id, leverancier_id, referentie, data, aangemaakt_op, laatst_bewerkt
+      `select id,
+              leverancier_id,
+              referentie,
+              data,
+              aangemaakt_op,
+              laatst_bewerkt
          from public.onderhanden_bestellingen
         where leverancier_id = $1
         limit 1`,
@@ -124,6 +196,12 @@ export async function POST(req: NextRequest) {
 
 /** DELETE /api/bestelling/onderhanden?leverancier=ID */
 export async function DELETE(req: NextRequest) {
+  const toegestaan = await magSchrijven(req);
+
+  if (!toegestaan) {
+    return bad("Geen toegang", 403);
+  }
+
   const url = new URL(req.url);
   const leverancier = url.searchParams.get("leverancier");
 

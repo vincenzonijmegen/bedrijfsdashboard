@@ -2,6 +2,48 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { pool } from "@/lib/db";
+import { verifyJWT } from "@/lib/auth";
+
+const TOEGESTANE_LEESROLLEN = ["beheerder", "accountant"];
+const TOEGESTANE_SCHRIJFROLLEN = ["beheerder"];
+
+async function haalRolUitSessie(req: NextRequest) {
+  const gebruikerJWT = verifyJWT(req);
+
+  const result = await pool.query(
+    `SELECT rol
+     FROM medewerkers
+     WHERE lower(email) = lower($1)
+     LIMIT 1`,
+    [gebruikerJWT.email]
+  );
+
+  const gebruiker = result.rows[0];
+
+  if (!gebruiker) {
+    return null;
+  }
+
+  return String(gebruiker.rol || "").toLowerCase();
+}
+
+async function magLezen(req: NextRequest) {
+  try {
+    const rol = await haalRolUitSessie(req);
+    return !!rol && TOEGESTANE_LEESROLLEN.includes(rol);
+  } catch {
+    return false;
+  }
+}
+
+async function magSchrijven(req: NextRequest) {
+  try {
+    const rol = await haalRolUitSessie(req);
+    return !!rol && TOEGESTANE_SCHRIJFROLLEN.includes(rol);
+  } catch {
+    return false;
+  }
+}
 
 function heeftBestelregels(data: unknown) {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
@@ -12,6 +54,15 @@ function heeftBestelregels(data: unknown) {
 }
 
 export async function POST(req: NextRequest) {
+  const toegestaan = await magSchrijven(req);
+
+  if (!toegestaan) {
+    return NextResponse.json(
+      { error: "Geen toegang" },
+      { status: 403 }
+    );
+  }
+
   try {
     const { leverancier_id, data, referentie, opmerking } = await req.json();
 
@@ -122,6 +173,15 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  const toegestaan = await magLezen(req);
+
+  if (!toegestaan) {
+    return NextResponse.json(
+      { error: "Geen toegang" },
+      { status: 403 }
+    );
+  }
+
   const leverancier = req.nextUrl.searchParams.get("leverancier");
   const leverancierId = Number(leverancier);
 
