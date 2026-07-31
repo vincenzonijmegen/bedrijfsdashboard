@@ -1,7 +1,49 @@
 // src/app/api/producten/route.ts
 
 import { db } from "@/lib/db";
-import { NextResponse } from "next/server";
+import { verifyJWT } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+
+const TOEGESTANE_LEESROLLEN = ["beheerder", "accountant"];
+const TOEGESTANE_SCHRIJFROLLEN = ["beheerder"];
+
+async function haalRolUitSessie(req: NextRequest) {
+  const gebruikerJWT = verifyJWT(req);
+
+  const result = await db.query(
+    `SELECT rol
+     FROM medewerkers
+     WHERE lower(email) = lower($1)
+     LIMIT 1`,
+    [gebruikerJWT.email]
+  );
+
+  const gebruiker = result.rows[0];
+
+  if (!gebruiker) {
+    return null;
+  }
+
+  return String(gebruiker.rol || "").toLowerCase();
+}
+
+async function magLezen(req: NextRequest) {
+  try {
+    const rol = await haalRolUitSessie(req);
+    return !!rol && TOEGESTANE_LEESROLLEN.includes(rol);
+  } catch {
+    return false;
+  }
+}
+
+async function magSchrijven(req: NextRequest) {
+  try {
+    const rol = await haalRolUitSessie(req);
+    return !!rol && TOEGESTANE_SCHRIJFROLLEN.includes(rol);
+  } catch {
+    return false;
+  }
+}
 
 function foutmelding(err: unknown) {
   return err instanceof Error ? err.message : String(err);
@@ -16,9 +58,14 @@ function leesOptioneelGetal(waarde: unknown) {
   return Number.isFinite(nummer) ? nummer : NaN;
 }
 
-export async function DELETE(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const id = Number(searchParams.get("id"));
+export async function DELETE(req: NextRequest) {
+  const toegestaan = await magSchrijven(req);
+
+  if (!toegestaan) {
+    return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+  }
+
+  const id = Number(req.nextUrl.searchParams.get("id"));
 
   if (!Number.isInteger(id) || id <= 0) {
     return NextResponse.json(
@@ -63,7 +110,13 @@ export async function DELETE(req: Request) {
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
+  const toegestaan = await magSchrijven(req);
+
+  if (!toegestaan) {
+    return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+  }
+
   try {
     const data = await req.json().catch(() => ({}));
 
@@ -96,8 +149,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const productNaam =
-      typeof naam === "string" ? naam.trim() : "";
+    const productNaam = typeof naam === "string" ? naam.trim() : "";
 
     if (!productNaam) {
       return NextResponse.json(
@@ -107,10 +159,12 @@ export async function POST(req: Request) {
     }
 
     const minimumVoorraad = leesOptioneelGetal(minimum_voorraad);
+
     const bestelEenheid =
       besteleenheid === undefined || besteleenheid === null
         ? 1
         : Number(besteleenheid);
+
     const productPrijs = leesOptioneelGetal(prijs);
     const productInhoud = leesOptioneelGetal(inhoud);
     const productVolgorde = leesOptioneelGetal(volgorde);
@@ -176,10 +230,7 @@ export async function POST(req: Request) {
 
     let lid = leverancierId;
 
-    if (
-      lid !== null &&
-      (!Number.isInteger(lid) || lid <= 0)
-    ) {
+    if (lid !== null && (!Number.isInteger(lid) || lid <= 0)) {
       return NextResponse.json(
         { error: "Ongeldige leverancier" },
         { status: 400 }
@@ -349,10 +400,16 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const leverancierParameter = searchParams.get("leverancier");
-  const alleenActief = searchParams.get("alleenActief") === "true";
+export async function GET(req: NextRequest) {
+  const toegestaan = await magLezen(req);
+
+  if (!toegestaan) {
+    return NextResponse.json({ error: "Geen toegang" }, { status: 403 });
+  }
+
+  const leverancierParameter = req.nextUrl.searchParams.get("leverancier");
+  const alleenActief =
+    req.nextUrl.searchParams.get("alleenActief") === "true";
 
   let leverancierId: number | null = null;
 
