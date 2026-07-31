@@ -25,6 +25,7 @@ interface Product {
   bestelnummer?: string;
   besteleenheid?: number;
   huidige_prijs?: number;
+  actief?: boolean;
   volgorde?: number;
 }
 
@@ -61,10 +62,12 @@ export default function BestelPagina() {
     fetcher
   );
 
-  const { data: producten } = useSWR<Product[]>(
-    leverancierId ? `/api/producten?leverancier=${leverancierId}` : null,
-    fetcher
-  );
+const { data: producten } = useSWR<Product[]>(
+  leverancierId
+    ? `/api/producten?leverancier=${leverancierId}&alleenActief=true`
+    : null,
+  fetcher
+);
 
   const { data: historie } = useSWR<any[]>(
     leverancierId
@@ -89,9 +92,9 @@ export default function BestelPagina() {
     (l) => l.id === leverancierId
   );
 
-  const gesorteerdeProducten = [...(producten ?? [])].sort(
-    (a, b) => (a.volgorde ?? 999) - (b.volgorde ?? 999)
-  );
+  const gesorteerdeProducten = [...(producten ?? [])]
+    .filter((product) => product.actief !== false)
+    .sort((a, b) => (a.volgorde ?? 999) - (b.volgorde ?? 999));
 
   const totaal = gesorteerdeProducten.reduce(
     (s, p) => s + (invoer[p.id] ?? 0) * (p.huidige_prijs ?? 0),
@@ -115,6 +118,14 @@ export default function BestelPagina() {
   useEffect(() => {
     if (!leverancierId) return;
     if (onderhanden === undefined) return;
+
+    const onderhandenLeverancierId = Number(onderhanden?.leverancier_id);
+    if (
+      Number.isFinite(onderhandenLeverancierId) &&
+      onderhandenLeverancierId !== leverancierId
+    ) {
+      return;
+    }
 
     const serverData: Invoer = (onderhanden?.data as Invoer) ?? {};
     if (!deepEqual(invoer, serverData)) setInvoer(serverData);

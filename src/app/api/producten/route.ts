@@ -53,7 +53,10 @@ export async function POST(req: Request) {
     }
 
     if (!lid || !naam) {
-      return NextResponse.json({ error: "leverancier en naam verplicht" }, { status: 400 });
+      return NextResponse.json(
+        { error: "leverancier en naam verplicht" },
+        { status: 400 }
+      );
     }
 
     let pid = id;
@@ -66,15 +69,24 @@ export async function POST(req: Request) {
         [id]
       );
       vorigePrijs = check.rows[0]?.huidige_prijs ?? null;
+
       if (prijs === undefined) {
         nieuwePrijs = vorigePrijs;
       }
 
       await db.query(
         `UPDATE producten
-         SET leverancier_id = $1, naam = $2, bestelnummer = $3, minimum_voorraad = $4,
-             besteleenheid = $5, huidige_prijs = $6, inhoud = $7, eenheid = $8,
-             is_samengesteld = $9, actief = $10, volgorde = $11
+         SET leverancier_id = $1,
+             naam = $2,
+             bestelnummer = $3,
+             minimum_voorraad = $4,
+             besteleenheid = $5,
+             huidige_prijs = $6,
+             inhoud = $7,
+             eenheid = $8,
+             is_samengesteld = $9,
+             actief = $10,
+             volgorde = $11
          WHERE id = $12`,
         [
           lid,
@@ -94,8 +106,19 @@ export async function POST(req: Request) {
     } else {
       const insert = await db.query(
         `INSERT INTO producten
-         (leverancier_id, naam, bestelnummer, minimum_voorraad, besteleenheid,
-          huidige_prijs, inhoud, eenheid, is_samengesteld, actief, volgorde)
+         (
+           leverancier_id,
+           naam,
+           bestelnummer,
+           minimum_voorraad,
+           besteleenheid,
+           huidige_prijs,
+           inhoud,
+           eenheid,
+           is_samengesteld,
+           actief,
+           volgorde
+         )
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING id`,
         [
@@ -112,6 +135,7 @@ export async function POST(req: Request) {
           volgorde ?? null,
         ]
       );
+
       pid = insert.rows[0].id;
     }
 
@@ -132,24 +156,47 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const leverancierId = searchParams.get("leverancier");
+  const alleenActief = searchParams.get("alleenActief") === "true";
 
   try {
     let result;
+
     if (leverancierId) {
       result = await db.query(
-        `SELECT id, naam, bestelnummer, minimum_voorraad, besteleenheid, huidige_prijs,
-                inhoud, eenheid, is_samengesteld, actief, volgorde
+        `SELECT id,
+                naam,
+                bestelnummer,
+                minimum_voorraad,
+                besteleenheid,
+                huidige_prijs,
+                inhoud,
+                eenheid,
+                is_samengesteld,
+                actief,
+                volgorde
          FROM producten
          WHERE leverancier_id = $1
+           AND ($2::boolean = false OR actief = true)
          ORDER BY volgorde NULLS LAST, naam`,
-        [leverancierId]
+        [leverancierId, alleenActief]
       );
     } else {
       result = await db.query(
-        `SELECT id, naam, bestelnummer, minimum_voorraad, besteleenheid, huidige_prijs,
-                inhoud, eenheid, is_samengesteld, actief, volgorde
+        `SELECT id,
+                naam,
+                bestelnummer,
+                minimum_voorraad,
+                besteleenheid,
+                huidige_prijs,
+                inhoud,
+                eenheid,
+                is_samengesteld,
+                actief,
+                volgorde
          FROM producten
-         ORDER BY volgorde NULLS LAST, naam`
+         WHERE ($1::boolean = false OR actief = true)
+         ORDER BY volgorde NULLS LAST, naam`,
+        [alleenActief]
       );
     }
 
