@@ -13,6 +13,7 @@ const registry: RouteEntry[] = [
 
   // Planning
   { href: "/admin/shiftbase/rooster", breadcrumb: "Planning – Rooster" },
+  { href: "/admin/shiftbase/rooster-backup", breadcrumb: "Planning – Roosterbackup" },
   { href: "/open-diensten", breadcrumb: "Planning – Open Shifts" },
   { href: "/admin/rapportages/timesheets", breadcrumb: "Planning – Klokuren" },
   { href: "/shift-acties", breadcrumb: "Planning – Shiftacties & Statistieken" },

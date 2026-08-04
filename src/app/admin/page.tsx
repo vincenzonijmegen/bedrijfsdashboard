@@ -369,6 +369,7 @@ export default function AdminDashboard() {
 
         <Section id="planning" title="📅 Planning & bezetting" color="orange" activeSection={activeSection} setActiveSection={setActiveSection}>
           <LinkCard href="/admin/shiftbase/rooster" label="Rooster" color="orange" Icon={CalendarDays} breadcrumb="Planning & bezetting – Rooster" />
+          <LinkCard href="/admin/shiftbase/rooster-backup" label="Roosterbackup" color="orange" Icon={Archive} breadcrumb="Planning & bezetting – Roosterbackup" />
           <LinkCard href="/admin/shiftbase/rooster-medewerker" label="Rooster per medewerker" color="orange" Icon={CalendarDays} breadcrumb="Planning & bezetting – Rooster per medewerker" />
           <LinkCard href="/admin/shiftbase/rooster-medewerker-weken" label="Aantal x ingepland per week" color="orange" Icon={CalendarDays} breadcrumb="Planning & bezetting – Aantal x ingepland per week" />
           <LinkCard href="/open-diensten" label="Open Shifts" color="orange" Icon={CalendarDays} breadcrumb="Planning & bezetting – Open Shifts" />
