@@ -132,22 +132,17 @@ export async function DELETE(req: Request) {
     const opgeslagenEmail = medewerker.email;
 
     /*
-     * Eerst alle koppelingen verwijderen die via medewerker_id lopen.
+     * Tabellen zonder ON DELETE CASCADE.
      */
     await client.query(
-      `DELETE FROM skill_status
-       WHERE medewerker_id = $1`,
-      [medewerkerId]
-    );
-
-    await client.query(
-      `DELETE FROM skill_toegewezen
+      `DELETE FROM beschikbaarheid_basis
        WHERE medewerker_id = $1`,
       [medewerkerId]
     );
 
     /*
-     * Daarna alle instructiegegevens verwijderen die via e-mail lopen.
+     * Deze tabellen verwijzen niet met een foreign key naar medewerkers,
+     * maar bevatten wel voortgang op basis van het e-mailadres.
      */
     await client.query(
       `DELETE FROM toetsresultaten
@@ -162,8 +157,68 @@ export async function DELETE(req: Request) {
     );
 
     /*
-     * De medewerker wordt pas als laatste verwijderd.
+     * Expliciet opruimen van skillgegevens.
+     * Dit gebeurt deels al via CASCADE, maar expliciet verwijderen maakt
+     * duidelijk welke medewerkergegevens bij de verwijderactie horen.
      */
+    await client.query(
+      `DELETE FROM skill_status
+       WHERE medewerker_id = $1`,
+      [medewerkerId]
+    );
+
+    await client.query(
+      `DELETE FROM skill_toegewezen
+       WHERE medewerker_id = $1`,
+      [medewerkerId]
+    );
+
+    /*
+     * medewerker_skills.medewerker_id heeft ON DELETE CASCADE.
+     * planning_afwezigheid en planning_toewijzingen hebben eveneens CASCADE.
+     * ziekteverzuim heeft ook CASCADE.
+     *
+     * medewerker_skills.toegevoegd_door en vragen.medewerker_id blokkeren
+     * alleen wanneer daar werkelijk records voor deze medewerker bestaan.
+     * Die historie verwijderen we niet ongemerkt.
+     */
+    const skillBeheerResultaat = await client.query(
+      `SELECT COUNT(*)::integer AS aantal
+       FROM medewerker_skills
+       WHERE toegevoegd_door = $1`,
+      [medewerkerId]
+    );
+
+    const vragenResultaat = await client.query(
+      `SELECT COUNT(*)::integer AS aantal
+       FROM vragen
+       WHERE medewerker_id = $1`,
+      [medewerkerId]
+    );
+
+    const aantalSkillBeheer =
+      skillBeheerResultaat.rows[0]?.aantal ?? 0;
+
+    const aantalVragen =
+      vragenResultaat.rows[0]?.aantal ?? 0;
+
+    if (aantalSkillBeheer > 0 || aantalVragen > 0) {
+      await client.query("ROLLBACK");
+
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Deze medewerker kan nog niet worden verwijderd omdat er historie aan de medewerker gekoppeld is.",
+          blokkades: {
+            toegevoegdeSkills: aantalSkillBeheer,
+            vragen: aantalVragen,
+          },
+        },
+        { status: 409 }
+      );
+    }
+
     const verwijderdResultaat = await client.query(
       `DELETE FROM medewerkers
        WHERE id = $1`,
@@ -171,7 +226,9 @@ export async function DELETE(req: Request) {
     );
 
     if (verwijderdResultaat.rowCount !== 1) {
-      throw new Error("De medewerker kon niet definitief worden verwijderd");
+      throw new Error(
+        "De medewerker kon niet definitief worden verwijderd"
+      );
     }
 
     await client.query("COMMIT");
@@ -187,12 +244,16 @@ export async function DELETE(req: Request) {
   } catch (err) {
     await client.query("ROLLBACK");
 
-    console.error("Fout bij volledig verwijderen medewerker:", err);
+    console.error(
+      "Fout bij volledig verwijderen medewerker:",
+      err
+    );
 
     return NextResponse.json(
       {
         success: false,
-        error: "Verwijderen mislukt; er zijn geen wijzigingen opgeslagen",
+        error:
+          "Verwijderen mislukt; er zijn geen wijzigingen opgeslagen",
       },
       { status: 500 }
     );
