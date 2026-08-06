@@ -163,8 +163,6 @@ export async function DELETE(req: Request) {
 
     /*
      * Expliciet opruimen van skillgegevens.
-     * Deze tabellen hebben ON DELETE CASCADE, maar expliciet verwijderen
-     * maakt duidelijk welke gegevens bij de verwijderactie horen.
      */
     await client.query(
       `DELETE FROM skill_status
@@ -179,13 +177,8 @@ export async function DELETE(req: Request) {
     );
 
     /*
-     * medewerker_skills.medewerker_id heeft ON DELETE CASCADE.
-     * planning_afwezigheid en planning_toewijzingen hebben CASCADE.
-     * ziekteverzuim heeft eveneens CASCADE.
-     *
-     * medewerker_skills.toegevoegd_door en vragen.medewerker_id hebben
-     * geen CASCADE. Als daar historie aan hangt, stoppen we de verwijdering
-     * bewust en melden we welke blokkades er zijn.
+     * Skillhistorie die door deze medewerker is toegevoegd,
+     * blijft een bewuste blokkade.
      */
     const skillBeheerResultaat = await client.query(
       `SELECT COUNT(*)::integer AS aantal
@@ -194,36 +187,43 @@ export async function DELETE(req: Request) {
       [medewerkerId]
     );
 
-    const vragenResultaat = await client.query(
-      `SELECT COUNT(*)::integer AS aantal
-       FROM vragen
-       WHERE medewerker_id = $1`,
-      [medewerkerId]
-    );
-
     const aantalSkillBeheer =
       skillBeheerResultaat.rows[0]?.aantal ?? 0;
 
-    const aantalVragen =
-      vragenResultaat.rows[0]?.aantal ?? 0;
-
-    if (aantalSkillBeheer > 0 || aantalVragen > 0) {
+    if (aantalSkillBeheer > 0) {
       await client.query("ROLLBACK");
 
       return NextResponse.json(
         {
           success: false,
           error:
-            "Deze medewerker kan nog niet worden verwijderd omdat er historie aan de medewerker gekoppeld is.",
+            "Deze medewerker kan nog niet worden verwijderd omdat er skillhistorie aan de medewerker gekoppeld is.",
           blokkades: {
             toegevoegdeSkills: aantalSkillBeheer,
-            vragen: aantalVragen,
           },
         },
         { status: 409 }
       );
     }
 
+    /*
+     * Vragen blijven als historie bewaard,
+     * maar worden losgekoppeld van de medewerker.
+     */
+    await client.query(
+      `UPDATE vragen
+       SET medewerker_id = NULL
+       WHERE medewerker_id = $1`,
+      [medewerkerId]
+    );
+
+    /*
+     * Tabellen met ON DELETE CASCADE worden nu automatisch opgeschoond:
+     * - medewerker_skills.medewerker_id
+     * - planning_afwezigheid
+     * - planning_toewijzingen
+     * - ziekteverzuim
+     */
     const verwijderdResultaat = await client.query(
       `DELETE FROM medewerkers
        WHERE id = $1`,
