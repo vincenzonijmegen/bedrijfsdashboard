@@ -141,8 +141,7 @@ export async function DELETE(req: Request) {
     );
 
     /*
-     * Deze tabellen verwijzen niet met een foreign key naar medewerkers,
-     * maar bevatten wel voortgang op basis van het e-mailadres.
+     * Tabellen die via e-mailadres aan de medewerker zijn gekoppeld.
      */
     await client.query(
       `DELETE FROM toetsresultaten
@@ -156,10 +155,16 @@ export async function DELETE(req: Request) {
       [opgeslagenEmail]
     );
 
+    await client.query(
+      `DELETE FROM onboarding_opdrachten
+       WHERE lower(medewerker_email) = lower($1)`,
+      [opgeslagenEmail]
+    );
+
     /*
      * Expliciet opruimen van skillgegevens.
-     * Dit gebeurt deels al via CASCADE, maar expliciet verwijderen maakt
-     * duidelijk welke medewerkergegevens bij de verwijderactie horen.
+     * Deze tabellen hebben ON DELETE CASCADE, maar expliciet verwijderen
+     * maakt duidelijk welke gegevens bij de verwijderactie horen.
      */
     await client.query(
       `DELETE FROM skill_status
@@ -175,12 +180,12 @@ export async function DELETE(req: Request) {
 
     /*
      * medewerker_skills.medewerker_id heeft ON DELETE CASCADE.
-     * planning_afwezigheid en planning_toewijzingen hebben eveneens CASCADE.
-     * ziekteverzuim heeft ook CASCADE.
+     * planning_afwezigheid en planning_toewijzingen hebben CASCADE.
+     * ziekteverzuim heeft eveneens CASCADE.
      *
-     * medewerker_skills.toegevoegd_door en vragen.medewerker_id blokkeren
-     * alleen wanneer daar werkelijk records voor deze medewerker bestaan.
-     * Die historie verwijderen we niet ongemerkt.
+     * medewerker_skills.toegevoegd_door en vragen.medewerker_id hebben
+     * geen CASCADE. Als daar historie aan hangt, stoppen we de verwijdering
+     * bewust en melden we welke blokkades er zijn.
      */
     const skillBeheerResultaat = await client.query(
       `SELECT COUNT(*)::integer AS aantal

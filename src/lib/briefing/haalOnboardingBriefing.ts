@@ -53,7 +53,7 @@ export async function haalOnboardingBriefing(): Promise<OnboardingBriefingData> 
       o.afgerond_op,
       o.laatste_fout
     FROM onboarding_opdrachten o
-    LEFT JOIN medewerkers m
+    INNER JOIN medewerkers m
       ON LOWER(m.email) = LOWER(o.medewerker_email)
     LEFT JOIN instructies i
       ON i.id = o.instructie_id
@@ -73,7 +73,7 @@ export async function haalOnboardingBriefing(): Promise<OnboardingBriefingData> 
       o.afgerond_op,
       o.laatste_fout
     FROM onboarding_opdrachten o
-    LEFT JOIN medewerkers m
+    INNER JOIN medewerkers m
       ON LOWER(m.email) = LOWER(o.medewerker_email)
     LEFT JOIN instructies i
       ON i.id = o.instructie_id
@@ -94,7 +94,7 @@ export async function haalOnboardingBriefing(): Promise<OnboardingBriefingData> 
       o.afgerond_op,
       o.laatste_fout
     FROM onboarding_opdrachten o
-    LEFT JOIN medewerkers m
+    INNER JOIN medewerkers m
       ON LOWER(m.email) = LOWER(o.medewerker_email)
     LEFT JOIN instructies i
       ON i.id = o.instructie_id
@@ -114,7 +114,7 @@ export async function haalOnboardingBriefing(): Promise<OnboardingBriefingData> 
       o.afgerond_op,
       o.laatste_fout
     FROM onboarding_opdrachten o
-    LEFT JOIN medewerkers m
+    INNER JOIN medewerkers m
       ON LOWER(m.email) = LOWER(o.medewerker_email)
     LEFT JOIN instructies i
       ON i.id = o.instructie_id
@@ -135,7 +135,7 @@ export async function haalOnboardingBriefing(): Promise<OnboardingBriefingData> 
       o.afgerond_op,
       o.laatste_fout
     FROM onboarding_opdrachten o
-    LEFT JOIN medewerkers m
+    INNER JOIN medewerkers m
       ON LOWER(m.email) = LOWER(o.medewerker_email)
     LEFT JOIN instructies i
       ON i.id = o.instructie_id
@@ -147,11 +147,16 @@ export async function haalOnboardingBriefing(): Promise<OnboardingBriefingData> 
   `);
 
   const verzondenVandaag = verzondenVandaagResult.rows.map(rowToItem);
+
   const afgerondSindsGisteren =
     afgerondSindsGisterenResult.rows.map(rowToItem);
-  const openNaVerzending = openNaVerzendingResult.rows.map(rowToItem);
+
+  const openNaVerzending =
+    openNaVerzendingResult.rows.map(rowToItem);
+
   const langerDanDrieDagenOpen =
     langerDanDrieDagenOpenResult.rows.map(rowToItem);
+
   const fouten = foutenResult.rows.map(rowToItem);
 
   return {
