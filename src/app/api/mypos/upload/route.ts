@@ -79,6 +79,44 @@ function bepaalAmount(row: any): number {
   return 0;
 }
 
+function parseValueDate(value: unknown): string | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  // Excel datum als serienummer
+  if (typeof value === "number") {
+    const parsed = XLSX.SSF.parse_date_code(value);
+
+    if (!parsed) return null;
+
+    return `${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(
+      parsed.d
+    ).padStart(2, "0")}`;
+  }
+
+  // Mocht XLSX een echte Date opleveren
+  if (value instanceof Date) {
+    return `${value.getUTCFullYear()}-${String(
+      value.getUTCMonth() + 1
+    ).padStart(2, "0")}-${String(value.getUTCDate()).padStart(2, "0")}`;
+  }
+
+  // Oude MyPOS-indeling als tekst blijft ook ondersteund
+  const raw = String(value).trim();
+
+  const match = raw.match(
+    /(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})/
+  );
+
+  if (!match) return null;
+
+  return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(
+    2,
+    "0"
+  )}`;
+}
+
 export async function POST(req: NextRequest) {
   const form = await req.formData();
   const file = form.get("file");
@@ -129,12 +167,7 @@ export async function POST(req: NextRequest) {
     txs = rows
       .filter((row) => row["Value Date"] && (row["Debit"] || row["Credit"]))
       .map((row) => {
-        const rawDate = row["Value Date"].toString();
-        const match = rawDate.match(/(\d{1,2})[.\-/](\d{1,2})[.\-/](\d{4})/);
-
-        const value_date = match
-          ? `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`
-          : null;
+        const value_date = parseValueDate(row["Value Date"]);
 
         const typeField = row["Type"] ?? "";
         const descField = row["Description"] ?? "";
