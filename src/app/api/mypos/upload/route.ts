@@ -70,10 +70,11 @@ function bepaalAmount(row: any): number {
     return credit;
   }
 
-  // Debit is normaal uitgaand/negatief.
-  // Als MyPOS hem al negatief aanlevert, houden we hem negatief.
+  // Debit:
+  // - een gewone positieve Debit is uitgaand en wordt negatief;
+  // - een negatieve Debit is een reversal/terugboeking en moet positief worden.
   if (debit !== 0) {
-    return debit < 0 ? debit : -debit;
+    return -debit;
   }
 
   return 0;
@@ -204,6 +205,40 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  if (txs.length === 0) {
+    return NextResponse.json(
+      { error: "Geen geldige MyPOS-transacties in het bestand gevonden." },
+      { status: 400 }
+    );
+  }
+
+  /*
+    Een herimport moet de bestaande gegevens uit exact dezelfde periode vervangen,
+    anders worden transacties dubbel opgeslagen.
+
+    De periode wordt bepaald op basis van de vroegste en laatste Value Date
+    die daadwerkelijk uit het bestand zijn ingelezen.
+  */
+  const datums = txs.map((tx) => tx.value_date).sort();
+  const periodeVan = datums[0];
+  const periodeTot = datums[datums.length - 1];
+
+  try {
+    await db.query(
+      `
+      DELETE FROM mypos_transactions
+      WHERE value_date >= $1::date
+        AND value_date <= $2::date
+      `,
+      [periodeVan, periodeTot]
+    );
+  } catch (err) {
+    return NextResponse.json(
+      { error: "Fout bij verwijderen bestaande MyPOS-periode: " + String(err) },
+      { status: 500 }
+    );
+  }
+
   // Bulk insert in batches
   const BATCH_SIZE = 500;
 
@@ -247,5 +282,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     success: true,
     imported: txs.length,
+    periodeVan,
+    periodeTot,
   });
 }
