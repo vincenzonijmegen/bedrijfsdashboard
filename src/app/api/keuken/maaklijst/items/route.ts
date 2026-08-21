@@ -8,13 +8,44 @@ const AUTOMATISCHE_SCHOONMAAK_TAKEN: Record<
   string,
   { schoonmaakNaam: string }
 > = {
-  "melkmix": {
+  melkmix: {
     schoonmaakNaam: "kleppen en kranen pasteuriseerketel melk schoonmaken",
   },
-  "vruchtenmix": {
+  vruchtenmix: {
     schoonmaakNaam: "kleppen en kranen pasteuriseerketel vruchten schoonmaken",
   },
 };
+
+const MIXEN_PER_SCHOONMAAKBEURT = 6;
+
+async function schuifOpenAutomatischeSchoonmaakTakenDoor(
+  maaklijstId: number,
+  locatie: string
+) {
+  const schoonmaakNamen = Object.values(AUTOMATISCHE_SCHOONMAAK_TAKEN).map(
+    (taak) => taak.schoonmaakNaam
+  );
+
+  await db.query(
+    `
+    UPDATE maaklijst_items mi
+    SET
+      maaklijst_id = $1,
+      bijgewerkt_op = NOW()
+    FROM maaklijsten oude_lijst
+    WHERE mi.maaklijst_id = oude_lijst.id
+      AND mi.status = 'open'
+      AND LOWER(mi.naam) = ANY($2::text[])
+      AND oude_lijst.locatie = $3
+      AND mi.maaklijst_id <> $1
+    `,
+    [
+      maaklijstId,
+      schoonmaakNamen.map((naam) => naam.toLowerCase()),
+      locatie,
+    ]
+  );
+}
 
 async function getOrCreateMaaklijstId(datum: string, locatie: string) {
   const existing = await db.query(
@@ -28,50 +59,77 @@ async function getOrCreateMaaklijstId(datum: string, locatie: string) {
     [datum, locatie]
   );
 
+  let maaklijstId: number;
+
   if (existing.rowCount && existing.rows[0]?.id) {
-    return Number(existing.rows[0].id);
+    maaklijstId = Number(existing.rows[0].id);
+  } else {
+    const created = await db.query(
+      `
+      INSERT INTO maaklijsten (datum, locatie, status)
+      VALUES ($1::date, $2, 'open')
+      RETURNING id
+      `,
+      [datum, locatie]
+    );
+
+    maaklijstId = Number(created.rows[0].id);
   }
 
-  const created = await db.query(
-    `
-    INSERT INTO maaklijsten (datum, locatie, status)
-    VALUES ($1::date, $2, 'open')
-    RETURNING id
-    `,
-    [datum, locatie]
-  );
+  // Een niet-uitgevoerde automatische schoonmaaktaak mag niet op een oude
+  // maaklijst achterblijven. Hij verhuist naar de actuele maaklijst en blijft
+  // daar open staan totdat iemand hem daadwerkelijk afhandelt.
+  await schuifOpenAutomatischeSchoonmaakTakenDoor(maaklijstId, locatie);
 
-  return Number(created.rows[0].id);
+  return maaklijstId;
 }
 
 async function maakAutomatischeSchoonmaakTaakIndienNodig(item: {
   naam: string;
   maaklijst_id: number;
+  toegevoegdAantal: number;
 }) {
   const itemNaam = String(item.naam || "").trim().toLowerCase();
 
-const sleutel = itemNaam.includes("melkmix")
-  ? "melkmix"
-  : itemNaam.includes("vruchtenmix")
-    ? "vruchtenmix"
-    : null;
+  const sleutel = itemNaam.includes("melkmix")
+    ? "melkmix"
+    : itemNaam.includes("vruchtenmix")
+      ? "vruchtenmix"
+      : null;
 
-if (!sleutel) return;
+  if (!sleutel || item.toegevoegdAantal <= 0) return;
 
-const schoonmaakRegel = AUTOMATISCHE_SCHOONMAAK_TAKEN[sleutel];
-const tellerResult = await db.query(
-  `
-  SELECT COALESCE(SUM(aantal), 0)::int AS aantal
-  FROM maaklijst_items
-  WHERE LOWER(naam) LIKE $1
-  `,
-  [`%${sleutel}%`]
-);
+  const schoonmaakRegel = AUTOMATISCHE_SCHOONMAAK_TAKEN[sleutel];
 
-  const aantal = Number(tellerResult.rows[0]?.aantal || 0);
+  const tellerResult = await db.query(
+    `
+    SELECT COALESCE(SUM(aantal), 0)::int AS aantal
+    FROM maaklijst_items
+    WHERE LOWER(naam) LIKE $1
+    `,
+    [`%${sleutel}%`]
+  );
 
-  if (aantal <= 0 || aantal % 6 !== 0) return;
+  const totaalNaToevoeging = Number(tellerResult.rows[0]?.aantal || 0);
+  const totaalVoorToevoeging = Math.max(
+    0,
+    totaalNaToevoeging - item.toegevoegdAantal
+  );
 
+  const cycliVoor = Math.floor(
+    totaalVoorToevoeging / MIXEN_PER_SCHOONMAAKBEURT
+  );
+  const cycliNa = Math.floor(
+    totaalNaToevoeging / MIXEN_PER_SCHOONMAAKBEURT
+  );
+
+  const nieuwGepasseerdeCycli = cycliNa - cycliVoor;
+
+  if (nieuwGepasseerdeCycli <= 0) return;
+
+  // Als dezelfde schoonmaakverplichting nog openstaat, blijft die ene taak
+  // leidend. Door getOrCreateMaaklijstId staat hij inmiddels op de actuele
+  // maaklijst. We maken dan geen tweede identieke open taak aan.
   const bestaandOpenResult = await db.query(
     `
     SELECT id
@@ -123,83 +181,87 @@ export async function POST(req: NextRequest) {
     const maaklijstId = await getOrCreateMaaklijstId(datum, locatie);
 
     const existing = await db.query(
-  `
-  SELECT id, aantal, bijgewerkt_op
-  FROM maaklijst_items
-  WHERE maaklijst_id = $1
-    AND recept_id = $2
-    AND status = 'open'
-  LIMIT 1
-  `,
-  [maaklijstId, receptId]
-);
-
-let result;
-
-if (existing.rowCount && existing.rows[0]?.id) {
-  const laatsteWijziging = existing.rows[0].bijgewerkt_op
-    ? new Date(existing.rows[0].bijgewerkt_op).getTime()
-    : 0;
-
-  const nu = Date.now();
-  const isWaarschijnlijkDubbelklik = nu - laatsteWijziging < 3000;
-
-  if (isWaarschijnlijkDubbelklik) {
-    result = await db.query(
       `
-      SELECT *
+      SELECT id, aantal, bijgewerkt_op
       FROM maaklijst_items
-      WHERE id = $1
+      WHERE maaklijst_id = $1
+        AND recept_id = $2
+        AND status = 'open'
+      LIMIT 1
       `,
-      [existing.rows[0].id]
+      [maaklijstId, receptId]
     );
-  } else {
-    result = await db.query(
-      `
-      UPDATE maaklijst_items
-      SET
-        aantal = aantal + $1,
-        bijgewerkt_op = NOW()
-      WHERE id = $2
-      RETURNING *
-      `,
-      [aantal, existing.rows[0].id]
-    );
-  }
-} else {
-  try {
-    result = await db.query(
-      `
-      INSERT INTO maaklijst_items
-        (maaklijst_id, recept_id, categorie, naam, maakvolgorde, aantal, status)
-      VALUES
-        ($1, $2, $3, $4, $5, $6, 'open')
-      RETURNING *
-      `,
-      [maaklijstId, receptId, categorie, naam, maakvolgorde, aantal]
-    );
-  } catch (error: any) {
-    if (error?.code === "23505") {
-      result = await db.query(
-        `
-        SELECT *
-        FROM maaklijst_items
-        WHERE maaklijst_id = $1
-          AND recept_id = $2
-          AND status = 'open'
-        LIMIT 1
-        `,
-        [maaklijstId, receptId]
-      );
+
+    let result;
+    let toegevoegdAantal = 0;
+
+    if (existing.rowCount && existing.rows[0]?.id) {
+      const laatsteWijziging = existing.rows[0].bijgewerkt_op
+        ? new Date(existing.rows[0].bijgewerkt_op).getTime()
+        : 0;
+
+      const nu = Date.now();
+      const isWaarschijnlijkDubbelklik = nu - laatsteWijziging < 3000;
+
+      if (isWaarschijnlijkDubbelklik) {
+        result = await db.query(
+          `
+          SELECT *
+          FROM maaklijst_items
+          WHERE id = $1
+          `,
+          [existing.rows[0].id]
+        );
+      } else {
+        result = await db.query(
+          `
+          UPDATE maaklijst_items
+          SET
+            aantal = aantal + $1,
+            bijgewerkt_op = NOW()
+          WHERE id = $2
+          RETURNING *
+          `,
+          [aantal, existing.rows[0].id]
+        );
+        toegevoegdAantal = aantal;
+      }
     } else {
-      throw error;
+      try {
+        result = await db.query(
+          `
+          INSERT INTO maaklijst_items
+            (maaklijst_id, recept_id, categorie, naam, maakvolgorde, aantal, status)
+          VALUES
+            ($1, $2, $3, $4, $5, $6, 'open')
+          RETURNING *
+          `,
+          [maaklijstId, receptId, categorie, naam, maakvolgorde, aantal]
+        );
+        toegevoegdAantal = aantal;
+      } catch (error: any) {
+        if (error?.code === "23505") {
+          result = await db.query(
+            `
+            SELECT *
+            FROM maaklijst_items
+            WHERE maaklijst_id = $1
+              AND recept_id = $2
+              AND status = 'open'
+            LIMIT 1
+            `,
+            [maaklijstId, receptId]
+          );
+        } else {
+          throw error;
+        }
+      }
     }
-  }
-}
 
     await maakAutomatischeSchoonmaakTaakIndienNodig({
       naam,
       maaklijst_id: maaklijstId,
+      toegevoegdAantal,
     });
 
     await db.query(
@@ -217,7 +279,11 @@ if (existing.rowCount && existing.rows[0]?.id) {
     });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Fout bij toevoegen aan maaklijst", details: String(error) },
+      {
+        success: false,
+        error: "Fout bij toevoegen aan maaklijst",
+        details: String(error),
+      },
       { status: 500 }
     );
   }
@@ -300,7 +366,11 @@ export async function PATCH(req: NextRequest) {
     });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Fout bij wijzigen maaklijst-item", details: String(error) },
+      {
+        success: false,
+        error: "Fout bij wijzigen maaklijst-item",
+        details: String(error),
+      },
       { status: 500 }
     );
   }
@@ -340,7 +410,11 @@ export async function DELETE(req: NextRequest) {
     });
   } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Fout bij verwijderen maaklijst-item", details: String(error) },
+      {
+        success: false,
+        error: "Fout bij verwijderen maaklijst-item",
+        details: String(error),
+      },
       { status: 500 }
     );
   }
