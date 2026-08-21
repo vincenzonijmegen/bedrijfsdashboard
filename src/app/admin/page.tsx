@@ -392,6 +392,7 @@ export default function AdminDashboard() {
 
         <Section id="bestellingen" title="📦 Bestellingen & voorraad" color="pink" activeSection={activeSection} setActiveSection={setActiveSection}>
           <LinkCard href="/admin/voorraad/bestelpagina" label="Bestel-app" color="pink" Icon={ClipboardList} breadcrumb="Bestellingen & voorraad – Bestel-app" />
+          <LinkCard href="/admin/rapportage/ingekochte-producten" label="Ingekochte producten" color="pink" Icon={BarChart2} breadcrumb="Bestellingen & voorraad – Ingekochte producten" />
           <LinkCard href="/admin/leveranciers" label="Leveranciers beheren" color="pink" Icon={CreditCard} breadcrumb="Bestellingen & voorraad – Leveranciers beheren" />
           <LinkCard href="/admin/voorraad/artikelen" label="Artikelen beheren" color="pink" Icon={Box} breadcrumb="Bestellingen & voorraad – Artikelen beheren" />
         </Section>

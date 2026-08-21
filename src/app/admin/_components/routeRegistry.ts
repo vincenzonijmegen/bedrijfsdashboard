@@ -42,6 +42,7 @@ const registry: RouteEntry[] = [
   { href: "/admin/suikervrij", breadcrumb: "Voorraadbeheer, Recepturen & Allergenen – Suikervrij productie" },
   { href: "/admin/voorraad/artikelen", breadcrumb: "Voorraadbeheer, Recepturen & Allergenen – Artikelen beheren" },
   { href: "/admin/voorraad/bestelpagina", breadcrumb: "Voorraadbeheer, Recepturen & Allergenen – Bestel-app" },
+  { href: "/admin/rapportage/ingekochte-producten", breadcrumb: "Bestellingen & voorraad – Ingekochte producten" },
   { href: "/admin/recepten", breadcrumb: "Voorraadbeheer, Recepturen & Allergenen – Receptprijs" },
   { href: "/admin/producten/allergenen", breadcrumb: "Voorraadbeheer, Recepturen & Allergenen – Allergenenregistratie" },
   { href: "/admin/recepten/allergenen", breadcrumb: "Voorraadbeheer, Recepturen & Allergenen – Allergenenkaart" },
