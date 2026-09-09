@@ -255,33 +255,48 @@ async function getVasteUitgaven(jaar: number) {
   const entiteitId = Number(entRes.rows?.[0]?.id);
   if (!entiteitId) throw new Error("IJssalon Vincenzo B.V. ontbreekt in cashflow_entiteiten");
 
+  // Laat PostgreSQL zelf de datumgeldigheid bepalen. Dat voorkomt verschillen
+  // in DATE-parsing tussen Node/pg-omgevingen en maakt de tariefhistorie leidend.
   const res = await db.query(`
-    SELECT s.id, s.naam, s.startdatum, s.einddatum,
-           b.geldig_vanaf, b.geldig_tot, b.bedrag
-    FROM cashflow_stromen s
-    JOIN cashflow_stroom_bedragen b ON b.stroom_id=s.id
-    WHERE s.van_entiteit_id=$1
-      AND s.actief=true
-      AND s.gedrag='vast'
-      AND s.frequentie='maandelijks'
-      AND b.bedrag IS NOT NULL
-    ORDER BY s.naam, b.geldig_vanaf
-  `, [entiteitId]);
+    WITH maanden AS (
+      SELECT generate_series(
+        make_date($2, 1, 1),
+        make_date($2, 12, 1),
+        interval '1 month'
+      )::date AS maand_datum
+    )
+    SELECT
+      EXTRACT(MONTH FROM m.maand_datum)::int AS maand,
+      s.naam,
+      b.bedrag
+    FROM maanden m
+    JOIN cashflow_stromen s
+      ON s.van_entiteit_id = $1
+     AND s.actief = true
+     AND s.gedrag = 'vast'
+     AND s.frequentie = 'maandelijks'
+     AND m.maand_datum >= s.startdatum
+     AND (s.einddatum IS NULL OR m.maand_datum <= s.einddatum)
+    JOIN cashflow_stroom_bedragen b
+      ON b.stroom_id = s.id
+     AND b.bedrag IS NOT NULL
+     AND m.maand_datum >= b.geldig_vanaf
+     AND (b.geldig_tot IS NULL OR m.maand_datum <= b.geldig_tot)
+    ORDER BY maand, s.naam
+  `, [entiteitId, jaar]);
 
   const perMaand = new Map<number, Array<{ naam: string; bedrag: number }>>();
-  for (let maand = 1; maand <= 12; maand++) {
-    const datum = isoDate(jaar, maand, 1);
-    const regels = (res.rows ?? [])
-      .filter((r: any) => {
-        const start = String(r.startdatum).slice(0, 10);
-        const eind = r.einddatum ? String(r.einddatum).slice(0, 10) : null;
-        const geldigVanaf = String(r.geldig_vanaf).slice(0, 10);
-        const geldigTot = r.geldig_tot ? String(r.geldig_tot).slice(0, 10) : null;
-        return datum >= start && (!eind || datum <= eind) && datum >= geldigVanaf && (!geldigTot || datum <= geldigTot);
-      })
-      .map((r: any) => ({ naam: String(r.naam), bedrag: Number(r.bedrag) || 0 }));
-    perMaand.set(maand, regels);
+  for (let maand = 1; maand <= 12; maand++) perMaand.set(maand, []);
+
+  for (const r of res.rows ?? []) {
+    const maand = Number(r.maand);
+    if (!Number.isInteger(maand) || maand < 1 || maand > 12) continue;
+    perMaand.get(maand)!.push({
+      naam: String(r.naam),
+      bedrag: Number(r.bedrag) || 0,
+    });
   }
+
   return perMaand;
 }
 
