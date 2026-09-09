@@ -19,8 +19,11 @@ type MaandRegel = {
   inkoop: number | null;
   inkoopBron: "bank_basis" | "bank_profiel_omzetgeschaald" | "geen_profiel" | "niet_beschikbaar";
   btwKasMutatie: number;
+  overigeUitgaven: number;
+  overigeBron: "bank_basis" | "geen_profiel";
   nettoVoorOverigePosten: number | null;
   nettoNaInkoopEnBtw: number | null;
+  nettoNaOverigeUitgaven: number | null;
 };
 
 type InkoopProfiel = {
@@ -31,6 +34,12 @@ type InkoopProfiel = {
   schaalwijze: "omzet" | "vast";
   btwPercentage: number;
   btwAftrekbaarPercentage: number;
+};
+
+type OverigeProfiel = {
+  maand: number;
+  basisjaar: number;
+  basisKasuitstroom: number;
 };
 
 type BtwKwartaalRegel = {
@@ -434,6 +443,33 @@ function berekenInkoop(
   };
 }
 
+async function getOverigeProfielen(entiteitId: number): Promise<Map<number, OverigeProfiel>> {
+  const res = await db.query(`
+    SELECT maand, basisjaar, basis_kasuitstroom
+    FROM cashflow_overige_profiel
+    WHERE entiteit_id = $1
+      AND actief = true
+    ORDER BY maand
+  `, [entiteitId]);
+
+  const map = new Map<number, OverigeProfiel>();
+  for (const r of res.rows ?? []) {
+    map.set(Number(r.maand), {
+      maand: Number(r.maand),
+      basisjaar: Number(r.basisjaar),
+      basisKasuitstroom: Number(r.basis_kasuitstroom) || 0,
+    });
+  }
+  return map;
+}
+
+function berekenOverige(
+  profiel: OverigeProfiel | undefined
+): { bedrag: number; bron: MaandRegel["overigeBron"] } {
+  if (!profiel) return { bedrag: 0, bron: "geen_profiel" };
+  return { bedrag: round2(profiel.basisKasuitstroom), bron: "bank_basis" };
+}
+
 function standaardBtwBetaaldatum(jaar: number, kwartaal: number) {
   if (kwartaal === 1) return `${jaar}-04-30`;
   if (kwartaal === 2) return `${jaar}-07-31`;
@@ -467,7 +503,7 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
 }> {
   const huidigJaar = new Date().getFullYear();
   if (jaar !== huidigJaar) {
-    throw new Error(`Fase 4B ondersteunt voorlopig alleen het huidige jaar (${huidigJaar})`);
+    throw new Error(`Fase 4C ondersteunt voorlopig alleen het huidige jaar (${huidigJaar})`);
   }
 
   const entiteitId = await getVincenzoEntiteitId();
@@ -480,18 +516,20 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
   `, [entiteitId]);
   const groeiPct = Number(instellingRes.rows?.[0]?.groei ?? 0);
 
-  const [omzet, werkelijkeLonen, vasteUitgaven, inkoopProfielen, btwRows] = await Promise.all([
+  const [omzet, werkelijkeLonen, vasteUitgaven, inkoopProfielen, overigeProfielen, btwRows] = await Promise.all([
     getOmzetBasis(jaar, groeiPct),
     getWerkelijkeLoonkosten(jaar),
     getVasteUitgaven(jaar, entiteitId),
     getInkoopProfielen(entiteitId),
+    getOverigeProfielen(entiteitId),
     getWerkelijkeBtwRows(entiteitId, jaar),
   ]);
 
   const now = new Date();
   const huidigeMaand = now.getMonth() + 1;
   const waarschuwingen: string[] = [
-    "BTW-prognose bevat in fase 4B nog geen voorbelasting uit overige variabele/losse uitgaven; werkelijk betaalde BTW is leidend zodra beschikbaar.",
+    "Overige reguliere/losse ING-uitgaven zitten vanaf fase 4C in de kasprognose, maar hun BTW wordt nog niet als voorbelasting geraamd omdat de bankexport geen betrouwbaar 9%/21%-onderscheid bevat.",
+    "Het overige-profiel bevat alleen niet-reeds-gemodelleerde uitgaven van maximaal €1.000 per afzonderlijke ING-transactie; grotere incidentele of structurele posten worden niet stilzwijgend in dit profiel opgenomen.",
   ];
   const maanden: MaandRegel[] = [];
 
@@ -540,6 +578,9 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
     if (inkoop === null) {
       waarschuwingen.push(`Productinkoop ${jaar}-${String(maand).padStart(2, "0")} kon niet uit het bankprofiel worden berekend.`);
     }
+
+    const overigeResultaat = berekenOverige(overigeProfielen.get(maand));
+    const overigeUitgaven = overigeResultaat.bedrag;
 
     const btwOmzet = round2(omzetBedrag * 9 / 109);
     let voorbelasting9 = 0;
@@ -591,10 +632,15 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
       inkoop,
       inkoopBron: inkoopResultaat.bron,
       btwKasMutatie: 0,
+      overigeUitgaven,
+      overigeBron: overigeResultaat.bron,
       nettoVoorOverigePosten,
       nettoNaInkoopEnBtw: nettoVoorOverigePosten === null || inkoop === null
         ? null
         : round2(nettoVoorOverigePosten - inkoop),
+      nettoNaOverigeUitgaven: nettoVoorOverigePosten === null || inkoop === null
+        ? null
+        : round2(nettoVoorOverigePosten - inkoop - overigeUitgaven),
     });
   }
 
@@ -670,6 +716,9 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
   for (const regel of maanden) {
     if (regel.nettoNaInkoopEnBtw !== null) {
       regel.nettoNaInkoopEnBtw = round2(regel.nettoNaInkoopEnBtw + regel.btwKasMutatie);
+    }
+    if (regel.nettoNaOverigeUitgaven !== null) {
+      regel.nettoNaOverigeUitgaven = round2(regel.nettoNaOverigeUitgaven + regel.btwKasMutatie);
     }
   }
 
