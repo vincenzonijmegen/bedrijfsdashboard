@@ -23,6 +23,7 @@ const registry: RouteEntry[] = [
 
   // Rapportages
   { href: "/admin/rapportage/financieel", breadcrumb: "Rapportages – Financiële Rapporten" },
+  { href: "/admin/financieel/cashflow/beheer", breadcrumb: "Rapportages – Cashflowbeheer" },
   { href: "/admin/rapportage/medewerkers", breadcrumb: "Rapportages – Medewerkers Rapporten" },
   { href: "/admin/aftekenlijsten", breadcrumb: "Rapportages – formulieren/rapporten" },
 

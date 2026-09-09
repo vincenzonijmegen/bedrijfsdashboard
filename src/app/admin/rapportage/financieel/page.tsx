@@ -5,6 +5,11 @@ import { Card, CardContent } from "@/components/ui/card";
 
 const rapportages = [
   {
+    titel: "Cashflowbeheer",
+    beschrijving: "Beheer kasbuffers, startsaldi, vaste geldstromen en tariefperiodes.",
+    link: "/admin/financieel/cashflow/beheer",
+  },
+  {
     titel: "Jaarrekeningen",
     beschrijving: "Invoer, rapporten, meerjarenoverzicht, grafieken en prognoses.",
     link: "/admin/rapportage/jaarrekeningen/overzicht",
