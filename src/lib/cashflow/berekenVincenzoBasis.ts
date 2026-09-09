@@ -1,5 +1,13 @@
 import { db } from "@/lib/db";
 
+type VasteStroomRegel = {
+  naam: string;
+  bedrag: number;
+  btwPercentage: number;
+  btwAftrekbaarPercentage: number;
+  bedragIsInclusiefBtw: boolean;
+};
+
 type MaandRegel = {
   maand: number;
   omzet: number;
@@ -7,8 +15,37 @@ type MaandRegel = {
   loonkosten: number | null;
   loonkostenBron: "werkelijk" | "shiftbase" | "niet_beschikbaar";
   vasteUitgaven: number;
-  vasteStromen: Array<{ naam: string; bedrag: number }>;
+  vasteStromen: VasteStroomRegel[];
+  inkoop: number | null;
+  inkoopBron: "bank_basis" | "bank_profiel_omzetgeschaald" | "geen_profiel" | "niet_beschikbaar";
+  btwKasMutatie: number;
   nettoVoorOverigePosten: number | null;
+  nettoNaInkoopEnBtw: number | null;
+};
+
+type InkoopProfiel = {
+  maand: number;
+  basisjaar: number;
+  basisKasuitstroom: number;
+  basisOmzet: number;
+  schaalwijze: "omzet" | "vast";
+  btwPercentage: number;
+  btwAftrekbaarPercentage: number;
+};
+
+type BtwKwartaalRegel = {
+  kwartaal: number;
+  omzetInclBtw: number;
+  btwOmzet9: number;
+  voorbelasting9: number;
+  voorbelasting21: number;
+  voorbelastingOverig: number;
+  modelAfdracht: number;
+  werkelijkeAfdracht: number | null;
+  gebruikteAfdracht: number;
+  bron: "werkelijk" | "prognose";
+  betaaldatum: string;
+  afwijkingModelWerkelijk: number | null;
 };
 
 type RosterItem = {
@@ -248,13 +285,38 @@ async function getShiftbaseMaandkosten(jaar: number, maand: number): Promise<num
   }
 }
 
-async function getVasteUitgaven(jaar: number) {
+async function getVincenzoEntiteitId() {
   const entRes = await db.query(
     `SELECT id FROM cashflow_entiteiten WHERE naam='IJssalon Vincenzo B.V.' LIMIT 1`
   );
   const entiteitId = Number(entRes.rows?.[0]?.id);
   if (!entiteitId) throw new Error("IJssalon Vincenzo B.V. ontbreekt in cashflow_entiteiten");
+  return entiteitId;
+}
 
+function round2(v: number) {
+  return Math.round(v * 100) / 100;
+}
+
+function btwUitBedrag(
+  bedrag: number,
+  btwPercentage: number,
+  aftrekbaarPercentage: number,
+  inclusiefBtw: boolean
+) {
+  if (bedrag <= 0 || btwPercentage <= 0 || aftrekbaarPercentage <= 0) return 0;
+  const btw = inclusiefBtw
+    ? bedrag - bedrag / (1 + btwPercentage / 100)
+    : bedrag * (btwPercentage / 100);
+  return round2(btw * (aftrekbaarPercentage / 100));
+}
+
+function naarKasBedrag(bedrag: number, btwPercentage: number, inclusiefBtw: boolean) {
+  if (inclusiefBtw || btwPercentage <= 0) return round2(bedrag);
+  return round2(bedrag * (1 + btwPercentage / 100));
+}
+
+async function getVasteUitgaven(jaar: number, entiteitId: number) {
   // Laat PostgreSQL zelf de datumgeldigheid bepalen. Dat voorkomt verschillen
   // in DATE-parsing tussen Node/pg-omgevingen en maakt de tariefhistorie leidend.
   const res = await db.query(`
@@ -268,7 +330,10 @@ async function getVasteUitgaven(jaar: number) {
     SELECT
       EXTRACT(MONTH FROM m.maand_datum)::int AS maand,
       s.naam,
-      b.bedrag
+      b.bedrag,
+      b.btw_percentage,
+      b.btw_aftrekbaar_percentage,
+      b.bedrag_is_inclusief_btw
     FROM maanden m
     JOIN cashflow_stromen s
       ON s.van_entiteit_id = $1
@@ -285,19 +350,112 @@ async function getVasteUitgaven(jaar: number) {
     ORDER BY maand, s.naam
   `, [entiteitId, jaar]);
 
-  const perMaand = new Map<number, Array<{ naam: string; bedrag: number }>>();
+  const perMaand = new Map<number, VasteStroomRegel[]>();
   for (let maand = 1; maand <= 12; maand++) perMaand.set(maand, []);
 
   for (const r of res.rows ?? []) {
     const maand = Number(r.maand);
     if (!Number.isInteger(maand) || maand < 1 || maand > 12) continue;
+    const opgeslagenBedrag = Number(r.bedrag) || 0;
+    const btwPercentage = Number(r.btw_percentage) || 0;
+    const bedragIsInclusiefBtw = r.bedrag_is_inclusief_btw !== false;
     perMaand.get(maand)!.push({
       naam: String(r.naam),
-      bedrag: Number(r.bedrag) || 0,
+      bedrag: naarKasBedrag(opgeslagenBedrag, btwPercentage, bedragIsInclusiefBtw),
+      btwPercentage,
+      btwAftrekbaarPercentage: Number(r.btw_aftrekbaar_percentage) || 0,
+      bedragIsInclusiefBtw,
     });
   }
 
   return perMaand;
+}
+
+async function getInkoopProfielen(entiteitId: number): Promise<Map<number, InkoopProfiel>> {
+  const res = await db.query(`
+    SELECT
+      p.maand,
+      p.basisjaar,
+      p.basis_kasuitstroom,
+      p.schaalwijze,
+      p.btw_percentage,
+      p.btw_aftrekbaar_percentage,
+      COALESCE(SUM(o.aantal * o.eenheidsprijs), 0) AS basis_omzet
+    FROM cashflow_inkoopprofiel p
+    LEFT JOIN rapportage.omzet o
+      ON EXTRACT(YEAR FROM o.datum)::int = p.basisjaar
+     AND EXTRACT(MONTH FROM o.datum)::int = p.maand
+    WHERE p.entiteit_id = $1
+      AND p.actief = true
+    GROUP BY p.id, p.maand, p.basisjaar, p.basis_kasuitstroom,
+             p.schaalwijze, p.btw_percentage, p.btw_aftrekbaar_percentage
+    ORDER BY p.maand
+  `, [entiteitId]);
+
+  const map = new Map<number, InkoopProfiel>();
+  for (const r of res.rows ?? []) {
+    map.set(Number(r.maand), {
+      maand: Number(r.maand),
+      basisjaar: Number(r.basisjaar),
+      basisKasuitstroom: Number(r.basis_kasuitstroom) || 0,
+      basisOmzet: Number(r.basis_omzet) || 0,
+      schaalwijze: r.schaalwijze === "vast" ? "vast" : "omzet",
+      btwPercentage: Number(r.btw_percentage) || 0,
+      btwAftrekbaarPercentage: Number(r.btw_aftrekbaar_percentage) || 0,
+    });
+  }
+  return map;
+}
+
+function berekenInkoop(
+  profiel: InkoopProfiel | undefined,
+  jaar: number,
+  maand: number,
+  omzetBedrag: number,
+  huidigeMaand: number
+): { bedrag: number | null; bron: MaandRegel["inkoopBron"] } {
+  if (!profiel) return { bedrag: 0, bron: "geen_profiel" };
+  if (profiel.schaalwijze === "vast") {
+    return { bedrag: round2(profiel.basisKasuitstroom), bron: "bank_basis" };
+  }
+
+  // Voor een afgesloten maand in het basisjaar is de werkelijke bankuitstroom
+  // leidend. Voor huidige/toekomstige maanden schalen we het historische
+  // kaspatroon mee met de omzetprognose.
+  if (jaar === profiel.basisjaar && maand < huidigeMaand) {
+    return { bedrag: round2(profiel.basisKasuitstroom), bron: "bank_basis" };
+  }
+  if (profiel.basisOmzet <= 0) {
+    return { bedrag: null, bron: "niet_beschikbaar" };
+  }
+  return {
+    bedrag: round2(profiel.basisKasuitstroom * (omzetBedrag / profiel.basisOmzet)),
+    bron: "bank_profiel_omzetgeschaald",
+  };
+}
+
+function standaardBtwBetaaldatum(jaar: number, kwartaal: number) {
+  if (kwartaal === 1) return `${jaar}-04-30`;
+  if (kwartaal === 2) return `${jaar}-07-31`;
+  if (kwartaal === 3) return `${jaar}-10-31`;
+  return `${jaar + 1}-01-31`;
+}
+
+async function getWerkelijkeBtwRows(entiteitId: number, jaar: number) {
+  const res = await db.query(`
+    SELECT jaar, kwartaal, werkelijke_afdracht,
+           geplande_betaaldatum::text AS geplande_betaaldatum,
+           werkelijke_betaaldatum::text AS werkelijke_betaaldatum,
+           status
+    FROM cashflow_btw_kwartalen
+    WHERE entiteit_id = $1
+      AND (
+        jaar = $2
+        OR EXTRACT(YEAR FROM werkelijke_betaaldatum)::int = $2
+      )
+    ORDER BY jaar, kwartaal
+  `, [entiteitId, jaar]);
+  return res.rows ?? [];
 }
 
 export async function berekenVincenzoBasis(jaar: number): Promise<{
@@ -305,31 +463,46 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
   groeiPct: number;
   waarschuwingen: string[];
   maanden: MaandRegel[];
+  btwKwartalen: BtwKwartaalRegel[];
 }> {
   const huidigJaar = new Date().getFullYear();
   if (jaar !== huidigJaar) {
-    throw new Error(`Fase 4A ondersteunt voorlopig alleen het huidige jaar (${huidigJaar})`);
+    throw new Error(`Fase 4B ondersteunt voorlopig alleen het huidige jaar (${huidigJaar})`);
   }
 
+  const entiteitId = await getVincenzoEntiteitId();
   const instellingRes = await db.query(`
     SELECT COALESCE(i.prognosegroei_pct, 0) AS groei
     FROM cashflow_entiteiten e
     LEFT JOIN cashflow_instellingen i ON i.entiteit_id=e.id
-    WHERE e.naam='IJssalon Vincenzo B.V.'
+    WHERE e.id=$1
     LIMIT 1
-  `);
+  `, [entiteitId]);
   const groeiPct = Number(instellingRes.rows?.[0]?.groei ?? 0);
 
-  const [omzet, werkelijkeLonen, vasteUitgaven] = await Promise.all([
+  const [omzet, werkelijkeLonen, vasteUitgaven, inkoopProfielen, btwRows] = await Promise.all([
     getOmzetBasis(jaar, groeiPct),
     getWerkelijkeLoonkosten(jaar),
-    getVasteUitgaven(jaar),
+    getVasteUitgaven(jaar, entiteitId),
+    getInkoopProfielen(entiteitId),
+    getWerkelijkeBtwRows(entiteitId, jaar),
   ]);
 
   const now = new Date();
   const huidigeMaand = now.getMonth() + 1;
-  const waarschuwingen: string[] = [];
+  const waarschuwingen: string[] = [
+    "BTW-prognose bevat in fase 4B nog geen voorbelasting uit overige variabele/losse uitgaven; werkelijk betaalde BTW is leidend zodra beschikbaar.",
+  ];
   const maanden: MaandRegel[] = [];
+
+  type MaandBtw = {
+    maand: number;
+    omzet: number;
+    btwOmzet: number;
+    voorbelasting9: number;
+    voorbelasting21: number;
+  };
+  const btwPerMaand: MaandBtw[] = [];
 
   for (let maand = 1; maand <= 12; maand++) {
     const werkelijkOmzet = omzet.werkelijk.get(maand) ?? 0;
@@ -354,20 +527,152 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
     }
 
     const vasteStromen = vasteUitgaven.get(maand) ?? [];
-    const vasteTotaal = vasteStromen.reduce((s, r) => s + r.bedrag, 0);
+    const vasteTotaal = round2(vasteStromen.reduce((som, r) => som + r.bedrag, 0));
+
+    const inkoopResultaat = berekenInkoop(
+      inkoopProfielen.get(maand),
+      jaar,
+      maand,
+      omzetBedrag,
+      huidigeMaand
+    );
+    const inkoop = inkoopResultaat.bedrag;
+    if (inkoop === null) {
+      waarschuwingen.push(`Productinkoop ${jaar}-${String(maand).padStart(2, "0")} kon niet uit het bankprofiel worden berekend.`);
+    }
+
+    const btwOmzet = round2(omzetBedrag * 9 / 109);
+    let voorbelasting9 = 0;
+    let voorbelasting21 = 0;
+
+    const profiel = inkoopProfielen.get(maand);
+    if (inkoop !== null && profiel && profiel.btwPercentage > 0) {
+      const inkoopBtw = btwUitBedrag(
+        inkoop,
+        profiel.btwPercentage,
+        profiel.btwAftrekbaarPercentage,
+        true
+      );
+      if (Math.abs(profiel.btwPercentage - 9) < 0.001) voorbelasting9 += inkoopBtw;
+      else if (Math.abs(profiel.btwPercentage - 21) < 0.001) voorbelasting21 += inkoopBtw;
+    }
+
+    for (const stroom of vasteStromen) {
+      const aftrek = btwUitBedrag(
+        stroom.bedrag,
+        stroom.btwPercentage,
+        stroom.btwAftrekbaarPercentage,
+        true
+      );
+      if (Math.abs(stroom.btwPercentage - 9) < 0.001) voorbelasting9 += aftrek;
+      else if (Math.abs(stroom.btwPercentage - 21) < 0.001) voorbelasting21 += aftrek;
+    }
+
+    btwPerMaand.push({
+      maand,
+      omzet: round2(omzetBedrag),
+      btwOmzet,
+      voorbelasting9: round2(voorbelasting9),
+      voorbelasting21: round2(voorbelasting21),
+    });
+
+    const nettoVoorOverigePosten = loonkosten === null
+      ? null
+      : round2(omzetBedrag - loonkosten - vasteTotaal);
+
     maanden.push({
       maand,
-      omzet: Math.round(omzetBedrag * 100) / 100,
+      omzet: round2(omzetBedrag),
       omzetBron: omzetIsWerkelijk ? "werkelijk" : "prognose",
       loonkosten,
       loonkostenBron,
-      vasteUitgaven: Math.round(vasteTotaal * 100) / 100,
+      vasteUitgaven: vasteTotaal,
       vasteStromen,
-      nettoVoorOverigePosten: loonkosten === null
+      inkoop,
+      inkoopBron: inkoopResultaat.bron,
+      btwKasMutatie: 0,
+      nettoVoorOverigePosten,
+      nettoNaInkoopEnBtw: nettoVoorOverigePosten === null || inkoop === null
         ? null
-        : Math.round((omzetBedrag - loonkosten - vasteTotaal) * 100) / 100,
+        : round2(nettoVoorOverigePosten - inkoop),
     });
   }
 
-  return { jaar, groeiPct, waarschuwingen, maanden };
+  const werkelijkMap = new Map<string, any>();
+  for (const row of btwRows) {
+    werkelijkMap.set(`${Number(row.jaar)}-${Number(row.kwartaal)}`, row);
+  }
+
+  const btwKwartalen: BtwKwartaalRegel[] = [];
+  for (let kwartaal = 1; kwartaal <= 4; kwartaal++) {
+    const van = (kwartaal - 1) * 3 + 1;
+    const regels = btwPerMaand.filter((r) => r.maand >= van && r.maand <= van + 2);
+    const omzetInclBtw = round2(regels.reduce((s, r) => s + r.omzet, 0));
+    const btwOmzet9 = round2(regels.reduce((s, r) => s + r.btwOmzet, 0));
+    const voorbelasting9 = round2(regels.reduce((s, r) => s + r.voorbelasting9, 0));
+    const voorbelasting21 = round2(regels.reduce((s, r) => s + r.voorbelasting21, 0));
+    const voorbelastingOverig = 0;
+    const modelAfdracht = round2(
+      btwOmzet9 - voorbelasting9 - voorbelasting21 - voorbelastingOverig
+    );
+
+    const actual = werkelijkMap.get(`${jaar}-${kwartaal}`);
+    const heeftWerkelijk = actual?.status === "betaald" && actual?.werkelijke_afdracht != null;
+    const werkelijkeAfdracht = heeftWerkelijk ? Number(actual.werkelijke_afdracht) : null;
+    const gebruikteAfdracht = round2(heeftWerkelijk ? werkelijkeAfdracht! : modelAfdracht);
+    const betaaldatum = String(
+      (heeftWerkelijk ? actual.werkelijke_betaaldatum : actual?.geplande_betaaldatum)
+      ?? standaardBtwBetaaldatum(jaar, kwartaal)
+    ).slice(0, 10);
+
+    btwKwartalen.push({
+      kwartaal,
+      omzetInclBtw,
+      btwOmzet9,
+      voorbelasting9,
+      voorbelasting21,
+      voorbelastingOverig,
+      modelAfdracht,
+      werkelijkeAfdracht,
+      gebruikteAfdracht,
+      bron: heeftWerkelijk ? "werkelijk" : "prognose",
+      betaaldatum,
+      afwijkingModelWerkelijk: heeftWerkelijk
+        ? round2(werkelijkeAfdracht! - modelAfdracht)
+        : null,
+    });
+  }
+
+  // Kasmutaties uit de vier kwartalen van dit jaar.
+  for (const kwartaal of btwKwartalen) {
+    const d = new Date(`${kwartaal.betaaldatum}T12:00:00`);
+    if (d.getFullYear() !== jaar) continue;
+    const maand = d.getMonth() + 1;
+    const regel = maanden.find((m) => m.maand === maand);
+    if (!regel) continue;
+    regel.btwKasMutatie = round2(regel.btwKasMutatie - kwartaal.gebruikteAfdracht);
+  }
+
+  // Ook een teruggaaf/afdracht uit het voorgaande kwartaaljaar kan in dit
+  // kalenderjaar op de bank landen (zoals Q4 2025 in februari 2026).
+  for (const row of btwRows) {
+    const rowJaar = Number(row.jaar);
+    if (rowJaar === jaar || row?.status !== "betaald" || row?.werkelijke_afdracht == null) continue;
+    const betaaldatum = String(row.werkelijke_betaaldatum ?? "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(betaaldatum)) continue;
+    const d = new Date(`${betaaldatum}T12:00:00`);
+    if (d.getFullYear() !== jaar) continue;
+    const regel = maanden.find((m) => m.maand === d.getMonth() + 1);
+    if (!regel) continue;
+    regel.btwKasMutatie = round2(regel.btwKasMutatie - Number(row.werkelijke_afdracht));
+  }
+
+  for (const regel of maanden) {
+    if (regel.nettoNaInkoopEnBtw !== null) {
+      regel.nettoNaInkoopEnBtw = round2(regel.nettoNaInkoopEnBtw + regel.btwKasMutatie);
+    }
+  }
+
+  return { jaar, groeiPct, waarschuwingen, maanden, btwKwartalen };
 }
+
