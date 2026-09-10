@@ -100,6 +100,20 @@ type CashLine = {
   amount: number | null;
   vatPart: number;
   source: string;
+  netAfterBox2?: number;
+  box2Percentage?: number;
+};
+
+type FreeRoom = {
+  originalCrediting: number;
+  alreadyWithdrawn: number;
+  balanceDate: string;
+};
+
+type Box2Rate = {
+  validFrom: string;
+  validTo: string | null;
+  effectivePct: number;
 };
 
 async function getEntity(name: string) {
@@ -213,6 +227,42 @@ async function getPlans(streamIds: number[]) {
   return map;
 }
 
+async function getFreeRoom(entityId: number) {
+  const res = await db.query(`
+    SELECT oorspronkelijke_creditering, reeds_opgenomen, peildatum::text AS peildatum
+    FROM cashflow_vrije_ruimte
+    WHERE entiteit_id = $1
+    LIMIT 1
+  `, [entityId]);
+  const row = res.rows?.[0];
+  if (!row) return null;
+  return {
+    originalCrediting: Number(row.oorspronkelijke_creditering),
+    alreadyWithdrawn: Number(row.reeds_opgenomen),
+    balanceDate: parseDateOnly(row.peildatum),
+  } satisfies FreeRoom;
+}
+
+async function getBox2Rates(entityId: number) {
+  const res = await db.query(`
+    SELECT geldig_vanaf::text AS geldig_vanaf, geldig_tot::text AS geldig_tot, effectief_percentage
+    FROM cashflow_box2_tarieven
+    WHERE entiteit_id = $1
+    ORDER BY geldig_vanaf
+  `, [entityId]);
+  return (res.rows ?? []).map((r): Box2Rate => ({
+    validFrom: parseDateOnly(r.geldig_vanaf),
+    validTo: r.geldig_tot == null ? null : parseDateOnly(r.geldig_tot),
+    effectivePct: Number(r.effectief_percentage),
+  }));
+}
+
+function box2RateForDate(rates: Box2Rate[], date: string) {
+  return rates
+    .filter((r) => r.validFrom <= date && (r.validTo == null || r.validTo >= date))
+    .sort((a, b) => b.validFrom.localeCompare(a.validFrom))[0] ?? null;
+}
+
 async function getVatOverrides(entityId: number, fromYear: number, toYear: number) {
   const res = await db.query(`
     SELECT jaar, kwartaal, werkelijke_afdracht, werkelijke_betaaldatum::text AS werkelijke_betaaldatum,
@@ -282,7 +332,44 @@ function isDefaultOccurrence(stream: Stream, year: number, month: number) {
 
 function generatePlanEvents(streams: Stream[], plans: Map<string, Plan>, toYear: number) {
   const byMonth = new Map<string, PlannedEvent[]>();
-  for (const stream of streams.filter((s) => s.behavior === "planbaar" && s.calculation === "vast_bedrag")) {
+  for (const stream of streams.filter((s) =>
+    s.behavior === "planbaar"
+    && s.calculation === "vast_bedrag"
+    && s.category !== "vrije_reserve"
+    && s.category !== "dividend"
+  )) {
+    const interval = frequencyMonths(stream.frequency);
+    if (stream.frequency !== "eenmalig" && interval == null) continue;
+    let current = stream.startDate;
+    while (Number(current.slice(0, 4)) <= toYear) {
+      if (stream.endDate && current > stream.endDate) break;
+      const p = plans.get(`${stream.id}|${current}`);
+      if (!p || p.status !== "vervallen") {
+        const actualDate = p?.status === "betaald" && p.paidOn ? p.paidOn : (p?.plannedDate || current);
+        const key = actualDate.slice(0, 7);
+        if (!byMonth.has(key)) byMonth.set(key, []);
+        byMonth.get(key)!.push({
+          streamId: stream.id,
+          originalDate: current,
+          actualDate,
+          amountOverride: p ? p.amount : null,
+          status: p?.status ?? "standaard",
+        });
+      }
+      if (stream.frequency === "eenmalig") break;
+      current = addMonths(current, interval!);
+    }
+  }
+  return byMonth;
+}
+
+function generatePrivateWithdrawalEvents(streams: Stream[], plans: Map<string, Plan>, toYear: number) {
+  const byMonth = new Map<string, PlannedEvent[]>();
+  for (const stream of streams.filter((s) =>
+    s.behavior === "planbaar"
+    && s.calculation === "vast_bedrag"
+    && s.category === "vrije_reserve"
+  )) {
     const interval = frequencyMonths(stream.frequency);
     if (stream.frequency !== "eenmalig" && interval == null) continue;
     let current = stream.startDate;
@@ -337,8 +424,25 @@ async function calculateHolding(entityName: string, toYear: number) {
 
   const streams = await getStreams(entity.id);
   const streamIds = streams.map((s) => s.id);
-  const [rates, plans] = await Promise.all([getRates(streamIds), getPlans(streamIds)]);
+  const [rates, plans, freeRoom, box2Rates] = await Promise.all([
+    getRates(streamIds),
+    getPlans(streamIds),
+    getFreeRoom(entity.id),
+    getBox2Rates(entity.id),
+  ]);
   const planEvents = generatePlanEvents(streams, plans, toYear);
+  const privateWithdrawalEvents = generatePrivateWithdrawalEvents(streams, plans, toYear);
+
+  const freeRoomProblem = freeRoom == null
+    ? "Vrije-ruimteconfiguratie ontbreekt"
+    : commonDate != null && freeRoom.balanceDate !== commonDate
+      ? `Peildatum vrije ruimte (${freeRoom.balanceDate}) wijkt af van rekeningpeildatum (${commonDate})`
+      : null;
+  let remainingFreeRoom = freeRoom == null
+    ? null
+    : round2(Math.max(0, freeRoom.originalCrediting - freeRoom.alreadyWithdrawn));
+  const openingFreeRoom = remainingFreeRoom;
+  let freeRoomExhaustedOn: string | null = remainingFreeRoom === 0 && commonDate ? commonDate : null;
 
   const fromYear = commonDate ? Number(commonDate.slice(0, 4)) : new Date().getFullYear();
   const vatOverrides = await getVatOverrides(entity.id, fromYear, toYear);
@@ -448,6 +552,139 @@ async function calculateHolding(entityName: string, toYear: number) {
           d.inputVat = round2(d.inputVat + vat * ((rate?.deductiblePct ?? 0) / 100));
         }
         d.lines.push({ streamId: stream.id, name: stream.name, category: stream.category, direction: incoming ? "in" : "uit", amount: grossCash, vatPart: vat, source: event.status });
+      }
+      for (const event of privateWithdrawalEvents.get(key) ?? []) {
+        const withdrawalStream = streamById.get(event.streamId);
+        if (!withdrawalStream || !streamActiveOn(withdrawalStream, event.originalDate)) continue;
+
+        const withdrawalRate = rateForDate(rates, withdrawalStream.id, event.originalDate);
+        const desiredNet = event.amountOverride ?? withdrawalRate?.amount ?? null;
+        if (desiredNet == null) {
+          d.missing.push(`tarief: ${withdrawalStream.name}`);
+          d.lines.push({
+            streamId: withdrawalStream.id,
+            name: withdrawalStream.name,
+            category: withdrawalStream.category,
+            direction: "uit",
+            amount: null,
+            vatPart: 0,
+            source: event.status,
+          });
+          continue;
+        }
+
+        if (freeRoomProblem || remainingFreeRoom == null) {
+          d.missing.push(freeRoomProblem ?? "Vrije-ruimteconfiguratie ontbreekt");
+          d.lines.push({
+            streamId: withdrawalStream.id,
+            name: `${withdrawalStream.name} (vrije ruimte)`,
+            category: withdrawalStream.category,
+            direction: "uit",
+            amount: null,
+            vatPart: 0,
+            source: event.status,
+          });
+          continue;
+        }
+
+        const freePart = round2(Math.min(remainingFreeRoom, desiredNet));
+        const dividendNetTarget = round2(Math.max(0, desiredNet - freePart));
+
+        if (freePart > 0) {
+          d.expenses = round2(d.expenses + freePart);
+          remainingFreeRoom = round2(remainingFreeRoom - freePart);
+          d.lines.push({
+            streamId: withdrawalStream.id,
+            name: `${withdrawalStream.name} (rekening-courant/vrije ruimte)`,
+            category: withdrawalStream.category,
+            direction: "uit",
+            amount: freePart,
+            vatPart: 0,
+            source: event.status,
+          });
+          if (remainingFreeRoom === 0 && freeRoomExhaustedOn == null) {
+            freeRoomExhaustedOn = event.actualDate;
+          }
+        }
+
+        if (dividendNetTarget <= 0) continue;
+
+        const dividendStreams = streams.filter((x) =>
+          x.fromEntityId === entity.id
+          && x.category === "dividend"
+          && x.fiscalTreatment === "dividend_bruto"
+        );
+        if (dividendStreams.length !== 1) {
+          d.missing.push("Dividendstroom ontbreekt of is niet eenduidig");
+          d.lines.push({
+            streamId: 0,
+            name: "Dividend voor resterende privé-opname",
+            category: "dividend",
+            direction: "uit",
+            amount: null,
+            vatPart: 0,
+            source: event.status,
+            netAfterBox2: dividendNetTarget,
+          });
+          continue;
+        }
+
+        const dividendStream = dividendStreams[0];
+        const box2Rate = box2RateForDate(box2Rates, event.actualDate);
+        if (!box2Rate) {
+          d.missing.push(`Box 2-tarief: ${entity.name}`);
+        }
+
+        const taxes = linkedTaxes.get(dividendStream.id) ?? [];
+        const taxStream = taxes.length === 1 ? taxes[0] : null;
+        if (!taxStream) {
+          d.missing.push(`gekoppelde dividendbelasting: ${dividendStream.name}`);
+        }
+        const taxRate = taxStream ? rateForDate(rates, taxStream.id, event.actualDate) : null;
+        if (taxStream && (!taxRate || taxRate.sourcePercentage == null)) {
+          d.missing.push(`tarief: ${taxStream.name}`);
+        }
+
+        if (!box2Rate || !taxStream || !taxRate || taxRate.sourcePercentage == null) {
+          d.lines.push({
+            streamId: dividendStream.id,
+            name: `${dividendStream.name} (bruto te berekenen)`,
+            category: dividendStream.category,
+            direction: "uit",
+            amount: null,
+            vatPart: 0,
+            source: event.status,
+            netAfterBox2: dividendNetTarget,
+            box2Percentage: box2Rate?.effectivePct,
+          });
+          continue;
+        }
+
+        const grossDividend = round2(dividendNetTarget / (1 - box2Rate.effectivePct / 100));
+        const withholding = round2(grossDividend * taxRate.sourcePercentage / 100);
+        const cashToPrivate = round2(grossDividend - withholding);
+
+        d.expenses = round2(d.expenses + grossDividend);
+        d.lines.push({
+          streamId: dividendStream.id,
+          name: `${dividendStream.name} (cash naar privé na inhouding)`,
+          category: dividendStream.category,
+          direction: "uit",
+          amount: cashToPrivate,
+          vatPart: 0,
+          source: event.status,
+          netAfterBox2: dividendNetTarget,
+          box2Percentage: box2Rate.effectivePct,
+        });
+        d.lines.push({
+          streamId: taxStream.id,
+          name: taxStream.name,
+          category: taxStream.category,
+          direction: "uit",
+          amount: withholding,
+          vatPart: 0,
+          source: `gekoppeld aan ${dividendStream.name}`,
+        });
       }
     }
   }
@@ -561,20 +798,30 @@ async function calculateHolding(entityName: string, toYear: number) {
   }
 
   const allMissing = [...new Set(monthsOutput.flatMap((m) => m.missingConfiguration))];
-  const complete = accountProblem == null && allMissing.length === 0 && monthsOutput.every((m) => m.cashChange != null);
+  const complete = accountProblem == null && freeRoomProblem == null && allMissing.length === 0 && monthsOutput.every((m) => m.cashChange != null);
 
   return {
     entity: entity.name,
     available: complete,
-    reason: accountProblem ?? (allMissing.length ? "Een of meer maanden missen verplichte configuratie" : null),
+    reason: accountProblem ?? freeRoomProblem ?? (allMissing.length ? "Een of meer maanden missen verplichte configuratie" : null),
     startDate: commonDate,
     startBalance,
     minimumBuffer: entity.minimumBuffer,
     accounts,
+    freeRoom: freeRoom == null ? null : {
+      balanceDate: freeRoom.balanceDate,
+      originalCrediting: freeRoom.originalCrediting,
+      alreadyWithdrawn: freeRoom.alreadyWithdrawn,
+      openingRemaining: openingFreeRoom,
+      remainingAfterForecast: remainingFreeRoom,
+      exhaustedOn: freeRoomExhaustedOn,
+    },
     missingConfiguration: allMissing,
     warnings: [
-      "Holding-BTW wordt alleen geblokkeerd door ontbrekende tarieven van BTW-relevante stromen; expliciet BTW-vrije stromen zoals DGA-loon, loonheffing, vrije reserve en dividend blokkeren de BTW-berekening niet.",
-      "Dividend wordt als bruto verplichting vastgelegd: netto uitbetaling aan privé plus gekoppelde dividendbelasting tellen samen op tot het bruto dividend.",
+      "De halfjaarlijkse privé-opname gebruikt eerst de resterende rekening-courant/vrije ruimte. Een opname kan automatisch worden gesplitst in een onbelaste terugbetaling en dividend.",
+      "Zodra dividend nodig is, wordt het bruto dividend berekend vanuit het gewenste netto bedrag na Box 2. Het effectieve Box-2-percentage en het inhoudingspercentage dividendbelasting moeten expliciet zijn geconfigureerd; ze worden niet hardcoded.",
+      "Dividendbelasting is een voorheffing. Een eventuele aanvullende privé-Box-2-afrekening valt buiten de kasstroom van de holding, maar het veld netAfterBox2 bewaakt het gewenste netto privébedrag.",
+      "Holding-BTW wordt alleen geblokkeerd door ontbrekende tarieven van BTW-relevante stromen; expliciet BTW-vrije stromen zoals DGA-loon, loonheffing, vrije ruimte en dividend blokkeren de BTW-berekening niet.",
     ],
     vatQuarters,
     months: monthsOutput,
