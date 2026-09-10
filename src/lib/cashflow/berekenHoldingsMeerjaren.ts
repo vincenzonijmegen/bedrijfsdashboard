@@ -256,6 +256,16 @@ function streamActiveOn(stream: Stream, date: string) {
   return date >= stream.startDate && (stream.endDate == null || date <= stream.endDate);
 }
 
+function isExplicitlyVatFreeStream(stream: Stream) {
+  return new Set([
+    "dga_netto_loon",
+    "dga_loonheffing",
+    "vrije_reserve",
+    "dividend",
+    "dividendbelasting",
+  ]).has(stream.category);
+}
+
 function isDefaultOccurrence(stream: Stream, year: number, month: number) {
   const target = monthStart(year, month);
   if (!streamActiveOn(stream, target)) return false;
@@ -342,6 +352,7 @@ async function calculateHolding(entityName: string, toYear: number) {
   const monthDetails = new Map<string, {
     lines: CashLine[];
     missing: string[];
+    vatMissing: string[];
     income: number;
     expenses: number;
     outputVat: number;
@@ -351,7 +362,7 @@ async function calculateHolding(entityName: string, toYear: number) {
   const ensureMonth = (year: number, month: number) => {
     const key = monthKey(year, month);
     if (!monthDetails.has(key)) {
-      monthDetails.set(key, { lines: [], missing: [], income: 0, expenses: 0, outputVat: 0, inputVat: 0 });
+      monthDetails.set(key, { lines: [], missing: [], vatMissing: [], income: 0, expenses: 0, outputVat: 0, inputVat: 0 });
     }
     return monthDetails.get(key)!;
   };
@@ -369,7 +380,9 @@ async function calculateHolding(entityName: string, toYear: number) {
 
         const rate = rateForDate(rates, stream.id, date);
         if (!rate || rate.amount == null) {
-          d.missing.push(`tarief: ${stream.name}`);
+          const missingLabel = `tarief: ${stream.name}`;
+          d.missing.push(missingLabel);
+          if (!isExplicitlyVatFreeStream(stream)) d.vatMissing.push(missingLabel);
           d.lines.push({ streamId: stream.id, name: stream.name, category: stream.category, direction: stream.toEntityId === entity.id ? "in" : "uit", amount: null, vatPart: 0, source: "tarief_ontbreekt" });
           continue;
         }
@@ -392,7 +405,9 @@ async function calculateHolding(entityName: string, toYear: number) {
         const rate = rateForDate(rates, stream.id, event.originalDate);
         const grossBase = event.amountOverride ?? rate?.amount ?? null;
         if (grossBase == null) {
-          d.missing.push(`tarief: ${stream.name}`);
+          const missingLabel = `tarief: ${stream.name}`;
+          d.missing.push(missingLabel);
+          if (!isExplicitlyVatFreeStream(stream)) d.vatMissing.push(missingLabel);
           d.lines.push({ streamId: stream.id, name: stream.name, category: stream.category, direction: "uit", amount: null, vatPart: 0, source: event.status });
           continue;
         }
@@ -453,7 +468,7 @@ async function calculateHolding(entityName: string, toYear: number) {
     for (let quarter = 1; quarter <= 4; quarter++) {
       const months = [quarter * 3 - 2, quarter * 3 - 1, quarter * 3];
       const ds = months.map((m) => ensureMonth(year, m));
-      const complete = ds.every((x) => x.missing.length === 0);
+      const complete = ds.every((x) => x.vatMissing.length === 0);
       const outputVat = round2(ds.reduce((s, x) => s + x.outputVat, 0));
       const inputVat = round2(ds.reduce((s, x) => s + x.inputVat, 0));
       const modelAmount = complete ? round2(outputVat - inputVat) : null;
@@ -558,7 +573,7 @@ async function calculateHolding(entityName: string, toYear: number) {
     accounts,
     missingConfiguration: allMissing,
     warnings: [
-      "Holding-BTW wordt berekend uit geconfigureerde inkomende en uitgaande cashflowstromen; nog niet geconfigureerde holdingkosten leveren dus ook nog geen voorbelasting op.",
+      "Holding-BTW wordt alleen geblokkeerd door ontbrekende tarieven van BTW-relevante stromen; expliciet BTW-vrije stromen zoals DGA-loon, loonheffing, vrije reserve en dividend blokkeren de BTW-berekening niet.",
       "Dividend wordt als bruto verplichting vastgelegd: netto uitbetaling aan privé plus gekoppelde dividendbelasting tellen samen op tot het bruto dividend.",
     ],
     vatQuarters,
