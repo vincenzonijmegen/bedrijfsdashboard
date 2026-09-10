@@ -121,7 +121,7 @@ async function getEntity(name: string) {
 
 async function getAccounts(entityId: number) {
   const res = await db.query(`
-    SELECT id, naam, rekening_type, prognose_startsaldo, saldo_peildatum
+    SELECT id, naam, rekening_type, prognose_startsaldo, saldo_peildatum::text AS saldo_peildatum
     FROM cashflow_rekeningen
     WHERE entiteit_id = $1 AND actief = true
     ORDER BY naam
@@ -138,7 +138,7 @@ async function getAccounts(entityId: number) {
 async function getStreams(entityId: number) {
   const res = await db.query(`
     SELECT id, naam, categorie, van_entiteit_id, naar_entiteit_id, tegenpartij_naam,
-           gedrag, uitstelbaar, frequentie, startdatum, einddatum,
+           gedrag, uitstelbaar, frequentie, startdatum::text AS startdatum, einddatum::text AS einddatum,
            bron_stroom_id, berekeningswijze, fiscale_behandeling
     FROM cashflow_stromen
     WHERE actief = true
@@ -166,7 +166,7 @@ async function getStreams(entityId: number) {
 async function getRates(streamIds: number[]) {
   if (!streamIds.length) return new Map<number, Rate[]>();
   const res = await db.query(`
-    SELECT stroom_id, geldig_vanaf, geldig_tot, bedrag, percentage_van_bron,
+    SELECT stroom_id, geldig_vanaf::text AS geldig_vanaf, geldig_tot::text AS geldig_tot, bedrag, percentage_van_bron,
            btw_percentage, btw_aftrekbaar_percentage, bedrag_is_inclusief_btw
     FROM cashflow_stroom_bedragen
     WHERE stroom_id = ANY($1::int[])
@@ -193,7 +193,7 @@ async function getRates(streamIds: number[]) {
 async function getPlans(streamIds: number[]) {
   if (!streamIds.length) return new Map<string, Plan>();
   const res = await db.query(`
-    SELECT stroom_id, oorspronkelijke_datum, geplande_datum, bedrag, status, betaald_op
+    SELECT stroom_id, oorspronkelijke_datum::text AS oorspronkelijke_datum, geplande_datum::text AS geplande_datum, bedrag, status, betaald_op::text AS betaald_op
     FROM cashflow_planning
     WHERE stroom_id = ANY($1::int[])
     ORDER BY stroom_id, oorspronkelijke_datum
@@ -215,8 +215,8 @@ async function getPlans(streamIds: number[]) {
 
 async function getVatOverrides(entityId: number, fromYear: number, toYear: number) {
   const res = await db.query(`
-    SELECT jaar, kwartaal, werkelijke_afdracht, werkelijke_betaaldatum,
-           verwachte_afdracht, geplande_betaaldatum, status
+    SELECT jaar, kwartaal, werkelijke_afdracht, werkelijke_betaaldatum::text AS werkelijke_betaaldatum,
+           verwachte_afdracht, geplande_betaaldatum::text AS geplande_betaaldatum, status
     FROM cashflow_btw_kwartalen
     WHERE entiteit_id = $1 AND jaar BETWEEN $2 AND $3
     ORDER BY jaar, kwartaal
