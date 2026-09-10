@@ -1,0 +1,589 @@
+import { db } from "@/lib/db";
+
+function round2(v: number) {
+  return Math.round(v * 100) / 100;
+}
+
+function parseDateOnly(v: unknown) {
+  return String(v ?? "").slice(0, 10);
+}
+
+function isMonthEnd(dateStr: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m, 0)).getUTCDate() === d;
+}
+
+function monthKey(year: number, month: number) {
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+function monthStart(year: number, month: number) {
+  return `${monthKey(year, month)}-01`;
+}
+
+function addMonths(dateStr: string, amount: number) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1 + amount, d));
+  return dt.toISOString().slice(0, 10);
+}
+
+function frequencyMonths(frequency: string) {
+  if (frequency === "maandelijks") return 1;
+  if (frequency === "per_kwartaal") return 3;
+  if (frequency === "halfjaarlijks") return 6;
+  if (frequency === "jaarlijks") return 12;
+  return null;
+}
+
+function toCashAmount(amount: number, vatPct: number, isInclVat: boolean) {
+  if (isInclVat || vatPct <= 0) return round2(amount);
+  return round2(amount * (1 + vatPct / 100));
+}
+
+function vatPart(cashAmount: number, vatPct: number, isInclVat: boolean, sourceAmount: number) {
+  if (vatPct <= 0 || cashAmount <= 0) return 0;
+  if (isInclVat) return round2(cashAmount - cashAmount / (1 + vatPct / 100));
+  return round2(sourceAmount * vatPct / 100);
+}
+
+type Stream = {
+  id: number;
+  name: string;
+  category: string;
+  fromEntityId: number | null;
+  toEntityId: number | null;
+  counterparty: string | null;
+  behavior: string;
+  postponable: boolean;
+  frequency: string;
+  startDate: string;
+  endDate: string | null;
+  sourceStreamId: number | null;
+  calculation: "vast_bedrag" | "percentage_van_bron";
+  fiscalTreatment: string;
+};
+
+type Rate = {
+  streamId: number;
+  validFrom: string;
+  validTo: string | null;
+  amount: number | null;
+  sourcePercentage: number | null;
+  vatPct: number;
+  deductiblePct: number;
+  isInclVat: boolean;
+};
+
+type Plan = {
+  streamId: number;
+  originalDate: string;
+  plannedDate: string;
+  amount: number;
+  status: string;
+  paidOn: string | null;
+};
+
+type PlannedEvent = {
+  streamId: number;
+  originalDate: string;
+  actualDate: string;
+  amountOverride: number | null;
+  status: string;
+};
+
+type CashLine = {
+  streamId: number;
+  name: string;
+  category: string;
+  direction: "in" | "uit";
+  amount: number | null;
+  vatPart: number;
+  source: string;
+};
+
+async function getEntity(name: string) {
+  const res = await db.query(`
+    SELECT e.id, e.naam, i.minimum_kasbuffer
+    FROM cashflow_entiteiten e
+    LEFT JOIN cashflow_instellingen i ON i.entiteit_id = e.id
+    WHERE e.naam = $1 AND e.actief = true
+    LIMIT 1
+  `, [name]);
+  const row = res.rows?.[0];
+  if (!row) throw new Error(`${name} ontbreekt in cashflow_entiteiten`);
+  return {
+    id: Number(row.id),
+    name: String(row.naam),
+    minimumBuffer: row.minimum_kasbuffer == null ? null : Number(row.minimum_kasbuffer),
+  };
+}
+
+async function getAccounts(entityId: number) {
+  const res = await db.query(`
+    SELECT id, naam, rekening_type, prognose_startsaldo, saldo_peildatum
+    FROM cashflow_rekeningen
+    WHERE entiteit_id = $1 AND actief = true
+    ORDER BY naam
+  `, [entityId]);
+  return (res.rows ?? []).map((r) => ({
+    id: Number(r.id),
+    name: String(r.naam),
+    type: String(r.rekening_type),
+    startBalance: r.prognose_startsaldo == null ? null : Number(r.prognose_startsaldo),
+    balanceDate: r.saldo_peildatum == null ? null : parseDateOnly(r.saldo_peildatum),
+  }));
+}
+
+async function getStreams(entityId: number) {
+  const res = await db.query(`
+    SELECT id, naam, categorie, van_entiteit_id, naar_entiteit_id, tegenpartij_naam,
+           gedrag, uitstelbaar, frequentie, startdatum, einddatum,
+           bron_stroom_id, berekeningswijze, fiscale_behandeling
+    FROM cashflow_stromen
+    WHERE actief = true
+      AND (van_entiteit_id = $1 OR naar_entiteit_id = $1)
+    ORDER BY id
+  `, [entityId]);
+  return (res.rows ?? []).map((r): Stream => ({
+    id: Number(r.id),
+    name: String(r.naam),
+    category: String(r.categorie),
+    fromEntityId: r.van_entiteit_id == null ? null : Number(r.van_entiteit_id),
+    toEntityId: r.naar_entiteit_id == null ? null : Number(r.naar_entiteit_id),
+    counterparty: r.tegenpartij_naam == null ? null : String(r.tegenpartij_naam),
+    behavior: String(r.gedrag),
+    postponable: Boolean(r.uitstelbaar),
+    frequency: String(r.frequentie),
+    startDate: parseDateOnly(r.startdatum),
+    endDate: r.einddatum == null ? null : parseDateOnly(r.einddatum),
+    sourceStreamId: r.bron_stroom_id == null ? null : Number(r.bron_stroom_id),
+    calculation: r.berekeningswijze === "percentage_van_bron" ? "percentage_van_bron" : "vast_bedrag",
+    fiscalTreatment: String(r.fiscale_behandeling ?? "geen"),
+  }));
+}
+
+async function getRates(streamIds: number[]) {
+  if (!streamIds.length) return new Map<number, Rate[]>();
+  const res = await db.query(`
+    SELECT stroom_id, geldig_vanaf, geldig_tot, bedrag, percentage_van_bron,
+           btw_percentage, btw_aftrekbaar_percentage, bedrag_is_inclusief_btw
+    FROM cashflow_stroom_bedragen
+    WHERE stroom_id = ANY($1::int[])
+    ORDER BY stroom_id, geldig_vanaf
+  `, [streamIds]);
+  const map = new Map<number, Rate[]>();
+  for (const r of res.rows ?? []) {
+    const item: Rate = {
+      streamId: Number(r.stroom_id),
+      validFrom: parseDateOnly(r.geldig_vanaf),
+      validTo: r.geldig_tot == null ? null : parseDateOnly(r.geldig_tot),
+      amount: r.bedrag == null ? null : Number(r.bedrag),
+      sourcePercentage: r.percentage_van_bron == null ? null : Number(r.percentage_van_bron),
+      vatPct: Number(r.btw_percentage) || 0,
+      deductiblePct: Number(r.btw_aftrekbaar_percentage) || 0,
+      isInclVat: r.bedrag_is_inclusief_btw !== false,
+    };
+    if (!map.has(item.streamId)) map.set(item.streamId, []);
+    map.get(item.streamId)!.push(item);
+  }
+  return map;
+}
+
+async function getPlans(streamIds: number[]) {
+  if (!streamIds.length) return new Map<string, Plan>();
+  const res = await db.query(`
+    SELECT stroom_id, oorspronkelijke_datum, geplande_datum, bedrag, status, betaald_op
+    FROM cashflow_planning
+    WHERE stroom_id = ANY($1::int[])
+    ORDER BY stroom_id, oorspronkelijke_datum
+  `, [streamIds]);
+  const map = new Map<string, Plan>();
+  for (const r of res.rows ?? []) {
+    const p: Plan = {
+      streamId: Number(r.stroom_id),
+      originalDate: parseDateOnly(r.oorspronkelijke_datum),
+      plannedDate: parseDateOnly(r.geplande_datum),
+      amount: Number(r.bedrag) || 0,
+      status: String(r.status),
+      paidOn: r.betaald_op == null ? null : parseDateOnly(r.betaald_op),
+    };
+    map.set(`${p.streamId}|${p.originalDate}`, p);
+  }
+  return map;
+}
+
+async function getVatOverrides(entityId: number, fromYear: number, toYear: number) {
+  const res = await db.query(`
+    SELECT jaar, kwartaal, werkelijke_afdracht, werkelijke_betaaldatum,
+           verwachte_afdracht, geplande_betaaldatum, status
+    FROM cashflow_btw_kwartalen
+    WHERE entiteit_id = $1 AND jaar BETWEEN $2 AND $3
+    ORDER BY jaar, kwartaal
+  `, [entityId, fromYear, toYear]);
+  const map = new Map<string, {
+    amount: number | null;
+    payDate: string | null;
+    source: "werkelijk" | "handmatig_prognose" | null;
+  }>();
+  for (const r of res.rows ?? []) {
+    const key = `${Number(r.jaar)}-${Number(r.kwartaal)}`;
+    if (r.werkelijke_afdracht != null) {
+      map.set(key, {
+        amount: Number(r.werkelijke_afdracht),
+        payDate: r.werkelijke_betaaldatum ? parseDateOnly(r.werkelijke_betaaldatum) : null,
+        source: "werkelijk",
+      });
+    } else if (r.verwachte_afdracht != null && String(r.status) !== "betaald") {
+      map.set(key, {
+        amount: Number(r.verwachte_afdracht),
+        payDate: r.geplande_betaaldatum ? parseDateOnly(r.geplande_betaaldatum) : null,
+        source: "handmatig_prognose",
+      });
+    }
+  }
+  return map;
+}
+
+function rateForDate(rates: Map<number, Rate[]>, streamId: number, date: string) {
+  const candidates = rates.get(streamId) ?? [];
+  return candidates
+    .filter((r) => r.validFrom <= date && (r.validTo == null || r.validTo >= date))
+    .sort((a, b) => b.validFrom.localeCompare(a.validFrom))[0] ?? null;
+}
+
+function streamActiveOn(stream: Stream, date: string) {
+  return date >= stream.startDate && (stream.endDate == null || date <= stream.endDate);
+}
+
+function isDefaultOccurrence(stream: Stream, year: number, month: number) {
+  const target = monthStart(year, month);
+  if (!streamActiveOn(stream, target)) return false;
+  const interval = frequencyMonths(stream.frequency);
+  if (stream.frequency === "eenmalig") {
+    return stream.startDate.slice(0, 7) === target.slice(0, 7);
+  }
+  if (interval == null) return false;
+  const sy = Number(stream.startDate.slice(0, 4));
+  const sm = Number(stream.startDate.slice(5, 7));
+  const diff = (year - sy) * 12 + (month - sm);
+  return diff >= 0 && diff % interval === 0;
+}
+
+function generatePlanEvents(streams: Stream[], plans: Map<string, Plan>, toYear: number) {
+  const byMonth = new Map<string, PlannedEvent[]>();
+  for (const stream of streams.filter((s) => s.behavior === "planbaar" && s.calculation === "vast_bedrag")) {
+    const interval = frequencyMonths(stream.frequency);
+    if (stream.frequency !== "eenmalig" && interval == null) continue;
+    let current = stream.startDate;
+    while (Number(current.slice(0, 4)) <= toYear) {
+      if (stream.endDate && current > stream.endDate) break;
+      const p = plans.get(`${stream.id}|${current}`);
+      if (!p || p.status !== "vervallen") {
+        const actualDate = p?.status === "betaald" && p.paidOn ? p.paidOn : (p?.plannedDate || current);
+        const key = actualDate.slice(0, 7);
+        if (!byMonth.has(key)) byMonth.set(key, []);
+        byMonth.get(key)!.push({
+          streamId: stream.id,
+          originalDate: current,
+          actualDate,
+          amountOverride: p ? p.amount : null,
+          status: p?.status ?? "standaard",
+        });
+      }
+      if (stream.frequency === "eenmalig") break;
+      current = addMonths(current, interval!);
+    }
+  }
+  return byMonth;
+}
+
+function vatPaymentDate(year: number, quarter: number) {
+  if (quarter === 1) return `${year}-04-30`;
+  if (quarter === 2) return `${year}-07-31`;
+  if (quarter === 3) return `${year}-10-31`;
+  return `${year + 1}-01-31`;
+}
+
+async function calculateHolding(entityName: string, toYear: number) {
+  const entity = await getEntity(entityName);
+  const accounts = await getAccounts(entity.id);
+  const missingAccounts = accounts.filter((a) => a.startBalance == null || !a.balanceDate);
+  const dateSet = new Set(accounts.map((a) => a.balanceDate).filter(Boolean));
+  const commonDate = dateSet.size === 1 ? [...dateSet][0]! : null;
+  const startBalance = missingAccounts.length === 0
+    ? round2(accounts.reduce((s, a) => s + Number(a.startBalance ?? 0), 0))
+    : null;
+
+  const accountProblem = accounts.length === 0
+    ? "Geen actieve rekening geconfigureerd"
+    : missingAccounts.length
+      ? `Startsaldo/peildatum ontbreekt voor: ${missingAccounts.map((a) => a.name).join(", ")}`
+      : dateSet.size !== 1
+        ? "Actieve rekeningen hebben niet dezelfde peildatum"
+        : commonDate && !isMonthEnd(commonDate)
+          ? "Peildatum moet een maandultimo zijn"
+          : null;
+
+  const streams = await getStreams(entity.id);
+  const streamIds = streams.map((s) => s.id);
+  const [rates, plans] = await Promise.all([getRates(streamIds), getPlans(streamIds)]);
+  const planEvents = generatePlanEvents(streams, plans, toYear);
+
+  const fromYear = commonDate ? Number(commonDate.slice(0, 4)) : new Date().getFullYear();
+  const vatOverrides = await getVatOverrides(entity.id, fromYear, toYear);
+  const streamById = new Map(streams.map((s) => [s.id, s]));
+  const linkedTaxes = new Map<number, Stream[]>();
+  for (const s of streams.filter((x) => x.sourceStreamId != null && x.calculation === "percentage_van_bron")) {
+    if (!linkedTaxes.has(s.sourceStreamId!)) linkedTaxes.set(s.sourceStreamId!, []);
+    linkedTaxes.get(s.sourceStreamId!)!.push(s);
+  }
+
+  const monthDetails = new Map<string, {
+    lines: CashLine[];
+    missing: string[];
+    income: number;
+    expenses: number;
+    outputVat: number;
+    inputVat: number;
+  }>();
+
+  const ensureMonth = (year: number, month: number) => {
+    const key = monthKey(year, month);
+    if (!monthDetails.has(key)) {
+      monthDetails.set(key, { lines: [], missing: [], income: 0, expenses: 0, outputVat: 0, inputVat: 0 });
+    }
+    return monthDetails.get(key)!;
+  };
+
+  for (let year = fromYear; year <= toYear; year++) {
+    for (let month = 1; month <= 12; month++) {
+      const key = monthKey(year, month);
+      const d = ensureMonth(year, month);
+      const date = monthStart(year, month);
+
+      for (const stream of streams) {
+        if (stream.calculation === "percentage_van_bron") continue;
+        if (stream.behavior === "planbaar") continue;
+        if (!isDefaultOccurrence(stream, year, month)) continue;
+
+        const rate = rateForDate(rates, stream.id, date);
+        if (!rate || rate.amount == null) {
+          d.missing.push(`tarief: ${stream.name}`);
+          d.lines.push({ streamId: stream.id, name: stream.name, category: stream.category, direction: stream.toEntityId === entity.id ? "in" : "uit", amount: null, vatPart: 0, source: "tarief_ontbreekt" });
+          continue;
+        }
+        const cash = toCashAmount(rate.amount, rate.vatPct, rate.isInclVat);
+        const vat = vatPart(cash, rate.vatPct, rate.isInclVat, rate.amount);
+        const incoming = stream.toEntityId === entity.id;
+        if (incoming) {
+          d.income = round2(d.income + cash);
+          d.outputVat = round2(d.outputVat + vat);
+        } else {
+          d.expenses = round2(d.expenses + cash);
+          d.inputVat = round2(d.inputVat + vat * (rate.deductiblePct / 100));
+        }
+        d.lines.push({ streamId: stream.id, name: stream.name, category: stream.category, direction: incoming ? "in" : "uit", amount: cash, vatPart: vat, source: "tarief" });
+      }
+
+      for (const event of planEvents.get(key) ?? []) {
+        const stream = streamById.get(event.streamId);
+        if (!stream || !streamActiveOn(stream, event.originalDate)) continue;
+        const rate = rateForDate(rates, stream.id, event.originalDate);
+        const grossBase = event.amountOverride ?? rate?.amount ?? null;
+        if (grossBase == null) {
+          d.missing.push(`tarief: ${stream.name}`);
+          d.lines.push({ streamId: stream.id, name: stream.name, category: stream.category, direction: "uit", amount: null, vatPart: 0, source: event.status });
+          continue;
+        }
+
+        const grossCash = rate
+          ? toCashAmount(grossBase, rate.vatPct, rate.isInclVat)
+          : round2(grossBase);
+
+        if (stream.fiscalTreatment === "dividend_bruto") {
+          const taxes = linkedTaxes.get(stream.id) ?? [];
+          if (taxes.length !== 1) {
+            d.missing.push(`gekoppelde dividendbelasting: ${stream.name}`);
+            d.lines.push({ streamId: stream.id, name: stream.name, category: stream.category, direction: "uit", amount: null, vatPart: 0, source: event.status });
+            continue;
+          }
+          const taxStream = taxes[0];
+          const taxRate = rateForDate(rates, taxStream.id, event.actualDate);
+          if (!taxRate || taxRate.sourcePercentage == null) {
+            d.missing.push(`tarief: ${taxStream.name}`);
+            d.lines.push({ streamId: stream.id, name: stream.name, category: stream.category, direction: "uit", amount: null, vatPart: 0, source: event.status });
+            continue;
+          }
+          const taxAmount = round2(grossCash * taxRate.sourcePercentage / 100);
+          const netDividend = round2(grossCash - taxAmount);
+          d.expenses = round2(d.expenses + netDividend + taxAmount);
+          d.lines.push({ streamId: stream.id, name: `${stream.name} (netto privé)`, category: stream.category, direction: "uit", amount: netDividend, vatPart: 0, source: event.status });
+          d.lines.push({ streamId: taxStream.id, name: taxStream.name, category: taxStream.category, direction: "uit", amount: taxAmount, vatPart: 0, source: `gekoppeld aan ${stream.name}` });
+          continue;
+        }
+
+        const vat = rate ? vatPart(grossCash, rate.vatPct, rate.isInclVat, grossBase) : 0;
+        const incoming = stream.toEntityId === entity.id;
+        if (incoming) {
+          d.income = round2(d.income + grossCash);
+          d.outputVat = round2(d.outputVat + vat);
+        } else {
+          d.expenses = round2(d.expenses + grossCash);
+          d.inputVat = round2(d.inputVat + vat * ((rate?.deductiblePct ?? 0) / 100));
+        }
+        d.lines.push({ streamId: stream.id, name: stream.name, category: stream.category, direction: incoming ? "in" : "uit", amount: grossCash, vatPart: vat, source: event.status });
+      }
+    }
+  }
+
+  const vatQuarters: Array<{
+    year: number;
+    quarter: number;
+    outputVat: number;
+    inputVat: number;
+    modelAmount: number | null;
+    usedAmount: number | null;
+    source: string;
+    payDate: string;
+    complete: boolean;
+  }> = [];
+
+  for (let year = fromYear; year <= toYear; year++) {
+    for (let quarter = 1; quarter <= 4; quarter++) {
+      const months = [quarter * 3 - 2, quarter * 3 - 1, quarter * 3];
+      const ds = months.map((m) => ensureMonth(year, m));
+      const complete = ds.every((x) => x.missing.length === 0);
+      const outputVat = round2(ds.reduce((s, x) => s + x.outputVat, 0));
+      const inputVat = round2(ds.reduce((s, x) => s + x.inputVat, 0));
+      const modelAmount = complete ? round2(outputVat - inputVat) : null;
+      const override = vatOverrides.get(`${year}-${quarter}`);
+      const usedAmount = override?.amount ?? modelAmount;
+      const payDate = override?.payDate || vatPaymentDate(year, quarter);
+      vatQuarters.push({
+        year,
+        quarter,
+        outputVat,
+        inputVat,
+        modelAmount,
+        usedAmount,
+        source: override?.source ?? "model",
+        payDate,
+        complete: usedAmount != null,
+      });
+      if (usedAmount != null) {
+        const py = Number(payDate.slice(0, 4));
+        const pm = Number(payDate.slice(5, 7));
+        if (py >= fromYear && py <= toYear) {
+          const md = ensureMonth(py, pm);
+          md.expenses = round2(md.expenses + Math.max(usedAmount, 0));
+          md.income = round2(md.income + Math.max(-usedAmount, 0));
+          md.lines.push({ streamId: 0, name: `BTW Q${quarter} ${year}`, category: "btw", direction: usedAmount >= 0 ? "uit" : "in", amount: Math.abs(usedAmount), vatPart: 0, source: override?.source ?? "model" });
+        }
+      } else {
+        const defaultPayDate = vatPaymentDate(year, quarter);
+        const py = Number(defaultPayDate.slice(0, 4));
+        const pm = Number(defaultPayDate.slice(5, 7));
+        if (py >= fromYear && py <= toYear) {
+          ensureMonth(py, pm).missing.push(`BTW Q${quarter} ${year}`);
+        }
+      }
+    }
+  }
+
+  const monthsOutput: Array<{
+    year: number;
+    month: number;
+    income: number;
+    expenses: number;
+    cashChange: number | null;
+    beginningBalance: number | null;
+    endingBalance: number | null;
+    minimumBuffer: number | null;
+    belowMinimum: boolean | null;
+    missingConfiguration: string[];
+    lines: CashLine[];
+  }> = [];
+
+  let running = accountProblem == null ? startBalance : null;
+  const startMonthIndex = commonDate
+    ? Number(commonDate.slice(0, 4)) * 12 + Number(commonDate.slice(5, 7))
+    : null;
+  let lowestBalance: number | null = null;
+  let lowestYear: number | null = null;
+  let lowestMonth: number | null = null;
+
+  for (let year = fromYear; year <= toYear; year++) {
+    for (let month = 1; month <= 12; month++) {
+      const idx = year * 12 + month;
+      if (startMonthIndex != null && idx <= startMonthIndex) continue;
+      const d = ensureMonth(year, month);
+      const missing = [...new Set(d.missing)];
+      const cashChange = missing.length ? null : round2(d.income - d.expenses);
+      const beginningBalance = running;
+      const endingBalance = running != null && cashChange != null ? round2(running + cashChange) : null;
+      const belowMinimum = endingBalance == null || entity.minimumBuffer == null ? null : endingBalance < entity.minimumBuffer;
+      monthsOutput.push({
+        year,
+        month,
+        income: d.income,
+        expenses: d.expenses,
+        cashChange,
+        beginningBalance,
+        endingBalance,
+        minimumBuffer: entity.minimumBuffer,
+        belowMinimum,
+        missingConfiguration: missing,
+        lines: d.lines,
+      });
+      running = endingBalance;
+      if (endingBalance != null && (lowestBalance == null || endingBalance < lowestBalance)) {
+        lowestBalance = endingBalance;
+        lowestYear = year;
+        lowestMonth = month;
+      }
+    }
+  }
+
+  const allMissing = [...new Set(monthsOutput.flatMap((m) => m.missingConfiguration))];
+  const complete = accountProblem == null && allMissing.length === 0 && monthsOutput.every((m) => m.cashChange != null);
+
+  return {
+    entity: entity.name,
+    available: complete,
+    reason: accountProblem ?? (allMissing.length ? "Een of meer maanden missen verplichte configuratie" : null),
+    startDate: commonDate,
+    startBalance,
+    minimumBuffer: entity.minimumBuffer,
+    accounts,
+    missingConfiguration: allMissing,
+    warnings: [
+      "Holding-BTW wordt berekend uit geconfigureerde inkomende en uitgaande cashflowstromen; nog niet geconfigureerde holdingkosten leveren dus ook nog geen voorbelasting op.",
+      "Dividend wordt als bruto verplichting vastgelegd: netto uitbetaling aan privé plus gekoppelde dividendbelasting tellen samen op tot het bruto dividend.",
+    ],
+    vatQuarters,
+    months: monthsOutput,
+    lowestBalance: complete ? lowestBalance : null,
+    lowestYear: complete ? lowestYear : null,
+    lowestMonth: complete ? lowestMonth : null,
+    endingBalance: complete ? running : null,
+  };
+}
+
+export async function berekenHoldingsMeerjaren(toYear: number) {
+  const currentYear = new Date().getFullYear();
+  if (!Number.isInteger(toYear) || toYear < currentYear || toYear > currentYear + 10) {
+    throw new Error(`totJaar moet tussen ${currentYear} en ${currentYear + 10} liggen`);
+  }
+
+  const [rekka, eetjePans] = await Promise.all([
+    calculateHolding("Rekka Holding B.V.", toYear),
+    calculateHolding("Eetje Pans Holding B.V.", toYear),
+  ]);
+
+  return {
+    toYear,
+    available: rekka.available && eetjePans.available,
+    holdings: [rekka, eetjePans],
+  };
+}
