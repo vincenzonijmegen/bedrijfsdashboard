@@ -15,7 +15,7 @@ async function getData() {
   const [entiteiten, rekeningen, stromen, bedragen] = await Promise.all([
     db.query(`
       SELECT e.id, e.naam, e.type, e.actief,
-             i.minimum_kasbuffer, i.prognosegroei_pct
+             i.minimum_kasbuffer, i.prognosegroei_pct, i.loonkosten_groei_pct
       FROM cashflow_entiteiten e
       LEFT JOIN cashflow_instellingen i ON i.entiteit_id = e.id
       ORDER BY CASE e.type WHEN 'werkmaatschappij' THEN 1 ELSE 2 END, e.naam
@@ -76,17 +76,20 @@ export async function PATCH(req: NextRequest) {
       const entiteitId = Number(body.entiteit_id);
       const minimum = toNumberOrNull(body.minimum_kasbuffer);
       const groei = toNumberOrNull(body.prognosegroei_pct);
+      const loonkostenGroei = toNumberOrNull(body.loonkosten_groei_pct);
       if (!Number.isInteger(entiteitId)) throw new Error("Ongeldige entiteit");
       if (minimum !== null && minimum < 0) throw new Error("Kasbuffer mag niet negatief zijn");
+      if (loonkostenGroei !== null && (loonkostenGroei < -50 || loonkostenGroei > 100)) throw new Error("Loonkostengroei moet tussen -50% en 100% liggen");
 
       await db.query(`
-        INSERT INTO cashflow_instellingen (entiteit_id, minimum_kasbuffer, prognosegroei_pct)
-        VALUES ($1,$2,$3)
+        INSERT INTO cashflow_instellingen (entiteit_id, minimum_kasbuffer, prognosegroei_pct, loonkosten_groei_pct)
+        VALUES ($1,$2,$3,$4)
         ON CONFLICT (entiteit_id) DO UPDATE
         SET minimum_kasbuffer = EXCLUDED.minimum_kasbuffer,
             prognosegroei_pct = EXCLUDED.prognosegroei_pct,
+            loonkosten_groei_pct = EXCLUDED.loonkosten_groei_pct,
             bijgewerkt_op = now()
-      `, [entiteitId, minimum, groei]);
+      `, [entiteitId, minimum, groei, loonkostenGroei]);
     } else if (type === "rekening") {
       const id = Number(body.id);
       const saldo = toNumberOrNull(body.prognose_startsaldo);
