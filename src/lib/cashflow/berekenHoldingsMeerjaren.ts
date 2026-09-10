@@ -310,6 +310,8 @@ function isExplicitlyVatFreeStream(stream: Stream) {
   return new Set([
     "dga_netto_loon",
     "dga_loonheffing",
+    "werknemer_netto_loon",
+    "werknemer_loonaangifte",
     "vrije_reserve",
     "dividend",
     "dividendbelasting",
