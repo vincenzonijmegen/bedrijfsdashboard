@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
     const data = await berekenVincenzoBasis(jaar);
     return NextResponse.json(
-      { success: true, fase: "4D", data },
+      { success: true, fase: "4E", data },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {

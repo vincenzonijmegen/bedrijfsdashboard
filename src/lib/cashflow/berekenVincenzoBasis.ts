@@ -8,6 +8,19 @@ type VasteStroomRegel = {
   bedragIsInclusiefBtw: boolean;
 };
 
+type IncidentelePost = {
+  datum: string;
+  omschrijving: string;
+  bedrag: number;
+  richting: "in" | "uit";
+  categorie: string;
+  tegenpartijNaam: string | null;
+  btwPercentage: number;
+  btwAftrekbaarPercentage: number;
+  bedragIsInclusiefBtw: boolean;
+  status: string;
+};
+
 type MaandRegel = {
   maand: number;
   omzet: number;
@@ -21,9 +34,13 @@ type MaandRegel = {
   btwKasMutatie: number;
   overigeUitgaven: number;
   overigeBron: "bank_basis" | "geen_profiel";
+  incidenteleInkomsten: number;
+  incidenteleUitgaven: number;
+  incidentelePosten: IncidentelePost[];
   nettoVoorOverigePosten: number | null;
   nettoNaInkoopEnBtw: number | null;
   nettoNaOverigeUitgaven: number | null;
+  nettoNaIncidenteel: number | null;
 };
 
 type InkoopProfiel = {
@@ -501,6 +518,50 @@ function berekenOverige(
   return { bedrag: round2(profiel.basisKasuitstroom), bron: "bank_basis" };
 }
 
+async function getIncidentelePosten(entiteitId: number, jaar: number): Promise<Map<number, IncidentelePost[]>> {
+  const res = await db.query(`
+    SELECT
+      datum::text AS datum,
+      omschrijving,
+      bedrag,
+      richting,
+      categorie,
+      tegenpartij_naam,
+      btw_percentage,
+      btw_aftrekbaar_percentage,
+      bedrag_is_inclusief_btw,
+      status
+    FROM cashflow_incidenteel
+    WHERE entiteit_id = $1
+      AND EXTRACT(YEAR FROM datum)::int = $2
+      AND status <> 'vervallen'
+    ORDER BY datum, id
+  `, [entiteitId, jaar]);
+
+  const map = new Map<number, IncidentelePost[]>();
+  for (let maand = 1; maand <= 12; maand++) map.set(maand, []);
+
+  for (const r of res.rows ?? []) {
+    const datum = String(r.datum).slice(0, 10);
+    const maand = Number(datum.slice(5, 7));
+    if (!Number.isInteger(maand) || maand < 1 || maand > 12) continue;
+    map.get(maand)!.push({
+      datum,
+      omschrijving: String(r.omschrijving),
+      bedrag: Number(r.bedrag) || 0,
+      richting: r.richting === 'in' ? 'in' : 'uit',
+      categorie: String(r.categorie),
+      tegenpartijNaam: r.tegenpartij_naam == null ? null : String(r.tegenpartij_naam),
+      btwPercentage: Number(r.btw_percentage) || 0,
+      btwAftrekbaarPercentage: Number(r.btw_aftrekbaar_percentage) || 0,
+      bedragIsInclusiefBtw: r.bedrag_is_inclusief_btw !== false,
+      status: String(r.status),
+    });
+  }
+
+  return map;
+}
+
 async function getCashflowStartgegevens(entiteitId: number): Promise<{
   rekeningen: CashflowRekeningStart[];
   minimumKasbuffer: number | null;
@@ -634,7 +695,7 @@ function berekenCashPositie(
 
   for (let maand = eersteMaand; maand <= 12; maand++) {
     const regel = maanden.find((m) => m.maand === maand);
-    if (!regel || regel.nettoNaOverigeUitgaven === null) {
+    if (!regel || regel.nettoNaIncidenteel === null) {
       return {
         beschikbaar: false,
         reden: `Kasmutatie voor ${jaar}-${String(maand).padStart(2, "0")} is niet volledig beschikbaar`,
@@ -649,7 +710,7 @@ function berekenCashPositie(
     }
 
     const beginsaldo = saldo;
-    const kasmutatie = regel.nettoNaOverigeUitgaven;
+    const kasmutatie = regel.nettoNaIncidenteel;
     saldo = round2(beginsaldo + kasmutatie);
     const bufferVerschil = minimumKasbuffer === null ? null : round2(saldo - minimumKasbuffer);
     saldoMaanden.push({
@@ -715,7 +776,7 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
 }> {
   const huidigJaar = new Date().getFullYear();
   if (jaar !== huidigJaar) {
-    throw new Error(`Fase 4D ondersteunt voorlopig alleen het huidige jaar (${huidigJaar})`);
+    throw new Error(`Fase 4E ondersteunt voorlopig alleen het huidige jaar (${huidigJaar})`);
   }
 
   const entiteitId = await getVincenzoEntiteitId();
@@ -728,12 +789,13 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
   `, [entiteitId]);
   const groeiPct = Number(instellingRes.rows?.[0]?.groei ?? 0);
 
-  const [omzet, werkelijkeLonen, vasteUitgaven, inkoopProfielen, overigeProfielen, btwRows, cashStart] = await Promise.all([
+  const [omzet, werkelijkeLonen, vasteUitgaven, inkoopProfielen, overigeProfielen, incidenteleProfielen, btwRows, cashStart] = await Promise.all([
     getOmzetBasis(jaar, groeiPct),
     getWerkelijkeLoonkosten(jaar),
     getVasteUitgaven(jaar, entiteitId),
     getInkoopProfielen(entiteitId),
     getOverigeProfielen(entiteitId),
+    getIncidentelePosten(entiteitId, jaar),
     getWerkelijkeBtwRows(entiteitId, jaar),
     getCashflowStartgegevens(entiteitId),
   ]);
@@ -741,8 +803,8 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
   const now = new Date();
   const huidigeMaand = now.getMonth() + 1;
   const waarschuwingen: string[] = [
-    "Overige reguliere/losse ING-uitgaven zitten vanaf fase 4C in de kasprognose, maar hun BTW wordt nog niet als voorbelasting geraamd omdat de bankexport geen betrouwbaar 9%/21%-onderscheid bevat.",
-    "Het overige-profiel bevat alleen niet-reeds-gemodelleerde uitgaven van maximaal €1.000 per afzonderlijke ING-transactie; grotere incidentele of structurele posten worden niet stilzwijgend in dit profiel opgenomen.",
+    "Overige reguliere/losse ING-uitgaven zitten in de kasprognose, maar hun BTW wordt nog niet als voorbelasting geraamd omdat de bankexport geen betrouwbaar 9%/21%-onderscheid bevat.",
+    "Bekende grotere eenmalige of tijdgebonden posten worden apart via cashflow_incidenteel verwerkt; er geldt geen kunstmatige grens van €1.000 meer voor het overige maandprofiel.",
   ];
   const maanden: MaandRegel[] = [];
 
@@ -795,6 +857,14 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
     const overigeResultaat = berekenOverige(overigeProfielen.get(maand));
     const overigeUitgaven = overigeResultaat.bedrag;
 
+    const incidentelePosten = incidenteleProfielen.get(maand) ?? [];
+    const incidenteleInkomsten = round2(incidentelePosten
+      .filter((p) => p.richting === "in")
+      .reduce((som, p) => som + p.bedrag, 0));
+    const incidenteleUitgaven = round2(incidentelePosten
+      .filter((p) => p.richting === "uit")
+      .reduce((som, p) => som + p.bedrag, 0));
+
     const btwOmzet = round2(omzetBedrag * 9 / 109);
     let voorbelasting9 = 0;
     let voorbelasting21 = 0;
@@ -822,6 +892,17 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
       else if (Math.abs(stroom.btwPercentage - 21) < 0.001) voorbelasting21 += aftrek;
     }
 
+    for (const post of incidentelePosten.filter((p) => p.richting === "uit")) {
+      const aftrek = btwUitBedrag(
+        post.bedrag,
+        post.btwPercentage,
+        post.btwAftrekbaarPercentage,
+        post.bedragIsInclusiefBtw
+      );
+      if (Math.abs(post.btwPercentage - 9) < 0.001) voorbelasting9 += aftrek;
+      else if (Math.abs(post.btwPercentage - 21) < 0.001) voorbelasting21 += aftrek;
+    }
+
     btwPerMaand.push({
       maand,
       omzet: round2(omzetBedrag),
@@ -847,6 +928,9 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
       btwKasMutatie: 0,
       overigeUitgaven,
       overigeBron: overigeResultaat.bron,
+      incidenteleInkomsten,
+      incidenteleUitgaven,
+      incidentelePosten,
       nettoVoorOverigePosten,
       nettoNaInkoopEnBtw: nettoVoorOverigePosten === null || inkoop === null
         ? null
@@ -854,6 +938,9 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
       nettoNaOverigeUitgaven: nettoVoorOverigePosten === null || inkoop === null
         ? null
         : round2(nettoVoorOverigePosten - inkoop - overigeUitgaven),
+      nettoNaIncidenteel: nettoVoorOverigePosten === null || inkoop === null
+        ? null
+        : round2(nettoVoorOverigePosten - inkoop - overigeUitgaven - incidenteleUitgaven + incidenteleInkomsten),
     });
   }
 
@@ -932,6 +1019,9 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
     }
     if (regel.nettoNaOverigeUitgaven !== null) {
       regel.nettoNaOverigeUitgaven = round2(regel.nettoNaOverigeUitgaven + regel.btwKasMutatie);
+    }
+    if (regel.nettoNaIncidenteel !== null) {
+      regel.nettoNaIncidenteel = round2(regel.nettoNaIncidenteel + regel.btwKasMutatie);
     }
   }
 
