@@ -57,6 +57,37 @@ type BtwKwartaalRegel = {
   afwijkingModelWerkelijk: number | null;
 };
 
+type CashflowRekeningStart = {
+  id: number;
+  naam: string;
+  rekeningType: string;
+  startsaldo: number | null;
+  peildatum: string | null;
+};
+
+type CashflowSaldoMaand = {
+  maand: number;
+  beginsaldo: number;
+  kasmutatie: number;
+  eindsaldo: number;
+  minimumKasbuffer: number | null;
+  bufferVerschil: number | null;
+  onderMinimum: boolean;
+};
+
+type CashPositie = {
+  beschikbaar: boolean;
+  reden: string | null;
+  peildatum: string | null;
+  startsaldoTotaal: number | null;
+  minimumKasbuffer: number | null;
+  rekeningen: CashflowRekeningStart[];
+  maanden: CashflowSaldoMaand[];
+  laagsteSaldo: number | null;
+  laagsteMaand: number | null;
+  eindsaldo: number | null;
+};
+
 type RosterItem = {
   Roster?: {
     starttime?: string;
@@ -470,6 +501,186 @@ function berekenOverige(
   return { bedrag: round2(profiel.basisKasuitstroom), bron: "bank_basis" };
 }
 
+async function getCashflowStartgegevens(entiteitId: number): Promise<{
+  rekeningen: CashflowRekeningStart[];
+  minimumKasbuffer: number | null;
+}> {
+  const [rekeningRes, instellingRes] = await Promise.all([
+    db.query(`
+      SELECT id, naam, rekening_type, prognose_startsaldo, saldo_peildatum::text AS saldo_peildatum
+      FROM cashflow_rekeningen
+      WHERE entiteit_id = $1
+        AND actief = true
+      ORDER BY naam
+    `, [entiteitId]),
+    db.query(`
+      SELECT minimum_kasbuffer
+      FROM cashflow_instellingen
+      WHERE entiteit_id = $1
+      LIMIT 1
+    `, [entiteitId]),
+  ]);
+
+  return {
+    rekeningen: (rekeningRes.rows ?? []).map((r: any) => ({
+      id: Number(r.id),
+      naam: String(r.naam),
+      rekeningType: String(r.rekening_type),
+      startsaldo: r.prognose_startsaldo == null ? null : Number(r.prognose_startsaldo),
+      peildatum: r.saldo_peildatum ? String(r.saldo_peildatum).slice(0, 10) : null,
+    })),
+    minimumKasbuffer: instellingRes.rows?.[0]?.minimum_kasbuffer == null
+      ? null
+      : Number(instellingRes.rows[0].minimum_kasbuffer),
+  };
+}
+
+function parseIsoDate(iso: string): { jaar: number; maand: number; dag: number } | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  if (!m) return null;
+  const jaar = Number(m[1]);
+  const maand = Number(m[2]);
+  const dag = Number(m[3]);
+  if (!Number.isInteger(jaar) || maand < 1 || maand > 12 || dag < 1 || dag > daysInMonth(jaar, maand)) return null;
+  return { jaar, maand, dag };
+}
+
+function berekenCashPositie(
+  jaar: number,
+  maanden: MaandRegel[],
+  rekeningen: CashflowRekeningStart[],
+  minimumKasbuffer: number | null
+): CashPositie {
+  const basis: Omit<CashPositie, "beschikbaar" | "reden" | "peildatum" | "startsaldoTotaal" | "maanden" | "laagsteSaldo" | "laagsteMaand" | "eindsaldo"> = {
+    minimumKasbuffer,
+    rekeningen,
+  };
+
+  if (rekeningen.length === 0) {
+    return { beschikbaar: false, reden: "Geen actieve rekeningen gevonden", peildatum: null, startsaldoTotaal: null, maanden: [], laagsteSaldo: null, laagsteMaand: null, eindsaldo: null, ...basis };
+  }
+
+  const ontbrekend = rekeningen.filter((r) => r.startsaldo === null || r.peildatum === null);
+  if (ontbrekend.length > 0) {
+    return {
+      beschikbaar: false,
+      reden: `Startsaldo/peildatum ontbreekt voor: ${ontbrekend.map((r) => r.naam).join(", ")}`,
+      peildatum: null,
+      startsaldoTotaal: null,
+      maanden: [],
+      laagsteSaldo: null,
+      laagsteMaand: null,
+      eindsaldo: null,
+      ...basis,
+    };
+  }
+
+  const peildata = [...new Set(rekeningen.map((r) => r.peildatum!))];
+  if (peildata.length !== 1) {
+    return {
+      beschikbaar: false,
+      reden: "Alle actieve rekeningen moeten dezelfde peildatum hebben",
+      peildatum: null,
+      startsaldoTotaal: null,
+      maanden: [],
+      laagsteSaldo: null,
+      laagsteMaand: null,
+      eindsaldo: null,
+      ...basis,
+    };
+  }
+
+  const peildatum = peildata[0];
+  const parsed = parseIsoDate(peildatum);
+  if (!parsed) {
+    return { beschikbaar: false, reden: "Ongeldige peildatum", peildatum, startsaldoTotaal: null, maanden: [], laagsteSaldo: null, laagsteMaand: null, eindsaldo: null, ...basis };
+  }
+  if (parsed.dag !== daysInMonth(parsed.jaar, parsed.maand)) {
+    return {
+      beschikbaar: false,
+      reden: "Fase 4D vereist een maandultimo als gezamenlijke peildatum",
+      peildatum,
+      startsaldoTotaal: null,
+      maanden: [],
+      laagsteSaldo: null,
+      laagsteMaand: null,
+      eindsaldo: null,
+      ...basis,
+    };
+  }
+
+  let eersteMaand: number;
+  if (parsed.jaar === jaar) {
+    eersteMaand = parsed.maand + 1;
+  } else if (parsed.jaar === jaar - 1 && parsed.maand === 12) {
+    eersteMaand = 1;
+  } else {
+    return {
+      beschikbaar: false,
+      reden: `Peildatum ${peildatum} kan niet veilig naar prognosejaar ${jaar} worden doorgerold`,
+      peildatum,
+      startsaldoTotaal: null,
+      maanden: [],
+      laagsteSaldo: null,
+      laagsteMaand: null,
+      eindsaldo: null,
+      ...basis,
+    };
+  }
+
+  const startsaldoTotaal = round2(rekeningen.reduce((som, r) => som + (r.startsaldo ?? 0), 0));
+  let saldo = startsaldoTotaal;
+  const saldoMaanden: CashflowSaldoMaand[] = [];
+
+  for (let maand = eersteMaand; maand <= 12; maand++) {
+    const regel = maanden.find((m) => m.maand === maand);
+    if (!regel || regel.nettoNaOverigeUitgaven === null) {
+      return {
+        beschikbaar: false,
+        reden: `Kasmutatie voor ${jaar}-${String(maand).padStart(2, "0")} is niet volledig beschikbaar`,
+        peildatum,
+        startsaldoTotaal,
+        maanden: saldoMaanden,
+        laagsteSaldo: saldoMaanden.length ? Math.min(...saldoMaanden.map((m) => m.eindsaldo)) : startsaldoTotaal,
+        laagsteMaand: saldoMaanden.length ? saldoMaanden.reduce((a, b) => b.eindsaldo < a.eindsaldo ? b : a).maand : null,
+        eindsaldo: saldo,
+        ...basis,
+      };
+    }
+
+    const beginsaldo = saldo;
+    const kasmutatie = regel.nettoNaOverigeUitgaven;
+    saldo = round2(beginsaldo + kasmutatie);
+    const bufferVerschil = minimumKasbuffer === null ? null : round2(saldo - minimumKasbuffer);
+    saldoMaanden.push({
+      maand,
+      beginsaldo: round2(beginsaldo),
+      kasmutatie: round2(kasmutatie),
+      eindsaldo: saldo,
+      minimumKasbuffer,
+      bufferVerschil,
+      onderMinimum: minimumKasbuffer !== null && saldo < minimumKasbuffer,
+    });
+  }
+
+  const laagsteRegel = saldoMaanden.length
+    ? saldoMaanden.reduce((a, b) => b.eindsaldo < a.eindsaldo ? b : a)
+    : null;
+
+  return {
+    beschikbaar: true,
+    reden: null,
+    peildatum,
+    startsaldoTotaal,
+    minimumKasbuffer,
+    rekeningen,
+    maanden: saldoMaanden,
+    laagsteSaldo: laagsteRegel?.eindsaldo ?? startsaldoTotaal,
+    laagsteMaand: laagsteRegel?.maand ?? null,
+    eindsaldo: saldoMaanden.length ? saldoMaanden[saldoMaanden.length - 1].eindsaldo : startsaldoTotaal,
+  };
+}
+
 function standaardBtwBetaaldatum(jaar: number, kwartaal: number) {
   if (kwartaal === 1) return `${jaar}-04-30`;
   if (kwartaal === 2) return `${jaar}-07-31`;
@@ -500,10 +711,11 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
   waarschuwingen: string[];
   maanden: MaandRegel[];
   btwKwartalen: BtwKwartaalRegel[];
+  cashPositie: CashPositie;
 }> {
   const huidigJaar = new Date().getFullYear();
   if (jaar !== huidigJaar) {
-    throw new Error(`Fase 4C ondersteunt voorlopig alleen het huidige jaar (${huidigJaar})`);
+    throw new Error(`Fase 4D ondersteunt voorlopig alleen het huidige jaar (${huidigJaar})`);
   }
 
   const entiteitId = await getVincenzoEntiteitId();
@@ -516,13 +728,14 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
   `, [entiteitId]);
   const groeiPct = Number(instellingRes.rows?.[0]?.groei ?? 0);
 
-  const [omzet, werkelijkeLonen, vasteUitgaven, inkoopProfielen, overigeProfielen, btwRows] = await Promise.all([
+  const [omzet, werkelijkeLonen, vasteUitgaven, inkoopProfielen, overigeProfielen, btwRows, cashStart] = await Promise.all([
     getOmzetBasis(jaar, groeiPct),
     getWerkelijkeLoonkosten(jaar),
     getVasteUitgaven(jaar, entiteitId),
     getInkoopProfielen(entiteitId),
     getOverigeProfielen(entiteitId),
     getWerkelijkeBtwRows(entiteitId, jaar),
+    getCashflowStartgegevens(entiteitId),
   ]);
 
   const now = new Date();
@@ -722,6 +935,24 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
     }
   }
 
-  return { jaar, groeiPct, waarschuwingen, maanden, btwKwartalen };
+  const cashPositie = berekenCashPositie(
+    jaar,
+    maanden,
+    cashStart.rekeningen,
+    cashStart.minimumKasbuffer
+  );
+
+  if (!cashPositie.beschikbaar && cashPositie.reden) {
+    waarschuwingen.push(`Kaspositie niet berekend: ${cashPositie.reden}.`);
+  } else if (cashPositie.minimumKasbuffer !== null) {
+    for (const m of cashPositie.maanden.filter((x) => x.onderMinimum)) {
+      waarschuwingen.push(
+        `Kasbuffer onder minimum in ${jaar}-${String(m.maand).padStart(2, "0")}: ` +
+        `eindsaldo €${m.eindsaldo.toFixed(2)}, minimum €${cashPositie.minimumKasbuffer.toFixed(2)}.`
+      );
+    }
+  }
+
+  return { jaar, groeiPct, waarschuwingen, maanden, btwKwartalen, cashPositie };
 }
 

@@ -43,7 +43,7 @@ export default function CashflowBeheerPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h1 className="text-2xl font-bold text-slate-900">Cashflowbeheer</h1>
-        <p className="mt-1 text-sm text-slate-500">Beheer startsaldi, kasbuffers en tariefperiodes. Prognoseberekeningen volgen in een latere fase.</p>
+        <p className="mt-1 text-sm text-slate-500">Beheer startsaldi, kasbuffers en tariefperiodes voor de cashflowprognose.</p>
       </header>
 
       {melding && <div className="flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-emerald-800"><CheckCircle2 className="h-4 w-4" />{melding}</div>}
@@ -58,6 +58,7 @@ export default function CashflowBeheerPage() {
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold">Rekeningen & startsaldi</h2>
+        <p className="mt-1 text-sm text-slate-500">Gebruik voor alle actieve rekeningen van een entiteit dezelfde maandultimo. Het saldo is het eindsaldo van die peildatum.</p>
         <div className="mt-4 space-y-3">
           {d.rekeningen.map((r: any) => <RekeningRow key={r.id} r={r} busy={busy} onSave={send} />)}
         </div>
@@ -81,7 +82,7 @@ function EntiteitCard({ e, busy, onSave }: any) {
 
 function RekeningRow({ r, busy, onSave }: any) {
   const [saldo,setSaldo]=useState(r.prognose_startsaldo ?? ""); const [datum,setDatum]=useState(r.saldo_peildatum?.slice(0,10) ?? "");
-  return <div className="grid gap-3 rounded-xl border p-4 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end"><div><div className="font-medium">{r.entiteit}</div><div className="text-sm text-slate-500">{r.naam} · {r.rekening_type}</div></div><div><label className="text-xs text-slate-500">Startsaldo</label><input className="mt-1 w-full rounded-lg border px-3 py-2" type="number" step="0.01" value={saldo} onChange={x=>setSaldo(x.target.value)}/></div><div><label className="text-xs text-slate-500">Peildatum</label><input className="mt-1 w-full rounded-lg border px-3 py-2" type="date" value={datum} onChange={x=>setDatum(x.target.value)}/></div><button disabled={busy} onClick={()=>onSave("PATCH",{type:"rekening",id:r.id,prognose_startsaldo:saldo,saldo_peildatum:datum})} className="rounded-lg bg-slate-900 px-3 py-2 text-sm text-white">Opslaan</button></div>;
+  return <div className="grid gap-3 rounded-xl border p-4 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end"><div><div className="font-medium">{r.entiteit}</div><div className="text-sm text-slate-500">{r.naam} · {r.rekening_type}</div></div><div><label className="text-xs text-slate-500">Startsaldo einde peildatum</label><input className="mt-1 w-full rounded-lg border px-3 py-2" type="number" step="0.01" value={saldo} onChange={x=>setSaldo(x.target.value)}/></div><div><label className="text-xs text-slate-500">Peildatum</label><input className="mt-1 w-full rounded-lg border px-3 py-2" type="date" value={datum} onChange={x=>setDatum(x.target.value)}/></div><button disabled={busy} onClick={()=>onSave("PATCH",{type:"rekening",id:r.id,prognose_startsaldo:saldo,saldo_peildatum:datum})} className="rounded-lg bg-slate-900 px-3 py-2 text-sm text-white">Opslaan</button></div>;
 }
 
 function StroomCard({ s, bedragen, busy, onSave }: any) {
