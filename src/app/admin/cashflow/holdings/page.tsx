@@ -713,7 +713,9 @@ export default function CashflowHoldingsPage() {
                       : `${alert.entity}-${alert.year}-${alert.month}`;
                     const selectedMonth = occurrence
                       ? plannedMonths[key] ||
-                        nextMonthValue(occurrence.plannedDate)
+                        (occurrence.postponed
+                          ? occurrence.plannedDate.slice(0, 7)
+                          : nextMonthValue(occurrence.originalDate))
                       : "";
 
                     return (
@@ -791,7 +793,7 @@ export default function CashflowHoldingsPage() {
                                 </div>
                                 <input
                                   type="month"
-                                  min={nextMonthValue(occurrence.plannedDate)}
+                                  min={nextMonthValue(occurrence.originalDate)}
                                   max={`${toYear}-12`}
                                   value={selectedMonth}
                                   onChange={(event) =>
@@ -811,7 +813,7 @@ export default function CashflowHoldingsPage() {
                                   actionKey === key ||
                                   !selectedMonth ||
                                   selectedMonth <
-                                    nextMonthValue(occurrence.plannedDate)
+                                    nextMonthValue(occurrence.originalDate)
                                 }
                                 className={cls(
                                   "h-10 rounded-xl px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50",
