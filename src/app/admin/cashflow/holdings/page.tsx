@@ -789,7 +789,9 @@ export default function CashflowHoldingsPage() {
                             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                               <label className="block">
                                 <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                                  Uitstellen naar
+                                  {occurrence.postponed
+                                    ? "Geplande maand aanpassen"
+                                    : "Uitstellen naar"}
                                 </div>
                                 <input
                                   type="month"
@@ -804,6 +806,12 @@ export default function CashflowHoldingsPage() {
                                   }
                                   className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm"
                                 />
+                                {occurrence.postponed && (
+                                  <div className="mt-1 text-xs text-slate-500">
+                                    Huidig gepland:{" "}
+                                    {formatPlanningDate(occurrence.plannedDate)}
+                                  </div>
+                                )}
                               </label>
 
                               <button
@@ -813,7 +821,9 @@ export default function CashflowHoldingsPage() {
                                   actionKey === key ||
                                   !selectedMonth ||
                                   selectedMonth <
-                                    nextMonthValue(occurrence.originalDate)
+                                    nextMonthValue(occurrence.originalDate) ||
+                                  selectedMonth ===
+                                    occurrence.plannedDate.slice(0, 7)
                                 }
                                 className={cls(
                                   "h-10 rounded-xl px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50",
@@ -823,8 +833,13 @@ export default function CashflowHoldingsPage() {
                                 )}
                               >
                                 {actionKey === key
-                                  ? "Uitstellen…"
-                                  : `Uitstellen naar ${selectedMonth || "latere maand"}`}
+                                  ? "Opslaan…"
+                                  : selectedMonth ===
+                                      occurrence.plannedDate.slice(0, 7)
+                                    ? "Geen wijziging"
+                                    : occurrence.postponed
+                                      ? `Planning aanpassen naar ${selectedMonth || "andere maand"}`
+                                      : `Uitstellen naar ${selectedMonth || "latere maand"}`}
                               </button>
                             </div>
                           ) : (
