@@ -86,6 +86,36 @@ type AlertsResponse = {
   error?: string;
 };
 
+type PlanningOccurrence = {
+  entity: string;
+  streamId: number;
+  streamName: string;
+  originalDate: string;
+  plannedDate: string;
+  amount: number;
+  status: string;
+  postponed: boolean;
+  manual: boolean;
+  reason: string | null;
+  paidOn: string | null;
+  planningId: number | null;
+};
+
+type PlanningResponse = {
+  success: boolean;
+  fase: string;
+  data?: {
+    occurrences: PlanningOccurrence[];
+    summary: {
+      total: number;
+      postponed: number;
+      paid: number;
+      cancelled: number;
+    };
+  };
+  error?: string;
+};
+
 function euro(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return "—";
   return new Intl.NumberFormat("nl-NL", {
@@ -118,6 +148,26 @@ function cls(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
 
+function isoMonth(year: number, month: number) {
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+function firstOfMonth(year: number, month: number) {
+  return `${isoMonth(year, month)}-01`;
+}
+
+function nextMonthValue(date: string) {
+  const [year, month] = date.slice(0, 7).split("-").map(Number);
+  const nextYear = month === 12 ? year + 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  return isoMonth(nextYear, nextMonth);
+}
+
+function formatPlanningDate(date: string) {
+  const [year, month] = date.slice(0, 7).split("-").map(Number);
+  return `${monthName(month)} ${year}`;
+}
+
 function yearRows(holding: Holding, throughYear: number) {
   const years = Array.from(
     new Set(
@@ -144,9 +194,13 @@ export default function CashflowHoldingsPage() {
   const [toYear, setToYear] = useState(2029);
   const [holdings, setHoldings] = useState<HoldingsResponse | null>(null);
   const [alerts, setAlerts] = useState<AlertsResponse | null>(null);
+  const [planning, setPlanning] = useState<PlanningResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [plannedMonths, setPlannedMonths] = useState<Record<string, string>>({});
+  const [actionKey, setActionKey] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,17 +210,21 @@ export default function CashflowHoldingsPage() {
       setError(null);
 
       try {
-        const [holdingsRes, alertsRes] = await Promise.all([
+        const [holdingsRes, alertsRes, planningRes] = await Promise.all([
           fetch(`/api/admin/cashflow/holdings?van=2026&tot=${toYear}`, {
             cache: "no-store",
           }),
           fetch(`/api/admin/cashflow/buffer-waarschuwingen?tot=${toYear}`, {
             cache: "no-store",
           }),
+          fetch(`/api/admin/cashflow/planning?tot=${toYear}`, {
+            cache: "no-store",
+          }),
         ]);
 
         const holdingsJson = (await holdingsRes.json()) as HoldingsResponse;
         const alertsJson = (await alertsRes.json()) as AlertsResponse;
+        const planningJson = (await planningRes.json()) as PlanningResponse;
 
         if (!holdingsRes.ok || !holdingsJson.success) {
           throw new Error(
@@ -181,9 +239,17 @@ export default function CashflowHoldingsPage() {
           );
         }
 
+        if (!planningRes.ok || !planningJson.success) {
+          throw new Error(
+            planningJson.error ||
+              `Planning laden mislukt (${planningRes.status})`
+          );
+        }
+
         if (!cancelled) {
           setHoldings(holdingsJson);
           setAlerts(alertsJson);
+          setPlanning(planningJson);
         }
       } catch (err) {
         if (!cancelled) {
@@ -210,8 +276,94 @@ export default function CashflowHoldingsPage() {
     }, {});
   }, [alerts]);
 
+  const activePostponements = useMemo(
+    () =>
+      (planning?.data?.occurrences ?? []).filter(
+        (occurrence) => occurrence.postponed && occurrence.status !== "betaald"
+      ),
+    [planning]
+  );
+
+  function planningForAlert(alert: BufferAlert) {
+    const alertDate = firstOfMonth(alert.year, alert.month);
+    return (planning?.data?.occurrences ?? []).find(
+      (occurrence) =>
+        occurrence.entity === alert.entity &&
+        (occurrence.originalDate === alertDate ||
+          occurrence.plannedDate === alertDate)
+    );
+  }
+
+  async function postpone(alert: BufferAlert, occurrence: PlanningOccurrence) {
+    const key = `${occurrence.streamId}-${occurrence.originalDate}`;
+    const plannedMonth =
+      plannedMonths[key] || nextMonthValue(occurrence.plannedDate);
+
+    setActionKey(key);
+    setActionError(null);
+
+    try {
+      const res = await fetch("/api/admin/cashflow/planning", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stream_id: occurrence.streamId,
+          oorspronkelijke_datum: occurrence.originalDate,
+          geplande_datum: `${plannedMonth}-01`,
+          bedrag: occurrence.amount,
+          reden: `Uitgesteld via bufferwaarschuwing ${alert.entity}`,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || `Uitstellen mislukt (${res.status})`);
+      }
+
+      setReloadKey((value) => value + 1);
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Uitstellen is mislukt."
+      );
+    } finally {
+      setActionKey(null);
+    }
+  }
+
+  async function resetPlanning(occurrence: PlanningOccurrence) {
+    const key = `${occurrence.streamId}-${occurrence.originalDate}`;
+    setActionKey(key);
+    setActionError(null);
+
+    try {
+      const res = await fetch("/api/admin/cashflow/planning", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stream_id: occurrence.streamId,
+          oorspronkelijke_datum: occurrence.originalDate,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || `Terugzetten mislukt (${res.status})`);
+      }
+
+      setReloadKey((value) => value + 1);
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Terugzetten is mislukt."
+      );
+    } finally {
+      setActionKey(null);
+    }
+  }
+
   const allAvailable =
-    holdings?.data?.available === true && alerts?.data?.available === true;
+    holdings?.data?.available === true &&
+    alerts?.data?.available === true &&
+    planning?.success === true;
 
   return (
     <main className="min-h-screen bg-slate-100">
@@ -220,7 +372,7 @@ export default function CashflowHoldingsPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                Cashflow · fase 4J-A / 4J-B1 / 4J-B2
+                Cashflow · fase 4J-A / 4J-B1 / 4J-B2 / 4J-C
               </p>
               <h1 className="mt-1 text-3xl font-bold text-slate-900">
                 Holdings & bufferbewaking
@@ -287,7 +439,7 @@ export default function CashflowHoldingsPage() {
           </section>
         )}
 
-        {!loading && !error && holdings?.data && alerts?.data && (
+        {!loading && !error && holdings?.data && alerts?.data && planning?.data && (
           <>
             <section
               className={cls(
@@ -460,6 +612,72 @@ export default function CashflowHoldingsPage() {
               })}
             </section>
 
+            {actionError && (
+              <section className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-sm">
+                <span className="font-semibold">Planning niet aangepast.</span>{" "}
+                {actionError}
+              </section>
+            )}
+
+            {activePostponements.length > 0 && (
+              <section className="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-xl font-bold text-blue-950">
+                      Uitgestelde privé-opnames
+                    </h2>
+                    <p className="mt-1 text-sm text-blue-800">
+                      Deze wijzigingen zijn actief in de prognose. Je kunt ze
+                      hier weer terugzetten naar de oorspronkelijke maand.
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-blue-800 ring-1 ring-blue-200">
+                    {activePostponements.length} actief
+                  </span>
+                </div>
+
+                <div className="mt-4 grid gap-3">
+                  {activePostponements.map((occurrence) => {
+                    const key = `${occurrence.streamId}-${occurrence.originalDate}`;
+                    return (
+                      <div
+                        key={key}
+                        className="flex flex-col gap-3 rounded-xl border border-blue-200 bg-white p-4 lg:flex-row lg:items-center lg:justify-between"
+                      >
+                        <div>
+                          <div className="font-semibold text-slate-900">
+                            {occurrence.entity} · {euro(occurrence.amount)}
+                          </div>
+                          <div className="mt-1 text-sm text-slate-600">
+                            {formatPlanningDate(occurrence.originalDate)} →{" "}
+                            <span className="font-semibold text-blue-800">
+                              {formatPlanningDate(occurrence.plannedDate)}
+                            </span>
+                          </div>
+                          {occurrence.reason && (
+                            <div className="mt-1 text-xs text-slate-500">
+                              {occurrence.reason}
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => resetPlanning(occurrence)}
+                          disabled={actionKey === key}
+                          className="h-10 rounded-xl border border-blue-300 bg-blue-50 px-4 text-sm font-semibold text-blue-800 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {actionKey === key
+                            ? "Terugzetten…"
+                            : "Terug naar oorspronkelijke maand"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -488,73 +706,136 @@ export default function CashflowHoldingsPage() {
                 </div>
               ) : (
                 <div className="mt-4 grid gap-3">
-                  {alerts.data.alerts.map((alert) => (
-                    <div
-                      key={`${alert.entity}-${alert.year}-${alert.month}`}
-                      className={cls(
-                        "rounded-xl border p-4",
-                        alert.canAvoidBreachByPostponing
-                          ? "border-amber-200 bg-amber-50"
-                          : "border-red-200 bg-red-50"
-                      )}
-                    >
-                      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
-                          <div className="font-semibold text-slate-900">
-                            {alert.entity} · {monthName(alert.month)} {alert.year}
+                  {alerts.data.alerts.map((alert) => {
+                    const occurrence = planningForAlert(alert);
+                    const key = occurrence
+                      ? `${occurrence.streamId}-${occurrence.originalDate}`
+                      : `${alert.entity}-${alert.year}-${alert.month}`;
+                    const selectedMonth = occurrence
+                      ? plannedMonths[key] ||
+                        nextMonthValue(occurrence.plannedDate)
+                      : "";
+
+                    return (
+                      <div
+                        key={`${alert.entity}-${alert.year}-${alert.month}`}
+                        className={cls(
+                          "rounded-xl border p-4",
+                          alert.canAvoidBreachByPostponing
+                            ? "border-amber-200 bg-amber-50"
+                            : "border-red-200 bg-red-50"
+                        )}
+                      >
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                          <div>
+                            <div className="font-semibold text-slate-900">
+                              {alert.entity} · {monthName(alert.month)} {alert.year}
+                            </div>
+                            <div
+                              className={cls(
+                                "mt-1 text-sm",
+                                alert.canAvoidBreachByPostponing
+                                  ? "text-amber-800"
+                                  : "text-red-800"
+                              )}
+                            >
+                              {alert.canAvoidBreachByPostponing
+                                ? "Deze privé-opname brengt de holding onder de buffer. Uitstellen voorkomt het tekort op dat moment."
+                                : "De holding blijft ook zonder deze privé-opname onder de buffer. Uitstellen vermindert het tekort, maar lost het niet volledig op."}
+                            </div>
                           </div>
-                          <div
+
+                          <span
                             className={cls(
-                              "mt-1 text-sm",
+                              "w-fit rounded-full px-3 py-1 text-xs font-bold",
                               alert.canAvoidBreachByPostponing
-                                ? "text-amber-800"
-                                : "text-red-800"
+                                ? "bg-amber-200 text-amber-900"
+                                : "bg-red-200 text-red-900"
                             )}
                           >
-                            {alert.canAvoidBreachByPostponing
-                              ? "Deze privé-opname brengt de holding onder de buffer. Uitstellen voorkomt het tekort op dat moment."
-                              : "De holding blijft ook zonder deze privé-opname onder de buffer. Uitstellen vermindert het tekort, maar lost het niet volledig op."}
-                          </div>
+                            Advies: uitstellen
+                          </span>
                         </div>
 
-                        <span
-                          className={cls(
-                            "w-fit rounded-full px-3 py-1 text-xs font-bold",
-                            alert.canAvoidBreachByPostponing
-                              ? "bg-amber-200 text-amber-900"
-                              : "bg-red-200 text-red-900"
-                          )}
-                        >
-                          Advies: uitstellen
-                        </span>
-                      </div>
+                        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
+                          <MiniStat
+                            label="Privé netto doel"
+                            value={euro(alert.targetPrivateNet)}
+                          />
+                          <MiniStat
+                            label="Kasuitstroom holding"
+                            value={euro(alert.holdingCashCost)}
+                          />
+                          <MiniStat
+                            label="Saldo na opname"
+                            value={euro(alert.endingBalance)}
+                          />
+                          <MiniStat
+                            label="Saldo zonder opname"
+                            value={euro(
+                              alert.endingBalanceWithoutPrivateWithdrawal
+                            )}
+                          />
+                          <MiniStat
+                            label="Tekort t.o.v. buffer"
+                            value={euro(alert.bufferShortfall)}
+                          />
+                        </div>
 
-                      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-5">
-                        <MiniStat
-                          label="Privé netto doel"
-                          value={euro(alert.targetPrivateNet)}
-                        />
-                        <MiniStat
-                          label="Kasuitstroom holding"
-                          value={euro(alert.holdingCashCost)}
-                        />
-                        <MiniStat
-                          label="Saldo na opname"
-                          value={euro(alert.endingBalance)}
-                        />
-                        <MiniStat
-                          label="Saldo zonder opname"
-                          value={euro(
-                            alert.endingBalanceWithoutPrivateWithdrawal
+                        <div className="mt-4 rounded-xl border border-white/80 bg-white/70 p-3">
+                          {occurrence ? (
+                            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                              <label className="block">
+                                <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                  Uitstellen naar
+                                </div>
+                                <input
+                                  type="month"
+                                  min={nextMonthValue(occurrence.plannedDate)}
+                                  max={`${toYear}-12`}
+                                  value={selectedMonth}
+                                  onChange={(event) =>
+                                    setPlannedMonths((prev) => ({
+                                      ...prev,
+                                      [key]: event.target.value,
+                                    }))
+                                  }
+                                  className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                />
+                              </label>
+
+                              <button
+                                type="button"
+                                onClick={() => postpone(alert, occurrence)}
+                                disabled={
+                                  actionKey === key ||
+                                  !selectedMonth ||
+                                  selectedMonth <
+                                    nextMonthValue(occurrence.plannedDate)
+                                }
+                                className={cls(
+                                  "h-10 rounded-xl px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50",
+                                  alert.canAvoidBreachByPostponing
+                                    ? "bg-amber-600 hover:bg-amber-700"
+                                    : "bg-red-600 hover:bg-red-700"
+                                )}
+                              >
+                                {actionKey === key
+                                  ? "Uitstellen…"
+                                  : `Uitstellen naar ${selectedMonth || "latere maand"}`}
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="text-sm font-medium text-red-700">
+                              Deze waarschuwing kon niet aan een planbare
+                              privé-opname worden gekoppeld. Er is niets
+                              aangepast.
+                            </div>
                           )}
-                        />
-                        <MiniStat
-                          label="Tekort t.o.v. buffer"
-                          value={euro(alert.bufferShortfall)}
-                        />
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </section>
