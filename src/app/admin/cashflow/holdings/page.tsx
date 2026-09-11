@@ -294,10 +294,35 @@ export default function CashflowHoldingsPage() {
     );
   }
 
+  function targetMonthCollision(
+    occurrence: PlanningOccurrence,
+    targetMonth: string
+  ) {
+    return (planning?.data?.occurrences ?? []).find(
+      (other) =>
+        other.streamId === occurrence.streamId &&
+        other.originalDate !== occurrence.originalDate &&
+        other.status !== "vervallen" &&
+        other.plannedDate.slice(0, 7) === targetMonth
+    );
+  }
+
   async function postpone(alert: BufferAlert, occurrence: PlanningOccurrence) {
     const key = `${occurrence.streamId}-${occurrence.originalDate}`;
     const plannedMonth =
-      plannedMonths[key] || nextMonthValue(occurrence.plannedDate);
+      plannedMonths[key] ||
+      (occurrence.postponed
+        ? occurrence.plannedDate.slice(0, 7)
+        : nextMonthValue(occurrence.originalDate));
+
+    const collision = targetMonthCollision(occurrence, plannedMonth);
+    if (collision) {
+      const confirmed = window.confirm(
+        `In ${formatPlanningDate(`${plannedMonth}-01`)} staat al een andere privé-opname van ${euro(collision.amount)}. ` +
+          `Als je doorgaat, worden beide opnames in die maand verwerkt. Wil je dat?`
+      );
+      if (!confirmed) return;
+    }
 
     setActionKey(key);
     setActionError(null);
@@ -717,6 +742,10 @@ export default function CashflowHoldingsPage() {
                           ? occurrence.plannedDate.slice(0, 7)
                           : nextMonthValue(occurrence.originalDate))
                       : "";
+                    const collision =
+                      occurrence && selectedMonth
+                        ? targetMonthCollision(occurrence, selectedMonth)
+                        : undefined;
 
                     return (
                       <div
@@ -812,6 +841,15 @@ export default function CashflowHoldingsPage() {
                                     {formatPlanningDate(occurrence.plannedDate)}
                                   </div>
                                 )}
+                                {collision && (
+                                  <div className="mt-1 max-w-sm text-xs font-semibold text-amber-700">
+                                    Let op: in{" "}
+                                    {formatPlanningDate(`${selectedMonth}-01`)} staat
+                                    al een andere privé-opname van{" "}
+                                    {euro(collision.amount)}. Als je doorgaat,
+                                    worden beide opnames in die maand verwerkt.
+                                  </div>
+                                )}
                               </label>
 
                               <button
@@ -838,8 +876,8 @@ export default function CashflowHoldingsPage() {
                                       occurrence.plannedDate.slice(0, 7)
                                     ? "Geen wijziging"
                                     : occurrence.postponed
-                                      ? `Planning aanpassen naar ${selectedMonth || "andere maand"}`
-                                      : `Uitstellen naar ${selectedMonth || "latere maand"}`}
+                                      ? `Planning aanpassen naar ${selectedMonth || "andere maand"}${collision ? " · 2 opnames" : ""}`
+                                      : `Uitstellen naar ${selectedMonth || "latere maand"}${collision ? " · 2 opnames" : ""}`}
                               </button>
                             </div>
                           ) : (
