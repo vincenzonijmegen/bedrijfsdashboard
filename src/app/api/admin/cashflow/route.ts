@@ -148,7 +148,12 @@ export async function POST(req: NextRequest) {
       await client.query("BEGIN");
 
       const nextTariff = await client.query(`
-        SELECT geldig_vanaf
+        SELECT
+          to_char(geldig_vanaf, 'YYYY-MM-DD') AS geldig_vanaf,
+          to_char(
+            (geldig_vanaf - INTERVAL '1 day')::date,
+            'YYYY-MM-DD'
+          ) AS max_geldig_tot
         FROM cashflow_stroom_bedragen
         WHERE stroom_id = $1
           AND geldig_vanaf > $2::date
@@ -158,17 +163,13 @@ export async function POST(req: NextRequest) {
 
       const nextValidFrom =
         nextTariff.rows[0]?.geldig_vanaf
-          ? String(nextTariff.rows[0].geldig_vanaf).slice(0, 10)
+          ? String(nextTariff.rows[0].geldig_vanaf)
           : null;
 
       let effectiveValidTo = geldigTot;
 
       if (nextValidFrom) {
-        const maxValidToResult = await client.query(
-          `SELECT ($1::date - INTERVAL '1 day')::date AS max_geldig_tot`,
-          [nextValidFrom]
-        );
-        const maxValidTo = String(maxValidToResult.rows[0].max_geldig_tot).slice(0, 10);
+        const maxValidTo = String(nextTariff.rows[0].max_geldig_tot);
 
         if (effectiveValidTo && effectiveValidTo > maxValidTo) {
           throw new Error(
