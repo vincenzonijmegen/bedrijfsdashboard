@@ -146,6 +146,43 @@ export async function POST(req: NextRequest) {
     const client = await db.getClient();
     try {
       await client.query("BEGIN");
+
+      const nextTariff = await client.query(`
+        SELECT geldig_vanaf
+        FROM cashflow_stroom_bedragen
+        WHERE stroom_id = $1
+          AND geldig_vanaf > $2::date
+        ORDER BY geldig_vanaf
+        LIMIT 1
+      `, [stroomId, geldigVanaf]);
+
+      const nextValidFrom =
+        nextTariff.rows[0]?.geldig_vanaf
+          ? String(nextTariff.rows[0].geldig_vanaf).slice(0, 10)
+          : null;
+
+      let effectiveValidTo = geldigTot;
+
+      if (nextValidFrom) {
+        const maxValidToResult = await client.query(
+          `SELECT ($1::date - INTERVAL '1 day')::date AS max_geldig_tot`,
+          [nextValidFrom]
+        );
+        const maxValidTo = String(maxValidToResult.rows[0].max_geldig_tot).slice(0, 10);
+
+        if (effectiveValidTo && effectiveValidTo > maxValidTo) {
+          throw new Error(
+            `Einddatum mag niet na ${maxValidTo} liggen; vanaf ${nextValidFrom} bestaat al een volgend tarief`
+          );
+        }
+
+        if (!effectiveValidTo) effectiveValidTo = maxValidTo;
+      }
+
+      if (effectiveValidTo && effectiveValidTo < geldigVanaf) {
+        throw new Error("Einddatum mag niet vóór de ingangsdatum liggen");
+      }
+
       await client.query(`
         UPDATE cashflow_stroom_bedragen
         SET geldig_tot = ($2::date - INTERVAL '1 day')::date,
@@ -168,7 +205,8 @@ export async function POST(req: NextRequest) {
             btw_aftrekbaar_percentage=EXCLUDED.btw_aftrekbaar_percentage,
             bedrag_is_inclusief_btw=EXCLUDED.bedrag_is_inclusief_btw,
             bijgewerkt_op=now()
-      `, [stroomId, geldigVanaf, geldigTot, bedrag, percentage, btw, aftrek, body.bedrag_is_inclusief_btw !== false]);
+      `, [stroomId, geldigVanaf, effectiveValidTo, bedrag, percentage, btw, aftrek, body.bedrag_is_inclusief_btw !== false]);
+
       await client.query("COMMIT");
     } catch (e) {
       await client.query("ROLLBACK");
