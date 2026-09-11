@@ -435,6 +435,13 @@ export default function CashflowHoldingsPage() {
               </button>
 
               <a
+                href="/admin/cashflow/dashboard"
+                className="inline-flex h-10 items-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+              >
+                Cashflowdashboard
+              </a>
+
+              <a
                 href="/admin/cashflow/scenario-emo-2027"
                 className="inline-flex h-10 items-center rounded-xl border border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-700 hover:bg-blue-100"
               >
