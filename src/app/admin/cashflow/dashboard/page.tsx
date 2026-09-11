@@ -309,7 +309,7 @@ export default function CashflowDashboardPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                Cashflow · fase 4K-A
+                Cashflow · fase 4K-A / 4K-B1
               </p>
               <h1 className="mt-1 text-3xl font-bold text-slate-900">
                 Cashflowdashboard
@@ -572,6 +572,11 @@ export default function CashflowDashboardPage() {
                       href="/admin/cashflow/holdings"
                       title="Holdings & bufferbewaking"
                       text={`${alerts.data.summary.total} waarschuwingen · ${activePostponements.length} actieve uitgestelde opnames`}
+                    />
+                    <NavCard
+                      href="/admin/cashflow/instellingen"
+                      title="Basisinstellingen"
+                      text="Minimum buffers en groeipercentages beheren."
                     />
                   </div>
                 </article>
