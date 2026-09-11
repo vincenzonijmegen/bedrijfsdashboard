@@ -220,7 +220,7 @@ export default function CashflowHoldingsPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                Cashflow · fase 4J-A / 4J-B1
+                Cashflow · fase 4J-A / 4J-B1 / 4J-B2
               </p>
               <h1 className="mt-1 text-3xl font-bold text-slate-900">
                 Holdings & bufferbewaking
@@ -262,6 +262,13 @@ export default function CashflowHoldingsPage() {
                 className="inline-flex h-10 items-center rounded-xl border border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-700 hover:bg-blue-100"
               >
                 Scenario Emo 2027
+              </a>
+
+              <a
+                href="/admin/cashflow/scenario-eindejaarsbonus"
+                className="inline-flex h-10 items-center rounded-xl border border-violet-200 bg-violet-50 px-4 text-sm font-semibold text-violet-700 hover:bg-violet-100"
+              >
+                Eindejaarsbonus
               </a>
             </div>
           </div>
