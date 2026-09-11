@@ -195,7 +195,7 @@ export default function CashflowTarievenPage() {
       );
   }, [data, selectedStreamId]);
 
-  function useTariff(row: Tariff) {
+  function editTariff(row: Tariff) {
     setForm({
       validFrom: dateOnly(row.geldig_vanaf) || "",
       amount: String(row.bedrag ?? ""),
@@ -461,7 +461,7 @@ export default function CashflowTarievenPage() {
                               <td className="py-3 text-right">
                                 <button
                                   type="button"
-                                  onClick={() => useTariff(row)}
+                                  onClick={() => editTariff(row)}
                                   className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                                 >
                                   Wijzig dit tarief
