@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
       targetPrivateNet: number;
       holdingCashCost: number;
       linkedFreeRoomRepayment: number;
+      linkedDividendFunding: number;
       netHoldingImpact: number;
       bufferShortfall: number;
       type: "opname_breekt_buffer" | "opname_vergroot_buffertekort";
@@ -80,8 +81,21 @@ export async function GET(req: NextRequest) {
             .reduce((sum, line) => sum + Number(line.amount ?? 0), 0)
         );
 
+        const linkedDividendFunding = round2(
+          month.lines
+            .filter(
+              (line) =>
+                line.direction === "in" &&
+                line.category === "dividend_vincenzo_holding" &&
+                line.amount != null
+            )
+            .reduce((sum, line) => sum + Number(line.amount ?? 0), 0)
+        );
+
         const netHoldingImpact = round2(
-          holdingCashCost - linkedFreeRoomRepayment
+          holdingCashCost -
+            linkedFreeRoomRepayment -
+            linkedDividendFunding
         );
         if (netHoldingImpact <= 0) continue;
 
@@ -114,6 +128,7 @@ export async function GET(req: NextRequest) {
           targetPrivateNet,
           holdingCashCost,
           linkedFreeRoomRepayment,
+          linkedDividendFunding,
           netHoldingImpact,
           bufferShortfall: round2(minimumBuffer - endingBalance),
           type: canAvoidBreachByPostponing

@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { berekenVrijeRuimteAflossingen } from "@/lib/cashflow/berekenHoldingsMeerjaren";
+import { berekenVincenzoNaarHoldingUitkeringen } from "@/lib/cashflow/berekenHoldingsMeerjaren";
 
 type VasteStroomRegel = {
   naam: string;
@@ -38,6 +38,7 @@ type MaandRegel = {
   incidenteleInkomsten: number;
   incidenteleUitgaven: number;
   aflossingSchuldHoldings: number;
+  dividendNaarHoldings: number;
   incidentelePosten: IncidentelePost[];
   nettoVoorOverigePosten: number | null;
   nettoNaInkoopEnBtw: number | null;
@@ -791,7 +792,7 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
   `, [entiteitId]);
   const groeiPct = Number(instellingRes.rows?.[0]?.groei ?? 0);
 
-  const [omzet, werkelijkeLonen, vasteUitgaven, inkoopProfielen, overigeProfielen, incidenteleProfielen, btwRows, cashStart, vrijeRuimteAflossingen] = await Promise.all([
+  const [omzet, werkelijkeLonen, vasteUitgaven, inkoopProfielen, overigeProfielen, incidenteleProfielen, btwRows, cashStart, vincenzoHoldingUitkeringen] = await Promise.all([
     getOmzetBasis(jaar, groeiPct),
     getWerkelijkeLoonkosten(jaar),
     getVasteUitgaven(jaar, entiteitId),
@@ -800,7 +801,7 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
     getIncidentelePosten(entiteitId, jaar),
     getWerkelijkeBtwRows(entiteitId, jaar),
     getCashflowStartgegevens(entiteitId),
-    berekenVrijeRuimteAflossingen(jaar),
+    berekenVincenzoNaarHoldingUitkeringen(jaar),
   ]);
 
   const now = new Date();
@@ -868,8 +869,23 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
       .filter((p) => p.richting === "uit")
       .reduce((som, p) => som + p.bedrag, 0));
     const aflossingSchuldHoldings = round2(
-      vrijeRuimteAflossingen
-        .filter((p) => p.year === jaar && p.month === maand)
+      vincenzoHoldingUitkeringen
+        .filter(
+          (p) =>
+            p.kind === "vrije_ruimte" &&
+            p.year === jaar &&
+            p.month === maand
+        )
+        .reduce((som, p) => som + p.amount, 0)
+    );
+    const dividendNaarHoldings = round2(
+      vincenzoHoldingUitkeringen
+        .filter(
+          (p) =>
+            p.kind === "dividend" &&
+            p.year === jaar &&
+            p.month === maand
+        )
         .reduce((som, p) => som + p.amount, 0)
     );
 
@@ -955,6 +971,7 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
       incidenteleInkomsten,
       incidenteleUitgaven,
       aflossingSchuldHoldings,
+      dividendNaarHoldings,
       incidentelePosten,
       nettoVoorOverigePosten,
       nettoNaInkoopEnBtw: nettoVoorOverigePosten === null || inkoop === null
@@ -971,6 +988,7 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
             - overigeUitgaven
             - incidenteleUitgaven
             - aflossingSchuldHoldings
+            - dividendNaarHoldings
             + incidenteleInkomsten
           ),
     });

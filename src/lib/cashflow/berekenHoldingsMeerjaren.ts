@@ -766,6 +766,22 @@ async function calculateHolding(entityName: string, toYear: number) {
         const withholding = round2(grossDividend * taxRate.sourcePercentage / 100);
         const cashToPrivate = round2(grossDividend - withholding);
 
+        // Zodra de vrije ruimte op is, wordt het bruto bedrag dat nodig is
+        // voor het netto privédoel eerst door Vincenzo B.V. als dividend aan
+        // de holding uitgekeerd. Daarna betaalt de holding het cashdeel aan
+        // privé en de dividendbelasting. Voor de holding is ook deze route
+        // kasneutraal; de echte kasuitstroom ligt bij Vincenzo B.V.
+        d.income = round2(d.income + grossDividend);
+        d.lines.push({
+          streamId: dividendStream.id,
+          name: `Dividenduitkering Vincenzo B.V. aan ${entity.name}`,
+          category: "dividend_vincenzo_holding",
+          direction: "in",
+          amount: grossDividend,
+          vatPart: 0,
+          source: `gekoppeld aan ${dividendStream.name}`,
+        });
+
         d.expenses = round2(d.expenses + grossDividend);
         d.lines.push({
           streamId: dividendStream.id,
@@ -954,7 +970,7 @@ async function calculateHolding(entityName: string, toYear: number) {
     missingConfiguration: allMissing,
     warnings: [
       "De halfjaarlijkse privé-opname gebruikt eerst de resterende rekening-courant/vrije ruimte. Dat deel wordt eerst door Vincenzo B.V. als aflossing van haar schuld aan de holding betaald en daarna kasneutraal doorgestort naar privé; alleen het resterende deel wordt dividend.",
-      "Zodra dividend nodig is, wordt het bruto dividend berekend vanuit het gewenste netto bedrag na Box 2. Het effectieve Box-2-percentage en het inhoudingspercentage dividendbelasting moeten expliciet zijn geconfigureerd; ze worden niet hardcoded.",
+      "Zodra dividend nodig is, wordt het bruto dividend berekend vanuit het gewenste netto bedrag na Box 2. Vincenzo B.V. stort dat bruto bedrag eerst naar de holding; de holding betaalt daarna privé en dividendbelasting. Het effectieve Box-2-percentage en het inhoudingspercentage moeten expliciet zijn geconfigureerd; ze worden niet hardcoded.",
       "Dividendbelasting is een voorheffing. Een eventuele aanvullende privé-Box-2-afrekening valt buiten de kasstroom van de holding, maar het veld netAfterBox2 bewaakt het gewenste netto privébedrag.",
       "Holding-BTW wordt alleen geblokkeerd door ontbrekende tarieven van BTW-relevante stromen; expliciet BTW-vrije stromen zoals DGA-loon, loonheffing, vrije ruimte en dividend blokkeren de BTW-berekening niet.",
     ],
@@ -967,34 +983,50 @@ async function calculateHolding(entityName: string, toYear: number) {
   };
 }
 
-export type VrijeRuimteAflossing = {
+export type VincenzoHoldingUitkering = {
   holding: string;
   year: number;
   month: number;
   amount: number;
+  kind: "vrije_ruimte" | "dividend";
   source: string;
 };
 
-export async function berekenVrijeRuimteAflossingen(
+export async function berekenVincenzoNaarHoldingUitkeringen(
   toYear: number
-): Promise<VrijeRuimteAflossing[]> {
+): Promise<VincenzoHoldingUitkering[]> {
   const data = await berekenHoldingsMeerjaren(toYear);
-  const result: VrijeRuimteAflossing[] = [];
+  const result: VincenzoHoldingUitkering[] = [];
 
   for (const holding of data.holdings) {
     for (const month of holding.months) {
       for (const line of month.lines) {
         if (
-          line.direction === "uit" &&
-          line.category === "vrije_reserve" &&
-          line.amount != null &&
-          Number(line.amount) > 0
+          line.direction !== "in" ||
+          line.amount == null ||
+          Number(line.amount) <= 0
         ) {
+          continue;
+        }
+
+        if (line.category === "aflossing_vincenzo_vrije_ruimte") {
           result.push({
             holding: holding.entity,
             year: month.year,
             month: month.month,
             amount: round2(Number(line.amount)),
+            kind: "vrije_ruimte",
+            source: line.source,
+          });
+        }
+
+        if (line.category === "dividend_vincenzo_holding") {
+          result.push({
+            holding: holding.entity,
+            year: month.year,
+            month: month.month,
+            amount: round2(Number(line.amount)),
+            kind: "dividend",
             source: line.source,
           });
         }
@@ -1003,6 +1035,26 @@ export async function berekenVrijeRuimteAflossingen(
   }
 
   return result;
+}
+
+export type VrijeRuimteAflossing = Omit<
+  VincenzoHoldingUitkering,
+  "kind"
+>;
+
+export async function berekenVrijeRuimteAflossingen(
+  toYear: number
+): Promise<VrijeRuimteAflossing[]> {
+  const uitkeringen = await berekenVincenzoNaarHoldingUitkeringen(toYear);
+  return uitkeringen
+    .filter((item) => item.kind === "vrije_ruimte")
+    .map((item) => ({
+      holding: item.holding,
+      year: item.year,
+      month: item.month,
+      amount: item.amount,
+      source: item.source,
+    }));
 }
 
 export async function berekenHoldingsMeerjaren(toYear: number) {

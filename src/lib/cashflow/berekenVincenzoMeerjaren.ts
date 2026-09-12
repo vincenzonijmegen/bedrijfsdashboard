@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { berekenVincenzoBasis } from "@/lib/cashflow/berekenVincenzoBasis";
-import { berekenVrijeRuimteAflossingen } from "@/lib/cashflow/berekenHoldingsMeerjaren";
+import { berekenVincenzoNaarHoldingUitkeringen } from "@/lib/cashflow/berekenHoldingsMeerjaren";
 
 const SEIZOEN_MAANDEN = [3, 4, 5, 6, 7, 8, 9];
 
@@ -72,6 +72,7 @@ type MeerjaarMaand = {
   incidenteleInkomsten: number;
   incidenteleUitgaven: number;
   aflossingSchuldHoldings: number;
+  dividendNaarHoldings: number;
   btwKasMutatie: number | null;
   kasmutatie: number | null;
   compleet: boolean;
@@ -319,10 +320,10 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
     };
   }
 
-  const [inkoopProfielen, overigeProfielen, vrijeRuimteAflossingen] = await Promise.all([
+  const [inkoopProfielen, overigeProfielen, vincenzoHoldingUitkeringen] = await Promise.all([
     getInkoopProfielen(entiteitId),
     getOverigeProfielen(entiteitId),
-    berekenVrijeRuimteAflossingen(totJaar),
+    berekenVincenzoNaarHoldingUitkeringen(totJaar),
   ]);
 
   const basisMaanden = new Map<number, (typeof basis.maanden)[number]>();
@@ -408,8 +409,23 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         .filter((p) => p.richting === "uit")
         .reduce((som, p) => som + p.bedrag, 0));
       const aflossingSchuldHoldings = round2(
-        vrijeRuimteAflossingen
-          .filter((p) => p.year === jaar && p.month === maand)
+        vincenzoHoldingUitkeringen
+          .filter(
+            (p) =>
+              p.kind === "vrije_ruimte" &&
+              p.year === jaar &&
+              p.month === maand
+          )
+          .reduce((som, p) => som + p.amount, 0)
+      );
+      const dividendNaarHoldings = round2(
+        vincenzoHoldingUitkeringen
+          .filter(
+            (p) =>
+              p.kind === "dividend" &&
+              p.year === jaar &&
+              p.month === maand
+          )
           .reduce((som, p) => som + p.amount, 0)
       );
 
@@ -488,6 +504,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         incidenteleInkomsten,
         incidenteleUitgaven,
         aflossingSchuldHoldings,
+        dividendNaarHoldings,
         btwKasMutatie: 0,
         kasmutatie: null,
         compleet,
@@ -566,6 +583,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         - m.overigeUitgaven
         - m.incidenteleUitgaven
         - m.aflossingSchuldHoldings
+        - m.dividendNaarHoldings
         + m.incidenteleInkomsten
         + m.btwKasMutatie
       );
