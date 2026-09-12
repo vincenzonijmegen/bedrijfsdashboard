@@ -309,7 +309,7 @@ export default function CashflowDashboardPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                Cashflow · fase 4K-A / 4K-B1 / 4K-B2 / 4K-B3
+                Cashflow · fase 4K-A / 4K-B / 4K-C1
               </p>
               <h1 className="mt-1 text-3xl font-bold text-slate-900">
                 Cashflowdashboard
@@ -559,57 +559,93 @@ export default function CashflowDashboardPage() {
               </section>
 
               <section className="grid gap-5 lg:grid-cols-2">
-                <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h2 className="text-xl font-bold text-slate-900">
-                    Acties & planning
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Werk met de echte basisplanning.
-                  </p>
+                <article className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5 shadow-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-wide text-emerald-700">
+                        Basisprognose
+                      </div>
+                      <h2 className="mt-1 text-xl font-bold text-slate-900">
+                        Echte gegevens & planning
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-600">
+                        Wijzigingen hier worden opgeslagen en werken direct door
+                        in de prognose.
+                      </p>
+                    </div>
+
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+                      WORDT OPGESLAGEN
+                    </span>
+                  </div>
 
                   <div className="mt-4 grid gap-3">
                     <NavCard
                       href="/admin/cashflow/holdings"
                       title="Holdings & bufferbewaking"
                       text={`${alerts.data.summary.total} waarschuwingen · ${activePostponements.length} actieve uitgestelde opnames`}
+                      mode="base"
                     />
                     <NavCard
                       href="/admin/cashflow/instellingen"
                       title="Basisinstellingen"
                       text="Minimum buffers en groeipercentages beheren."
+                      mode="base"
                     />
                     <NavCard
                       href="/admin/cashflow/tarieven"
                       title="Vaste tarieven"
                       text="Bedragen en ingangsdatums van vaste geldstromen beheren."
+                      mode="base"
                     />
                     <NavCard
                       href="/admin/cashflow/incidenteel"
                       title="Incidentele kasstromen"
                       text="Alleen bijzondere of materiële eenmalige posten beheren."
+                      mode="base"
                     />
                   </div>
                 </article>
 
-                <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                  <h2 className="text-xl font-bold text-slate-900">
-                    Scenario&apos;s
-                  </h2>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Rekenen zonder de basisprognose te wijzigen.
-                  </p>
+                <article className="rounded-2xl border border-violet-200 bg-violet-50/40 p-5 shadow-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-wide text-violet-700">
+                        Scenario&apos;s
+                      </div>
+                      <h2 className="mt-1 text-xl font-bold text-slate-900">
+                        Tijdelijk doorrekenen
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-600">
+                        Deze berekeningen veranderen de echte basisprognose niet.
+                      </p>
+                    </div>
+
+                    <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-800">
+                      NIET OPGESLAGEN
+                    </span>
+                  </div>
 
                   <div className="mt-4 grid gap-3">
                     <NavCard
                       href="/admin/cashflow/scenario-emo-2027"
                       title="Emo 2027"
                       text="Startmaand, uren en afwijkend salaris doorrekenen."
+                      mode="scenario"
                     />
                     <NavCard
                       href="/admin/cashflow/scenario-eindejaarsbonus"
                       title="Eindejaarsbonus"
                       text="Optionele bruto bonus voor Robert en/of Emo."
+                      mode="scenario"
                     />
+                  </div>
+
+                  <div className="mt-4 rounded-xl border border-violet-200 bg-white/80 p-4 text-sm text-violet-900">
+                    <span className="font-semibold">Vuistregel:</span>{" "}
+                    wil je alleen weten &quot;wat als…?&quot;, gebruik dan een scenario.
+                    Wil je dat de prognose voortaan echt met een wijziging rekent,
+                    pas dan de basisprognose aan.
                   </div>
                 </article>
               </section>
@@ -742,18 +778,45 @@ function NavCard({
   href,
   title,
   text,
+  mode = "neutral",
 }: {
   href: string;
   title: string;
   text: string;
+  mode?: "neutral" | "base" | "scenario";
 }) {
   return (
     <a
       href={href}
-      className="rounded-xl border border-slate-200 bg-slate-50 p-4 hover:border-blue-200 hover:bg-blue-50"
+      className={cls(
+        "rounded-xl border bg-white p-4 transition-colors",
+        mode === "base" &&
+          "border-emerald-200 hover:border-emerald-300 hover:bg-emerald-50",
+        mode === "scenario" &&
+          "border-violet-200 hover:border-violet-300 hover:bg-violet-50",
+        mode === "neutral" &&
+          "border-slate-200 hover:border-blue-200 hover:bg-blue-50"
+      )}
     >
-      <div className="font-semibold text-slate-900">{title}</div>
-      <div className="mt-1 text-sm text-slate-500">{text}</div>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="font-semibold text-slate-900">{title}</div>
+          <div className="mt-1 text-sm text-slate-500">{text}</div>
+        </div>
+
+        {mode !== "neutral" && (
+          <span
+            className={cls(
+              "shrink-0 rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide",
+              mode === "base"
+                ? "bg-emerald-100 text-emerald-800"
+                : "bg-violet-100 text-violet-800"
+            )}
+          >
+            {mode === "base" ? "echt" : "scenario"}
+          </span>
+        )}
+      </div>
     </a>
   );
 }
