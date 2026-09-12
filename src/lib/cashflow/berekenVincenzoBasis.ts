@@ -772,6 +772,11 @@ async function getWerkelijkeBtwRows(entiteitId: number, jaar: number) {
 export async function berekenVincenzoBasis(jaar: number): Promise<{
   jaar: number;
   groeiPct: number;
+  prognoseGrens: {
+    peildatum: string;
+    afgeslotenTotMaand: number;
+    eerstePrognoseMaand: number | null;
+  };
   waarschuwingen: string[];
   maanden: MaandRegel[];
   btwKwartalen: BtwKwartaalRegel[];
