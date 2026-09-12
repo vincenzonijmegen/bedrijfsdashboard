@@ -72,6 +72,26 @@ type ApiResponse = {
     freeRoomRemaining: number | null;
     accountCount: number;
   };
+  checkedRestore?: {
+    snapshotId: number;
+    entityId: number;
+    entity: string;
+    currentDate: string;
+    restoredDate: string;
+    total: number;
+    freeRoomRemaining: number | null;
+    accountCount: number;
+  };
+  restored?: {
+    snapshotId: number;
+    entityId: number;
+    entity: string;
+    previousDate: string;
+    restoredDate: string;
+    total: number;
+    freeRoomRemaining: number | null;
+    accountCount: number;
+  };
   error?: string;
 };
 
@@ -137,6 +157,8 @@ export default function ActueleSaldiPage() {
   const [lastCheck, setLastCheck] = useState<ApiResponse["checked"] | null>(
     null
   );
+  const [restoreBusyId, setRestoreBusyId] = useState<number | null>(null);
+  const [restoreCheckId, setRestoreCheckId] = useState<number | null>(null);
 
   async function load(preferredEntityId?: number | null) {
     setLoading(true);
@@ -340,6 +362,64 @@ export default function ActueleSaldiPage() {
     }
   }
 
+  async function restoreSnapshot(row: History, dryRun: boolean) {
+    if (!entity) return;
+
+    if (
+      !dryRun &&
+      !window.confirm(
+        `Snapshot van ${dateNl(
+          row.date
+        )} herstellen als actieve prognosebasis voor ${entity.name}? De huidige actieve stand wordt niet uit de historie verwijderd.`
+      )
+    ) {
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+    setRestoreBusyId(row.id);
+
+    try {
+      const res = await fetch("/api/admin/cashflow/saldi", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          snapshot_id: row.id,
+          dry_run: dryRun,
+        }),
+      });
+      const json = (await res.json()) as ApiResponse;
+
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || `Herstel mislukt (${res.status})`);
+      }
+
+      if (dryRun) {
+        setRestoreCheckId(row.id);
+        setMessage(
+          `Herstelcontrole geslaagd voor ${entity.name} · ${dateNl(
+            row.date
+          )}. Er is niets gewijzigd.`
+        );
+      } else {
+        setRestoreCheckId(null);
+        setMessage(
+          `${entity.name}: snapshot van ${dateNl(
+            row.date
+          )} is hersteld als actieve prognosebasis.`
+        );
+        await load(entity.id);
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Snapshot herstellen mislukt."
+      );
+    } finally {
+      setRestoreBusyId(null);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-slate-100">
       <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
@@ -347,7 +427,7 @@ export default function ActueleSaldiPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                Cashflow · fase 4L-B2
+                Cashflow · fase 4L-C
               </p>
               <h1 className="mt-1 text-3xl font-bold text-slate-900">
                 Actuele saldi & peildatum
@@ -599,7 +679,7 @@ export default function ActueleSaldiPage() {
                   Snapshot-historie · {entity.name}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Iedere geactiveerde peildatum blijft bewaard.
+                  Iedere geactiveerde peildatum blijft bewaard. Een eerdere snapshot kan gecontroleerd worden hersteld.
                 </p>
 
                 <div className="mt-4 overflow-x-auto">
@@ -612,6 +692,7 @@ export default function ActueleSaldiPage() {
                           Vrije ruimte
                         </th>
                         <th className="pb-2 pr-4">Bron</th>
+                        <th className="pb-2 pr-4">Status / herstel</th>
                         <th className="pb-2">Rekeningen</th>
                       </tr>
                     </thead>
@@ -635,6 +716,50 @@ export default function ActueleSaldiPage() {
                           <td className="py-3 pr-4 text-slate-600">
                             {row.source}
                           </td>
+                          <td className="py-3 pr-4">
+                            {row.date === entity.currentDate ? (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-800">
+                                  Actief
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => restoreSnapshot(row, true)}
+                                  disabled={restoreBusyId !== null}
+                                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 disabled:opacity-50"
+                                >
+                                  {restoreBusyId === row.id
+                                    ? "Controleren…"
+                                    : restoreCheckId === row.id
+                                      ? "Controle herstel ✓"
+                                      : "Controle herstel"}
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => restoreSnapshot(row, true)}
+                                  disabled={restoreBusyId !== null}
+                                  className="rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 disabled:opacity-50"
+                                >
+                                  {restoreBusyId === row.id
+                                    ? "Controleren…"
+                                    : restoreCheckId === row.id
+                                      ? "Controle ✓"
+                                      : "Controleer herstel"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => restoreSnapshot(row, false)}
+                                  disabled={restoreBusyId !== null}
+                                  className="rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
+                                >
+                                  Herstel deze stand
+                                </button>
+                              </div>
+                            )}
+                          </td>
                           <td className="py-3 text-slate-600">
                             {row.accounts
                               .map(
@@ -651,7 +776,7 @@ export default function ActueleSaldiPage() {
                       {history.length === 0 && (
                         <tr>
                           <td
-                            colSpan={5}
+                            colSpan={6}
                             className="py-8 text-center text-slate-500"
                           >
                             Nog geen snapshots.

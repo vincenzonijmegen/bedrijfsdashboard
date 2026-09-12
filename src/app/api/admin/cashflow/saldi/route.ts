@@ -206,6 +206,257 @@ export async function GET() {
   }
 }
 
+
+export async function PATCH(req: NextRequest) {
+  const client = await db.getClient();
+
+  try {
+    const body = await req.json();
+    const snapshotId = Number(body?.snapshot_id);
+    const dryRun = body?.dry_run === true;
+
+    if (!Number.isInteger(snapshotId)) {
+      throw new Error("Snapshot is verplicht");
+    }
+
+    await client.query("BEGIN");
+
+    const snapshotRes = await client.query(
+      `
+        SELECT
+          s.id,
+          s.entiteit_id,
+          e.naam AS entiteit,
+          to_char(s.peildatum, 'YYYY-MM-DD') AS peildatum,
+          s.totaal_saldo,
+          s.vrije_ruimte_restsaldo
+        FROM cashflow_saldo_snapshots s
+        JOIN cashflow_entiteiten e
+          ON e.id = s.entiteit_id
+        WHERE s.id=$1
+        LIMIT 1
+        FOR UPDATE OF s
+      `,
+      [snapshotId]
+    );
+
+    const snapshot = snapshotRes.rows[0];
+    if (!snapshot) throw new Error("Snapshot niet gevonden");
+
+    const entityId = Number(snapshot.entiteit_id);
+    const snapshotDate = String(snapshot.peildatum);
+
+    const accountRes = await client.query(
+      `
+        SELECT
+          id,
+          naam,
+          prognose_startsaldo,
+          to_char(saldo_peildatum, 'YYYY-MM-DD') AS saldo_peildatum
+        FROM cashflow_rekeningen
+        WHERE entiteit_id=$1
+          AND actief=true
+        ORDER BY id
+        FOR UPDATE
+      `,
+      [entityId]
+    );
+
+    if (!accountRes.rowCount) {
+      throw new Error("Deze entiteit heeft geen actieve rekeningen");
+    }
+
+    const currentDates = [
+      ...new Set(
+        accountRes.rows
+          .map(
+            (row: { saldo_peildatum: string | null }) =>
+              row.saldo_peildatum && String(row.saldo_peildatum)
+          )
+          .filter(Boolean)
+      ),
+    ];
+
+    if (currentDates.length !== 1) {
+      throw new Error(
+        "De actieve rekeningen hebben geen gezamenlijke huidige peildatum"
+      );
+    }
+
+    const currentDate = String(currentDates[0]);
+
+    if (!dryRun && snapshotDate === currentDate) {
+      throw new Error("Deze snapshot is al de actieve prognosebasis");
+    }
+
+    const snapshotAccountsRes = await client.query(
+      `
+        SELECT rekening_id, saldo
+        FROM cashflow_saldo_snapshot_rekeningen
+        WHERE snapshot_id=$1
+        ORDER BY rekening_id
+      `,
+      [snapshotId]
+    );
+
+    const activeIds = accountRes.rows
+      .map((row: { id: number }) => Number(row.id))
+      .sort((a: number, b: number) => a - b);
+
+    const snapshotAccounts: Array<{
+      accountId: number;
+      balance: number;
+    }> = snapshotAccountsRes.rows.map(
+      (row: { rekening_id: number; saldo: string | number }) => ({
+        accountId: Number(row.rekening_id),
+        balance: Number(row.saldo),
+      })
+    );
+
+    const snapshotIds = snapshotAccounts
+      .map((row) => row.accountId)
+      .sort((a, b) => a - b);
+
+    if (
+      snapshotIds.length !== activeIds.length ||
+      snapshotIds.some((id, index) => id !== activeIds[index])
+    ) {
+      throw new Error(
+        "Deze snapshot bevat niet exact dezelfde actieve rekeningen als de huidige configuratie"
+      );
+    }
+
+    const calculatedTotal = round2(
+      snapshotAccounts.reduce((sum, row) => sum + row.balance, 0)
+    );
+    const storedTotal = round2(Number(snapshot.totaal_saldo));
+
+    if (calculatedTotal !== storedTotal) {
+      throw new Error(
+        `Snapshot is intern niet sluitend: rekeningen ${calculatedTotal.toFixed(
+          2
+        )}, opgeslagen totaal ${storedTotal.toFixed(2)}`
+      );
+    }
+
+    for (const account of snapshotAccounts) {
+      await client.query(
+        `
+          UPDATE cashflow_rekeningen
+          SET prognose_startsaldo=$3,
+              saldo_peildatum=$4::date,
+              bijgewerkt_op=now()
+          WHERE id=$2
+            AND entiteit_id=$1
+        `,
+        [entityId, account.accountId, account.balance, snapshotDate]
+      );
+    }
+
+    const freeRoomRes = await client.query(
+      `
+        SELECT oorspronkelijke_creditering
+        FROM cashflow_vrije_ruimte
+        WHERE entiteit_id=$1
+        LIMIT 1
+        FOR UPDATE
+      `,
+      [entityId]
+    );
+
+    let restoredFreeRoom: number | null = null;
+
+    if (freeRoomRes.rowCount) {
+      if (snapshot.vrije_ruimte_restsaldo === null) {
+        throw new Error(
+          "Deze holding-snapshot bevat geen resterende vrije ruimte"
+        );
+      }
+
+      const original = Number(
+        freeRoomRes.rows[0].oorspronkelijke_creditering
+      );
+      restoredFreeRoom = round2(
+        Number(snapshot.vrije_ruimte_restsaldo)
+      );
+
+      if (restoredFreeRoom < 0 || restoredFreeRoom > original) {
+        throw new Error(
+          "De resterende vrije ruimte in deze snapshot is ongeldig"
+        );
+      }
+
+      const alreadyWithdrawn = round2(original - restoredFreeRoom);
+
+      await client.query(
+        `
+          UPDATE cashflow_vrije_ruimte
+          SET reeds_opgenomen=$2,
+              peildatum=$3::date,
+              bijgewerkt_op=now()
+          WHERE entiteit_id=$1
+        `,
+        [entityId, alreadyWithdrawn, snapshotDate]
+      );
+    } else if (snapshot.vrije_ruimte_restsaldo !== null) {
+      throw new Error(
+        "Snapshot bevat vrije ruimte, maar deze entiteit heeft geen vrije-ruimteregistratie"
+      );
+    }
+
+    if (dryRun) {
+      await client.query("ROLLBACK");
+
+      return NextResponse.json({
+        success: true,
+        fase: "4L-C",
+        dryRun: true,
+        checkedRestore: {
+          snapshotId,
+          entityId,
+          entity: String(snapshot.entiteit),
+          currentDate,
+          restoredDate: snapshotDate,
+          total: storedTotal,
+          freeRoomRemaining: restoredFreeRoom,
+          accountCount: snapshotAccounts.length,
+        },
+      });
+    }
+
+    await client.query("COMMIT");
+
+    return NextResponse.json({
+      success: true,
+      fase: "4L-C",
+      dryRun: false,
+      restored: {
+        snapshotId,
+        entityId,
+        entity: String(snapshot.entiteit),
+        previousDate: currentDate,
+        restoredDate: snapshotDate,
+        total: storedTotal,
+        freeRoomRemaining: restoredFreeRoom,
+        accountCount: snapshotAccounts.length,
+      },
+    });
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // niets meer te rollen
+    }
+
+    return NextResponse.json(
+      { success: false, fase: "4L-C", error: String(error) },
+      { status: 400 }
+    );
+  } finally {
+    client.release();
+  }
+}
+
 export async function POST(req: NextRequest) {
   const client = await db.getClient();
 
