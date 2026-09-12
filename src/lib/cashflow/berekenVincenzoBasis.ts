@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { berekenVrijeRuimteAflossingen } from "@/lib/cashflow/berekenHoldingsMeerjaren";
 
 type VasteStroomRegel = {
   naam: string;
@@ -36,6 +37,7 @@ type MaandRegel = {
   overigeBron: "bank_basis" | "geen_profiel";
   incidenteleInkomsten: number;
   incidenteleUitgaven: number;
+  aflossingSchuldHoldings: number;
   incidentelePosten: IncidentelePost[];
   nettoVoorOverigePosten: number | null;
   nettoNaInkoopEnBtw: number | null;
@@ -789,7 +791,7 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
   `, [entiteitId]);
   const groeiPct = Number(instellingRes.rows?.[0]?.groei ?? 0);
 
-  const [omzet, werkelijkeLonen, vasteUitgaven, inkoopProfielen, overigeProfielen, incidenteleProfielen, btwRows, cashStart] = await Promise.all([
+  const [omzet, werkelijkeLonen, vasteUitgaven, inkoopProfielen, overigeProfielen, incidenteleProfielen, btwRows, cashStart, vrijeRuimteAflossingen] = await Promise.all([
     getOmzetBasis(jaar, groeiPct),
     getWerkelijkeLoonkosten(jaar),
     getVasteUitgaven(jaar, entiteitId),
@@ -798,6 +800,7 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
     getIncidentelePosten(entiteitId, jaar),
     getWerkelijkeBtwRows(entiteitId, jaar),
     getCashflowStartgegevens(entiteitId),
+    berekenVrijeRuimteAflossingen(jaar),
   ]);
 
   const now = new Date();
@@ -864,6 +867,11 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
     const incidenteleUitgaven = round2(incidentelePosten
       .filter((p) => p.richting === "uit")
       .reduce((som, p) => som + p.bedrag, 0));
+    const aflossingSchuldHoldings = round2(
+      vrijeRuimteAflossingen
+        .filter((p) => p.year === jaar && p.month === maand)
+        .reduce((som, p) => som + p.amount, 0)
+    );
 
     let btwOmzet = round2(omzetBedrag * 9 / 109);
 
@@ -946,6 +954,7 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
       overigeBron: overigeResultaat.bron,
       incidenteleInkomsten,
       incidenteleUitgaven,
+      aflossingSchuldHoldings,
       incidentelePosten,
       nettoVoorOverigePosten,
       nettoNaInkoopEnBtw: nettoVoorOverigePosten === null || inkoop === null
@@ -956,7 +965,14 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
         : round2(nettoVoorOverigePosten - inkoop - overigeUitgaven),
       nettoNaIncidenteel: nettoVoorOverigePosten === null || inkoop === null
         ? null
-        : round2(nettoVoorOverigePosten - inkoop - overigeUitgaven - incidenteleUitgaven + incidenteleInkomsten),
+        : round2(
+            nettoVoorOverigePosten
+            - inkoop
+            - overigeUitgaven
+            - incidenteleUitgaven
+            - aflossingSchuldHoldings
+            + incidenteleInkomsten
+          ),
     });
   }
 

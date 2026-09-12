@@ -31,6 +31,8 @@ export async function GET(req: NextRequest) {
       endingBalanceWithoutPrivateWithdrawal: number;
       targetPrivateNet: number;
       holdingCashCost: number;
+      linkedFreeRoomRepayment: number;
+      netHoldingImpact: number;
       bufferShortfall: number;
       type: "opname_breekt_buffer" | "opname_vergroot_buffertekort";
       canAvoidBreachByPostponing: boolean;
@@ -67,6 +69,22 @@ export async function GET(req: NextRequest) {
             .reduce((sum, line) => sum + Number(line.amount ?? 0), 0)
         );
 
+        const linkedFreeRoomRepayment = round2(
+          month.lines
+            .filter(
+              (line) =>
+                line.direction === "in" &&
+                line.category === "aflossing_vincenzo_vrije_ruimte" &&
+                line.amount != null
+            )
+            .reduce((sum, line) => sum + Number(line.amount ?? 0), 0)
+        );
+
+        const netHoldingImpact = round2(
+          holdingCashCost - linkedFreeRoomRepayment
+        );
+        if (netHoldingImpact <= 0) continue;
+
         const dividendNetAfterBox2 = round2(
           privateLines
             .filter((line) => line.category === "dividend")
@@ -80,7 +98,7 @@ export async function GET(req: NextRequest) {
         if (endingBalance >= minimumBuffer) continue;
 
         const endingBalanceWithoutPrivateWithdrawal = round2(
-          endingBalance + holdingCashCost
+          endingBalance + netHoldingImpact
         );
 
         const canAvoidBreachByPostponing =
@@ -95,6 +113,8 @@ export async function GET(req: NextRequest) {
           endingBalanceWithoutPrivateWithdrawal,
           targetPrivateNet,
           holdingCashCost,
+          linkedFreeRoomRepayment,
+          netHoldingImpact,
           bufferShortfall: round2(minimumBuffer - endingBalance),
           type: canAvoidBreachByPostponing
             ? "opname_breekt_buffer"

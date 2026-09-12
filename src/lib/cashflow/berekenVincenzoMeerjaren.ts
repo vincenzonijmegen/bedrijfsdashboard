@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { berekenVincenzoBasis } from "@/lib/cashflow/berekenVincenzoBasis";
+import { berekenVrijeRuimteAflossingen } from "@/lib/cashflow/berekenHoldingsMeerjaren";
 
 const SEIZOEN_MAANDEN = [3, 4, 5, 6, 7, 8, 9];
 
@@ -70,6 +71,7 @@ type MeerjaarMaand = {
   overigeUitgaven: number;
   incidenteleInkomsten: number;
   incidenteleUitgaven: number;
+  aflossingSchuldHoldings: number;
   btwKasMutatie: number | null;
   kasmutatie: number | null;
   compleet: boolean;
@@ -317,9 +319,10 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
     };
   }
 
-  const [inkoopProfielen, overigeProfielen] = await Promise.all([
+  const [inkoopProfielen, overigeProfielen, vrijeRuimteAflossingen] = await Promise.all([
     getInkoopProfielen(entiteitId),
     getOverigeProfielen(entiteitId),
+    berekenVrijeRuimteAflossingen(totJaar),
   ]);
 
   const basisMaanden = new Map<number, (typeof basis.maanden)[number]>();
@@ -404,6 +407,11 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       const incidenteleUitgaven = round2(incidentelePosten
         .filter((p) => p.richting === "uit")
         .reduce((som, p) => som + p.bedrag, 0));
+      const aflossingSchuldHoldings = round2(
+        vrijeRuimteAflossingen
+          .filter((p) => p.year === jaar && p.month === maand)
+          .reduce((som, p) => som + p.amount, 0)
+      );
 
       let voorbelasting9 = 0;
       let voorbelasting21 = 0;
@@ -479,6 +487,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         overigeUitgaven,
         incidenteleInkomsten,
         incidenteleUitgaven,
+        aflossingSchuldHoldings,
         btwKasMutatie: 0,
         kasmutatie: null,
         compleet,
@@ -556,6 +565,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         - m.inkoop
         - m.overigeUitgaven
         - m.incidenteleUitgaven
+        - m.aflossingSchuldHoldings
         + m.incidenteleInkomsten
         + m.btwKasMutatie
       );
