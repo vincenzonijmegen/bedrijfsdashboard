@@ -309,7 +309,7 @@ export default function CashflowDashboardPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                Cashflow · fase 4K-A / 4K-B / 4K-C1
+                Cashflow · fase 4K-A / 4K-B / 4K-C / 4L-B2
               </p>
               <h1 className="mt-1 text-3xl font-bold text-slate-900">
                 Cashflowdashboard
@@ -602,6 +602,12 @@ export default function CashflowDashboardPage() {
                       href="/admin/cashflow/incidenteel"
                       title="Incidentele kasstromen"
                       text="Alleen bijzondere of materiële eenmalige posten beheren."
+                      mode="base"
+                    />
+                    <NavCard
+                      href="/admin/cashflow/saldi"
+                      title="Actuele saldi & peildatum"
+                      text="Nieuwe werkelijke rekeningstanden vastleggen als prognosebasis."
                       mode="base"
                     />
                   </div>
