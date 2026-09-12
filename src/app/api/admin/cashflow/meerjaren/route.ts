@@ -20,16 +20,29 @@ export async function GET(req: NextRequest) {
 
     const data = await berekenVincenzoMeerjaren(totJaar);
     const grens = data.basisjaar?.prognoseGrens ?? null;
+    const herijking = data.basisjaar?.herijking ?? null;
 
     return NextResponse.json(
       {
         success: true,
-        fase: "4N-A",
+        fase: "4N-B",
         controle4NA: {
           prognoseGrensAanwezig: grens !== null,
           peildatum: grens?.peildatum ?? null,
           afgeslotenTotMaand: grens?.afgeslotenTotMaand ?? null,
           eerstePrognoseMaand: grens?.eerstePrognoseMaand ?? null,
+        },
+        controle4NB: {
+          herijkingAanwezig: herijking !== null,
+          peildatum: herijking?.peildatum ?? null,
+          omzetWerkelijkMaanden: herijking?.omzetWerkelijkMaanden ?? [],
+          omzetPrognoseMaanden: herijking?.omzetPrognoseMaanden ?? [],
+          loonkostenWerkelijkMaanden:
+            herijking?.loonkostenWerkelijkMaanden ?? [],
+          loonkostenPrognoseMaanden:
+            herijking?.loonkostenPrognoseMaanden ?? [],
+          toekomstigeJarenGebruikenHerijkteBasis:
+            herijking?.toekomstigeJarenGebruikenHerijkteBasis ?? false,
         },
         data,
       },
@@ -38,7 +51,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error("[/api/admin/cashflow/meerjaren] error:", error);
     return NextResponse.json(
-      { success: false, fase: "4N-A", error: String(error) },
+      { success: false, fase: "4N-B", error: String(error) },
       { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }

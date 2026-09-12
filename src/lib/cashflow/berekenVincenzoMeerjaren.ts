@@ -292,6 +292,70 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
   const entiteitId = await getEntiteitId();
   const instellingen = await getInstellingen(entiteitId);
 
+  // 4N-B: maak expliciet zichtbaar welke maanden inmiddels echte cijfers
+  // gebruiken en welke maanden nog prognose zijn. De meerjarenmotor bouwt
+  // daarna rechtstreeks op deze maandregels voort. Daardoor vervangt iedere
+  // afgesloten maand automatisch de oude prognosebasis door werkelijkheid.
+  const herijkingMaanden = basis.maanden.map((m) => ({
+    maand: m.maand,
+    omzet: m.omzet,
+    omzetBron: m.omzetBron,
+    loonkosten: m.loonkosten,
+    loonkostenBron: m.loonkostenBron,
+    seizoen: SEIZOEN_MAANDEN.includes(m.maand),
+    gebruiktAlsMeerjarenbasis: true,
+  }));
+
+  const basisHerijking = {
+    peildatum: basis.prognoseGrens.peildatum,
+    afgeslotenTotMaand: basis.prognoseGrens.afgeslotenTotMaand,
+    eerstePrognoseMaand: basis.prognoseGrens.eerstePrognoseMaand,
+    omzetWerkelijkMaanden: herijkingMaanden
+      .filter((m) => m.seizoen && m.omzetBron === "werkelijk")
+      .map((m) => m.maand),
+    omzetPrognoseMaanden: herijkingMaanden
+      .filter((m) => m.seizoen && m.omzetBron === "prognose")
+      .map((m) => m.maand),
+    loonkostenWerkelijkMaanden: herijkingMaanden
+      .filter((m) => m.seizoen && m.loonkostenBron === "werkelijk")
+      .map((m) => m.maand),
+    loonkostenPrognoseMaanden: herijkingMaanden
+      .filter((m) => m.seizoen && m.loonkostenBron !== "werkelijk")
+      .map((m) => m.maand),
+    omzetWerkelijkTotaal: round2(
+      herijkingMaanden
+        .filter((m) => m.seizoen && m.omzetBron === "werkelijk")
+        .reduce((som, m) => som + Number(m.omzet ?? 0), 0)
+    ),
+    omzetPrognoseTotaal: round2(
+      herijkingMaanden
+        .filter((m) => m.seizoen && m.omzetBron === "prognose")
+        .reduce((som, m) => som + Number(m.omzet ?? 0), 0)
+    ),
+    loonkostenWerkelijkTotaal: round2(
+      herijkingMaanden
+        .filter(
+          (m) =>
+            m.seizoen &&
+            m.loonkostenBron === "werkelijk" &&
+            m.loonkosten != null
+        )
+        .reduce((som, m) => som + Number(m.loonkosten ?? 0), 0)
+    ),
+    loonkostenPrognoseTotaal: round2(
+      herijkingMaanden
+        .filter(
+          (m) =>
+            m.seizoen &&
+            m.loonkostenBron !== "werkelijk" &&
+            m.loonkosten != null
+        )
+        .reduce((som, m) => som + Number(m.loonkosten ?? 0), 0)
+    ),
+    toekomstigeJarenGebruikenHerijkteBasis: true,
+    maanden: herijkingMaanden,
+  };
+
   const waarschuwingen: string[] = [...basis.waarschuwingen];
   if (instellingen.omzetGroeiPct == null) {
     waarschuwingen.push("Omzetgroei ontbreekt in Cashflowbeheer; meerjarenomzet kan niet volledig worden berekend.");
@@ -315,6 +379,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         jaar: huidigJaar,
         peildatum: basis.cashPositie.peildatum,
         prognoseGrens: basis.prognoseGrens,
+        herijking: basisHerijking,
         eindsaldo: basis.cashPositie.eindsaldo,
       },
       jaren: [] as MeerjaarJaar[],
@@ -653,6 +718,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       jaar: huidigJaar,
       peildatum: basis.cashPositie.peildatum,
       prognoseGrens: basis.prognoseGrens,
+      herijking: basisHerijking,
       startsaldo: basis.cashPositie.startsaldoTotaal,
       eindsaldo: basis.cashPositie.eindsaldo,
       laagsteSaldo: basis.cashPositie.laagsteSaldo,
