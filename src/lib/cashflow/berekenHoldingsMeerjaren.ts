@@ -430,7 +430,12 @@ function generatePlanEvents(streams: Stream[], plans: Map<string, Plan>, toYear:
   return byMonth;
 }
 
-function generatePrivateWithdrawalEvents(streams: Stream[], plans: Map<string, Plan>, toYear: number) {
+function generatePrivateWithdrawalEvents(
+  streams: Stream[],
+  plans: Map<string, Plan>,
+  toYear: number,
+  afterDate: string | null = null
+) {
   const byMonth = new Map<string, PlannedEvent[]>();
   for (const stream of streams.filter((s) =>
     s.behavior === "planbaar"
@@ -445,15 +450,22 @@ function generatePrivateWithdrawalEvents(streams: Stream[], plans: Map<string, P
       const p = plans.get(`${stream.id}|${current}`);
       if (!p || p.status !== "vervallen") {
         const actualDate = p?.status === "betaald" && p.paidOn ? p.paidOn : (p?.plannedDate || current);
-        const key = actualDate.slice(0, 7);
-        if (!byMonth.has(key)) byMonth.set(key, []);
-        byMonth.get(key)!.push({
-          streamId: stream.id,
-          originalDate: current,
-          actualDate,
-          amountOverride: p ? p.amount : null,
-          status: p?.status ?? "standaard",
-        });
+
+        // Bij een nieuwe saldopeildatum is de resterende vrije ruimte op die
+        // datum al een ACTUELE stand. Privé-opnames die op of vóór de peildatum
+        // liggen mogen daarom niet nogmaals van die vrije ruimte worden
+        // afgetrokken.
+        if (!afterDate || actualDate > afterDate) {
+          const key = actualDate.slice(0, 7);
+          if (!byMonth.has(key)) byMonth.set(key, []);
+          byMonth.get(key)!.push({
+            streamId: stream.id,
+            originalDate: current,
+            actualDate,
+            amountOverride: p ? p.amount : null,
+            status: p?.status ?? "standaard",
+          });
+        }
       }
       if (stream.frequency === "eenmalig") break;
       current = addMonths(current, interval!);
@@ -498,7 +510,12 @@ async function calculateHolding(entityName: string, toYear: number) {
     getBox2Rates(entity.id),
   ]);
   const planEvents = generatePlanEvents(streams, plans, toYear);
-  const privateWithdrawalEvents = generatePrivateWithdrawalEvents(streams, plans, toYear);
+  const privateWithdrawalEvents = generatePrivateWithdrawalEvents(
+    streams,
+    plans,
+    toYear,
+    commonDate
+  );
 
   const freeRoomProblem = freeRoom == null
     ? "Vrije-ruimteconfiguratie ontbreekt"
