@@ -865,7 +865,23 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
       .filter((p) => p.richting === "uit")
       .reduce((som, p) => som + p.bedrag, 0));
 
-    const btwOmzet = round2(omzetBedrag * 9 / 109);
+    let btwOmzet = round2(omzetBedrag * 9 / 109);
+
+    // Incidentele ontvangsten kunnen ook BTW bevatten. Het bedrag in
+    // cashflow_incidenteel is een kasbedrag; daarom telt alleen het BTW-deel
+    // mee als extra output-BTW.
+    for (const post of incidentelePosten.filter((p) => p.richting === "in")) {
+      btwOmzet = round2(
+        btwOmzet +
+          btwUitBedrag(
+            post.bedrag,
+            post.btwPercentage,
+            100,
+            post.bedragIsInclusiefBtw
+          )
+      );
+    }
+
     let voorbelasting9 = 0;
     let voorbelasting21 = 0;
 

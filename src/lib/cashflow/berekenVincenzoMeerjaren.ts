@@ -446,7 +446,22 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         maand,
         compleet,
         omzet,
-        btwOmzet: round2(omzet * 9 / 109),
+        btwOmzet: round2(
+          omzet * 9 / 109 +
+          incidentelePosten
+            .filter((p) => p.richting === "in")
+            .reduce(
+              (som, p) =>
+                som +
+                btwUitBedrag(
+                  p.bedrag,
+                  p.btwPercentage,
+                  100,
+                  p.bedragIsInclusiefBtw
+                ),
+              0
+            )
+        ),
         voorbelasting9: round2(voorbelasting9),
         voorbelasting21: round2(voorbelasting21),
       });

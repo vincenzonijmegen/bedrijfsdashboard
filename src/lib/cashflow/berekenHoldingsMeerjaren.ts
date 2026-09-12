@@ -104,6 +104,20 @@ type CashLine = {
   box2Percentage?: number;
 };
 
+type Incidental = {
+  id: number;
+  date: string;
+  description: string;
+  amount: number;
+  direction: "in" | "uit";
+  category: string;
+  counterparty: string | null;
+  vatPct: number;
+  deductiblePct: number;
+  isInclVat: boolean;
+  status: string;
+};
+
 type FreeRoom = {
   originalCrediting: number;
   alreadyWithdrawn: number;
@@ -261,6 +275,57 @@ function box2RateForDate(rates: Box2Rate[], date: string) {
   return rates
     .filter((r) => r.validFrom <= date && (r.validTo == null || r.validTo >= date))
     .sort((a, b) => b.validFrom.localeCompare(a.validFrom))[0] ?? null;
+}
+
+async function getIncidentals(
+  entityId: number,
+  afterDate: string | null,
+  toYear: number
+) {
+  const res = await db.query(`
+    SELECT
+      id,
+      to_char(datum, 'YYYY-MM-DD') AS datum,
+      omschrijving,
+      bedrag,
+      richting,
+      categorie,
+      tegenpartij_naam,
+      btw_percentage,
+      btw_aftrekbaar_percentage,
+      bedrag_is_inclusief_btw,
+      status
+    FROM cashflow_incidenteel
+    WHERE entiteit_id = $1
+      AND status <> 'vervallen'
+      AND ($2::date IS NULL OR datum > $2::date)
+      AND datum < make_date($3 + 1, 1, 1)
+    ORDER BY datum, id
+  `, [entityId, afterDate, toYear]);
+
+  const map = new Map<string, Incidental[]>();
+  for (const r of res.rows ?? []) {
+    const item: Incidental = {
+      id: Number(r.id),
+      date: parseDateOnly(r.datum),
+      description: String(r.omschrijving),
+      amount: Number(r.bedrag) || 0,
+      direction: r.richting === "in" ? "in" : "uit",
+      category: String(r.categorie),
+      counterparty:
+        r.tegenpartij_naam == null ? null : String(r.tegenpartij_naam),
+      vatPct: Number(r.btw_percentage) || 0,
+      deductiblePct: Number(r.btw_aftrekbaar_percentage) || 0,
+      isInclVat: r.bedrag_is_inclusief_btw !== false,
+      status: String(r.status),
+    };
+
+    const key = item.date.slice(0, 7);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(item);
+  }
+
+  return map;
 }
 
 async function getVatOverrides(entityId: number, fromYear: number, toYear: number) {
@@ -447,7 +512,10 @@ async function calculateHolding(entityName: string, toYear: number) {
   let freeRoomExhaustedOn: string | null = remainingFreeRoom === 0 && commonDate ? commonDate : null;
 
   const fromYear = commonDate ? Number(commonDate.slice(0, 4)) : new Date().getFullYear();
-  const vatOverrides = await getVatOverrides(entity.id, fromYear, toYear);
+  const [vatOverrides, incidentals] = await Promise.all([
+    getVatOverrides(entity.id, fromYear, toYear),
+    getIncidentals(entity.id, commonDate, toYear),
+  ]);
   const streamById = new Map(streams.map((s) => [s.id, s]));
   const linkedTaxes = new Map<number, Stream[]>();
   for (const s of streams.filter((x) => x.sourceStreamId != null && x.calculation === "percentage_van_bron")) {
@@ -686,6 +754,39 @@ async function calculateHolding(entityName: string, toYear: number) {
           amount: withholding,
           vatPart: 0,
           source: `gekoppeld aan ${dividendStream.name}`,
+        });
+      }
+      for (const incidental of incidentals.get(key) ?? []) {
+        const cash = toCashAmount(
+          incidental.amount,
+          incidental.vatPct,
+          incidental.isInclVat
+        );
+        const vat = vatPart(
+          cash,
+          incidental.vatPct,
+          incidental.isInclVat,
+          incidental.amount
+        );
+
+        if (incidental.direction === "in") {
+          d.income = round2(d.income + cash);
+          d.outputVat = round2(d.outputVat + vat);
+        } else {
+          d.expenses = round2(d.expenses + cash);
+          d.inputVat = round2(
+            d.inputVat + vat * (incidental.deductiblePct / 100)
+          );
+        }
+
+        d.lines.push({
+          streamId: -incidental.id,
+          name: incidental.description,
+          category: incidental.category,
+          direction: incidental.direction,
+          amount: cash,
+          vatPart: vat,
+          source: `incidenteel_${incidental.status}`,
         });
       }
     }

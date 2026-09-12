@@ -309,7 +309,7 @@ export default function CashflowDashboardPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                Cashflow · fase 4K-A / 4K-B1 / 4K-B2
+                Cashflow · fase 4K-A / 4K-B1 / 4K-B2 / 4K-B3
               </p>
               <h1 className="mt-1 text-3xl font-bold text-slate-900">
                 Cashflowdashboard
@@ -582,6 +582,11 @@ export default function CashflowDashboardPage() {
                       href="/admin/cashflow/tarieven"
                       title="Vaste tarieven"
                       text="Bedragen en ingangsdatums van vaste geldstromen beheren."
+                    />
+                    <NavCard
+                      href="/admin/cashflow/incidenteel"
+                      title="Incidentele kasstromen"
+                      text="Alleen bijzondere of materiële eenmalige posten beheren."
                     />
                   </div>
                 </article>
