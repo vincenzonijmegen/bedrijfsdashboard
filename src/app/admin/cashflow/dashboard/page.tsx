@@ -116,6 +116,23 @@ type PlanningResponse = {
   error?: string;
 };
 
+type SaldiEntity = {
+  id: number;
+  name: string;
+  type: string;
+  currentDate: string | null;
+  currentTotal: number | null;
+};
+
+type SaldiResponse = {
+  success: boolean;
+  fase?: string;
+  data?: {
+    entities: SaldiEntity[];
+  };
+  error?: string;
+};
+
 function euro(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return "—";
   return new Intl.NumberFormat("nl-NL", {
@@ -154,12 +171,65 @@ function formatPeriod(year: number | null | undefined, month: number | null | un
   return `${monthName(month)} ${year}`;
 }
 
+function formatDateNl(value: string | null | undefined) {
+  if (!value) return "—";
+  const [year, month, day] = value.split("-");
+  return `${day}-${month}-${year}`;
+}
+
+function ageInDays(value: string | null | undefined) {
+  if (!value) return null;
+
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+
+  const balanceDate = new Date(year, month - 1, day);
+  balanceDate.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return Math.max(
+    0,
+    Math.floor((today.getTime() - balanceDate.getTime()) / 86_400_000)
+  );
+}
+
+function freshnessStatus(age: number | null) {
+  if (age == null) {
+    return {
+      label: "Peildatum onbekend",
+      className: "bg-slate-100 text-slate-700",
+    };
+  }
+
+  if (age <= 31) {
+    return {
+      label: "Actueel",
+      className: "bg-emerald-100 text-emerald-800",
+    };
+  }
+
+  if (age <= 62) {
+    return {
+      label: "Actualiseren",
+      className: "bg-amber-100 text-amber-800",
+    };
+  }
+
+  return {
+    label: "Verouderd",
+    className: "bg-red-100 text-red-800",
+  };
+}
+
 export default function CashflowDashboardPage() {
   const [toYear, setToYear] = useState(2029);
   const [vincenzo, setVincenzo] = useState<VincenzoResponse | null>(null);
   const [holdings, setHoldings] = useState<HoldingsResponse | null>(null);
   const [alerts, setAlerts] = useState<AlertsResponse | null>(null);
   const [planning, setPlanning] = useState<PlanningResponse | null>(null);
+  const [saldi, setSaldi] = useState<SaldiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -172,7 +242,7 @@ export default function CashflowDashboardPage() {
       setError(null);
 
       try {
-        const [vRes, hRes, aRes, pRes] = await Promise.all([
+        const [vRes, hRes, aRes, pRes, sRes] = await Promise.all([
           fetch(`/api/admin/cashflow/meerjaren?tot=${toYear}`, {
             cache: "no-store",
           }),
@@ -185,12 +255,16 @@ export default function CashflowDashboardPage() {
           fetch(`/api/admin/cashflow/planning?tot=${toYear}`, {
             cache: "no-store",
           }),
+          fetch("/api/admin/cashflow/saldi", {
+            cache: "no-store",
+          }),
         ]);
 
         const vJson = (await vRes.json()) as VincenzoResponse;
         const hJson = (await hRes.json()) as HoldingsResponse;
         const aJson = (await aRes.json()) as AlertsResponse;
         const pJson = (await pRes.json()) as PlanningResponse;
+        const sJson = (await sRes.json()) as SaldiResponse;
 
         if (!vRes.ok || vJson.success === false || !vJson.data) {
           throw new Error(
@@ -213,12 +287,18 @@ export default function CashflowDashboardPage() {
             pJson.error || `Planning laden mislukt (${pRes.status})`
           );
         }
+        if (!sRes.ok || !sJson.success || !sJson.data) {
+          throw new Error(
+            sJson.error || `Actuele saldi laden mislukt (${sRes.status})`
+          );
+        }
 
         if (!cancelled) {
           setVincenzo(vJson);
           setHoldings(hJson);
           setAlerts(aJson);
           setPlanning(pJson);
+          setSaldi(sJson);
         }
       } catch (err) {
         if (!cancelled) {
@@ -297,6 +377,17 @@ export default function CashflowDashboardPage() {
       );
   }, [vincenzoRows]);
 
+  const saldoByEntity = useMemo(
+    () =>
+      new Map(
+        (saldi?.data?.entities ?? []).map((entity) => [
+          entity.name,
+          entity,
+        ])
+      ),
+    [saldi]
+  );
+
   const allAvailable =
     vincenzo?.data?.beschikbaar === true &&
     holdings?.data?.available === true &&
@@ -309,7 +400,7 @@ export default function CashflowDashboardPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                Cashflow · fase 4K-A / 4K-B / 4K-C / 4L-B2
+                Cashflow · fase 4K-A / 4K-B / 4K-C / 4L-D
               </p>
               <h1 className="mt-1 text-3xl font-bold text-slate-900">
                 Cashflowdashboard
@@ -367,7 +458,8 @@ export default function CashflowDashboardPage() {
           vincenzo?.data &&
           holdings?.data &&
           alerts?.data &&
-          planning?.data && (
+          planning?.data &&
+          saldi?.data && (
             <>
               <section
                 className={cls(
@@ -435,6 +527,10 @@ export default function CashflowDashboardPage() {
                   }
                   href="#vincenzo"
                   linkLabel="Bekijk jaaroverzicht"
+                  balanceDate={
+                    saldoByEntity.get("IJssalon Vincenzo B.V.")?.currentDate ??
+                    null
+                  }
                 />
 
                 {holdings.data.holdings.map((holding) => (
@@ -453,6 +549,9 @@ export default function CashflowDashboardPage() {
                     minimumBuffer={holding.minimumBuffer}
                     href="/admin/cashflow/holdings"
                     linkLabel="Open holdings & planning"
+                    balanceDate={
+                      saldoByEntity.get(holding.entity)?.currentDate ?? null
+                    }
                   />
                 ))}
               </section>
@@ -673,6 +772,7 @@ function EntityCard({
   minimumBuffer,
   href,
   linkLabel,
+  balanceDate,
 }: {
   title: string;
   subtitle: string;
@@ -684,11 +784,14 @@ function EntityCard({
   minimumBuffer: number | null;
   href: string;
   linkLabel: string;
+  balanceDate: string | null;
 }) {
   const lowestWarning =
     lowest != null && minimumBuffer != null && lowest < minimumBuffer;
   const endingWarning =
     ending != null && minimumBuffer != null && ending < minimumBuffer;
+  const balanceAge = ageInDays(balanceDate);
+  const freshness = freshnessStatus(balanceAge);
 
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -707,6 +810,23 @@ function EntityCard({
             )}
           >
             {available ? "Beschikbaar" : "Onvolledig"}
+          </span>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+          <span
+            className={cls(
+              "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide",
+              freshness.className
+            )}
+          >
+            {freshness.label}
+          </span>
+          <span className="text-xs text-slate-600">
+            Peildatum {formatDateNl(balanceDate)}
+            {balanceAge != null
+              ? ` · ${balanceAge} ${balanceAge === 1 ? "dag" : "dagen"} oud`
+              : ""}
           </span>
         </div>
 
