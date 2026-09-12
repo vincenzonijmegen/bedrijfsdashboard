@@ -773,7 +773,7 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
   jaar: number;
   groeiPct: number;
   prognoseGrens: {
-    peildatum: string;
+    peildatum: string | null;
     afgeslotenTotMaand: number;
     eerstePrognoseMaand: number | null;
   };
