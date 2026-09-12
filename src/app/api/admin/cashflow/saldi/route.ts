@@ -287,7 +287,10 @@ export async function POST(req: NextRequest) {
     }
 
     const expectedIds = accountRes.rows.map((row) => Number(row.id)).sort();
-    const supplied = inputAccounts.map((row: any) => ({
+    const supplied: Array<{
+      accountId: number;
+      balance: number;
+    }> = inputAccounts.map((row: any) => ({
       accountId: Number(row?.rekening_id),
       balance: parseNumber(row?.saldo, "Rekeningsaldo"),
     }));
