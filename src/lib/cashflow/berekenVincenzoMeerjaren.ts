@@ -314,6 +314,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       basisjaar: {
         jaar: huidigJaar,
         peildatum: basis.cashPositie.peildatum,
+        prognoseGrens: basis.prognoseGrens,
         eindsaldo: basis.cashPositie.eindsaldo,
       },
       jaren: [] as MeerjaarJaar[],
@@ -651,6 +652,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
     basisjaar: {
       jaar: huidigJaar,
       peildatum: basis.cashPositie.peildatum,
+      prognoseGrens: basis.prognoseGrens,
       startsaldo: basis.cashPositie.startsaldoTotaal,
       eindsaldo: basis.cashPositie.eindsaldo,
       laagsteSaldo: basis.cashPositie.laagsteSaldo,

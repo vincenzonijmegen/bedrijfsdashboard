@@ -472,17 +472,17 @@ function berekenInkoop(
   jaar: number,
   maand: number,
   omzetBedrag: number,
-  huidigeMaand: number
+  afgeslotenTotMaand: number
 ): { bedrag: number | null; bron: MaandRegel["inkoopBron"] } {
   if (!profiel) return { bedrag: 0, bron: "geen_profiel" };
   if (profiel.schaalwijze === "vast") {
     return { bedrag: round2(profiel.basisKasuitstroom), bron: "bank_basis" };
   }
 
-  // Voor een afgesloten maand in het basisjaar is de werkelijke bankuitstroom
-  // leidend. Voor huidige/toekomstige maanden schalen we het historische
-  // kaspatroon mee met de omzetprognose.
-  if (jaar === profiel.basisjaar && maand < huidigeMaand) {
+  // De actieve saldopeildatum bepaalt welke maanden afgesloten zijn.
+  // Voor die maanden is de werkelijke bankuitstroom leidend; pas daarna
+  // schalen we het historische kaspatroon mee met de omzetprognose.
+  if (jaar === profiel.basisjaar && maand <= afgeslotenTotMaand) {
     return { bedrag: round2(profiel.basisKasuitstroom), bron: "bank_basis" };
   }
   if (profiel.basisOmzet <= 0) {
@@ -804,12 +804,43 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
     berekenVincenzoNaarHoldingUitkeringen(jaar),
   ]);
 
-  const now = new Date();
-  const huidigeMaand = now.getMonth() + 1;
+  const peildata = [...new Set(
+    cashStart.rekeningen
+      .map((rekening) => rekening.peildatum)
+      .filter((datum): datum is string => Boolean(datum))
+  )];
+
+  let afgeslotenTotMaand = 0;
+  let actievePeildatum: string | null = null;
+  if (peildata.length === 1) {
+    actievePeildatum = peildata[0];
+    const parsed = parseIsoDate(actievePeildatum);
+    if (
+      parsed &&
+      parsed.jaar === jaar &&
+      parsed.dag === daysInMonth(parsed.jaar, parsed.maand)
+    ) {
+      afgeslotenTotMaand = parsed.maand;
+    } else if (
+      parsed &&
+      parsed.jaar === jaar - 1 &&
+      parsed.maand === 12 &&
+      parsed.dag === 31
+    ) {
+      afgeslotenTotMaand = 0;
+    }
+  }
+
+  const eerstePrognoseMaand = Math.min(13, afgeslotenTotMaand + 1);
   const waarschuwingen: string[] = [
     "Overige reguliere/losse ING-uitgaven zitten in de kasprognose, maar hun BTW wordt nog niet als voorbelasting geraamd omdat de bankexport geen betrouwbaar 9%/21%-onderscheid bevat.",
     "Bekende grotere eenmalige of tijdgebonden posten worden apart via cashflow_incidenteel verwerkt; er geldt geen kunstmatige grens van €1.000 meer voor het overige maandprofiel.",
   ];
+  if (actievePeildatum === null || peildata.length !== 1) {
+    waarschuwingen.push(
+      "Werkelijkheid/prognosegrens kon niet uit één gezamenlijke saldopeildatum worden bepaald."
+    );
+  }
   const maanden: MaandRegel[] = [];
 
   type MaandBtw = {
@@ -827,18 +858,20 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
       ? omzet.jaarDoel * (omzet.pct.get(maand) ?? 0)
       : 0;
 
-    const omzetIsWerkelijk = maand < huidigeMaand;
-    const omzetBedrag = omzetIsWerkelijk ? werkelijkOmzet : Math.max(werkelijkOmzet, doel);
+    const omzetIsWerkelijk = maand <= afgeslotenTotMaand;
+    const omzetBedrag = omzetIsWerkelijk
+      ? werkelijkOmzet
+      : Math.max(werkelijkOmzet, doel);
 
     let loonkosten: number | null;
     let loonkostenBron: MaandRegel["loonkostenBron"];
-    if (maand < huidigeMaand && werkelijkeLonen.has(maand)) {
+    if (maand <= afgeslotenTotMaand && werkelijkeLonen.has(maand)) {
       loonkosten = werkelijkeLonen.get(maand)!;
       loonkostenBron = "werkelijk";
     } else {
       loonkosten = await getShiftbaseMaandkosten(jaar, maand);
       loonkostenBron = loonkosten === null ? "niet_beschikbaar" : "shiftbase";
-      if (loonkosten === null && maand >= huidigeMaand && SEIZOEN_MAANDEN.includes(maand)) {
+      if (loonkosten === null && maand > afgeslotenTotMaand && SEIZOEN_MAANDEN.includes(maand)) {
         waarschuwingen.push(`Loonkosten ${jaar}-${String(maand).padStart(2, "0")} konden niet uit Shiftbase worden berekend.`);
       }
     }
@@ -851,7 +884,7 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
       jaar,
       maand,
       omzetBedrag,
-      huidigeMaand
+      afgeslotenTotMaand
     );
     const inkoop = inkoopResultaat.bedrag;
     if (inkoop === null) {
@@ -1093,6 +1126,19 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
     }
   }
 
-  return { jaar, groeiPct, waarschuwingen, maanden, btwKwartalen, cashPositie };
+  return {
+    jaar,
+    groeiPct,
+    prognoseGrens: {
+      peildatum: actievePeildatum,
+      afgeslotenTotMaand,
+      eerstePrognoseMaand:
+        eerstePrognoseMaand <= 12 ? eerstePrognoseMaand : null,
+    },
+    waarschuwingen,
+    maanden,
+    btwKwartalen,
+    cashPositie,
+  };
 }
 
