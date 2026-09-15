@@ -415,6 +415,16 @@ export async function GET(req: NextRequest) {
           btwRegels: regels.filter((r) => r.categorie === "btw").length,
           vpbRegels: regels.filter((r) => r.categorie === "vpb").length,
         },
+        // Backwards-compatible alias voor de bestaande overzichtspagina.
+        controle4PA: {
+          verwachtEindsaldo,
+          eindsaldoOverzicht,
+          verschil,
+          aansluitingOk: verschil !== null && Math.abs(verschil) < 0.01,
+          aantalRegels: regels.length,
+          btwRegels: regels.filter((r) => r.categorie === "btw").length,
+          vpbRegels: regels.filter((r) => r.categorie === "vpb").length,
+        },
       },
       { headers: { "Cache-Control": "no-store" } }
     );
