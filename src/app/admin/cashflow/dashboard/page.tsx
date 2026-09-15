@@ -388,6 +388,22 @@ export default function CashflowDashboardPage() {
     [saldi]
   );
 
+  const bufferWarningCount = useMemo(() => {
+    const vincenzoOnderBuffer =
+      lowestVincenzo?.lowest != null &&
+      lowestVincenzo?.minimumBuffer != null &&
+      lowestVincenzo.lowest < lowestVincenzo.minimumBuffer;
+
+    const holdingsOnderBuffer = (holdings?.data?.holdings ?? []).filter(
+      (holding) =>
+        holding.available &&
+        holding.lowestBalance != null &&
+        holding.lowestBalance < holding.minimumBuffer
+    ).length;
+
+    return (vincenzoOnderBuffer ? 1 : 0) + holdingsOnderBuffer;
+  }, [lowestVincenzo, holdings]);
+
   const allAvailable =
     vincenzo?.data?.beschikbaar === true &&
     holdings?.data?.available === true &&
@@ -493,8 +509,8 @@ export default function CashflowDashboardPage() {
 
                   <div className="flex flex-wrap gap-2">
                     <Badge>
-                      {alerts.data.summary.total} bufferwaarschuwing
-                      {alerts.data.summary.total === 1 ? "" : "en"}
+                      {bufferWarningCount} bufferwaarschuwing
+                      {bufferWarningCount === 1 ? "" : "en"}
                     </Badge>
                     <Badge>
                       {activePostponements.length} uitgestelde opname
@@ -682,7 +698,7 @@ export default function CashflowDashboardPage() {
                     <NavCard
                       href="/admin/cashflow/holdings"
                       title="Holdings & bufferbewaking"
-                      text={`${alerts.data.summary.total} waarschuwingen · ${activePostponements.length} actieve uitgestelde opnames`}
+                      text={`${bufferWarningCount} bufferwaarschuwingen · ${activePostponements.length} actieve uitgestelde opnames`}
                       mode="base"
                     />
                     <NavCard
