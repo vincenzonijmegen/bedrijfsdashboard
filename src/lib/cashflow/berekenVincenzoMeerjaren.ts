@@ -42,6 +42,21 @@ const VPB_BETAALMAAND_VOLGEND_JAAR = 8;
 const VPB_EERSTE_BV_JAAR = 2026;
 const VPB_EERSTE_BV_MAAND = 4;
 
+// 4R-A — fiscale referentie voor de winstprognose.
+// De kasstroommotor is geen winst-en-verliesrekening. Voor VPB gebruiken we
+// daarom de laatst afgesloten fiscale jaarrekening als winstgevendheidsanker
+// en corrigeren we alleen voor de nieuwe managementfees en de expliciet
+// gemodelleerde managerbesparing.
+const VPB_REFERENTIE_JAAR = 2025;
+const VPB_REFERENTIE_OPBRENGSTEN = 659_118;
+const VPB_REFERENTIE_WINST = 219_322;
+const VPB_REFERENTIE_WINSTMARGE =
+  VPB_REFERENTIE_WINST / VPB_REFERENTIE_OPBRENGSTEN;
+
+function isManagementfee(naam: string) {
+  return naam.trim().toLowerCase().startsWith("managementfee");
+}
+
 function berekenVpbOverBelastbaarBedrag(belastbaarBedrag: number) {
   const grondslag = Math.max(0, round2(belastbaarBedrag));
   const eersteSchijf = Math.min(grondslag, VPB_DREMPEL);
@@ -256,6 +271,11 @@ type VpbPlanning = {
   drempel: number;
   laagPct: number;
   hoogPct: number;
+  methode: "fiscale_referentie_2025";
+  referentieJaar: number;
+  referentieOpbrengsten: number;
+  referentieWinst: number;
+  referentieWinstmargePct: number;
   omzetExBtw: number;
   incidenteleInkomstenExBtw: number;
   loonkosten: number;
@@ -263,6 +283,10 @@ type VpbPlanning = {
   inkoopFiscaal: number;
   overigeKostenFiscaal: number;
   incidenteleKostenFiscaal: number;
+  cashflowModelBelastbaarBedragVoorCorrecties: number;
+  referentieWinstVoorManagementfees: number;
+  managementfeesFiscaal: number;
+  managerCorrectieWinst: number;
   belastbaarBedragVoorCorrecties: number;
   geraamdeVpb: number;
   kasEffectActief: boolean;
@@ -664,6 +688,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
     inkoopFiscaal: 0,
     overigeKostenFiscaal: 0,
     incidenteleKostenFiscaal: 0,
+    managementfeesFiscaal: 0,
     heeftOnvolledigeMaand: false,
     heeftIncidentelePosten: false,
   };
@@ -688,9 +713,11 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         Number(s.btwAftrekbaarPercentage || 0),
         true
       );
-      basisVpbInput.vasteKostenFiscaal += round2(
-        Number(s.bedrag || 0) - aftrekbareBtw
-      );
+      const fiscaalBedrag = round2(Number(s.bedrag || 0) - aftrekbareBtw);
+      basisVpbInput.vasteKostenFiscaal += fiscaalBedrag;
+      if (isManagementfee(s.naam)) {
+        basisVpbInput.managementfeesFiscaal += fiscaalBedrag;
+      }
     }
 
     const inkoopProfiel = inkoopProfielen.get(m.maand);
@@ -739,7 +766,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
     }
   }
 
-  const basisBelastbaarBedragVoorCorrecties = round2(
+  const basisCashflowModelBelastbaarBedragVoorCorrecties = round2(
     basisVpbInput.omzetExBtw
     + basisVpbInput.incidenteleInkomstenExBtw
     - basisVpbInput.loonkosten
@@ -747,6 +774,15 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
     - basisVpbInput.inkoopFiscaal
     - basisVpbInput.overigeKostenFiscaal
     - basisVpbInput.incidenteleKostenFiscaal
+  );
+  const basisReferentieWinstVoorManagementfees = round2(
+    basisVpbInput.omzetExBtw * VPB_REFERENTIE_WINSTMARGE
+  );
+  const basisManagerCorrectieWinst = 0;
+  const basisBelastbaarBedragVoorCorrecties = round2(
+    basisReferentieWinstVoorManagementfees
+    + basisManagerCorrectieWinst
+    - basisVpbInput.managementfeesFiscaal
   );
 
   const basisVpbPlanning: VpbPlanning | null =
@@ -757,6 +793,11 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
           drempel: VPB_DREMPEL,
           laagPct: VPB_LAAG_PCT,
           hoogPct: VPB_HOOG_PCT,
+          methode: "fiscale_referentie_2025",
+          referentieJaar: VPB_REFERENTIE_JAAR,
+          referentieOpbrengsten: VPB_REFERENTIE_OPBRENGSTEN,
+          referentieWinst: VPB_REFERENTIE_WINST,
+          referentieWinstmargePct: round2(VPB_REFERENTIE_WINSTMARGE * 100),
           omzetExBtw: round2(basisVpbInput.omzetExBtw),
           incidenteleInkomstenExBtw: round2(
             basisVpbInput.incidenteleInkomstenExBtw
@@ -768,6 +809,12 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
           incidenteleKostenFiscaal: round2(
             basisVpbInput.incidenteleKostenFiscaal
           ),
+          cashflowModelBelastbaarBedragVoorCorrecties:
+            basisCashflowModelBelastbaarBedragVoorCorrecties,
+          referentieWinstVoorManagementfees:
+            basisReferentieWinstVoorManagementfees,
+          managementfeesFiscaal: round2(basisVpbInput.managementfeesFiscaal),
+          managerCorrectieWinst: basisManagerCorrectieWinst,
           belastbaarBedragVoorCorrecties: basisBelastbaarBedragVoorCorrecties,
           geraamdeVpb: berekenVpbOverBelastbaarBedrag(
             basisBelastbaarBedragVoorCorrecties
@@ -776,8 +823,9 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
           betaalmaandVolgendJaar: VPB_BETAALMAAND_VOLGEND_JAAR,
           opmerkingen: [
             `Voor ${huidigJaar} rekent de prognose vanaf maand ${basisVpbStartMaand}.`,
-            "Planningsberekening vóór afschrijvingen, KIA, verliesverrekening en overige fiscale correcties.",
-            "Overige reguliere uitgaven worden volledig als fiscale kosten meegenomen omdat de BTW-splitsing niet betrouwbaar bekend is.",
+            `VPB-hoofdschatting gebruikt de fiscale winstmarge ${round2(VPB_REFERENTIE_WINSTMARGE * 100)}% uit jaarrekening ${VPB_REFERENTIE_JAAR}, daarna verminderd met managementfees.`,
+            "De oude cashflow-afgeleide winst blijft zichtbaar als controleveld, maar stuurt de VPB-kasbetaling niet meer.",
+            "Afschrijvingen, KIA, verliesverrekening en overige fiscale correcties zijn nog niet afzonderlijk gemodelleerd.",
             ...(basisVpbInput.heeftIncidentelePosten
               ? ["Incidentele posten worden als opbrengst/kosten behandeld; investeringen kunnen fiscaal anders verwerkt moeten worden."]
               : []),
@@ -823,6 +871,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       inkoopFiscaal: 0,
       overigeKostenFiscaal: 0,
       incidenteleKostenFiscaal: 0,
+      managementfeesFiscaal: 0,
       heeftOnvolledigeMaand: false,
       heeftIncidentelePosten: false,
     };
@@ -1003,7 +1052,11 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
             s.btwAftrekbaarPercentage,
             true
           );
-          vpbInput.vasteKostenFiscaal += round2(s.bedrag - aftrekbareBtw);
+          const fiscaalBedrag = round2(s.bedrag - aftrekbareBtw);
+          vpbInput.vasteKostenFiscaal += fiscaalBedrag;
+          if (isManagementfee(s.naam)) {
+            vpbInput.managementfeesFiscaal += fiscaalBedrag;
+          }
         }
 
         if (inkoopProfiel) {
@@ -1193,7 +1246,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       );
     }
 
-    const belastbaarBedragVoorCorrecties = round2(
+    const cashflowModelBelastbaarBedragVoorCorrecties = round2(
       vpbInput.omzetExBtw
       + vpbInput.incidenteleInkomstenExBtw
       - vpbInput.loonkosten
@@ -1201,6 +1254,17 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       - vpbInput.inkoopFiscaal
       - vpbInput.overigeKostenFiscaal
       - vpbInput.incidenteleKostenFiscaal
+    );
+    const referentieWinstVoorManagementfees = round2(
+      vpbInput.omzetExBtw * VPB_REFERENTIE_WINSTMARGE
+    );
+    const managerCorrectieWinst = round2(
+      maanden.reduce((som, m) => som + Number(m.managerCorrectie || 0), 0)
+    );
+    const belastbaarBedragVoorCorrecties = round2(
+      referentieWinstVoorManagementfees
+      + managerCorrectieWinst
+      - vpbInput.managementfeesFiscaal
     );
 
     const vpbPlanning: VpbPlanning | null = vpbInput.heeftOnvolledigeMaand
@@ -1210,6 +1274,11 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
           drempel: VPB_DREMPEL,
           laagPct: VPB_LAAG_PCT,
           hoogPct: VPB_HOOG_PCT,
+          methode: "fiscale_referentie_2025",
+          referentieJaar: VPB_REFERENTIE_JAAR,
+          referentieOpbrengsten: VPB_REFERENTIE_OPBRENGSTEN,
+          referentieWinst: VPB_REFERENTIE_WINST,
+          referentieWinstmargePct: round2(VPB_REFERENTIE_WINSTMARGE * 100),
           omzetExBtw: round2(vpbInput.omzetExBtw),
           incidenteleInkomstenExBtw: round2(vpbInput.incidenteleInkomstenExBtw),
           loonkosten: round2(vpbInput.loonkosten),
@@ -1217,6 +1286,10 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
           inkoopFiscaal: round2(vpbInput.inkoopFiscaal),
           overigeKostenFiscaal: round2(vpbInput.overigeKostenFiscaal),
           incidenteleKostenFiscaal: round2(vpbInput.incidenteleKostenFiscaal),
+          cashflowModelBelastbaarBedragVoorCorrecties,
+          referentieWinstVoorManagementfees,
+          managementfeesFiscaal: round2(vpbInput.managementfeesFiscaal),
+          managerCorrectieWinst,
           belastbaarBedragVoorCorrecties,
           geraamdeVpb: berekenVpbOverBelastbaarBedrag(
             belastbaarBedragVoorCorrecties
@@ -1224,8 +1297,9 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
           kasEffectActief: true,
           betaalmaandVolgendJaar: VPB_BETAALMAAND_VOLGEND_JAAR,
           opmerkingen: [
-            "Planningsberekening vóór afschrijvingen, KIA, verliesverrekening en overige fiscale correcties.",
-            "Overige reguliere uitgaven worden volledig als fiscale kosten meegenomen omdat de BTW-splitsing niet betrouwbaar bekend is.",
+            `VPB-hoofdschatting gebruikt de fiscale winstmarge ${round2(VPB_REFERENTIE_WINSTMARGE * 100)}% uit jaarrekening ${VPB_REFERENTIE_JAAR}, gecorrigeerd voor managementfees en managerbesparing.`,
+            "De oude cashflow-afgeleide winst blijft zichtbaar als controleveld, maar stuurt de VPB-kasbetaling niet meer.",
+            "Afschrijvingen, KIA, verliesverrekening en overige fiscale correcties zijn nog niet afzonderlijk gemodelleerd.",
             ...(vpbInput.heeftIncidentelePosten
               ? ["Incidentele posten worden als opbrengst/kosten behandeld; investeringen kunnen fiscaal anders verwerkt moeten worden."]
               : []),
@@ -1287,7 +1361,10 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
   }
 
   waarschuwingen.push(
-    `VPB-planning gebruikt de ${VPB_TARIEF_BRONJAAR}-tarieven (${VPB_LAAG_PCT}% t/m €${VPB_DREMPEL.toLocaleString("nl-NL")}, daarboven ${VPB_HOOG_PCT}%) en boekt de geraamde VPB in augustus van het volgende jaar als kasuitgave.`
+    `VPB-planning gebruikt vanaf fase 4R-A de fiscale winstmarge uit jaarrekening ${VPB_REFERENTIE_JAAR} (${round2(VPB_REFERENTIE_WINSTMARGE * 100)}%) als hoofdgrondslag, verminderd met managementfees en verhoogd met de expliciete managerbesparing. De kasstroom-afgeleide winst blijft alleen als controle zichtbaar.`
+  );
+  waarschuwingen.push(
+    `VPB-tariefplanning gebruikt de ${VPB_TARIEF_BRONJAAR}-tarieven (${VPB_LAAG_PCT}% t/m €${VPB_DREMPEL.toLocaleString("nl-NL")}, daarboven ${VPB_HOOG_PCT}%) en boekt de geraamde VPB in augustus van het volgende jaar als kasuitgave.`
   );
   waarschuwingen.push(
     `Toekomstige reguliere loonkosten gebruiken het zelflerende gewogen omzetpercentage uit afgesloten werkelijke maanden. Managercorrectie: ${round2(BESPAARDE_UREN_PER_MANAGER_PER_MAAND)} vervallen personeelsuren per fulltime manager per maand in maart-september.`
@@ -1307,6 +1384,11 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         hoogPct: VPB_HOOG_PCT,
         betaalmaandVolgendJaar: VPB_BETAALMAAND_VOLGEND_JAAR,
         kasEffectActief: true,
+        methode: "fiscale_referentie_2025",
+        referentieJaar: VPB_REFERENTIE_JAAR,
+        referentieOpbrengsten: VPB_REFERENTIE_OPBRENGSTEN,
+        referentieWinst: VPB_REFERENTIE_WINST,
+        referentieWinstmargePct: round2(VPB_REFERENTIE_WINSTMARGE * 100),
       },
     },
     waarschuwingen: [...new Set(waarschuwingen)],

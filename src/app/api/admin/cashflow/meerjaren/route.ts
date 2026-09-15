@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        fase: "4Q-A",
+        fase: "4R-A",
         controle4NA: {
           prognoseGrensAanwezig: grens !== null,
           peildatum: grens?.peildatum ?? null,
@@ -95,6 +95,50 @@ export async function GET(req: NextRequest) {
               })
             : [],
         },
+        controle4RA: {
+          methode: data.instellingen?.vpb?.methode ?? null,
+          referentieJaar: data.instellingen?.vpb?.referentieJaar ?? null,
+          referentieOpbrengsten:
+            data.instellingen?.vpb?.referentieOpbrengsten ?? null,
+          referentieWinst: data.instellingen?.vpb?.referentieWinst ?? null,
+          referentieWinstmargePct:
+            data.instellingen?.vpb?.referentieWinstmargePct ?? null,
+          basisjaar: {
+            jaar: data.basisjaar?.jaar ?? null,
+            omzetExBtw: data.basisjaar?.vpbPlanning?.omzetExBtw ?? null,
+            cashflowModelBelastbaarBedragVoorCorrecties:
+              data.basisjaar?.vpbPlanning
+                ?.cashflowModelBelastbaarBedragVoorCorrecties ?? null,
+            referentieWinstVoorManagementfees:
+              data.basisjaar?.vpbPlanning
+                ?.referentieWinstVoorManagementfees ?? null,
+            managementfeesFiscaal:
+              data.basisjaar?.vpbPlanning?.managementfeesFiscaal ?? null,
+            managerCorrectieWinst:
+              data.basisjaar?.vpbPlanning?.managerCorrectieWinst ?? null,
+            belastbaarBedragVoorCorrecties:
+              data.basisjaar?.vpbPlanning?.belastbaarBedragVoorCorrecties ?? null,
+            geraamdeVpb: data.basisjaar?.vpbPlanning?.geraamdeVpb ?? null,
+          },
+          jaren: Array.isArray(data.jaren)
+            ? data.jaren.map((j) => ({
+                jaar: j.jaar,
+                omzetExBtw: j.vpbPlanning?.omzetExBtw ?? null,
+                cashflowModelBelastbaarBedragVoorCorrecties:
+                  j.vpbPlanning
+                    ?.cashflowModelBelastbaarBedragVoorCorrecties ?? null,
+                referentieWinstVoorManagementfees:
+                  j.vpbPlanning?.referentieWinstVoorManagementfees ?? null,
+                managementfeesFiscaal:
+                  j.vpbPlanning?.managementfeesFiscaal ?? null,
+                managerCorrectieWinst:
+                  j.vpbPlanning?.managerCorrectieWinst ?? null,
+                belastbaarBedragVoorCorrecties:
+                  j.vpbPlanning?.belastbaarBedragVoorCorrecties ?? null,
+                geraamdeVpb: j.vpbPlanning?.geraamdeVpb ?? null,
+              }))
+            : [],
+        },
         controle4QA: {
           leerbasis: data.loonkostenModel?.leerbasis ?? null,
           personeelsUurkosten:
@@ -129,7 +173,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error("[/api/admin/cashflow/meerjaren] error:", error);
     return NextResponse.json(
-      { success: false, fase: "4Q-A", error: String(error) },
+      { success: false, fase: "4R-A", error: String(error) },
       { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
