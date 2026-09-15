@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        fase: "4R-A",
+        fase: "4S-A",
         controle4NA: {
           prognoseGrensAanwezig: grens !== null,
           peildatum: grens?.peildatum ?? null,
@@ -139,6 +139,41 @@ export async function GET(req: NextRequest) {
               }))
             : [],
         },
+        controle4SA: {
+          indexPct: data.instellingen?.overigeKostenIndexPct ?? null,
+          basisjaar: data.instellingen?.overigeKostenIndexBasisjaar ?? null,
+          jaren: Array.isArray(data.jaren)
+            ? data.jaren.map((j) => {
+                const indexPct = Number(
+                  data.instellingen?.overigeKostenIndexPct ?? 0
+                );
+                const basisjaar = Number(
+                  data.instellingen?.overigeKostenIndexBasisjaar ?? j.jaar
+                );
+                const factor = Math.pow(
+                  1 + indexPct / 100,
+                  j.jaar - basisjaar
+                );
+                const geindexeerdTotaal = Math.round(
+                  j.maanden.reduce(
+                    (som, m) => som + Number(m.overigeUitgaven ?? 0),
+                    0
+                  ) * 100
+                ) / 100;
+                const basisTotaal = factor > 0
+                  ? Math.round((geindexeerdTotaal / factor) * 100) / 100
+                  : geindexeerdTotaal;
+                return {
+                  jaar: j.jaar,
+                  factor: Math.round(factor * 1000000) / 1000000,
+                  basisTotaal,
+                  geindexeerdTotaal,
+                  extraDoorIndexatie:
+                    Math.round((geindexeerdTotaal - basisTotaal) * 100) / 100,
+                };
+              })
+            : [],
+        },
         controle4QA: {
           leerbasis: data.loonkostenModel?.leerbasis ?? null,
           personeelsUurkosten:
@@ -173,7 +208,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error("[/api/admin/cashflow/meerjaren] error:", error);
     return NextResponse.json(
-      { success: false, fase: "4R-A", error: String(error) },
+      { success: false, fase: "4S-A", error: String(error) },
       { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }

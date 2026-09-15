@@ -4,6 +4,12 @@ import { berekenVincenzoNaarHoldingUitkeringen } from "@/lib/cashflow/berekenHol
 
 const SEIZOEN_MAANDEN = [3, 4, 5, 6, 7, 8, 9];
 
+// 4S-A — jaarlijkse indexatie van overige reguliere uitgaven.
+// Huur, energie, managementfees en andere vaste stromen vallen hier bewust
+// buiten: die hebben al hun eigen tariefhistorie. Het maandprofiel uit 2026
+// wordt jaarlijks met deze planningsaanname verhoogd.
+const OVERIGE_KOSTEN_INDEX_PCT = 2.5;
+
 // 4Q-A — zelflerende loonkostenprognose.
 // Alleen afgesloten maanden met werkelijke omzet én werkelijke loonkosten
 // leren het percentage. De huidige, nog open maand mag Shiftbase blijven
@@ -618,7 +624,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
     );
   }
   waarschuwingen.push(
-    "Overige reguliere uitgaven worden in fase 4F nominaal gelijk gehouden aan het historische maandprofiel; hiervoor wordt nog geen afzonderlijke jaarlijkse kostenindex toegepast."
+    `Overige reguliere uitgaven worden vanaf fase 4S-A jaarlijks geïndexeerd met ${OVERIGE_KOSTEN_INDEX_PCT}% ten opzichte van het ${huidigJaar}-maandprofiel. Vaste stromen met eigen tarieven vallen buiten deze indexatie.`
   );
 
   if (!basis.cashPositie.beschikbaar || basis.cashPositie.eindsaldo == null) {
@@ -629,6 +635,8 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       reden: basis.cashPositie.reden ?? "Kaspositie basisjaar is niet beschikbaar",
       instellingen: {
         ...instellingen,
+        overigeKostenIndexPct: OVERIGE_KOSTEN_INDEX_PCT,
+        overigeKostenIndexBasisjaar: huidigJaar,
         vpb: {
           tariefBronJaar: VPB_TARIEF_BRONJAAR,
           drempel: VPB_DREMPEL,
@@ -850,6 +858,10 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
     const loonFactor = instellingen.loonkostenGroeiPct == null
       ? null
       : Math.pow(1 + instellingen.loonkostenGroeiPct / 100, jaar - huidigJaar);
+    const overigeKostenFactor = Math.pow(
+      1 + OVERIGE_KOSTEN_INDEX_PCT / 100,
+      jaar - huidigJaar
+    );
 
     // De omzetprognose groeit al met omzetGroeiPct. Door het geleerde
     // loonkostenpercentage met loonFactor/omzetFactor te corrigeren, blijft
@@ -967,7 +979,12 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         }
       }
 
-      const overigeUitgaven = round2(overigeProfielen.get(maand)?.basisKasuitstroom ?? 0);
+      const overigeUitgavenBasis = round2(
+        overigeProfielen.get(maand)?.basisKasuitstroom ?? 0
+      );
+      const overigeUitgaven = round2(
+        overigeUitgavenBasis * overigeKostenFactor
+      );
       const incidentelePosten = incidenteelPerMaand.get(maand) ?? [];
       const incidenteleInkomsten = round2(incidentelePosten
         .filter((p) => p.richting === "in")
@@ -1369,6 +1386,9 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
   waarschuwingen.push(
     `Toekomstige reguliere loonkosten gebruiken het zelflerende gewogen omzetpercentage uit afgesloten werkelijke maanden. Managercorrectie: ${round2(BESPAARDE_UREN_PER_MANAGER_PER_MAAND)} vervallen personeelsuren per fulltime manager per maand in maart-september.`
   );
+  waarschuwingen.push(
+    `Overige reguliere uitgaven: ${OVERIGE_KOSTEN_INDEX_PCT}% jaarlijkse indexatie vanaf ${huidigJaar + 1}; het basisjaar zelf blijft ongewijzigd.`
+  );
 
   return {
     vanafJaar: huidigJaar,
@@ -1377,6 +1397,8 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
     reden: jaren.every((j) => j.compleet) ? null : "Een of meer toekomstige maanden missen verplichte configuratie",
     instellingen: {
       ...instellingen,
+      overigeKostenIndexPct: OVERIGE_KOSTEN_INDEX_PCT,
+      overigeKostenIndexBasisjaar: huidigJaar,
       vpb: {
         tariefBronJaar: VPB_TARIEF_BRONJAAR,
         drempel: VPB_DREMPEL,
