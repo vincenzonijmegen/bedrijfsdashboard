@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        fase: "4N-B",
+        fase: "4O-A",
         controle4NA: {
           prognoseGrensAanwezig: grens !== null,
           peildatum: grens?.peildatum ?? null,
@@ -44,6 +44,25 @@ export async function GET(req: NextRequest) {
           toekomstigeJarenGebruikenHerijkteBasis:
             herijking?.toekomstigeJarenGebruikenHerijkteBasis ?? false,
         },
+        controle4OA: {
+          vpbPlanningAanwezig:
+            Array.isArray(data.jaren) &&
+            data.jaren.length > 0 &&
+            data.jaren.every((j) => j.vpbPlanning !== null),
+          tariefBronJaar: data.instellingen?.vpb?.tariefBronJaar ?? null,
+          drempel: data.instellingen?.vpb?.drempel ?? null,
+          laagPct: data.instellingen?.vpb?.laagPct ?? null,
+          hoogPct: data.instellingen?.vpb?.hoogPct ?? null,
+          kasEffectActief: data.instellingen?.vpb?.kasEffectActief ?? null,
+          jaren: Array.isArray(data.jaren)
+            ? data.jaren.map((j) => ({
+                jaar: j.jaar,
+                belastbaarBedragVoorCorrecties:
+                  j.vpbPlanning?.belastbaarBedragVoorCorrecties ?? null,
+                geraamdeVpb: j.vpbPlanning?.geraamdeVpb ?? null,
+              }))
+            : [],
+        },
         data,
       },
       { headers: { "Cache-Control": "no-store" } }
@@ -51,7 +70,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error("[/api/admin/cashflow/meerjaren] error:", error);
     return NextResponse.json(
-      { success: false, fase: "4N-B", error: String(error) },
+      { success: false, fase: "4O-A", error: String(error) },
       { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
