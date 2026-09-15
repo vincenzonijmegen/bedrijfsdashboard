@@ -3,6 +3,8 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
+type Entiteit = "vincenzo" | "rekka" | "eetje-pans";
+
 type Regel = {
   volgorde: number;
   jaar: number;
@@ -16,24 +18,30 @@ type Regel = {
   bron: string | null;
 };
 
+type Controle = {
+  verwachtEindsaldo: number | null;
+  eindsaldoOverzicht: number;
+  verschil: number | null;
+  aansluitingOk: boolean;
+  aantalRegels: number;
+  btwRegels: number;
+};
+
 type ApiData = {
   success: boolean;
   fase?: string;
   error?: string;
+  entiteitNaam?: string;
   peildatum?: string;
   totJaar?: number;
   startsaldo?: number;
   eindsaldo?: number;
+  minimumKasbuffer?: number | null;
   regels?: Regel[];
-  controle4PA?: {
-    verwachtEindsaldo: number | null;
-    eindsaldoOverzicht: number;
-    verschil: number | null;
-    aansluitingOk: boolean;
-    aantalRegels: number;
-    btwRegels: number;
-    vpbRegels: number;
-  };
+  controle?: Controle;
+  controle4PA?: Controle;
+  controle4PB?: Controle;
+  controle4TA?: Controle;
 };
 
 const euro = new Intl.NumberFormat("nl-NL", {
@@ -57,6 +65,15 @@ const maanden = [
   "December",
 ];
 
+const entiteiten: Array<{
+  key: Entiteit;
+  label: string;
+}> = [
+  { key: "vincenzo", label: "IJssalon Vincenzo B.V." },
+  { key: "rekka", label: "Rekka Holding B.V." },
+  { key: "eetje-pans", label: "Eetje Pans Holding B.V." },
+];
+
 function bedrag(v: number) {
   return v === 0 ? "" : euro.format(v);
 }
@@ -64,6 +81,7 @@ function bedrag(v: number) {
 export default function CashflowOverzichtPage() {
   const huidigJaar = new Date().getFullYear();
   const [totJaar, setTotJaar] = useState(huidigJaar + 1);
+  const [entiteit, setEntiteit] = useState<Entiteit>("vincenzo");
   const [data, setData] = useState<ApiData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -73,11 +91,14 @@ export default function CashflowOverzichtPage() {
     async function laad() {
       setLoading(true);
       try {
-        const res = await fetch(
-          `/api/admin/cashflow/kasstroomoverzicht?tot=${totJaar}`,
-          { cache: "no-store" }
-        );
+        const endpoint =
+          entiteit === "vincenzo"
+            ? `/api/admin/cashflow/kasstroomoverzicht?tot=${totJaar}`
+            : `/api/admin/cashflow/holding-overzicht?entiteit=${entiteit}&tot=${totJaar}`;
+
+        const res = await fetch(endpoint, { cache: "no-store" });
         const json = (await res.json()) as ApiData;
+
         if (actief) setData(json);
       } catch (error) {
         if (actief) {
@@ -98,7 +119,7 @@ export default function CashflowOverzichtPage() {
     return () => {
       actief = false;
     };
-  }, [totJaar]);
+  }, [entiteit, totJaar]);
 
   const groepen = useMemo(() => {
     const map = new Map<string, Regel[]>();
@@ -114,6 +135,17 @@ export default function CashflowOverzichtPage() {
     return [...map.entries()];
   }, [data]);
 
+  const controle =
+    data?.controle4TA ??
+    data?.controle4PB ??
+    data?.controle4PA ??
+    data?.controle;
+
+  const entiteitLabel =
+    data?.entiteitNaam ??
+    entiteiten.find((item) => item.key === entiteit)?.label ??
+    "";
+
   return (
     <main className="min-h-screen bg-slate-100 p-4 md:p-6">
       <div className="mx-auto max-w-7xl space-y-5">
@@ -121,7 +153,7 @@ export default function CashflowOverzichtPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                IJssalon Vincenzo B.V.
+                {entiteitLabel}
               </p>
               <h1 className="mt-1 text-2xl font-bold text-slate-900">
                 Cashflowoverzicht
@@ -132,6 +164,21 @@ export default function CashflowOverzichtPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              <label className="text-sm font-medium text-slate-700">
+                Entiteit
+                <select
+                  value={entiteit}
+                  onChange={(e) => setEntiteit(e.target.value as Entiteit)}
+                  className="ml-2 rounded-lg border border-slate-300 bg-white px-3 py-2"
+                >
+                  {entiteiten.map((item) => (
+                    <option key={item.key} value={item.key}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
               <label className="text-sm font-medium text-slate-700">
                 Tonen t/m
                 <select
@@ -159,7 +206,7 @@ export default function CashflowOverzichtPage() {
           </div>
 
           {data?.success && (
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="mt-4 grid gap-3 sm:grid-cols-4">
               <div className="rounded-xl bg-slate-50 p-3">
                 <div className="text-xs uppercase tracking-wide text-slate-500">
                   Peildatum
@@ -182,6 +229,18 @@ export default function CashflowOverzichtPage() {
                 </div>
                 <div className="mt-1 font-semibold text-slate-900">
                   {euro.format(data.eindsaldo ?? 0)}
+                </div>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <div className="text-xs uppercase tracking-wide text-slate-500">
+                  Minimumbuffer
+                </div>
+                <div className="mt-1 font-semibold text-slate-900">
+                  {data.minimumKasbuffer == null
+                    ? entiteit === "vincenzo"
+                      ? euro.format(20000)
+                      : "—"
+                    : euro.format(data.minimumKasbuffer)}
                 </div>
               </div>
             </div>
@@ -222,12 +281,9 @@ export default function CashflowOverzichtPage() {
                   </thead>
                   <tbody>
                     {groepen.map(([key, regels]) => (
-                      <>
+                      <Fragment key={key}>
                         {key !== "start" && (
-                          <tr
-                            key={`${key}-header`}
-                            className="border-t border-slate-200 bg-slate-50/70"
-                          >
+                          <tr className="border-t border-slate-200 bg-slate-50/70">
                             <td
                               colSpan={5}
                               className="px-4 py-2 font-semibold text-slate-700"
@@ -236,10 +292,13 @@ export default function CashflowOverzichtPage() {
                             </td>
                           </tr>
                         )}
+
                         {regels.map((regel) => {
                           const speciaal =
                             regel.categorie === "btw" ||
-                            regel.categorie === "vpb";
+                            regel.categorie === "vpb" ||
+                            regel.categorie === "dividendbelasting";
+
                           return (
                             <tr
                               key={`${key}-${regel.volgorde}`}
@@ -276,7 +335,7 @@ export default function CashflowOverzichtPage() {
                             </tr>
                           );
                         })}
-                      </>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -285,27 +344,27 @@ export default function CashflowOverzichtPage() {
 
             <section
               className={`rounded-2xl border p-4 text-sm shadow-sm ${
-                data.controle4PA?.aansluitingOk
+                controle?.aansluitingOk
                   ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                   : "border-red-200 bg-red-50 text-red-800"
               }`}
             >
               <div className="font-semibold">
                 Controle aansluiting rekenmotor:{" "}
-                {data.controle4PA?.aansluitingOk ? "OK" : "AFWIJKING"}
+                {controle?.aansluitingOk ? "OK" : "AFWIJKING"}
               </div>
               <div className="mt-1">
-                Overzicht {euro.format(data.controle4PA?.eindsaldoOverzicht ?? 0)}
+                Overzicht {euro.format(controle?.eindsaldoOverzicht ?? 0)}
                 {" · "}
                 rekenmotor{" "}
-                {data.controle4PA?.verwachtEindsaldo == null
+                {controle?.verwachtEindsaldo == null
                   ? "onbekend"
-                  : euro.format(data.controle4PA.verwachtEindsaldo)}
+                  : euro.format(controle.verwachtEindsaldo)}
                 {" · "}
                 verschil{" "}
-                {data.controle4PA?.verschil == null
+                {controle?.verschil == null
                   ? "onbekend"
-                  : euro.format(data.controle4PA.verschil)}
+                  : euro.format(controle.verschil)}
               </div>
             </section>
           </>
