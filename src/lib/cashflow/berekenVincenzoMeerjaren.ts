@@ -98,6 +98,7 @@ type MeerjaarMaand = {
   overigeUitgaven: number;
   incidenteleInkomsten: number;
   incidenteleUitgaven: number;
+  incidentelePosten: IncidentelePost[];
   aflossingSchuldHoldings: number;
   dividendNaarHoldings: number;
   btwKasMutatie: number | null;
@@ -438,7 +439,10 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         peildatum: basis.cashPositie.peildatum,
         prognoseGrens: basis.prognoseGrens,
         herijking: basisHerijking,
+        startsaldo: basis.cashPositie.startsaldoTotaal,
         eindsaldo: basis.cashPositie.eindsaldo,
+        maanden: basis.maanden,
+        btwKwartalen: basis.btwKwartalen,
       },
       jaren: [] as MeerjaarJaar[],
     };
@@ -835,6 +839,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         overigeUitgaven,
         incidenteleInkomsten,
         incidenteleUitgaven,
+        incidentelePosten,
         aflossingSchuldHoldings,
         dividendNaarHoldings,
         btwKasMutatie: 0,
@@ -1061,6 +1066,8 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       laagsteMaand: basis.cashPositie.laagsteMaand,
       q4BtwAfdracht: basisQ4Afdracht,
       vpbPlanning: basisVpbPlanning,
+      maanden: basis.maanden,
+      btwKwartalen: basis.btwKwartalen,
     },
     jaren,
   };
