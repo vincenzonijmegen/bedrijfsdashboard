@@ -50,6 +50,10 @@ function maandNaam(maand: number) {
   ][maand] ?? String(maand);
 }
 
+function isTafStroom(naam?: string | null) {
+  return String(naam ?? "").trim().toLowerCase() === "taf levensverzekering";
+}
+
 function btwOmschrijving(jaar: number, maand: number, bedrag: number) {
   let kwartaal: string;
   let betreftJaar = jaar;
@@ -127,7 +131,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          fase: "4P-A",
+          fase: "4P-B",
           error: "Actief startsaldo/peildatum ontbreekt",
         },
         { status: 409 }
@@ -220,7 +224,16 @@ export async function GET(req: NextRequest) {
         });
       }
 
-      for (const stroom of maandData.vasteStromen ?? []) {
+      const vasteStromen = maandData.vasteStromen ?? [];
+      const tafBedrag = round2(
+        vasteStromen
+          .filter((stroom) => isTafStroom(stroom.naam))
+          .reduce((som, stroom) => som + Number(stroom.bedrag ?? 0), 0)
+      );
+
+      for (const stroom of vasteStromen.filter(
+        (stroom) => !isTafStroom(stroom.naam)
+      )) {
         voegRegelToe(regels, state, {
           jaar,
           maand,
@@ -261,9 +274,12 @@ export async function GET(req: NextRequest) {
         datumLabel: label,
         omschrijving: "Overige reguliere uitgaven",
         categorie: "overig",
-        bedrag: Number(maandData.overigeUitgaven ?? 0),
+        bedrag: round2(Number(maandData.overigeUitgaven ?? 0) + tafBedrag),
         richting: "uit",
-        bron: maandData.overigeBron ?? "bankprofiel",
+        bron:
+          tafBedrag > 0
+            ? `${maandData.overigeBron ?? "bankprofiel"} + TAF`
+            : maandData.overigeBron ?? "bankprofiel",
       });
 
       for (const post of incidentelePosten.filter(
@@ -384,13 +400,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        fase: "4P-A",
+        fase: "4P-B",
         peildatum,
         totJaar,
         startsaldo: Number(data.basisjaar.startsaldo),
         eindsaldo: eindsaldoOverzicht,
         regels,
-        controle4PA: {
+        controle4PB: {
           verwachtEindsaldo,
           eindsaldoOverzicht,
           verschil,
@@ -405,7 +421,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error("[/api/admin/cashflow/kasstroomoverzicht] error:", error);
     return NextResponse.json(
-      { success: false, fase: "4P-A", error: String(error) },
+      { success: false, fase: "4P-B", error: String(error) },
       { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
