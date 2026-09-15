@@ -4,6 +4,27 @@ import { berekenVincenzoNaarHoldingUitkeringen } from "@/lib/cashflow/berekenHol
 
 const SEIZOEN_MAANDEN = [3, 4, 5, 6, 7, 8, 9];
 
+// 4Q-A — zelflerende loonkostenprognose.
+// Alleen afgesloten maanden met werkelijke omzet én werkelijke loonkosten
+// leren het percentage. De huidige, nog open maand mag Shiftbase blijven
+// gebruiken; toekomstige jaren gebruiken het geleerde omzetpercentage.
+const MANAGER_DAGEN_PER_WEEK = 3.5;
+const MANAGER_UREN_PER_DAG = 13;
+const MANAGER_PRODUCTIEF_PCT = 50;
+const MANAGER_VERVANGING_PCT = 75;
+const WEKEN_PER_MAAND = 52 / 12;
+const WERKGEVERSLASTEN_PCT = 30;
+const ROBERT_FULLTIME_VAN_JAAR = 2027;
+const EMO_FULLTIME_VAN_JAAR = 2028;
+const MANAGER_CORRECTIE_MAANDEN = [3, 4, 5, 6, 7, 8, 9];
+
+const BESPAARDE_UREN_PER_MANAGER_PER_MAAND =
+  MANAGER_DAGEN_PER_WEEK *
+  MANAGER_UREN_PER_DAG *
+  (MANAGER_PRODUCTIEF_PCT / 100) *
+  (MANAGER_VERVANGING_PCT / 100) *
+  WEKEN_PER_MAAND;
+
 // 4O-A — VPB-planningsaannames.
 // Voor toekomstige jaren houden we de actuele 2026-tarieven constant als
 // planningsaanname. In 4O-A wordt de VPB alleen berekend en zichtbaar gemaakt;
@@ -33,6 +54,101 @@ function berekenVpbOverBelastbaarBedrag(belastbaarBedrag: number) {
 
 function round2(v: number) {
   return Math.round(v * 100) / 100;
+}
+
+function normalizePct(v: unknown): number {
+  const n = Number(v ?? 0);
+  if (!Number.isFinite(n) || n === 0) return 0;
+  return n > 1.5 ? n / 100 : n;
+}
+
+function aantalFulltimeManagers(jaar: number, maand: number) {
+  if (!MANAGER_CORRECTIE_MAANDEN.includes(maand)) return 0;
+  let aantal = 0;
+  if (jaar >= ROBERT_FULLTIME_VAN_JAAR) aantal += 1;
+  if (jaar >= EMO_FULLTIME_VAN_JAAR) aantal += 1;
+  return aantal;
+}
+
+type PersoneelsUurkostenModel = {
+  aantalMedewerkersMetTarief: number;
+  gemiddeldeLeeftijd: number | null;
+  gemiddeldeAllInUurkosten: number | null;
+  werkgeverslastenPct: number;
+  uitgeslotenManagers: string[];
+  ontbrekendeTarieven: number;
+};
+
+async function getGemiddeldePersoneelsUurkosten(): Promise<PersoneelsUurkostenModel> {
+  const res = await db.query(`
+    WITH personeel AS (
+      SELECT
+        id,
+        naam,
+        EXTRACT(YEAR FROM age(CURRENT_DATE, geboortedatum::date))::int AS leeftijd
+      FROM medewerkers
+      WHERE geboortedatum IS NOT NULL
+        AND lower(trim(naam)) <> lower('Robert Anggono')
+    )
+    SELECT
+      p.id,
+      p.naam,
+      p.leeftijd,
+      l.uurloon,
+      l.opslag,
+      l.pensioen_opslag
+    FROM personeel p
+    LEFT JOIN LATERAL (
+      SELECT uurloon, opslag, pensioen_opslag
+      FROM loon_leeftijd
+      WHERE p.leeftijd BETWEEN min_leeftijd AND max_leeftijd
+        AND (geldig_van IS NULL OR CURRENT_DATE >= geldig_van)
+        AND (geldig_tot IS NULL OR CURRENT_DATE <= geldig_tot)
+      ORDER BY geldig_van DESC NULLS LAST, id DESC
+      LIMIT 1
+    ) l ON true
+    ORDER BY p.id
+  `);
+
+  const kosten: number[] = [];
+  const leeftijden: number[] = [];
+  let ontbrekendeTarieven = 0;
+
+  for (const r of res.rows ?? []) {
+    const leeftijd = Number(r.leeftijd);
+    const uurloon = Number(r.uurloon);
+
+    if (!Number.isFinite(leeftijd)) continue;
+    leeftijden.push(leeftijd);
+
+    if (!Number.isFinite(uurloon) || uurloon <= 0) {
+      ontbrekendeTarieven += 1;
+      continue;
+    }
+
+    const opslag = normalizePct(r.opslag);
+    const pensioen = normalizePct(r.pensioen_opslag);
+    const directPerUur = uurloon * (1 + opslag + pensioen);
+    const allInPerUur =
+      directPerUur * (1 + WERKGEVERSLASTEN_PCT / 100);
+
+    kosten.push(allInPerUur);
+  }
+
+  return {
+    aantalMedewerkersMetTarief: kosten.length,
+    gemiddeldeLeeftijd:
+      leeftijden.length > 0
+        ? round2(leeftijden.reduce((s, n) => s + n, 0) / leeftijden.length)
+        : null,
+    gemiddeldeAllInUurkosten:
+      kosten.length > 0
+        ? round2(kosten.reduce((s, n) => s + n, 0) / kosten.length)
+        : null,
+    werkgeverslastenPct: WERKGEVERSLASTEN_PCT,
+    uitgeslotenManagers: ["Robert Anggono"],
+    ontbrekendeTarieven,
+  };
 }
 
 function btwUitBedrag(
@@ -91,7 +207,15 @@ type MeerjaarMaand = {
   omzet: number;
   omzetBron: "meerjaren_prognose";
   loonkosten: number | null;
-  loonkostenBron: "basisjaar_gegroeid" | "niet_beschikbaar";
+  loonkostenBron:
+    | "zelflerend_omzetpercentage"
+    | "basisjaar_gegroeid_fallback"
+    | "niet_beschikbaar";
+  loonkostenPercentageGebruikt: number | null;
+  loonkostenVoorManagercorrectie: number | null;
+  managerAantal: number;
+  managerBespaardeUren: number;
+  managerCorrectie: number;
   vasteUitgaven: number | null;
   vasteStromen: VasteStroom[];
   inkoop: number | null;
@@ -405,12 +529,66 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
     maanden: herijkingMaanden,
   };
 
+  const leerMaanden = herijkingMaanden.filter(
+    (m) =>
+      m.seizoen &&
+      m.omzetBron === "werkelijk" &&
+      m.loonkostenBron === "werkelijk" &&
+      Number(m.omzet ?? 0) > 0 &&
+      m.loonkosten != null
+  );
+
+  const leerOmzetTotaal = round2(
+    leerMaanden.reduce((som, m) => som + Number(m.omzet ?? 0), 0)
+  );
+  const leerLoonkostenTotaal = round2(
+    leerMaanden.reduce((som, m) => som + Number(m.loonkosten ?? 0), 0)
+  );
+  const geleerdLoonkostenPct =
+    leerOmzetTotaal > 0
+      ? round2((leerLoonkostenTotaal / leerOmzetTotaal) * 100)
+      : null;
+
+  const loonkostenLeerModel = {
+    methode: "gewogen_werkelijke_loonkosten_door_werkelijke_omzet",
+    alleenAfgeslotenWerkelijkeMaanden: true,
+    maanden: leerMaanden.map((m) => ({
+      maand: m.maand,
+      omzet: round2(Number(m.omzet ?? 0)),
+      loonkosten: round2(Number(m.loonkosten ?? 0)),
+      percentage:
+        Number(m.omzet ?? 0) > 0
+          ? round2((Number(m.loonkosten ?? 0) / Number(m.omzet ?? 0)) * 100)
+          : null,
+    })),
+    omzetTotaal: leerOmzetTotaal,
+    loonkostenTotaal: leerLoonkostenTotaal,
+    gewogenPercentage: geleerdLoonkostenPct,
+  };
+
+  const personeelsUurkosten = await getGemiddeldePersoneelsUurkosten();
+
   const waarschuwingen: string[] = [...basis.waarschuwingen];
   if (instellingen.omzetGroeiPct == null) {
     waarschuwingen.push("Omzetgroei ontbreekt in Cashflowbeheer; meerjarenomzet kan niet volledig worden berekend.");
   }
   if (instellingen.loonkostenGroeiPct == null) {
     waarschuwingen.push("Loonkostengroei ontbreekt in Cashflowbeheer; toekomstige loonkosten kunnen niet volledig worden berekend.");
+  }
+  if (geleerdLoonkostenPct == null) {
+    waarschuwingen.push(
+      "Zelflerend loonkostenpercentage kon niet worden bepaald; meerjarenprognose valt waar mogelijk terug op de oude basisjaar-methode."
+    );
+  }
+  if (personeelsUurkosten.gemiddeldeAllInUurkosten == null) {
+    waarschuwingen.push(
+      "Gemiddelde all-in personeelsuurkost kon niet worden bepaald; managercorrectie kan niet worden toegepast."
+    );
+  }
+  if (personeelsUurkosten.ontbrekendeTarieven > 0) {
+    waarschuwingen.push(
+      `Voor ${personeelsUurkosten.ontbrekendeTarieven} medewerker(s) met geboortedatum ontbreekt een geldig leeftijdstarief; zij tellen niet mee in het gemiddelde uurbedrag.`
+    );
   }
   waarschuwingen.push(
     "Overige reguliere uitgaven worden in fase 4F nominaal gelijk gehouden aan het historische maandprofiel; hiervoor wordt nog geen afzonderlijke jaarlijkse kostenindex toegepast."
@@ -434,6 +612,22 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         },
       },
       waarschuwingen: [...new Set(waarschuwingen)],
+      loonkostenModel: {
+        leerbasis: loonkostenLeerModel,
+        personeelsUurkosten,
+        managerAannames: {
+          dagenPerWeek: MANAGER_DAGEN_PER_WEEK,
+          urenPerDag: MANAGER_UREN_PER_DAG,
+          productiefPct: MANAGER_PRODUCTIEF_PCT,
+          vervangingPct: MANAGER_VERVANGING_PCT,
+          bespaardeUrenPerManagerPerMaand: round2(
+            BESPAARDE_UREN_PER_MANAGER_PER_MAAND
+          ),
+          robertFulltimeVanJaar: ROBERT_FULLTIME_VAN_JAAR,
+          emoFulltimeVanJaar: EMO_FULLTIME_VAN_JAAR,
+          maanden: MANAGER_CORRECTIE_MAANDEN,
+        },
+      },
       basisjaar: {
         jaar: huidigJaar,
         peildatum: basis.cashPositie.peildatum,
@@ -606,6 +800,17 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       ? null
       : Math.pow(1 + instellingen.loonkostenGroeiPct / 100, jaar - huidigJaar);
 
+    // De omzetprognose groeit al met omzetGroeiPct. Door het geleerde
+    // loonkostenpercentage met loonFactor/omzetFactor te corrigeren, blijft
+    // ook de bestaande aparte loonstijgingsaanname intact.
+    const loonkostenPctJaar =
+      geleerdLoonkostenPct == null ||
+      loonFactor == null ||
+      omzetFactor == null ||
+      omzetFactor <= 0
+        ? null
+        : (geleerdLoonkostenPct / 100) * (loonFactor / omzetFactor);
+
     const maanden: MeerjaarMaand[] = [];
     const vpbInput = {
       omzetExBtw: 0,
@@ -642,15 +847,54 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       }
 
       let loonkosten: number | null = 0;
-      let loonkostenBron: MeerjaarMaand["loonkostenBron"] = "basisjaar_gegroeid";
+      let loonkostenBron: MeerjaarMaand["loonkostenBron"] =
+        "zelflerend_omzetpercentage";
+      let loonkostenPercentageGebruikt: number | null = null;
+      let loonkostenVoorManagercorrectie: number | null = 0;
+      const managerAantal = aantalFulltimeManagers(jaar, maand);
+      const managerBespaardeUren = round2(
+        managerAantal * BESPAARDE_UREN_PER_MANAGER_PER_MAAND
+      );
+      let managerCorrectie = 0;
+
       if (SEIZOEN_MAANDEN.includes(maand)) {
-        if (loonFactor == null || !basisMaand || basisMaand.loonkosten == null) {
-          loonkosten = null;
-          loonkostenBron = "niet_beschikbaar";
-          ontbrekend.push("loonkostengroei/basisloonkosten");
-        } else {
+        if (
+          loonkostenPctJaar != null &&
+          personeelsUurkosten.gemiddeldeAllInUurkosten != null &&
+          loonFactor != null
+        ) {
+          loonkostenPercentageGebruikt = round2(loonkostenPctJaar * 100);
+          loonkostenVoorManagercorrectie = round2(omzet * loonkostenPctJaar);
+
+          const uurkostenInJaar = round2(
+            personeelsUurkosten.gemiddeldeAllInUurkosten * loonFactor
+          );
+          managerCorrectie = round2(
+            managerBespaardeUren * uurkostenInJaar
+          );
+
+          loonkosten = round2(
+            Math.max(
+              0,
+              Number(loonkostenVoorManagercorrectie) - managerCorrectie
+            )
+          );
+        } else if (loonFactor != null && basisMaand?.loonkosten != null) {
+          // Veilige fallback: de oude, reeds bewezen methode blijft beschikbaar
+          // als de leerbasis of personeelsuurkost onverwacht ontbreekt.
           loonkosten = round2(Number(basisMaand.loonkosten) * loonFactor);
+          loonkostenVoorManagercorrectie = loonkosten;
+          loonkostenBron = "basisjaar_gegroeid_fallback";
+          managerCorrectie = 0;
+        } else {
+          loonkosten = null;
+          loonkostenVoorManagercorrectie = null;
+          loonkostenBron = "niet_beschikbaar";
+          managerCorrectie = 0;
+          ontbrekend.push("zelflerende loonkosten/basisgegevens");
         }
+      } else {
+        managerCorrectie = 0;
       }
 
       const vasteStromen = vastePerMaand.get(maand) ?? [];
@@ -833,6 +1077,11 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         omzetBron: "meerjaren_prognose",
         loonkosten,
         loonkostenBron,
+        loonkostenPercentageGebruikt,
+        loonkostenVoorManagercorrectie,
+        managerAantal,
+        managerBespaardeUren,
+        managerCorrectie,
         vasteUitgaven,
         vasteStromen,
         inkoop,
@@ -1037,6 +1286,9 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
   waarschuwingen.push(
     `VPB-planning gebruikt de ${VPB_TARIEF_BRONJAAR}-tarieven (${VPB_LAAG_PCT}% t/m €${VPB_DREMPEL.toLocaleString("nl-NL")}, daarboven ${VPB_HOOG_PCT}%) en boekt de geraamde VPB in augustus van het volgende jaar als kasuitgave.`
   );
+  waarschuwingen.push(
+    `Toekomstige reguliere loonkosten gebruiken het zelflerende gewogen omzetpercentage uit afgesloten werkelijke maanden. Managercorrectie: ${round2(BESPAARDE_UREN_PER_MANAGER_PER_MAAND)} vervallen personeelsuren per fulltime manager per maand in maart-september.`
+  );
 
   return {
     vanafJaar: huidigJaar,
@@ -1055,6 +1307,22 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       },
     },
     waarschuwingen: [...new Set(waarschuwingen)],
+    loonkostenModel: {
+      leerbasis: loonkostenLeerModel,
+      personeelsUurkosten,
+      managerAannames: {
+        dagenPerWeek: MANAGER_DAGEN_PER_WEEK,
+        urenPerDag: MANAGER_UREN_PER_DAG,
+        productiefPct: MANAGER_PRODUCTIEF_PCT,
+        vervangingPct: MANAGER_VERVANGING_PCT,
+        bespaardeUrenPerManagerPerMaand: round2(
+          BESPAARDE_UREN_PER_MANAGER_PER_MAAND
+        ),
+        robertFulltimeVanJaar: ROBERT_FULLTIME_VAN_JAAR,
+        emoFulltimeVanJaar: EMO_FULLTIME_VAN_JAAR,
+        maanden: MANAGER_CORRECTIE_MAANDEN,
+      },
+    },
     basisjaar: {
       jaar: huidigJaar,
       peildatum: basis.cashPositie.peildatum,

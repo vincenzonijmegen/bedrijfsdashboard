@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        fase: "4O-B",
+        fase: "4Q-A",
         controle4NA: {
           prognoseGrensAanwezig: grens !== null,
           peildatum: grens?.peildatum ?? null,
@@ -95,6 +95,33 @@ export async function GET(req: NextRequest) {
               })
             : [],
         },
+        controle4QA: {
+          leerbasis: data.loonkostenModel?.leerbasis ?? null,
+          personeelsUurkosten:
+            data.loonkostenModel?.personeelsUurkosten ?? null,
+          managerAannames:
+            data.loonkostenModel?.managerAannames ?? null,
+          jaren: Array.isArray(data.jaren)
+            ? data.jaren.map((j) => ({
+                jaar: j.jaar,
+                loonkostenTotaal: Math.round(
+                  j.maanden.reduce(
+                    (som, m) => som + Number(m.loonkosten ?? 0),
+                    0
+                  ) * 100
+                ) / 100,
+                managerCorrectieTotaal: Math.round(
+                  j.maanden.reduce(
+                    (som, m) => som + Number(m.managerCorrectie ?? 0),
+                    0
+                  ) * 100
+                ) / 100,
+                bronnen: [
+                  ...new Set(j.maanden.map((m) => m.loonkostenBron)),
+                ],
+              }))
+            : [],
+        },
         data,
       },
       { headers: { "Cache-Control": "no-store" } }
@@ -102,7 +129,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error("[/api/admin/cashflow/meerjaren] error:", error);
     return NextResponse.json(
-      { success: false, fase: "4O-B", error: String(error) },
+      { success: false, fase: "4Q-A", error: String(error) },
       { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
