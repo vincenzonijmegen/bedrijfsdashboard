@@ -13,6 +13,13 @@ const VPB_TARIEF_BRONJAAR = 2026;
 const VPB_DREMPEL = 200_000;
 const VPB_LAAG_PCT = 19;
 const VPB_HOOG_PCT = 25.8;
+const VPB_BETAALMAAND_VOLGEND_JAAR = 8;
+
+// De ruisende inbreng is voor de prognose gekoppeld aan 1 april 2026.
+// Daardoor rekenen we voor het eerste BV-jaar alleen april t/m december mee
+// in de VPB-planning. Vanaf 2027 geldt gewoon het volledige kalenderjaar.
+const VPB_EERSTE_BV_JAAR = 2026;
+const VPB_EERSTE_BV_MAAND = 4;
 
 function berekenVpbOverBelastbaarBedrag(belastbaarBedrag: number) {
   const grondslag = Math.max(0, round2(belastbaarBedrag));
@@ -94,6 +101,7 @@ type MeerjaarMaand = {
   aflossingSchuldHoldings: number;
   dividendNaarHoldings: number;
   btwKasMutatie: number | null;
+  vpbKasMutatie: number | null;
   kasmutatie: number | null;
   compleet: boolean;
   ontbrekendeConfiguratie: string[];
@@ -129,7 +137,8 @@ type VpbPlanning = {
   incidenteleKostenFiscaal: number;
   belastbaarBedragVoorCorrecties: number;
   geraamdeVpb: number;
-  kasEffectActief: false;
+  kasEffectActief: boolean;
+  betaalmaandVolgendJaar: number;
   opmerkingen: string[];
 };
 
@@ -419,7 +428,8 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
           drempel: VPB_DREMPEL,
           laagPct: VPB_LAAG_PCT,
           hoogPct: VPB_HOOG_PCT,
-          kasEffectActief: false,
+          betaalmaandVolgendJaar: VPB_BETAALMAAND_VOLGEND_JAAR,
+          kasEffectActief: true,
         },
       },
       waarschuwingen: [...new Set(waarschuwingen)],
@@ -443,9 +453,140 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
   const basisMaanden = new Map<number, (typeof basis.maanden)[number]>();
   for (const m of basis.maanden) basisMaanden.set(m.maand, m);
 
+  // 4O-B: ook voor het basisjaar ramen we VPB, zodat de eerste toekomstige
+  // betaling (augustus van het volgende jaar) niet ontbreekt.
+  const basisVpbInput = {
+    omzetExBtw: 0,
+    incidenteleInkomstenExBtw: 0,
+    loonkosten: 0,
+    vasteKostenFiscaal: 0,
+    inkoopFiscaal: 0,
+    overigeKostenFiscaal: 0,
+    incidenteleKostenFiscaal: 0,
+    heeftOnvolledigeMaand: false,
+    heeftIncidentelePosten: false,
+  };
+
+  const basisVpbStartMaand =
+    huidigJaar === VPB_EERSTE_BV_JAAR ? VPB_EERSTE_BV_MAAND : 1;
+
+  for (const m of basis.maanden.filter((x) => x.maand >= basisVpbStartMaand)) {
+    if (m.loonkosten == null || m.inkoop == null) {
+      basisVpbInput.heeftOnvolledigeMaand = true;
+      continue;
+    }
+
+    const omzetBtw = round2(Number(m.omzet || 0) * 9 / 109);
+    basisVpbInput.omzetExBtw += round2(Number(m.omzet || 0) - omzetBtw);
+    basisVpbInput.loonkosten += Number(m.loonkosten || 0);
+
+    for (const s of m.vasteStromen ?? []) {
+      const aftrekbareBtw = btwUitBedrag(
+        Number(s.bedrag || 0),
+        Number(s.btwPercentage || 0),
+        Number(s.btwAftrekbaarPercentage || 0),
+        true
+      );
+      basisVpbInput.vasteKostenFiscaal += round2(
+        Number(s.bedrag || 0) - aftrekbareBtw
+      );
+    }
+
+    const inkoopProfiel = inkoopProfielen.get(m.maand);
+    if (inkoopProfiel) {
+      const aftrekbareBtwInkoop = btwUitBedrag(
+        Number(m.inkoop || 0),
+        inkoopProfiel.btwPercentage,
+        inkoopProfiel.btwAftrekbaarPercentage,
+        true
+      );
+      basisVpbInput.inkoopFiscaal += round2(
+        Number(m.inkoop || 0) - aftrekbareBtwInkoop
+      );
+    } else {
+      basisVpbInput.inkoopFiscaal += Number(m.inkoop || 0);
+    }
+
+    basisVpbInput.overigeKostenFiscaal += Number(m.overigeUitgaven || 0);
+
+    if ((m.incidentelePosten ?? []).length > 0) {
+      basisVpbInput.heeftIncidentelePosten = true;
+    }
+
+    for (const p of m.incidentelePosten ?? []) {
+      if (p.richting === "in") {
+        const outputBtw = btwUitBedrag(
+          p.bedrag,
+          p.btwPercentage,
+          100,
+          p.bedragIsInclusiefBtw
+        );
+        basisVpbInput.incidenteleInkomstenExBtw += round2(
+          p.bedrag - outputBtw
+        );
+      } else {
+        const aftrekbareBtw = btwUitBedrag(
+          p.bedrag,
+          p.btwPercentage,
+          p.btwAftrekbaarPercentage,
+          p.bedragIsInclusiefBtw
+        );
+        basisVpbInput.incidenteleKostenFiscaal += round2(
+          p.bedrag - aftrekbareBtw
+        );
+      }
+    }
+  }
+
+  const basisBelastbaarBedragVoorCorrecties = round2(
+    basisVpbInput.omzetExBtw
+    + basisVpbInput.incidenteleInkomstenExBtw
+    - basisVpbInput.loonkosten
+    - basisVpbInput.vasteKostenFiscaal
+    - basisVpbInput.inkoopFiscaal
+    - basisVpbInput.overigeKostenFiscaal
+    - basisVpbInput.incidenteleKostenFiscaal
+  );
+
+  const basisVpbPlanning: VpbPlanning | null =
+    basisVpbInput.heeftOnvolledigeMaand
+      ? null
+      : {
+          tariefBronJaar: VPB_TARIEF_BRONJAAR,
+          drempel: VPB_DREMPEL,
+          laagPct: VPB_LAAG_PCT,
+          hoogPct: VPB_HOOG_PCT,
+          omzetExBtw: round2(basisVpbInput.omzetExBtw),
+          incidenteleInkomstenExBtw: round2(
+            basisVpbInput.incidenteleInkomstenExBtw
+          ),
+          loonkosten: round2(basisVpbInput.loonkosten),
+          vasteKostenFiscaal: round2(basisVpbInput.vasteKostenFiscaal),
+          inkoopFiscaal: round2(basisVpbInput.inkoopFiscaal),
+          overigeKostenFiscaal: round2(basisVpbInput.overigeKostenFiscaal),
+          incidenteleKostenFiscaal: round2(
+            basisVpbInput.incidenteleKostenFiscaal
+          ),
+          belastbaarBedragVoorCorrecties: basisBelastbaarBedragVoorCorrecties,
+          geraamdeVpb: berekenVpbOverBelastbaarBedrag(
+            basisBelastbaarBedragVoorCorrecties
+          ),
+          kasEffectActief: true,
+          betaalmaandVolgendJaar: VPB_BETAALMAAND_VOLGEND_JAAR,
+          opmerkingen: [
+            `Voor ${huidigJaar} rekent de prognose vanaf maand ${basisVpbStartMaand}.`,
+            "Planningsberekening vóór afschrijvingen, KIA, verliesverrekening en overige fiscale correcties.",
+            "Overige reguliere uitgaven worden volledig als fiscale kosten meegenomen omdat de BTW-splitsing niet betrouwbaar bekend is.",
+            ...(basisVpbInput.heeftIncidentelePosten
+              ? ["Incidentele posten worden als opbrengst/kosten behandeld; investeringen kunnen fiscaal anders verwerkt moeten worden."]
+              : []),
+          ],
+        };
+
   let doorlopendSaldo: number | null = basis.cashPositie.eindsaldo;
   const basisQ4Afdracht: number | null = basis.btwKwartalen.find((q) => q.kwartaal === 4)?.gebruikteAfdracht ?? null;
   let vorigeQ4Afdracht: number | null = basisQ4Afdracht;
+  let vorigeVpbPlanning: VpbPlanning | null = basisVpbPlanning;
   const jaren: MeerjaarJaar[] = [];
 
   for (let jaar = huidigJaar + 1; jaar <= totJaar; jaar++) {
@@ -697,6 +838,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         aflossingSchuldHoldings,
         dividendNaarHoldings,
         btwKasMutatie: 0,
+        vpbKasMutatie: 0,
         kasmutatie: null,
         compleet,
         ontbrekendeConfiguratie: [...new Set(ontbrekend)],
@@ -756,9 +898,22 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       }
     }
 
+    // VPB: planningsmatig betalen we de geraamde VPB over het vorige jaar
+    // in augustus. Dit sluit aan bij aangifte in het volgende voorjaar en een
+    // aanslag/betaaltermijn daarna. Werkelijke aanslagen kunnen later als
+    // actualiteit de prognose vervangen.
+    const vpbBetaalMaand = maanden[VPB_BETAALMAAND_VOLGEND_JAAR - 1];
+    if (vorigeVpbPlanning == null) {
+      vpbBetaalMaand.vpbKasMutatie = null;
+      vpbBetaalMaand.compleet = false;
+      vpbBetaalMaand.ontbrekendeConfiguratie.push(`VPB ${jaar - 1}`);
+    } else {
+      vpbBetaalMaand.vpbKasMutatie = round2(-vorigeVpbPlanning.geraamdeVpb);
+    }
+
     // Alle overige maanden hebben geen kwartaal-BTW-kasmutatie.
     for (const m of maanden) {
-      if (m.btwKasMutatie === null) {
+      if (m.btwKasMutatie === null || m.vpbKasMutatie === null) {
         m.kasmutatie = null;
         continue;
       }
@@ -777,6 +932,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         - m.dividendNaarHoldings
         + m.incidenteleInkomsten
         + m.btwKasMutatie
+        + m.vpbKasMutatie
       );
     }
 
@@ -808,7 +964,8 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
           geraamdeVpb: berekenVpbOverBelastbaarBedrag(
             belastbaarBedragVoorCorrecties
           ),
-          kasEffectActief: false,
+          kasEffectActief: true,
+          betaalmaandVolgendJaar: VPB_BETAALMAAND_VOLGEND_JAAR,
           opmerkingen: [
             "Planningsberekening vóór afschrijvingen, KIA, verliesverrekening en overige fiscale correcties.",
             "Overige reguliere uitgaven worden volledig als fiscale kosten meegenomen omdat de BTW-splitsing niet betrouwbaar bekend is.",
@@ -864,6 +1021,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
 
     const q4 = btwKwartalen.find((q) => q.kwartaal === 4);
     vorigeQ4Afdracht = q4?.modelAfdracht ?? null;
+    vorigeVpbPlanning = vpbPlanning;
   }
 
   const ontbrekendAlleJaren = [...new Set(jaren.flatMap((j) => j.ontbrekendeConfiguratie))];
@@ -872,7 +1030,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
   }
 
   waarschuwingen.push(
-    `VPB-planning gebruikt voor toekomstige jaren de ${VPB_TARIEF_BRONJAAR}-tarieven (${VPB_LAAG_PCT}% t/m €${VPB_DREMPEL.toLocaleString("nl-NL")}, daarboven ${VPB_HOOG_PCT}%). In fase 4O-A heeft deze berekening nog geen kas-effect.`
+    `VPB-planning gebruikt de ${VPB_TARIEF_BRONJAAR}-tarieven (${VPB_LAAG_PCT}% t/m €${VPB_DREMPEL.toLocaleString("nl-NL")}, daarboven ${VPB_HOOG_PCT}%) en boekt de geraamde VPB in augustus van het volgende jaar als kasuitgave.`
   );
 
   return {
@@ -887,7 +1045,8 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         drempel: VPB_DREMPEL,
         laagPct: VPB_LAAG_PCT,
         hoogPct: VPB_HOOG_PCT,
-        kasEffectActief: false,
+        betaalmaandVolgendJaar: VPB_BETAALMAAND_VOLGEND_JAAR,
+        kasEffectActief: true,
       },
     },
     waarschuwingen: [...new Set(waarschuwingen)],
@@ -901,6 +1060,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       laagsteSaldo: basis.cashPositie.laagsteSaldo,
       laagsteMaand: basis.cashPositie.laagsteMaand,
       q4BtwAfdracht: basisQ4Afdracht,
+      vpbPlanning: basisVpbPlanning,
     },
     jaren,
   };

@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        fase: "4O-A",
+        fase: "4O-B",
         controle4NA: {
           prognoseGrensAanwezig: grens !== null,
           peildatum: grens?.peildatum ?? null,
@@ -63,6 +63,38 @@ export async function GET(req: NextRequest) {
               }))
             : [],
         },
+        controle4OB: {
+          betaalmaandVolgendJaar:
+            data.instellingen?.vpb?.betaalmaandVolgendJaar ?? null,
+          basisjaar: {
+            jaar: data.basisjaar?.jaar ?? null,
+            geraamdeVpb: data.basisjaar?.vpbPlanning?.geraamdeVpb ?? null,
+            startMaandFiscaal:
+              data.basisjaar?.vpbPlanning
+                ? (data.basisjaar.jaar === 2026 ? 4 : 1)
+                : null,
+          },
+          betalingen: Array.isArray(data.jaren)
+            ? data.jaren.map((j) => {
+                const maand = Array.isArray(j.maanden)
+                  ? j.maanden.find(
+                      (m) =>
+                        m.maand ===
+                        (data.instellingen?.vpb?.betaalmaandVolgendJaar ?? 8)
+                    )
+                  : null;
+                return {
+                  betaaljaar: j.jaar,
+                  betreftJaar: j.jaar - 1,
+                  maand: maand?.maand ?? null,
+                  bedrag:
+                    maand?.vpbKasMutatie == null
+                      ? null
+                      : Math.abs(maand.vpbKasMutatie),
+                };
+              })
+            : [],
+        },
         data,
       },
       { headers: { "Cache-Control": "no-store" } }
@@ -70,7 +102,7 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error("[/api/admin/cashflow/meerjaren] error:", error);
     return NextResponse.json(
-      { success: false, fase: "4O-A", error: String(error) },
+      { success: false, fase: "4O-B", error: String(error) },
       { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
