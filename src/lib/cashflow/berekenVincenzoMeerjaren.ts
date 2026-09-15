@@ -76,6 +76,7 @@ type PersoneelsUurkostenModel = {
   gemiddeldeAllInUurkosten: number | null;
   werkgeverslastenPct: number;
   uitgeslotenManagers: string[];
+  selectieRol: string;
   ontbrekendeTarieven: number;
 };
 
@@ -88,6 +89,7 @@ async function getGemiddeldePersoneelsUurkosten(): Promise<PersoneelsUurkostenMo
         EXTRACT(YEAR FROM age(CURRENT_DATE, geboortedatum::date))::int AS leeftijd
       FROM medewerkers
       WHERE geboortedatum IS NOT NULL
+        AND lower(trim(COALESCE(rol, ''))) = 'medewerker'
         AND lower(trim(naam)) <> lower('Robert Anggono')
     )
     SELECT
@@ -147,6 +149,7 @@ async function getGemiddeldePersoneelsUurkosten(): Promise<PersoneelsUurkostenMo
         : null,
     werkgeverslastenPct: WERKGEVERSLASTEN_PCT,
     uitgeslotenManagers: ["Robert Anggono"],
+    selectieRol: "medewerker",
     ontbrekendeTarieven,
   };
 }
