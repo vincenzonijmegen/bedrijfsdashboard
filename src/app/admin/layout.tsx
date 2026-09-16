@@ -69,8 +69,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-4">
-      <div className="flex justify-between items-center">
+    <>
+      <style jsx global>{`
+        @media print {
+          .admin-no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
+
+      <div className="p-6 max-w-5xl mx-auto space-y-4">
+      <div className="admin-no-print flex justify-between items-center">
         <Link
           href="/admin"
           className="inline-flex items-center text-sm text-blue-600 hover:underline gap-1"
@@ -100,11 +109,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </button>
       </div>
 
-      <p className="text-sm text-gray-600">Welkom {naam ? naam : "..."}</p>
+      <p className="admin-no-print text-sm text-gray-600">Welkom {naam ? naam : "..."}</p>
 
-      {!hideOnAdminHome && <Breadcrumbs />}
+      {!hideOnAdminHome && (
+        <div className="admin-no-print">
+          <Breadcrumbs />
+        </div>
+      )}
 
       <div>{children}</div>
-    </div>
+      </div>
+    </>
   );
 }
