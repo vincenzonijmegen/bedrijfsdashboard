@@ -197,6 +197,22 @@ export default function CashflowOverzichtPage() {
               </label>
 
               <Link
+                href={`/admin/cashflow/overzicht/print?entiteit=${entiteit}&tot=${totJaar}`}
+                target="_blank"
+                className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-100"
+              >
+                Print/PDF deze entiteit
+              </Link>
+
+              <Link
+                href={`/admin/cashflow/overzicht/print?entiteit=alle&tot=${totJaar}`}
+                target="_blank"
+                className="rounded-lg border border-emerald-300 bg-white px-3 py-2 text-sm font-medium text-emerald-800 hover:bg-emerald-50"
+              >
+                Print/PDF alle 3
+              </Link>
+
+              <Link
                 href="/admin/cashflow/dashboard"
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
