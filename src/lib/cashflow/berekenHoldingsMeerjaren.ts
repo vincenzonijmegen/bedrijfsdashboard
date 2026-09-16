@@ -75,6 +75,19 @@ function isFiscaalNeutraleHoldingCategorie(category: string) {
   ]).has(category);
 }
 
+function isPayrollTaxCategory(category: string) {
+  return new Set([
+    "dga_loonheffing",
+    "werknemer_loonaangifte",
+  ]).has(category);
+}
+
+function nextMonth(year: number, month: number) {
+  return month === 12
+    ? { year: year + 1, month: 1 }
+    : { year, month: month + 1 };
+}
+
 type Stream = {
   id: number;
   name: string;
@@ -956,6 +969,12 @@ async function calculateHolding(entityName: string, toYear: number) {
       for (const line of md.lines) {
         if (isFiscaalNeutraleHoldingCategorie(line.category)) continue;
 
+        // Loonheffing/loonaangifte wordt een maand ná de loonmaand betaald.
+        // Voor VPB hoort die last fiscaal bij de loonmaand en dus niet bij de
+        // kasmaand waarin de aangifte wordt betaald. Die categorieën worden
+        // hieronder afzonderlijk op toerekeningsbasis opgebouwd.
+        if (isPayrollTaxCategory(line.category)) continue;
+
         if (line.amount == null) {
           complete = false;
           continue;
@@ -987,6 +1006,40 @@ async function calculateHolding(entityName: string, toYear: number) {
         deductibleCosts = round2(
           deductibleCosts + Math.max(0, cashAmount - deductibleVat)
         );
+      }
+    }
+
+    // Loonheffing en werknemers-loonaangifte worden in de kasstroom in de
+    // betaalmaand opgenomen, maar fiscaal toegerekend aan de voorafgaande
+    // loonmaand. Dit voorkomt bijvoorbeeld dat de loonheffing over december
+    // pas in het volgende VPB-jaar als kosten terechtkomt.
+    for (const payrollStream of streams.filter((stream) =>
+      isPayrollTaxCategory(stream.category)
+    )) {
+      for (let salaryMonth = 1; salaryMonth <= 12; salaryMonth++) {
+        const payment = nextMonth(fiscalYear, salaryMonth);
+        const paymentDate = monthStart(payment.year, payment.month);
+
+        if (!isDefaultOccurrence(payrollStream, payment.year, payment.month)) {
+          continue;
+        }
+
+        const payrollRate = rateForDate(
+          rates,
+          payrollStream.id,
+          paymentDate
+        );
+        if (!payrollRate || payrollRate.amount == null) {
+          complete = false;
+          continue;
+        }
+
+        const payrollCash = toCashAmount(
+          payrollRate.amount,
+          payrollRate.vatPct,
+          payrollRate.isInclVat
+        );
+        deductibleCosts = round2(deductibleCosts + payrollCash);
       }
     }
 
@@ -1106,7 +1159,7 @@ async function calculateHolding(entityName: string, toYear: number) {
       "Zodra dividend nodig is, wordt het bruto dividend berekend vanuit het gewenste netto bedrag na Box 2. Vincenzo B.V. stort dat bruto bedrag eerst naar de holding; de holding betaalt daarna privé en dividendbelasting. Het effectieve Box-2-percentage en het inhoudingspercentage moeten expliciet zijn geconfigureerd; ze worden niet hardcoded.",
       "Dividendbelasting is een voorheffing. Een eventuele aanvullende privé-Box-2-afrekening valt buiten de kasstroom van de holding, maar het veld netAfterBox2 bewaakt het gewenste netto privébedrag.",
       "Holding-BTW wordt alleen geblokkeerd door ontbrekende tarieven van BTW-relevante stromen; expliciet BTW-vrije stromen zoals DGA-loon, loonheffing, vrije ruimte en dividend blokkeren de BTW-berekening niet.",
-      `Holding-VPB wordt als planningsbedrag berekend tegen de ${VPB_TARIEFBRON_JAAR}-tarieven (${VPB_LAAG_PCT}% t/m €${VPB_DREMPEL.toLocaleString("nl-NL")}, daarboven ${VPB_HOOG_PCT}%) en als kasuitgave geboekt in augustus van het volgende jaar. Ontvangen dividend uit Vincenzo B.V. en privé-uitkeringen tellen niet mee in de VPB-grondslag.`,
+      `Holding-VPB wordt als planningsbedrag berekend tegen de ${VPB_TARIEFBRON_JAAR}-tarieven (${VPB_LAAG_PCT}% t/m €${VPB_DREMPEL.toLocaleString("nl-NL")}, daarboven ${VPB_HOOG_PCT}%) en als kasuitgave geboekt in augustus van het volgende jaar. Loonheffing en werknemers-loonaangifte worden fiscaal toegerekend aan de voorafgaande loonmaand. Ontvangen dividend uit Vincenzo B.V. en privé-uitkeringen tellen niet mee in de VPB-grondslag.`,
     ],
     vpbPlanning: {
       tariffSourceYear: VPB_TARIEFBRON_JAAR,
