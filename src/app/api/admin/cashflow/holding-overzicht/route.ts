@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
 
     if (!holding) {
       return NextResponse.json(
-        { success: false, fase: "4T-A", error: `${naam} ontbreekt in prognose` },
+        { success: false, fase: "4T-B", error: `${naam} ontbreekt in prognose` },
         { status: 404 }
       );
     }
@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          fase: "4T-A",
+          fase: "4T-B",
           error:
             holding.reason ||
             "Holdingprognose is nog niet volledig beschikbaar",
@@ -161,6 +161,7 @@ export async function GET(req: NextRequest) {
       aansluitingOk: Math.abs(verschil) < 0.01,
       aantalRegels: regels.length,
       btwRegels: regels.filter((regel) => regel.categorie === "btw").length,
+      vpbRegels: regels.filter((regel) => regel.categorie === "vpb").length,
       dividendRegels: regels.filter((regel) =>
         [
           "dividend",
@@ -173,7 +174,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        fase: "4T-A",
+        fase: "4T-B",
         entiteit: entiteitKey,
         entiteitNaam: holding.entity,
         peildatum: holding.startDate,
@@ -181,16 +182,17 @@ export async function GET(req: NextRequest) {
         startsaldo: round2(Number(holding.startBalance)),
         eindsaldo: eindsaldoOverzicht,
         minimumKasbuffer: holding.minimumBuffer,
+        vpbPlanning: holding.vpbPlanning,
         regels,
         controle,
-        controle4TA: controle,
+        controle4TB: controle,
       },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (error) {
     console.error("[/api/admin/cashflow/holding-overzicht] error:", error);
     return NextResponse.json(
-      { success: false, fase: "4T-A", error: String(error) },
+      { success: false, fase: "4T-B", error: String(error) },
       {
         status: 500,
         headers: { "Cache-Control": "no-store" },

@@ -47,6 +47,34 @@ function vatPart(cashAmount: number, vatPct: number, isInclVat: boolean, sourceA
   return round2(sourceAmount * vatPct / 100);
 }
 
+const VPB_TARIEFBRON_JAAR = 2026;
+const VPB_DREMPEL = 200000;
+const VPB_LAAG_PCT = 19;
+const VPB_HOOG_PCT = 25.8;
+const VPB_BETAALMAAND_VOLGEND_JAAR = 8;
+
+function berekenVpb(belastbaarBedrag: number) {
+  const grondslag = round2(Math.max(0, belastbaarBedrag));
+  const laag = Math.min(grondslag, VPB_DREMPEL);
+  const hoog = Math.max(0, grondslag - VPB_DREMPEL);
+  return round2(
+    laag * (VPB_LAAG_PCT / 100) +
+      hoog * (VPB_HOOG_PCT / 100)
+  );
+}
+
+function isFiscaalNeutraleHoldingCategorie(category: string) {
+  return new Set([
+    "btw",
+    "vpb",
+    "vrije_reserve",
+    "aflossing_vincenzo_vrije_ruimte",
+    "dividend_vincenzo_holding",
+    "dividend",
+    "dividendbelasting",
+  ]).has(category);
+}
+
 type Stream = {
   id: number;
   name: string;
@@ -534,6 +562,10 @@ async function calculateHolding(entityName: string, toYear: number) {
     getIncidentals(entity.id, commonDate, toYear),
   ]);
   const streamById = new Map(streams.map((s) => [s.id, s]));
+  const incidentalById = new Map<number, Incidental>();
+  for (const items of incidentals.values()) {
+    for (const incidental of items) incidentalById.set(incidental.id, incidental);
+  }
   const linkedTaxes = new Map<number, Stream[]>();
   for (const s of streams.filter((x) => x.sourceStreamId != null && x.calculation === "percentage_van_bron")) {
     if (!linkedTaxes.has(s.sourceStreamId!)) linkedTaxes.set(s.sourceStreamId!, []);
@@ -894,6 +926,107 @@ async function calculateHolding(entityName: string, toYear: number) {
     }
   }
 
+  const vpbPlanning: Array<{
+    year: number;
+    taxableIncome: number;
+    deductibleCosts: number;
+    taxableBase: number;
+    estimatedVpb: number;
+    paymentYear: number;
+    paymentMonth: number;
+    complete: boolean;
+  }> = [];
+
+  // VPB van de holding is een afzonderlijke kasstroom. Voor de fiscale
+  // planningsgrondslag tellen managementfees en andere gewone opbrengsten
+  // exclusief omzet-btw mee. Gewone holdingkosten worden meegenomen na
+  // aftrekbare voorbelasting. Rekening-courant/vrije ruimte, ontvangen
+  // deelnemingsdividend uit Vincenzo B.V., dividend naar privé,
+  // dividendbelasting, btw-afdrachten en VPB zelf zijn geen onderdeel van
+  // deze winstgrondslag.
+  for (let fiscalYear = fromYear; fiscalYear <= toYear; fiscalYear++) {
+    let taxableIncome = 0;
+    let deductibleCosts = 0;
+    let complete = true;
+
+    for (let month = 1; month <= 12; month++) {
+      const md = ensureMonth(fiscalYear, month);
+      const date = monthStart(fiscalYear, month);
+
+      for (const line of md.lines) {
+        if (isFiscaalNeutraleHoldingCategorie(line.category)) continue;
+
+        if (line.amount == null) {
+          complete = false;
+          continue;
+        }
+
+        const cashAmount = round2(Number(line.amount));
+        if (cashAmount <= 0) continue;
+
+        if (line.direction === "in") {
+          taxableIncome = round2(
+            taxableIncome + Math.max(0, cashAmount - Number(line.vatPart ?? 0))
+          );
+          continue;
+        }
+
+        let deductibleVat = 0;
+        if (line.streamId > 0) {
+          const rate = rateForDate(rates, line.streamId, date);
+          deductibleVat = round2(
+            Number(line.vatPart ?? 0) * ((rate?.deductiblePct ?? 0) / 100)
+          );
+        } else if (line.streamId < 0) {
+          const incidental = incidentalById.get(Math.abs(line.streamId));
+          deductibleVat = round2(
+            Number(line.vatPart ?? 0) * ((incidental?.deductiblePct ?? 0) / 100)
+          );
+        }
+
+        deductibleCosts = round2(
+          deductibleCosts + Math.max(0, cashAmount - deductibleVat)
+        );
+      }
+    }
+
+    const taxableBase = complete
+      ? round2(Math.max(0, taxableIncome - deductibleCosts))
+      : 0;
+    const estimatedVpb = complete ? berekenVpb(taxableBase) : 0;
+    const paymentYear = fiscalYear + 1;
+
+    vpbPlanning.push({
+      year: fiscalYear,
+      taxableIncome,
+      deductibleCosts,
+      taxableBase,
+      estimatedVpb,
+      paymentYear,
+      paymentMonth: VPB_BETAALMAAND_VOLGEND_JAAR,
+      complete,
+    });
+
+    if (complete && estimatedVpb > 0 && paymentYear <= toYear) {
+      const paymentMonth = ensureMonth(
+        paymentYear,
+        VPB_BETAALMAAND_VOLGEND_JAAR
+      );
+      paymentMonth.expenses = round2(
+        paymentMonth.expenses + estimatedVpb
+      );
+      paymentMonth.lines.push({
+        streamId: 0,
+        name: `VPB ${fiscalYear}`,
+        category: "vpb",
+        direction: "uit",
+        amount: estimatedVpb,
+        vatPart: 0,
+        source: "model_holding",
+      });
+    }
+  }
+
   const monthsOutput: Array<{
     year: number;
     month: number;
@@ -973,7 +1106,16 @@ async function calculateHolding(entityName: string, toYear: number) {
       "Zodra dividend nodig is, wordt het bruto dividend berekend vanuit het gewenste netto bedrag na Box 2. Vincenzo B.V. stort dat bruto bedrag eerst naar de holding; de holding betaalt daarna privé en dividendbelasting. Het effectieve Box-2-percentage en het inhoudingspercentage moeten expliciet zijn geconfigureerd; ze worden niet hardcoded.",
       "Dividendbelasting is een voorheffing. Een eventuele aanvullende privé-Box-2-afrekening valt buiten de kasstroom van de holding, maar het veld netAfterBox2 bewaakt het gewenste netto privébedrag.",
       "Holding-BTW wordt alleen geblokkeerd door ontbrekende tarieven van BTW-relevante stromen; expliciet BTW-vrije stromen zoals DGA-loon, loonheffing, vrije ruimte en dividend blokkeren de BTW-berekening niet.",
+      `Holding-VPB wordt als planningsbedrag berekend tegen de ${VPB_TARIEFBRON_JAAR}-tarieven (${VPB_LAAG_PCT}% t/m €${VPB_DREMPEL.toLocaleString("nl-NL")}, daarboven ${VPB_HOOG_PCT}%) en als kasuitgave geboekt in augustus van het volgende jaar. Ontvangen dividend uit Vincenzo B.V. en privé-uitkeringen tellen niet mee in de VPB-grondslag.`,
     ],
+    vpbPlanning: {
+      tariffSourceYear: VPB_TARIEFBRON_JAAR,
+      threshold: VPB_DREMPEL,
+      lowPct: VPB_LAAG_PCT,
+      highPct: VPB_HOOG_PCT,
+      paymentMonthFollowingYear: VPB_BETAALMAAND_VOLGEND_JAAR,
+      years: vpbPlanning,
+    },
     vatQuarters,
     months: monthsOutput,
     lowestBalance: complete ? lowestBalance : null,
