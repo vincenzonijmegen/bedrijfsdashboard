@@ -171,6 +171,124 @@ type Box2Rate = {
   effectivePct: number;
 };
 
+export async function ensureIndependentFreeRoomTransferStreams() {
+  const client = await db.getClient();
+  try {
+    await client.query("BEGIN");
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtext('cashflow_vrije_ruimte_overboekingen_v1'))"
+    );
+
+    const entityResult = await client.query(`
+      SELECT id, naam
+      FROM cashflow_entiteiten
+      WHERE naam = ANY($1::text[])
+    `, [[
+      "IJssalon Vincenzo B.V.",
+      "Rekka Holding B.V.",
+      "Eetje Pans Holding B.V.",
+    ]]);
+
+    const entityIds = new Map<string, number>(
+      (entityResult.rows ?? []).map((row) => [String(row.naam), Number(row.id)] as [string, number])
+    );
+    const vincenzoId = entityIds.get("IJssalon Vincenzo B.V.");
+    if (!vincenzoId) throw new Error("IJssalon Vincenzo B.V. ontbreekt in cashflow_entiteiten");
+
+    const targets = [
+      { holding: "Rekka Holding B.V.", name: "Overboeking Vincenzo → Rekka", initialAmount: 12000 },
+      { holding: "Eetje Pans Holding B.V.", name: "Overboeking Vincenzo → Eetje Pans", initialAmount: 12000 },
+    ];
+
+    for (const target of targets) {
+      const holdingId = entityIds.get(target.holding);
+      if (!holdingId) throw new Error(`${target.holding} ontbreekt in cashflow_entiteiten`);
+
+      let streamResult = await client.query(`
+        SELECT id
+        FROM cashflow_stromen
+        WHERE categorie = 'aflossing_vincenzo_vrije_ruimte'
+          AND van_entiteit_id = $1
+          AND naar_entiteit_id = $2
+        ORDER BY id
+        LIMIT 1
+      `, [vincenzoId, holdingId]);
+
+      if (!streamResult.rows?.[0]?.id) {
+        streamResult = await client.query(`
+          INSERT INTO cashflow_stromen (
+            naam,
+            categorie,
+            van_entiteit_id,
+            naar_entiteit_id,
+            tegenpartij_naam,
+            gedrag,
+            uitstelbaar,
+            frequentie,
+            startdatum,
+            einddatum,
+            actief,
+            bron_stroom_id,
+            berekeningswijze,
+            fiscale_behandeling
+          ) VALUES (
+            $1,
+            'aflossing_vincenzo_vrije_ruimte',
+            $2,
+            $3,
+            NULL,
+            'vast',
+            false,
+            'halfjaarlijks',
+            DATE '2027-01-01',
+            NULL,
+            true,
+            NULL,
+            'vast_bedrag',
+            'geen'
+          )
+          RETURNING id
+        `, [target.name, vincenzoId, holdingId]);
+      }
+
+      const streamId = Number(streamResult.rows[0].id);
+      await client.query(`
+        INSERT INTO cashflow_stroom_bedragen (
+          stroom_id,
+          geldig_vanaf,
+          geldig_tot,
+          bedrag,
+          percentage_van_bron,
+          btw_percentage,
+          btw_aftrekbaar_percentage,
+          bedrag_is_inclusief_btw
+        )
+        SELECT
+          $1,
+          DATE '2027-01-01',
+          NULL,
+          $2,
+          NULL,
+          0,
+          0,
+          true
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM cashflow_stroom_bedragen
+          WHERE stroom_id = $1
+        )
+      `, [streamId, target.initialAmount]);
+    }
+
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function getEntity(name: string) {
   const res = await db.query(`
     SELECT e.id, e.naam, i.minimum_kasbuffer
@@ -419,6 +537,7 @@ function isExplicitlyVatFreeStream(stream: Stream) {
     "werknemer_netto_loon",
     "werknemer_loonaangifte",
     "vrije_reserve",
+    "aflossing_vincenzo_vrije_ruimte",
     "dividend",
     "dividendbelasting",
   ]).has(stream.category);
@@ -723,8 +842,10 @@ async function calculateHolding(entityName: string, toYear: number) {
         const dividendNetTarget = round2(Math.max(0, desiredNet - freePart));
 
         if (freePart > 0) {
-          // Een opname uit de vrije ruimte is een privé-uitgave van de holding.
-          // Deze opname staat los van geldstromen vanuit Vincenzo B.V.
+          // De privé-opname en de overboeking vanuit Vincenzo B.V. zijn
+          // zelfstandige geldstromen. Alleen de privé-opname verlaagt de
+          // resterende vrije ruimte; de afzonderlijke vaste stroom vanuit
+          // Vincenzo wordt hierboven als normale ontvangst verwerkt.
           d.expenses = round2(d.expenses + freePart);
           remainingFreeRoom = round2(remainingFreeRoom - freePart);
           d.lines.push({
@@ -1142,7 +1263,7 @@ async function calculateHolding(entityName: string, toYear: number) {
     },
     missingConfiguration: allMissing,
     warnings: [
-      "De halfjaarlijkse privé-opname gebruikt eerst de resterende rekening-courant/vrije ruimte van de holding. Dit deel staat los van geldstromen vanuit Vincenzo B.V.; alleen het resterende deel wordt dividend.",
+      "De halfjaarlijkse privé-opname en de halfjaarlijkse overboeking vanuit Vincenzo B.V. zijn zelfstandige geldstromen. Alleen de privé-opname verlaagt de resterende rekening-courant/vrije ruimte; het eventuele restant van het privédoel wordt dividend.",
       "Zodra dividend nodig is, wordt het bruto dividend berekend vanuit het gewenste netto bedrag na Box 2. Vincenzo B.V. stort dat bruto bedrag eerst naar de holding; de holding betaalt daarna privé en dividendbelasting. Het effectieve Box-2-percentage en het inhoudingspercentage moeten expliciet zijn geconfigureerd; ze worden niet hardcoded.",
       "Dividendbelasting is een voorheffing. Een eventuele aanvullende privé-Box-2-afrekening valt buiten de kasstroom van de holding, maar het veld netAfterBox2 bewaakt het gewenste netto privébedrag.",
       "Holding-BTW wordt alleen geblokkeerd door ontbrekende tarieven van BTW-relevante stromen; expliciet BTW-vrije stromen zoals DGA-loon, loonheffing, vrije ruimte en dividend blokkeren de BTW-berekening niet.",
@@ -1240,6 +1361,8 @@ export async function berekenVrijeRuimteAflossingen(
 }
 
 export async function berekenHoldingsMeerjaren(toYear: number) {
+  await ensureIndependentFreeRoomTransferStreams();
+
   const currentYear = new Date().getFullYear();
   if (!Number.isInteger(toYear) || toYear < currentYear || toYear > currentYear + 10) {
     throw new Error(`totJaar moet tussen ${currentYear} en ${currentYear + 10} liggen`);

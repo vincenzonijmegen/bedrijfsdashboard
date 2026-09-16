@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { ensureIndependentFreeRoomTransferStreams } from "@/lib/cashflow/berekenHoldingsMeerjaren";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,6 +13,8 @@ const toNumberOrNull = (v: unknown) => {
 };
 
 async function getData() {
+  await ensureIndependentFreeRoomTransferStreams();
+
   const [entiteiten, rekeningen, stromen, bedragen] = await Promise.all([
     db.query(`
       SELECT e.id, e.naam, e.type, e.actief,
