@@ -723,21 +723,8 @@ async function calculateHolding(entityName: string, toYear: number) {
         const dividendNetTarget = round2(Math.max(0, desiredNet - freePart));
 
         if (freePart > 0) {
-          // De vrije ruimte is een schuld van Vincenzo B.V. aan de holding.
-          // Eerst lost Vincenzo dit bedrag af aan de holding; daarna gaat
-          // hetzelfde bedrag vanuit de holding naar privé. Voor de holding is
-          // dit deel dus kasneutraal, voor Vincenzo is het een echte uitgave.
-          d.income = round2(d.income + freePart);
-          d.lines.push({
-            streamId: withdrawalStream.id,
-            name: `Aflossing schuld Vincenzo B.V. aan ${entity.name}`,
-            category: "aflossing_vincenzo_vrije_ruimte",
-            direction: "in",
-            amount: freePart,
-            vatPart: 0,
-            source: `gekoppeld aan ${withdrawalStream.name}`,
-          });
-
+          // Een opname uit de vrije ruimte is een privé-uitgave van de holding.
+          // Deze opname staat los van geldstromen vanuit Vincenzo B.V.
           d.expenses = round2(d.expenses + freePart);
           remainingFreeRoom = round2(remainingFreeRoom - freePart);
           d.lines.push({
@@ -1155,7 +1142,7 @@ async function calculateHolding(entityName: string, toYear: number) {
     },
     missingConfiguration: allMissing,
     warnings: [
-      "De halfjaarlijkse privé-opname gebruikt eerst de resterende rekening-courant/vrije ruimte. Dat deel wordt eerst door Vincenzo B.V. als aflossing van haar schuld aan de holding betaald en daarna kasneutraal doorgestort naar privé; alleen het resterende deel wordt dividend.",
+      "De halfjaarlijkse privé-opname gebruikt eerst de resterende rekening-courant/vrije ruimte van de holding. Dit deel staat los van geldstromen vanuit Vincenzo B.V.; alleen het resterende deel wordt dividend.",
       "Zodra dividend nodig is, wordt het bruto dividend berekend vanuit het gewenste netto bedrag na Box 2. Vincenzo B.V. stort dat bruto bedrag eerst naar de holding; de holding betaalt daarna privé en dividendbelasting. Het effectieve Box-2-percentage en het inhoudingspercentage moeten expliciet zijn geconfigureerd; ze worden niet hardcoded.",
       "Dividendbelasting is een voorheffing. Een eventuele aanvullende privé-Box-2-afrekening valt buiten de kasstroom van de holding, maar het veld netAfterBox2 bewaakt het gewenste netto privébedrag.",
       "Holding-BTW wordt alleen geblokkeerd door ontbrekende tarieven van BTW-relevante stromen; expliciet BTW-vrije stromen zoals DGA-loon, loonheffing, vrije ruimte en dividend blokkeren de BTW-berekening niet.",
