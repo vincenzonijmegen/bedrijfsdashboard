@@ -126,6 +126,120 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
+export async function DELETE(req: NextRequest) {
+  try {
+    const body = await req.json();
+    if (String(body?.type) !== "bedrag") {
+      return NextResponse.json(
+        { success: false, error: "Onbekend verwijdertype" },
+        { status: 400 }
+      );
+    }
+
+    const id = Number(body.id);
+    if (!Number.isInteger(id)) throw new Error("Ongeldige tariefregel");
+
+    const client = await db.getClient();
+    try {
+      await client.query("BEGIN");
+
+      const target = await client.query(`
+        SELECT id, stroom_id, geldig_vanaf, bedrag, percentage_van_bron
+        FROM cashflow_stroom_bedragen
+        WHERE id = $1
+        FOR UPDATE
+      `, [id]);
+
+      if (!target.rowCount) throw new Error("Tariefregel niet gevonden");
+
+      const row = target.rows[0];
+      const stroomId = Number(row.stroom_id);
+      const isFixedAmount = row.bedrag !== null && row.percentage_van_bron === null;
+
+      if (!isFixedAmount) {
+        throw new Error("Alleen vaste bedragstarieven kunnen via dit scherm worden verwijderd");
+      }
+
+      const remaining = await client.query(`
+        SELECT COUNT(*)::int AS aantal
+        FROM cashflow_stroom_bedragen
+        WHERE stroom_id = $1
+          AND id <> $2
+          AND bedrag IS NOT NULL
+          AND percentage_van_bron IS NULL
+      `, [stroomId, id]);
+
+      if (Number(remaining.rows[0]?.aantal || 0) < 1) {
+        throw new Error(
+          "De laatste tariefregel van een geldstroom kan niet worden verwijderd. Voeg eerst een vervangend tarief toe."
+        );
+      }
+
+      const previous = await client.query(`
+        SELECT id
+        FROM cashflow_stroom_bedragen
+        WHERE stroom_id = $1
+          AND geldig_vanaf < $2::date
+          AND bedrag IS NOT NULL
+          AND percentage_van_bron IS NULL
+        ORDER BY geldig_vanaf DESC
+        LIMIT 1
+        FOR UPDATE
+      `, [stroomId, row.geldig_vanaf]);
+
+      const next = await client.query(`
+        SELECT id, geldig_vanaf
+        FROM cashflow_stroom_bedragen
+        WHERE stroom_id = $1
+          AND geldig_vanaf > $2::date
+          AND bedrag IS NOT NULL
+          AND percentage_van_bron IS NULL
+        ORDER BY geldig_vanaf
+        LIMIT 1
+        FOR UPDATE
+      `, [stroomId, row.geldig_vanaf]);
+
+      await client.query(
+        "DELETE FROM cashflow_stroom_bedragen WHERE id = $1",
+        [id]
+      );
+
+      if (previous.rowCount) {
+        const previousId = Number(previous.rows[0].id);
+        if (next.rowCount) {
+          await client.query(`
+            UPDATE cashflow_stroom_bedragen
+            SET geldig_tot = ($2::date - INTERVAL '1 day')::date,
+                bijgewerkt_op = now()
+            WHERE id = $1
+          `, [previousId, next.rows[0].geldig_vanaf]);
+        } else {
+          await client.query(`
+            UPDATE cashflow_stroom_bedragen
+            SET geldig_tot = NULL,
+                bijgewerkt_op = now()
+            WHERE id = $1
+          `, [previousId]);
+        }
+      }
+
+      await client.query("COMMIT");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      client.release();
+    }
+
+    return NextResponse.json({ success: true, data: await getData() });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: String(error) },
+      { status: 400 }
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();

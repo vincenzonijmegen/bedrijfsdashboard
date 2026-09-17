@@ -106,6 +106,7 @@ export default function CashflowTarievenPage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -218,6 +219,64 @@ export default function CashflowTarievenPage() {
     });
     setMessage(null);
     setError(null);
+  }
+
+  async function deleteTariff(row: Tariff) {
+    if (!selectedStream) return;
+
+    if (history.length <= 1) {
+      setError(
+        "De laatste tariefregel van een geldstroom kan niet worden verwijderd. Voeg eerst een vervangend tarief toe."
+      );
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Tarief van ${selectedStream.naam} vanaf ${formatDate(row.geldig_vanaf)} (${money(row.bedrag)}) verwijderen? De aansluitende tariefperiode wordt automatisch hersteld. Dit werkt direct door in de basisprognose.`
+      )
+    ) {
+      return;
+    }
+
+    setDeletingId(row.id);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/admin/cashflow", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "bedrag",
+          id: row.id,
+        }),
+      });
+
+      const json = (await res.json()) as CashflowResponse;
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || `Verwijderen mislukt (${res.status})`);
+      }
+
+      if (dateOnly(row.geldig_vanaf) === form.validFrom) {
+        setForm({
+          validFrom: "",
+          amount: "",
+          vat: "0",
+          deductible: "0",
+          inclusive: true,
+        });
+      }
+
+      setMessage(
+        `${selectedStream.naam}: tarief vanaf ${formatDate(row.geldig_vanaf)} is verwijderd.`
+      );
+      await load(selectedStream.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Tarief verwijderen mislukt.");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   async function save(event: FormEvent) {
@@ -459,13 +518,29 @@ export default function CashflowTarievenPage() {
                                 {pct(row.btw_aftrekbaar_percentage)}
                               </td>
                               <td className="py-3 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => editTariff(row)}
-                                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                                >
-                                  Wijzig dit tarief
-                                </button>
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => editTariff(row)}
+                                    disabled={deletingId !== null}
+                                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    Wijzig dit tarief
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteTariff(row)}
+                                    disabled={deletingId !== null || history.length <= 1}
+                                    title={
+                                      history.length <= 1
+                                        ? "De laatste tariefregel kan niet worden verwijderd"
+                                        : "Verwijder deze tariefregel"
+                                    }
+                                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                  >
+                                    {deletingId === row.id ? "Verwijderen…" : "Verwijder"}
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
