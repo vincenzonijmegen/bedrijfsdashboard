@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { dbRapportage as db } from "@/lib/dbRapportage";
 
 export type PrognoseVerdelingRegel = {
   maand: number;
@@ -14,12 +14,12 @@ export type PrognoseVerdelingModel = {
 /**
  * Centrale maandverdeling voor omzetprognoses.
  *
- * Dit is bewust dezelfde bewezen querylogica als de bestaande
- * /api/prognose/verdeling: alle volledig afgesloten omzetjaren vanaf 2022.
- * De parameter blijft bestaan voor backwards compatibility met de
- * cashflow-/rapportage-aanroepen, maar de bronset wordt centraal bepaald
- * op basis van CURRENT_DATE zodat alle gebruikers exact dezelfde verdeling
- * krijgen.
+ * Gebruikt bewust dezelfde querylogica als de oorspronkelijke,
+ * werkende /api/prognose/verdeling-route: alle volledig afgesloten
+ * omzetjaren vanaf 2022 tot het huidige jaar.
+ *
+ * Alle gebruikers (rapportage, cashflow en shiftprognose) delen deze
+ * functie, zodat de maandverdeling nog maar op één plek wordt bepaald.
  */
 export async function getPrognoseVerdeling(
   _doelJaar = new Date().getFullYear()
@@ -61,7 +61,7 @@ export async function getPrognoseVerdeling(
       COUNT(DISTINCT v.jaar) AS aantal_jaren
     FROM verdeling v
     GROUP BY v.maand
-    ORDER BY v.maand
+    ORDER BY v.maand;
   `);
 
   const bronJarenResult = await db.query(`
@@ -69,7 +69,7 @@ export async function getPrognoseVerdeling(
     FROM rapportage.omzet
     WHERE datum >= '2022-01-01'
       AND EXTRACT(YEAR FROM datum)::int < EXTRACT(YEAR FROM CURRENT_DATE)::int
-    ORDER BY jaar
+    ORDER BY jaar;
   `);
 
   return {
@@ -83,9 +83,9 @@ export async function getPrognoseVerdeling(
 }
 
 /**
- * Gebruikers van een seizoensmodel kunnen dezelfde centrale verdeling nemen
- * en die binnen hun actieve maanden normaliseren. De onderlinge verhouding
- * blijft exact die van /api/prognose/verdeling.
+ * Normaliseert de centrale verdeling binnen de actieve maanden van een
+ * seizoensmodel. De onderlinge verhouding blijft gelijk aan
+ * /api/prognose/verdeling.
  */
 export function normaliseerPrognoseVerdeling(
   verdeling: PrognoseVerdelingRegel[],
