@@ -686,6 +686,13 @@ async function calculateHolding(entityName: string, toYear: number) {
     ? null
     : round2(Math.max(0, freeRoom.originalCrediting - freeRoom.alreadyWithdrawn));
   const openingFreeRoom = remainingFreeRoom;
+
+  // De schuld/aflossingsruimte van Vincenzo B.V. naar de holding start op
+  // dezelfde actuele peildatumstand, maar wordt daarna VOLLEDIG los van de
+  // privé-opnames bijgehouden. Een overboeking van Vincenzo verlaagt dus
+  // alleen deze teller; een privé-opname verlaagt alleen remainingFreeRoom.
+  let remainingVincenzoRepaymentRoom = openingFreeRoom;
+
   let freeRoomExhaustedOn: string | null = remainingFreeRoom === 0 && commonDate ? commonDate : null;
 
   const fromYear = commonDate ? Number(commonDate.slice(0, 4)) : new Date().getFullYear();
@@ -742,6 +749,94 @@ async function calculateHolding(entityName: string, toYear: number) {
           continue;
         }
         const cash = toCashAmount(rate.amount, rate.vatPct, rate.isInclVat);
+
+        // De halfjaarlijkse stroom Vincenzo -> holding heeft een NETTO doel
+        // (standaard €12.000), maar de fiscale aard verandert zodra de
+        // resterende schuld/aflossingsruimte van Vincenzo is opgebruikt.
+        //
+        // Zolang er aflossingsruimte is: 1-op-1 aflossing.
+        // Bij de overgang: deels aflossing + deels bruto deelnemingsdividend.
+        // Daarna: volledig bruto deelnemingsdividend, zodat hetzelfde netto
+        // privédoel later uit de holding kan worden gefinancierd.
+        //
+        // Dit staat los van remainingFreeRoom: die teller wordt uitsluitend
+        // door daadwerkelijke privé-opnames uit de holding verlaagd.
+        if (
+          stream.category === "aflossing_vincenzo_vrije_ruimte" &&
+          stream.toEntityId === entity.id
+        ) {
+          if (remainingVincenzoRepaymentRoom == null) {
+            d.missing.push(freeRoomProblem ?? "Aflossingsruimte Vincenzo ontbreekt");
+            d.lines.push({
+              streamId: stream.id,
+              name: stream.name,
+              category: stream.category,
+              direction: "in",
+              amount: null,
+              vatPart: 0,
+              source: "tarief",
+            });
+            continue;
+          }
+
+          const repaymentPart = round2(
+            Math.min(remainingVincenzoRepaymentRoom, cash)
+          );
+          const dividendNetTarget = round2(Math.max(0, cash - repaymentPart));
+
+          if (repaymentPart > 0) {
+            d.income = round2(d.income + repaymentPart);
+            remainingVincenzoRepaymentRoom = round2(
+              remainingVincenzoRepaymentRoom - repaymentPart
+            );
+            d.lines.push({
+              streamId: stream.id,
+              name: `Aflossing schuld Vincenzo B.V. aan ${entity.name}`,
+              category: "aflossing_vincenzo_vrije_ruimte",
+              direction: "in",
+              amount: repaymentPart,
+              vatPart: 0,
+              source: "tarief",
+            });
+          }
+
+          if (dividendNetTarget > 0) {
+            const box2Rate = box2RateForDate(box2Rates, date);
+            if (!box2Rate) {
+              d.missing.push(`Box 2-tarief: ${entity.name}`);
+              d.lines.push({
+                streamId: stream.id,
+                name: `Dividenduitkering Vincenzo B.V. aan ${entity.name} (bruto te berekenen)`,
+                category: "dividend_vincenzo_holding",
+                direction: "in",
+                amount: null,
+                vatPart: 0,
+                source: "tarief",
+                netAfterBox2: dividendNetTarget,
+              });
+              continue;
+            }
+
+            const grossDividendFunding = round2(
+              dividendNetTarget / (1 - box2Rate.effectivePct / 100)
+            );
+            d.income = round2(d.income + grossDividendFunding);
+            d.lines.push({
+              streamId: stream.id,
+              name: `Dividenduitkering Vincenzo B.V. aan ${entity.name}`,
+              category: "dividend_vincenzo_holding",
+              direction: "in",
+              amount: grossDividendFunding,
+              vatPart: 0,
+              source: "tarief",
+              netAfterBox2: dividendNetTarget,
+              box2Percentage: box2Rate.effectivePct,
+            });
+          }
+
+          continue;
+        }
+
         const vat = vatPart(cash, rate.vatPct, rate.isInclVat, rate.amount);
         const incoming = stream.toEntityId === entity.id;
         if (incoming) {
@@ -919,22 +1014,10 @@ async function calculateHolding(entityName: string, toYear: number) {
         const withholding = round2(grossDividend * taxRate.sourcePercentage / 100);
         const cashToPrivate = round2(grossDividend - withholding);
 
-        // Zodra de vrije ruimte op is, wordt het bruto bedrag dat nodig is
-        // voor het netto privédoel eerst door Vincenzo B.V. als dividend aan
-        // de holding uitgekeerd. Daarna betaalt de holding het cashdeel aan
-        // privé en de dividendbelasting. Voor de holding is ook deze route
-        // kasneutraal; de echte kasuitstroom ligt bij Vincenzo B.V.
-        d.income = round2(d.income + grossDividend);
-        d.lines.push({
-          streamId: dividendStream.id,
-          name: `Dividenduitkering Vincenzo B.V. aan ${entity.name}`,
-          category: "dividend_vincenzo_holding",
-          direction: "in",
-          amount: grossDividend,
-          vatPart: 0,
-          source: `gekoppeld aan ${dividendStream.name}`,
-        });
-
+        // De financiering Vincenzo B.V. -> holding wordt hierboven als een
+        // zelfstandige halfjaarlijkse stroom berekend. Een privé-dividend mag
+        // daarom NOOIT nogmaals automatisch een ontvangst uit Vincenzo
+        // genereren; anders wordt dezelfde kasbehoefte dubbel gefinancierd.
         d.expenses = round2(d.expenses + grossDividend);
         d.lines.push({
           streamId: dividendStream.id,
@@ -1263,8 +1346,8 @@ async function calculateHolding(entityName: string, toYear: number) {
     },
     missingConfiguration: allMissing,
     warnings: [
-      "De halfjaarlijkse privé-opname en de halfjaarlijkse overboeking vanuit Vincenzo B.V. zijn zelfstandige geldstromen. Alleen de privé-opname verlaagt de resterende rekening-courant/vrije ruimte; het eventuele restant van het privédoel wordt dividend.",
-      "Zodra dividend nodig is, wordt het bruto dividend berekend vanuit het gewenste netto bedrag na Box 2. Vincenzo B.V. stort dat bruto bedrag eerst naar de holding; de holding betaalt daarna privé en dividendbelasting. Het effectieve Box-2-percentage en het inhoudingspercentage moeten expliciet zijn geconfigureerd; ze worden niet hardcoded.",
+      "De halfjaarlijkse privé-opname en de halfjaarlijkse overboeking vanuit Vincenzo B.V. zijn zelfstandige geldstromen en hebben ieder hun eigen restteller. Alleen de privé-opname verlaagt de resterende rekening-courant/vrije ruimte.",
+      "De halfjaarlijkse stroom Vincenzo B.V. naar de holding is eerst aflossing. Zodra de eigen aflossingsruimte van Vincenzo opraakt, wordt alleen het resterende deel van die termijn gebruteerd naar dividend; latere termijnen worden volledig gebruteerd. Een privé-dividend genereert geen tweede ontvangst uit Vincenzo.",
       "Dividendbelasting is een voorheffing. Een eventuele aanvullende privé-Box-2-afrekening valt buiten de kasstroom van de holding, maar het veld netAfterBox2 bewaakt het gewenste netto privébedrag.",
       "Holding-BTW wordt alleen geblokkeerd door ontbrekende tarieven van BTW-relevante stromen; expliciet BTW-vrije stromen zoals DGA-loon, loonheffing, vrije ruimte en dividend blokkeren de BTW-berekening niet.",
       `Holding-VPB wordt als planningsbedrag berekend tegen de ${VPB_TARIEFBRON_JAAR}-tarieven (${VPB_LAAG_PCT}% t/m €${VPB_DREMPEL.toLocaleString("nl-NL")}, daarboven ${VPB_HOOG_PCT}%) en als kasuitgave geboekt in augustus van het volgende jaar. Loonheffing en werknemers-loonaangifte worden fiscaal toegerekend aan de voorafgaande loonmaand. Ontvangen dividend uit Vincenzo B.V. en privé-uitkeringen tellen niet mee in de VPB-grondslag.`,
