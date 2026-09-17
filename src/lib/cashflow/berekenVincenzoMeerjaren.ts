@@ -624,6 +624,9 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
     );
   }
   waarschuwingen.push(
+    `Omzetverdeling gebruikt hetzelfde historische patroon als /api/prognose/verdeling: ${basis.omzetModel.historischeJaren} volledig afgesloten jaar/jaren vanaf 2022. De cashflowinstelling omzetgroei bepaalt alleen het totale jaarbedrag.`
+  );
+  waarschuwingen.push(
     `Overige reguliere uitgaven worden vanaf fase 4S-A jaarlijks geïndexeerd met ${OVERIGE_KOSTEN_INDEX_PCT}% ten opzichte van het ${huidigJaar}-maandprofiel. Vaste stromen met eigen tarieven vallen buiten deze indexatie.`
   );
 
@@ -666,6 +669,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       basisjaar: {
         jaar: huidigJaar,
         peildatum: basis.cashPositie.peildatum,
+        omzetModel: basis.omzetModel,
         prognoseGrens: basis.prognoseGrens,
         herijking: basisHerijking,
         startsaldo: basis.cashPositie.startsaldoTotaal,
@@ -685,6 +689,17 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
 
   const basisMaanden = new Map<number, (typeof basis.maanden)[number]>();
   for (const m of basis.maanden) basisMaanden.set(m.maand, m);
+
+  // De cashflow gebruikt dezelfde historische maandverdeling als
+  // /api/prognose/verdeling. Het basisjaar combineert werkelijkheid en
+  // prognose; toekomstige jaren groeien alleen het totale jaarbedrag en
+  // verdelen dat totaal daarna opnieuw volgens het historische patroon.
+  const omzetVerdeling = new Map<number, number>(
+    basis.omzetModel.verdeling.map((r) => [r.maand, r.percentage])
+  );
+  const basisJaarOmzet = round2(
+    basis.maanden.reduce((som, m) => som + Number(m.omzet || 0), 0)
+  );
 
   // 4O-B: ook voor het basisjaar ramen we VPB, zodat de eerste toekomstige
   // betaling (augustus van het volgende jaar) niet ontbreekt.
@@ -855,6 +870,8 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
     const omzetFactor = instellingen.omzetGroeiPct == null
       ? null
       : Math.pow(1 + instellingen.omzetGroeiPct / 100, jaar - huidigJaar);
+    const jaarOmzetDoel =
+      omzetFactor == null ? null : round2(basisJaarOmzet * omzetFactor);
     const loonFactor = instellingen.loonkostenGroeiPct == null
       ? null
       : Math.pow(1 + instellingen.loonkostenGroeiPct / 100, jaar - huidigJaar);
@@ -903,10 +920,11 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
 
       let omzet = 0;
       if (SEIZOEN_MAANDEN.includes(maand)) {
-        if (omzetFactor == null || !basisMaand) {
-          ontbrekend.push("omzetgroei/basisomzet");
+        const maandPct = omzetVerdeling.get(maand);
+        if (jaarOmzetDoel == null || maandPct == null) {
+          ontbrekend.push("omzetgroei/historische maandverdeling");
         } else {
-          omzet = round2(Number(basisMaand.omzet || 0) * omzetFactor);
+          omzet = round2(jaarOmzetDoel * maandPct);
         }
       }
 
@@ -1433,6 +1451,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
     basisjaar: {
       jaar: huidigJaar,
       peildatum: basis.cashPositie.peildatum,
+      omzetModel: basis.omzetModel,
       prognoseGrens: basis.prognoseGrens,
       herijking: basisHerijking,
       startsaldo: basis.cashPositie.startsaldoTotaal,

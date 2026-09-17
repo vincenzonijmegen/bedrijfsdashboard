@@ -184,25 +184,46 @@ async function getOmzetBasis(jaar: number, groeiPct: number) {
        WHERE EXTRACT(YEAR FROM datum)::int = $1`,
       [jaar - 1]
     ),
+    // Zelfde historische maandverdeling als /api/prognose/verdeling:
+    // alle volledig afgesloten jaren vanaf 2022.
     db.query(`
-      WITH bron AS (
-        SELECT EXTRACT(YEAR FROM datum)::int AS yr,
-               EXTRACT(MONTH FROM datum)::int AS m,
-               (aantal * eenheidsprijs) AS omz
+      WITH geldige_jaren AS (
+        SELECT DISTINCT EXTRACT(YEAR FROM datum)::int AS jaar
         FROM rapportage.omzet
-        WHERE EXTRACT(YEAR FROM datum)::int BETWEEN 2022 AND 2024
-          AND EXTRACT(MONTH FROM datum)::int BETWEEN 3 AND 9
-      ), per_maand AS (
-        SELECT yr, m, SUM(omz) AS omz FROM bron GROUP BY 1,2
-      ), per_jaar AS (
-        SELECT yr, SUM(omz) AS jaar_omz FROM per_maand GROUP BY 1
+        WHERE datum >= '2022-01-01'
+          AND EXTRACT(YEAR FROM datum)::int < EXTRACT(YEAR FROM CURRENT_DATE)::int
+      ),
+      maandomzet AS (
+        SELECT
+          EXTRACT(YEAR FROM datum)::int AS jaar,
+          EXTRACT(MONTH FROM datum)::int AS maand,
+          SUM(aantal * eenheidsprijs) AS omzet_maand
+        FROM rapportage.omzet
+        WHERE EXTRACT(YEAR FROM datum)::int IN (SELECT jaar FROM geldige_jaren)
+        GROUP BY jaar, maand
+      ),
+      jaaromzet AS (
+        SELECT
+          jaar,
+          SUM(omzet_maand) AS omzet_jaar
+        FROM maandomzet
+        GROUP BY jaar
+      ),
+      verdeling AS (
+        SELECT
+          m.jaar,
+          m.maand,
+          ROUND((m.omzet_maand / j.omzet_jaar)::numeric, 5) AS maand_percentage
+        FROM maandomzet m
+        JOIN jaaromzet j ON m.jaar = j.jaar
       )
-      SELECT p.m,
-             COALESCE(AVG(CASE WHEN j.jaar_omz > 0 THEN p.omz / j.jaar_omz ELSE 0 END), 0) AS pct
-      FROM per_maand p
-      JOIN per_jaar j ON j.yr = p.yr
-      GROUP BY p.m
-      ORDER BY p.m
+      SELECT
+        v.maand,
+        ROUND(AVG(v.maand_percentage)::numeric, 5) AS percentage,
+        COUNT(DISTINCT v.jaar)::int AS aantal_jaren
+      FROM verdeling v
+      GROUP BY v.maand
+      ORDER BY v.maand
     `),
     db.query(
       `SELECT EXTRACT(MONTH FROM datum)::int AS maand,
@@ -217,12 +238,44 @@ async function getOmzetBasis(jaar: number, groeiPct: number) {
 
   const vorigJaar = Number(vorigRes.rows?.[0]?.totaal ?? 0);
   const jaarDoel = vorigJaar * (1 + groeiPct / 100);
+
+  const pctRuw = new Map<number, number>();
+  let aantalHistorischeJaren = 0;
+  for (const r of pctRes.rows ?? []) {
+    pctRuw.set(Number(r.maand), Number(r.percentage) || 0);
+    aantalHistorischeJaren = Math.max(
+      aantalHistorischeJaren,
+      Number(r.aantal_jaren) || 0
+    );
+  }
+
+  // De cashflow rekent het reguliere seizoen maart-september.
+  // Normaliseer de door /api/prognose/verdeling geleverde historische
+  // percentages binnen die zeven maanden, zodat het volledige jaarbudget
+  // over het seizoen wordt verdeeld.
+  const seizoenSom = SEIZOEN_MAANDEN.reduce(
+    (som, maand) => som + (pctRuw.get(maand) ?? 0),
+    0
+  );
   const pct = new Map<number, number>();
-  for (const r of pctRes.rows ?? []) pct.set(Number(r.m), Number(r.pct) || 0);
+  for (const maand of SEIZOEN_MAANDEN) {
+    pct.set(
+      maand,
+      seizoenSom > 0
+        ? (pctRuw.get(maand) ?? 0) / seizoenSom
+        : 1 / SEIZOEN_MAANDEN.length
+    );
+  }
+
   const werkelijk = new Map<number, number>();
   for (const r of realRes.rows ?? []) werkelijk.set(Number(r.maand), Number(r.totaal) || 0);
 
-  return { jaarDoel, pct, werkelijk };
+  return {
+    jaarDoel,
+    pct,
+    werkelijk,
+    aantalHistorischeJaren,
+  };
 }
 
 async function getWerkelijkeLoonkosten(jaar: number) {
@@ -772,6 +825,12 @@ async function getWerkelijkeBtwRows(entiteitId: number, jaar: number) {
 export async function berekenVincenzoBasis(jaar: number): Promise<{
   jaar: number;
   groeiPct: number;
+  omzetModel: {
+    bron: "api_prognose_verdeling";
+    historischeJaren: number;
+    jaarDoel: number;
+    verdeling: Array<{ maand: number; percentage: number }>;
+  };
   prognoseGrens: {
     peildatum: string | null;
     afgeslotenTotMaand: number;
@@ -1134,6 +1193,15 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
   return {
     jaar,
     groeiPct,
+    omzetModel: {
+      bron: "api_prognose_verdeling",
+      historischeJaren: omzet.aantalHistorischeJaren,
+      jaarDoel: round2(omzet.jaarDoel),
+      verdeling: SEIZOEN_MAANDEN.map((maand) => ({
+        maand,
+        percentage: Number((omzet.pct.get(maand) ?? 0).toFixed(8)),
+      })),
+    },
     prognoseGrens: {
       peildatum: actievePeildatum,
       afgeslotenTotMaand,
