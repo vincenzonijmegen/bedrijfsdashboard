@@ -107,6 +107,7 @@ export default function CashflowTarievenPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingStream, setDeletingStream] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -276,6 +277,62 @@ export default function CashflowTarievenPage() {
       setError(err instanceof Error ? err.message : "Tarief verwijderen mislukt.");
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function deleteStream() {
+    if (!selectedStream) return;
+
+    if (
+      !window.confirm(
+        `Geldstroom “${selectedStream.naam}” volledig verwijderen uit de actieve cashflow? De post verdwijnt uit de vaste tarieven en telt niet meer mee in de prognose. De historische gegevens blijven technisch bewaard.`
+      )
+    ) {
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Laatste controle: “${selectedStream.naam}” echt verwijderen uit de actieve basisprognose?`
+      )
+    ) {
+      return;
+    }
+
+    setDeletingStream(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const streamName = selectedStream.naam;
+      const res = await fetch("/api/admin/cashflow", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "stroom",
+          id: selectedStream.id,
+        }),
+      });
+
+      const json = (await res.json()) as CashflowResponse;
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || `Geldstroom verwijderen mislukt (${res.status})`);
+      }
+
+      setSelectedStreamId(null);
+      setForm({
+        validFrom: "",
+        amount: "",
+        vat: "0",
+        deductible: "0",
+        inclusive: true,
+      });
+      setMessage(`${streamName} is verwijderd uit de actieve cashflow en prognose.`);
+      await load(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Geldstroom verwijderen mislukt.");
+    } finally {
+      setDeletingStream(false);
     }
   }
 
@@ -475,13 +532,24 @@ export default function CashflowTarievenPage() {
                         </p>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={newTariff}
-                        className="h-10 rounded-xl border border-emerald-300 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
-                      >
-                        Nieuw tarief vanaf datum
-                      </button>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={newTariff}
+                          disabled={deletingStream}
+                          className="h-10 rounded-xl border border-emerald-300 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          Nieuw tarief vanaf datum
+                        </button>
+                        <button
+                          type="button"
+                          onClick={deleteStream}
+                          disabled={deletingStream || deletingId !== null}
+                          className="h-10 rounded-xl border border-red-300 bg-red-50 px-4 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {deletingStream ? "Geldstroom verwijderen…" : "Verwijder geldstroom"}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="mt-5 overflow-x-auto">
@@ -522,7 +590,7 @@ export default function CashflowTarievenPage() {
                                   <button
                                     type="button"
                                     onClick={() => editTariff(row)}
-                                    disabled={deletingId !== null}
+                                    disabled={deletingId !== null || deletingStream}
                                     className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                                   >
                                     Wijzig dit tarief
@@ -530,7 +598,7 @@ export default function CashflowTarievenPage() {
                                   <button
                                     type="button"
                                     onClick={() => deleteTariff(row)}
-                                    disabled={deletingId !== null || history.length <= 1}
+                                    disabled={deletingId !== null || deletingStream || history.length <= 1}
                                     title={
                                       history.length <= 1
                                         ? "De laatste tariefregel kan niet worden verwijderd"
