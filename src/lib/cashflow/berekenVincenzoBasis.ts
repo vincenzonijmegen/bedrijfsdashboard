@@ -200,7 +200,7 @@ async function getOmzetBasis(jaar: number, groeiPct: number) {
           SUM(aantal * eenheidsprijs) AS omzet_maand
         FROM rapportage.omzet
         WHERE EXTRACT(YEAR FROM datum)::int IN (SELECT jaar FROM geldige_jaren)
-        GROUP BY jaar, maand
+        GROUP BY 1, 2
       ),
       jaaromzet AS (
         SELECT
