@@ -411,7 +411,13 @@ export default function AdminDashboard() {
         </Section>
 
         <Section id="rapportages" title="📊 Rapportages & analyse" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
-          <LinkCard href="/admin/rapportage" label="Rapportagedashboard" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Rapportagedashboard" />
+          <SubSection title="📊 Algemeen & dagrapportage" color="purple">
+            <LinkCard href="/admin/rapportage" label="Rapportagedashboard" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Rapportagedashboard" />
+            <LinkCard href="/admin/rapportage/dagrapporten" label="Dagrapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Dagrapporten" />
+            <LinkCard href="/admin/aftekenlijsten" label="Overzicht formulieren/rapporten" color="purple" Icon={ClipboardList} breadcrumb="Rapportages & analyse – Formulieren/rapporten" />
+            <LinkCard href="/admin/mail-instellingen" label="Dagbriefing & mailinstellingen" color="purple" Icon={Mail} breadcrumb="Rapportages & analyse – Dagbriefing & mailinstellingen" />
+            <LinkCard href="/api/admin/briefing/email-preview" label="Dagbriefing preview" color="purple" Icon={Eye} breadcrumb="Rapportages & analyse – Dagbriefing preview" target="_blank" rel="noopener noreferrer" />
+          </SubSection>
 
           <SubSection title="💶 Financieel & omzet" color="purple">
             <LinkCard href="/admin/rapportage/financieel" label="Financiële rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Financiële rapporten" />
@@ -441,11 +447,6 @@ export default function AdminDashboard() {
             <LinkCard href="/admin/rapportage/productvergelijker" label="Productvergelijker" color="purple" Icon={Layers} breadcrumb="Rapportages & analyse – Productvergelijker" />
             <LinkCard href="/admin/rapportage/ingekochte-producten" label="Ingekochte producten" color="purple" Icon={ShoppingCart} breadcrumb="Rapportages & analyse – Ingekochte producten" />
           </SubSection>
-
-          <LinkCard href="/admin/rapportage/dagrapporten" label="Dagrapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Dagrapporten" />
-          <LinkCard href="/admin/aftekenlijsten" label="Overzicht formulieren/rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Formulieren/rapporten" />
-          <LinkCard href="/admin/mail-instellingen" label="Dagbriefing & mailinstellingen" color="purple" Icon={Mail} breadcrumb="Rapportages & analyse – Dagbriefing & mailinstellingen" />
-          <LinkCard href="/api/admin/briefing/email-preview" label="Dagbriefing preview" color="purple" Icon={Eye} breadcrumb="Rapportages & analyse – Dagbriefing preview" target="_blank" rel="noopener noreferrer" />
         </Section>
 
         <Section id="bedrijfsvoering" title="🏢 Bedrijfsvoering" color="teal" activeSection={activeSection} setActiveSection={setActiveSection}>
@@ -481,7 +482,6 @@ export default function AdminDashboard() {
 
         <Section id="systeembeheer" title="⚙️ Systeembeheer & import" color="slate" activeSection={activeSection} setActiveSection={setActiveSection}>
           <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="slate" Icon={Wrench} breadcrumb="Systeembeheer & import – Omzet inlezen" />
-          <LinkCard href="/admin/rapportage/financieel/omzet" label="Omzetbestand uploaden" color="slate" Icon={Archive} breadcrumb="Systeembeheer & import – Omzetbestand uploaden" />
           <LinkCard href="/admin/aftekenlijsten/upload" label="Upload formulieren" color="slate" Icon={Archive} breadcrumb="Systeembeheer & import – Upload formulieren" />
           <LinkCard href="/admin/omzet/omzetdagen" label="Omzetdagen aanpassen" color="slate" Icon={Wrench} breadcrumb="Systeembeheer & import – Omzetdagen aanpassen" />
         </Section>
