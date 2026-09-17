@@ -1,18 +1,14 @@
 import { NextResponse } from "next/server";
-import { dbRapportage as db } from "@/lib/dbRapportage";
+import { db } from "@/lib/db";
 import { getPrognoseVerdeling } from "@/lib/prognose/getPrognoseVerdeling";
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    const url = new URL(req.url);
-    const huidigJaar = new Date().getFullYear();
-    const doelJaar = Number(url.searchParams.get("jaar") ?? huidigJaar);
+    const model = await getPrognoseVerdeling();
 
-    const model = await getPrognoseVerdeling(doelJaar);
-
-    const vorigJaar = doelJaar - 1;
+    const vorigJaar = new Date().getFullYear() - 1;
     const totaalVorigJaar = await db.query(
-      `SELECT COALESCE(SUM(aantal * eenheidsprijs), 0) AS totaal
+      `SELECT SUM(aantal * eenheidsprijs) AS totaal
        FROM rapportage.omzet
        WHERE EXTRACT(YEAR FROM datum)::int = $1`,
       [vorigJaar]

@@ -1,4 +1,4 @@
-import { dbRapportage as db } from "@/lib/dbRapportage";
+import { db } from "@/lib/db";
 
 export type PrognoseVerdelingRegel = {
   maand: number;
@@ -14,12 +14,9 @@ export type PrognoseVerdelingModel = {
 /**
  * Centrale maandverdeling voor omzetprognoses.
  *
- * Gebruikt bewust dezelfde querylogica als de oorspronkelijke,
- * werkende /api/prognose/verdeling-route: alle volledig afgesloten
+ * Gebruikt exact dezelfde databaseverbinding en SQL-logica als de
+ * oorspronkelijke /api/prognose/verdeling-route: alle volledig afgesloten
  * omzetjaren vanaf 2022 tot het huidige jaar.
- *
- * Alle gebruikers (rapportage, cashflow en shiftprognose) delen deze
- * functie, zodat de maandverdeling nog maar op één plek wordt bepaald.
  */
 export async function getPrognoseVerdeling(
   _doelJaar = new Date().getFullYear()
@@ -64,17 +61,13 @@ export async function getPrognoseVerdeling(
     ORDER BY v.maand;
   `);
 
-  const bronJarenResult = await db.query(`
-    SELECT DISTINCT EXTRACT(YEAR FROM datum)::int AS jaar
-    FROM rapportage.omzet
-    WHERE datum >= '2022-01-01'
-      AND EXTRACT(YEAR FROM datum)::int < EXTRACT(YEAR FROM CURRENT_DATE)::int
-    ORDER BY jaar;
-  `);
+  const jaren = Number(result.rows?.[0]?.aantal_jaren ?? 0);
+  const huidigJaar = new Date().getFullYear();
+  const bronJaren = Array.from({ length: jaren }, (_, i) => huidigJaar - jaren + i);
 
   return {
-    jaren: Number(result.rows?.[0]?.aantal_jaren ?? 0),
-    bronJaren: (bronJarenResult.rows ?? []).map((r: any) => Number(r.jaar)),
+    jaren,
+    bronJaren,
     verdeling: (result.rows ?? []).map((r: any) => ({
       maand: Number(r.maand),
       percentage: Number(r.percentage) || 0,
@@ -82,11 +75,6 @@ export async function getPrognoseVerdeling(
   };
 }
 
-/**
- * Normaliseert de centrale verdeling binnen de actieve maanden van een
- * seizoensmodel. De onderlinge verhouding blijft gelijk aan
- * /api/prognose/verdeling.
- */
 export function normaliseerPrognoseVerdeling(
   verdeling: PrognoseVerdelingRegel[],
   maanden: number[]
