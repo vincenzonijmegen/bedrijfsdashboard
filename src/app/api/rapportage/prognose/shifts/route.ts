@@ -1,5 +1,6 @@
 // src/app/api/rapportage/prognose/shifts/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import { getPrognoseVerdeling, normaliseerPrognoseVerdeling } from "@/lib/prognose/getPrognoseVerdeling";
 
 export const runtime = "nodejs";
 
@@ -97,6 +98,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, stage: "import-db", error: e?.message || String(e) }, { status: 500 });
   }
 
+  // Centrale maandverdeling voor alle prognoses. De omzet op dag- en
+  // kwartierniveau blijft uit het eigen historische profiel komen; alleen
+  // het aandeel van iedere maand komt uit /api/prognose/verdeling.
+  const verdelingModel = await getPrognoseVerdeling(jaar);
+  const seizoenMaanden = [3, 4, 5, 6, 7, 8, 9];
+  const maandVerdeling = normaliseerPrognoseVerdeling(
+    verdelingModel.verdeling,
+    seizoenMaanden
+  );
+  const maandPctArray = Array.from({ length: 12 }, (_, index) =>
+    maandVerdeling.get(index + 1) ?? 0
+  );
+
   /* ===== MODE A: maand × weekdag ===== */
   if (useMonthWeekday) {
     try {
@@ -118,23 +132,6 @@ export async function GET(req: NextRequest) {
             SUM(k.omzet) AS dag_omzet
           FROM rapportage.omzet_kwartier k
           GROUP BY 1,2,3,4
-        ),
-        month_year_totals AS (
-          SELECT jaar, maand, SUM(dag_omzet) AS maand_omzet
-          FROM hist_day GROUP BY 1,2
-        ),
-        year_totals AS (
-          SELECT jaar, SUM(maand_omzet) AS jaar_omzet
-          FROM month_year_totals GROUP BY 1
-        ),
-        month_pct_per_year AS (
-          SELECT m.jaar, m.maand,
-                 CASE WHEN y.jaar_omzet > 0 THEN m.maand_omzet / y.jaar_omzet ELSE 0 END AS pct
-          FROM month_year_totals m JOIN year_totals y USING (jaar)
-        ),
-        month_share AS (
-          SELECT maand, AVG(pct) AS maand_pct
-          FROM month_pct_per_year GROUP BY maand
         ),
         weekday_weight AS (
           SELECT maand, isodow, AVG(dag_omzet) AS avg_dag_omzet
@@ -163,8 +160,7 @@ export async function GET(req: NextRequest) {
         month_target AS (
           SELECT
             $3::int AS maand,
-            (SELECT jaar_omzet FROM year_target)
-            * COALESCE((SELECT maand_pct FROM month_share WHERE maand = $3::int), 0) AS maand_omzet
+            (SELECT jaar_omzet FROM year_target) * $7::numeric AS maand_omzet
           FROM year_target
         ),
         n_days_wd AS (
@@ -237,7 +233,8 @@ export async function GET(req: NextRequest) {
       `;
 
       const raw = await dbRapportage.query(sql, [
-        jaar, groei, maand, isoWd, maand === 3 ? 1 : 0, norm
+        jaar, groei, maand, isoWd, maand === 3 ? 1 : 0, norm,
+        maandVerdeling.get(maand) ?? 0,
       ]);
 
       const rows: RowMW[] = raw.rows.map((r:any)=>({
@@ -368,26 +365,6 @@ export async function GET(req: NextRequest) {
         FROM rapportage.omzet_kwartier k
         GROUP BY 1,2,3
       ),
-      month_year_totals AS (
-        SELECT EXTRACT(YEAR FROM k.datum)::int AS jaar,
-               EXTRACT(MONTH FROM k.datum)::int AS maand,
-               SUM(k.omzet) AS maand_omzet
-        FROM rapportage.omzet_kwartier k
-        GROUP BY 1,2
-      ),
-      year_totals AS (
-        SELECT jaar, SUM(maand_omzet) AS jaar_omzet
-        FROM month_year_totals GROUP BY 1
-      ),
-      month_pct_per_year AS (
-        SELECT m.jaar, m.maand,
-               CASE WHEN y.jaar_omzet > 0 THEN m.maand_omzet / y.jaar_omzet ELSE 0 END AS pct
-        FROM month_year_totals m JOIN year_totals y USING (jaar)
-      ),
-      month_share AS (
-        SELECT maand, AVG(pct) AS maand_pct
-        FROM month_pct_per_year GROUP BY maand
-      ),
       daytype_weight AS (
         SELECT EXTRACT(MONTH FROM datum)::int AS maand, dagtype, AVG(dag_omzet) AS avg_dag_omzet
         FROM hist_day GROUP BY 1,2
@@ -434,7 +411,7 @@ export async function GET(req: NextRequest) {
       ),
       day_share AS (
         SELECT c.datum, c.maand, c.dagtype,
-               (SELECT maand_pct FROM month_share ms WHERE ms.maand = c.maand) AS maand_pct,
+               COALESCE(($6::numeric[])[c.maand], 0) AS maand_pct,
                (SELECT dagtype_pct FROM daytype_share ds WHERE ds.maand = c.maand AND ds.dagtype = c.dagtype) AS dagtype_pct,
                (SELECT n_days FROM month_day_counts mdc WHERE mdc.maand = c.maand AND mdc.dagtype = c.dagtype) AS n_days
         FROM calendar_days c
@@ -505,6 +482,7 @@ export async function GET(req: NextRequest) {
       jaar, norm, costPerQ,
       isoDate(startParam ? toDateISO(startParam) : toDateISO(`${jaar}-01-01`)),
       isoDate(eindeParam ? toDateISO(eindeParam) : toDateISO(`${jaar}-12-31`)),
+      maandPctArray,
     ]);
 
     const rows: RowRange[] = raw.rows.map((r:any)=>({

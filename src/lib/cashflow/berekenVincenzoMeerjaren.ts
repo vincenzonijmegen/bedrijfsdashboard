@@ -559,6 +559,8 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         .reduce((som, m) => som + Number(m.loonkosten ?? 0), 0)
     ),
     toekomstigeJarenGebruikenHerijkteBasis: true,
+    toekomstigeJarenGebruikenCentraleMaandverdeling: true,
+    omzetVerdelingBron: basis.omzetVerdelingBron,
     maanden: herijkingMaanden,
   };
 
@@ -685,6 +687,18 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
 
   const basisMaanden = new Map<number, (typeof basis.maanden)[number]>();
   for (const m of basis.maanden) basisMaanden.set(m.maand, m);
+
+  // Eén centrale maandverdeling: dezelfde bron als /api/prognose/verdeling.
+  // Het huidige jaar bepaalt nog steeds het herijkte omzetniveau; toekomstige
+  // jaren verdelen dat jaartotaal volgens het historische model vanaf 2022.
+  const omzetVerdeling = new Map<number, number>(
+    basis.omzetVerdeling.map((regel) => [regel.maand, regel.percentage])
+  );
+  const basisOmzetTotaal = round2(
+    basis.maanden
+      .filter((m) => SEIZOEN_MAANDEN.includes(m.maand))
+      .reduce((som, m) => som + Number(m.omzet || 0), 0)
+  );
 
   // 4O-B: ook voor het basisjaar ramen we VPB, zodat de eerste toekomstige
   // betaling (augustus van het volgende jaar) niet ontbreekt.
@@ -855,6 +869,9 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
     const omzetFactor = instellingen.omzetGroeiPct == null
       ? null
       : Math.pow(1 + instellingen.omzetGroeiPct / 100, jaar - huidigJaar);
+    const jaarOmzetDoel = omzetFactor == null
+      ? null
+      : round2(basisOmzetTotaal * omzetFactor);
     const loonFactor = instellingen.loonkostenGroeiPct == null
       ? null
       : Math.pow(1 + instellingen.loonkostenGroeiPct / 100, jaar - huidigJaar);
@@ -903,10 +920,11 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
 
       let omzet = 0;
       if (SEIZOEN_MAANDEN.includes(maand)) {
-        if (omzetFactor == null || !basisMaand) {
-          ontbrekend.push("omzetgroei/basisomzet");
+        const maandPct = omzetVerdeling.get(maand);
+        if (jaarOmzetDoel == null || maandPct == null) {
+          ontbrekend.push("omzetgroei/prognoseverdeling");
         } else {
-          omzet = round2(Number(basisMaand.omzet || 0) * omzetFactor);
+          omzet = round2(jaarOmzetDoel * maandPct);
         }
       }
 

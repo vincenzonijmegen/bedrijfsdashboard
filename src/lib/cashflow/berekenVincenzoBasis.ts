@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { getPrognoseVerdeling, normaliseerPrognoseVerdeling } from "@/lib/prognose/getPrognoseVerdeling";
 import { berekenVincenzoNaarHoldingUitkeringen } from "@/lib/cashflow/berekenHoldingsMeerjaren";
 
 type VasteStroomRegel = {
@@ -177,33 +178,14 @@ function hoursBetween(a: string, b: string) {
 }
 
 async function getOmzetBasis(jaar: number, groeiPct: number) {
-  const [vorigRes, pctRes, realRes] = await Promise.all([
+  const [vorigRes, verdelingModel, realRes] = await Promise.all([
     db.query(
       `SELECT COALESCE(SUM(aantal * eenheidsprijs), 0) AS totaal
        FROM rapportage.omzet
        WHERE EXTRACT(YEAR FROM datum)::int = $1`,
       [jaar - 1]
     ),
-    db.query(`
-      WITH bron AS (
-        SELECT EXTRACT(YEAR FROM datum)::int AS yr,
-               EXTRACT(MONTH FROM datum)::int AS m,
-               (aantal * eenheidsprijs) AS omz
-        FROM rapportage.omzet
-        WHERE EXTRACT(YEAR FROM datum)::int BETWEEN 2022 AND 2024
-          AND EXTRACT(MONTH FROM datum)::int BETWEEN 3 AND 9
-      ), per_maand AS (
-        SELECT yr, m, SUM(omz) AS omz FROM bron GROUP BY 1,2
-      ), per_jaar AS (
-        SELECT yr, SUM(omz) AS jaar_omz FROM per_maand GROUP BY 1
-      )
-      SELECT p.m,
-             COALESCE(AVG(CASE WHEN j.jaar_omz > 0 THEN p.omz / j.jaar_omz ELSE 0 END), 0) AS pct
-      FROM per_maand p
-      JOIN per_jaar j ON j.yr = p.yr
-      GROUP BY p.m
-      ORDER BY p.m
-    `),
+    getPrognoseVerdeling(jaar),
     db.query(
       `SELECT EXTRACT(MONTH FROM datum)::int AS maand,
               COALESCE(SUM(aantal * eenheidsprijs), 0) AS totaal
@@ -217,12 +199,20 @@ async function getOmzetBasis(jaar: number, groeiPct: number) {
 
   const vorigJaar = Number(vorigRes.rows?.[0]?.totaal ?? 0);
   const jaarDoel = vorigJaar * (1 + groeiPct / 100);
-  const pct = new Map<number, number>();
-  for (const r of pctRes.rows ?? []) pct.set(Number(r.m), Number(r.pct) || 0);
+  const pct = normaliseerPrognoseVerdeling(verdelingModel.verdeling, SEIZOEN_MAANDEN);
   const werkelijk = new Map<number, number>();
   for (const r of realRes.rows ?? []) werkelijk.set(Number(r.maand), Number(r.totaal) || 0);
 
-  return { jaarDoel, pct, werkelijk };
+  return {
+    jaarDoel,
+    pct,
+    werkelijk,
+    verdelingBron: {
+      api: "/api/prognose/verdeling",
+      jaren: verdelingModel.jaren,
+      bronJaren: verdelingModel.bronJaren,
+    },
+  };
 }
 
 async function getWerkelijkeLoonkosten(jaar: number) {
@@ -777,6 +767,12 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
     afgeslotenTotMaand: number;
     eerstePrognoseMaand: number | null;
   };
+  omzetVerdelingBron: {
+    api: string;
+    jaren: number;
+    bronJaren: number[];
+  };
+  omzetVerdeling: Array<{ maand: number; percentage: number }>;
   waarschuwingen: string[];
   maanden: MaandRegel[];
   btwKwartalen: BtwKwartaalRegel[];
@@ -1140,6 +1136,11 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
       eerstePrognoseMaand:
         eerstePrognoseMaand <= 12 ? eerstePrognoseMaand : null,
     },
+    omzetVerdelingBron: omzet.verdelingBron,
+    omzetVerdeling: SEIZOEN_MAANDEN.map((maand) => ({
+      maand,
+      percentage: omzet.pct.get(maand) ?? 0,
+    })),
     waarschuwingen,
     maanden,
     btwKwartalen,

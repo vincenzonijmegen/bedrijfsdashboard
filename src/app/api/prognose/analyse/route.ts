@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { dbRapportage as db } from "@/lib/dbRapportage";
+import { getPrognoseVerdeling, normaliseerPrognoseVerdeling } from "@/lib/prognose/getPrognoseVerdeling";
 
 const MAANDEN = [3, 4, 5, 6, 7, 8, 9];
 const daysInMonth = (y: number, m: number) => new Date(y, m, 0).getDate();
@@ -21,31 +22,11 @@ export async function GET(req: Request) {
     const vorigJaarOmzet = Number(vorigJaarOmzetRes.rows?.[0]?.totaal || 0);
     const jaaromzet = Math.round(vorigJaarOmzet * 1.03);
 
-    // 2) Pct per maand (op basis van klassieke omzet 2022-2024)
-    const pctMap = new Map<number, number>();
-    const pctRes = await db.query(`
-      WITH bron AS (
-        SELECT EXTRACT(YEAR FROM datum)::int AS yr,
-               EXTRACT(MONTH FROM datum)::int AS m,
-               (aantal * eenheidsprijs) AS omz
-        FROM rapportage.omzet
-        WHERE EXTRACT(YEAR FROM datum)::int BETWEEN 2022 AND 2024
-          AND EXTRACT(MONTH FROM datum)::int BETWEEN 3 AND 9
-      ), pjm AS (
-        SELECT yr, m, SUM(omz) AS omz FROM bron GROUP BY 1, 2
-      ), pjt AS (
-        SELECT yr, SUM(omz) AS jaar_omz FROM pjm GROUP BY 1
-      )
-      SELECT m, COALESCE(AVG(CASE WHEN pjt.jaar_omz > 0 THEN pjm.omz / pjt.jaar_omz ELSE 0 END), 0) AS pct
-      FROM pjm JOIN pjt ON pjt.yr = pjm.yr
-      GROUP BY m ORDER BY m
-    `);
-    for (const r of pctRes.rows ?? []) pctMap.set(Number(r.m), Number(r.pct) || 0);
-    for (const m of MAANDEN) if (!pctMap.has(m)) pctMap.set(m, 0);
-    if (MAANDEN.every(m => (pctMap.get(m) || 0) === 0)) {
-      const g = 1 / MAANDEN.length;
-      MAANDEN.forEach(m => pctMap.set(m, g));
-    }
+    // 2) Pct per maand: één centrale bron voor alle omzetprognoses.
+    // /api/prognose/verdeling en deze analyse gebruiken dezelfde helper en
+    // daarmee alle volledig afgesloten jaren vanaf 2022.
+    const verdelingModel = await getPrognoseVerdeling(jaar);
+    const pctMap = normaliseerPrognoseVerdeling(verdelingModel.verdeling, MAANDEN);
 
     // 3) Realisatie huidig jaar (dagtellingen uit klassieke omzet)
     const realByMonth = new Map<number, { omz: number; dagen: number }>();
@@ -145,7 +126,18 @@ export async function GET(req: Request) {
     data.forEach(r => (r.jrPrognoseObvTotNu = jaarProjObvTotNu));
 
     return NextResponse.json(
-      { jaar, vorigJaar, vorigJaarOmzet, jaaromzet, resultaten: data },
+      {
+        jaar,
+        vorigJaar,
+        vorigJaarOmzet,
+        jaaromzet,
+        verdelingBron: {
+          api: "/api/prognose/verdeling",
+          jaren: verdelingModel.jaren,
+          bronJaren: verdelingModel.bronJaren,
+        },
+        resultaten: data,
+      },
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (err: any) {
