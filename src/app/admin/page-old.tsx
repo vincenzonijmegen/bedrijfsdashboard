@@ -361,7 +361,6 @@ export default function AdminDashboard() {
           <LinkCard href="/admin/functies" label="Functies" color="green" Icon={Tag} breadcrumb="Personeel & opleiding – Functies" />
           <LinkCard href="/admin/sollicitaties" label="Sollicitaties" color="green" Icon={UserPlus} breadcrumb="Personeel & opleiding – Sollicitaties" />
           <LinkCard href="/admin/sollicitaties/afspraken" label="Sollicitatiegesprekken" color="green" Icon={CalendarDays} breadcrumb="Personeel & opleiding – Sollicitatiegesprekken" />
-          <LinkCard href="/admin/onboarding" label="Onboarding controle" color="green" Icon={ClipboardCheck} breadcrumb="Personeel & opleiding – Onboarding controle" />
           
           <SubSection title="📘 Instructies" color="blue">
             <LinkCard href="/admin/instructies" label="Instructies beheren" color="blue" Icon={FileText} breadcrumb="Personeel & opleiding – Instructies beheren" />
@@ -379,7 +378,6 @@ export default function AdminDashboard() {
           <LinkCard href="/admin/beschikbaarheid/uitvragen" label="Beschikbaarheids-opgave" color="orange" Icon={CalendarDays} breadcrumb="Planning & bezetting – Beschikbaarheids-opgave" />
           <LinkCard href="/admin/beschikbaarheid" label="Beschikbaarheid per medewerker" color="orange" Icon={Activity} breadcrumb="Planning & bezetting – Beschikbaarheid per medewerker" />
           <LinkCard href="/admin/beschikbaarheid/periode" label="Beschikbaarheid per periode" color="orange" Icon={Activity} breadcrumb="Planning & bezetting – Beschikbaarheid per periode" />
-          <LinkCard href="/admin/planning/afwezigheid" label="Afwezigheid" color="orange" Icon={CalendarDays} breadcrumb="Planning & bezetting – Afwezigheid" />
           <LinkCard href="/admin/planning/zomerfeesten" label="Zomerfeesten planning" color="orange" Icon={CalendarDays} breadcrumb="Planning & bezetting – Zomerfeesten planning" />
           <LinkCard href="/admin/zomerfeesten" label="Zomerfeesten voorbereiding" color="orange" Icon={PartyPopper} breadcrumb="Planning & bezetting – Zomerfeesten voorbereiding" />
         </Section>
@@ -411,39 +409,11 @@ export default function AdminDashboard() {
         </Section>
 
         <Section id="rapportages" title="📊 Rapportages & analyse" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
-          <LinkCard href="/admin/rapportage" label="Rapportagedashboard" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Rapportagedashboard" />
-
-          <SubSection title="💶 Financieel & omzet" color="purple">
-            <LinkCard href="/admin/rapportage/financieel" label="Financiële rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Financiële rapporten" />
-            <LinkCard href="/admin/rapportage/financieel/maandomzet" label="Maandomzet" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Maandomzet" />
-            <LinkCard href="/admin/rapportage/financieel/uuromzet" label="Uuromzet" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Uuromzet" />
-            <LinkCard href="/admin/rapportage/financieel/feestdagomzet" label="Feestdagenomzet" color="purple" Icon={CalendarDays} breadcrumb="Rapportages & analyse – Feestdagenomzet" />
-            <LinkCard href="/admin/rapportage/financieel/top-omzetdagen" label="Top omzetdagen" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Top omzetdagen" />
-          </SubSection>
-
-          <SubSection title="📚 Jaarrekeningen" color="purple">
-            <LinkCard href="/admin/rapportage/jaarrekeningen" label="Jaarrekeningen beheren" color="purple" Icon={FileText} breadcrumb="Rapportages & analyse – Jaarrekeningen beheren" />
-            <LinkCard href="/admin/rapportage/jaarrekeningen/overzicht" label="Jaarrekeningen overzicht" color="purple" Icon={ClipboardList} breadcrumb="Rapportages & analyse – Jaarrekeningen overzicht" />
-            <LinkCard href="/admin/rapportage/jaarrekeningen/meerjaren" label="Meerjarenrapport" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Jaarrekeningen meerjaren" />
-            <LinkCard href="/admin/rapportage/jaarrekeningen/rapport" label="Rapport jaarrekeningen" color="purple" Icon={FileText} breadcrumb="Rapportages & analyse – Rapport jaarrekeningen" />
-            <LinkCard href="/admin/rapportage/jaarrekeningen/grafieken" label="Grafieken jaarrekeningen" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Grafieken jaarrekeningen" />
-          </SubSection>
-
-          <SubSection title="👥 Medewerkers" color="purple">
-            <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers rapporten" color="purple" Icon={Users} breadcrumb="Rapportages & analyse – Medewerkers rapporten" />
-            <LinkCard href="/admin/rapportage/medewerkers/resultaten" label="Toetsresultaten" color="purple" Icon={ClipboardCheck} breadcrumb="Rapportages & analyse – Toetsresultaten" />
-            <LinkCard href="/admin/rapportage/medewerkers/overzicht-progressie" label="Overzicht progressie" color="purple" Icon={Activity} breadcrumb="Rapportages & analyse – Overzicht progressie" />
-            <LinkCard href="/admin/rapportage/medewerkers/ziekteverzuim" label="Ziekteverzuim" color="purple" Icon={Activity} breadcrumb="Rapportages & analyse – Ziekteverzuim" />
-          </SubSection>
-
-          <SubSection title="🍦 Product & inkoop" color="purple">
-            <LinkCard href="/admin/rapportage/productanalyse" label="Productanalyse" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Productanalyse" />
-            <LinkCard href="/admin/rapportage/productvergelijker" label="Productvergelijker" color="purple" Icon={Layers} breadcrumb="Rapportages & analyse – Productvergelijker" />
-            <LinkCard href="/admin/rapportage/ingekochte-producten" label="Ingekochte producten" color="purple" Icon={ShoppingCart} breadcrumb="Rapportages & analyse – Ingekochte producten" />
-          </SubSection>
-
+          <LinkCard href="/admin/rapportage/financieel" label="Financiële Rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Financiële Rapporten" />
           <LinkCard href="/admin/rapportage/dagrapporten" label="Dagrapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Dagrapporten" />
+          <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers Rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Medewerkers Rapporten" />
           <LinkCard href="/admin/aftekenlijsten" label="Overzicht formulieren/rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Formulieren/rapporten" />
+          <LinkCard href="/admin/rapportage/productanalyse" label="Productanalyse" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Productanalyse" />
           <LinkCard href="/admin/mail-instellingen" label="Dagbriefing & mailinstellingen" color="purple" Icon={Mail} breadcrumb="Rapportages & analyse – Dagbriefing & mailinstellingen" />
           <LinkCard href="/api/admin/briefing/email-preview" label="Dagbriefing preview" color="purple" Icon={Eye} breadcrumb="Rapportages & analyse – Dagbriefing preview" target="_blank" rel="noopener noreferrer" />
         </Section>
@@ -452,36 +422,15 @@ export default function AdminDashboard() {
           <LinkCard href="/admin/acties" label="Actielijsten" color="teal" Icon={CheckSquare} breadcrumb="Bedrijfsvoering – Actielijsten" />
           <LinkCard href="/admin/notities" label="Notities" color="teal" Icon={FileText} breadcrumb="Bedrijfsvoering – Notities" />
           <LinkCard href="/admin/contacten" label="Relaties" color="teal" Icon={Folder} breadcrumb="Bedrijfsvoering – Relaties" />
-
-          <SubSection title="💶 Cashflow" color="teal">
-            <LinkCard href="/admin/cashflow/dashboard" label="Cashflow dashboard" color="teal" Icon={BarChart2} breadcrumb="Bedrijfsvoering – Cashflow dashboard" />
-            <LinkCard href="/admin/cashflow/overzicht" label="Cashflowoverzicht" color="teal" Icon={FileText} breadcrumb="Bedrijfsvoering – Cashflowoverzicht" />
-            <LinkCard href="/admin/cashflow/holdings" label="Holdings & bufferbewaking" color="teal" Icon={Layers} breadcrumb="Bedrijfsvoering – Holdings & bufferbewaking" />
-            <LinkCard href="/admin/cashflow/tarieven" label="Vaste tarieven" color="teal" Icon={CreditCard} breadcrumb="Bedrijfsvoering – Cashflow vaste tarieven" />
-            <LinkCard href="/admin/cashflow/incidenteel" label="Incidentele kasstromen" color="teal" Icon={CalendarDays} breadcrumb="Bedrijfsvoering – Incidentele kasstromen" />
-            <LinkCard href="/admin/cashflow/saldi" label="Actuele saldi & peildatum" color="teal" Icon={Activity} breadcrumb="Bedrijfsvoering – Actuele saldi & peildatum" />
-            <LinkCard href="/admin/cashflow/instellingen" label="Basisinstellingen" color="teal" Icon={Wrench} breadcrumb="Bedrijfsvoering – Cashflow basisinstellingen" />
-          </SubSection>
-
-          <SubSection title="🧪 Cashflowscenario's" color="teal">
-            <LinkCard href="/admin/cashflow/scenario-emo-2027" label="Scenario Emo 2027" color="teal" Icon={Activity} breadcrumb="Bedrijfsvoering – Scenario Emo 2027" />
-            <LinkCard href="/admin/cashflow/scenario-eindejaarsbonus" label="Scenario eindejaarsbonus" color="teal" Icon={Activity} breadcrumb="Bedrijfsvoering – Scenario eindejaarsbonus" />
-          </SubSection>
-
-          <SubSection title="💳 Kas, bank & prognose" color="teal">
-            <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} breadcrumb="Bedrijfsvoering – Kasstaat invullen" />
-            <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} breadcrumb="Bedrijfsvoering – Kasboek bijwerken" />
-            <LinkCard href="/admin/kasboek/kasstaat" label="Kasstaat jaaroverzicht" color="teal" Icon={ClipboardList} breadcrumb="Bedrijfsvoering – Kasstaat jaaroverzicht" />
-            <LinkCard href="/admin/mypos" label="Inlezen myPOS" color="teal" Icon={Archive} breadcrumb="Bedrijfsvoering – Inlezen myPOS" />
-            <LinkCard href="/admin/mypos/boeking" label="MyPOS boekingsdocument" color="teal" Icon={FileText} breadcrumb="Bedrijfsvoering – MyPOS boekingsdocument" />
-            <LinkCard href="/admin/omzet/prognose" label="Omzetprognose" color="teal" Icon={BarChart2} breadcrumb="Bedrijfsvoering – Omzetprognose" />
-            <LinkCard href="/admin/omzet/loonkosten" label="Invoeren loonkosten" color="teal" Icon={Archive} breadcrumb="Bedrijfsvoering – Invoeren loonkosten" />
-          </SubSection>
+          <LinkCard href="/admin/kasstaten" label="Kasstaat invullen" color="teal" Icon={BarChart2} breadcrumb="Bedrijfsvoering – Kasstaat invullen" />
+          <LinkCard href="/admin/kasboek" label="Kasboek bijwerken" color="teal" Icon={Wrench} breadcrumb="Bedrijfsvoering – Kasboek bijwerken" />
+          <LinkCard href="/admin/mypos" label="Inlezen myPOS" color="teal" Icon={Archive} breadcrumb="Bedrijfsvoering – Inlezen myPOS" />
+          <LinkCard href="/admin/cashflow/dashboard" label="Cashflowprognose" color="teal" Icon={BarChart2} breadcrumb="Bedrijfsvoering – Cashflowprognose" />
+          <LinkCard href="/admin/omzet/loonkosten" label="Invoeren loonkosten" color="teal" Icon={Archive} breadcrumb="Bedrijfsvoering – Invoeren loonkosten" />
         </Section>
 
         <Section id="systeembeheer" title="⚙️ Systeembeheer & import" color="slate" activeSection={activeSection} setActiveSection={setActiveSection}>
           <LinkCard href="/admin/kassa-omzet" label="Omzet inlezen" color="slate" Icon={Wrench} breadcrumb="Systeembeheer & import – Omzet inlezen" />
-          <LinkCard href="/admin/rapportage/financieel/omzet" label="Omzetbestand uploaden" color="slate" Icon={Archive} breadcrumb="Systeembeheer & import – Omzetbestand uploaden" />
           <LinkCard href="/admin/aftekenlijsten/upload" label="Upload formulieren" color="slate" Icon={Archive} breadcrumb="Systeembeheer & import – Upload formulieren" />
           <LinkCard href="/admin/omzet/omzetdagen" label="Omzetdagen aanpassen" color="slate" Icon={Wrench} breadcrumb="Systeembeheer & import – Omzetdagen aanpassen" />
         </Section>
