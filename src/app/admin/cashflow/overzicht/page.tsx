@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import * as XLSX from "xlsx-js-style";
 
 type Entiteit = "vincenzo" | "rekka" | "eetje-pans";
 
@@ -78,12 +79,352 @@ function bedrag(v: number) {
   return v === 0 ? "" : euro.format(v);
 }
 
+function endpointVoor(entiteit: Entiteit, totJaar: number) {
+  return entiteit === "vincenzo"
+    ? `/api/admin/cashflow/kasstroomoverzicht?tot=${totJaar}`
+    : `/api/admin/cashflow/holding-overzicht?entiteit=${entiteit}&tot=${totJaar}`;
+}
+
+function controleVan(data: ApiData) {
+  return (
+    data.controle4TA ??
+    data.controle4PB ??
+    data.controle4PA ??
+    data.controle
+  );
+}
+
+const excelGeldFormaat = '€ #,##0.00;[Red]-€ #,##0.00;–';
+
+function maakCashflowWerkblad(
+  data: ApiData,
+  entiteitKey: Entiteit,
+  label: string
+) {
+  const regels = data.regels ?? [];
+  const buffer =
+    data.minimumKasbuffer == null
+      ? entiteitKey === "vincenzo"
+        ? 20000
+        : null
+      : Number(data.minimumKasbuffer);
+
+  const rows: Array<Array<string | number | null>> = [
+    [label],
+    ["Cashflowprognose t/m", Number(data.totJaar ?? 0) || ""],
+    [
+      "Peildatum",
+      data.peildatum ?? "—",
+      "Startsaldo",
+      Number(data.startsaldo ?? 0),
+      "Eindsaldo rekenmotor",
+      Number(data.eindsaldo ?? 0),
+      "Minimumbuffer",
+      buffer,
+    ],
+    [],
+    [
+      "Jaar",
+      "Maand",
+      "Periode",
+      "Omschrijving",
+      "Categorie",
+      "Bron",
+      "In",
+      "Uit",
+      "Saldo",
+    ],
+  ];
+
+  for (const regel of regels) {
+    rows.push([
+      regel.jaar,
+      regel.categorie === "start" ? "" : maanden[regel.maand] ?? regel.maand,
+      regel.datumLabel,
+      regel.omschrijving,
+      regel.categorie,
+      regel.bron ?? "",
+      Number(regel.in ?? 0),
+      Number(regel.uit ?? 0),
+      Number(regel.saldo ?? 0),
+    ]);
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const eersteDataRij = 6;
+  const laatsteDataRij = eersteDataRij + Math.max(regels.length - 1, 0);
+
+  // Doorlopend saldo als echte Excel-formule. Daardoor kan Herm bedragen
+  // in kolom In/Uit wijzigen en rekent het hele saldo direct opnieuw door.
+  regels.forEach((regel, index) => {
+    const excelRij = eersteDataRij + index;
+    const cel = `I${excelRij}`;
+    if (index === 0 || regel.categorie === "start") {
+      ws[cel] = {
+        t: "n",
+        v: Number(regel.saldo ?? data.startsaldo ?? 0),
+        z: excelGeldFormaat,
+      } as any;
+    } else {
+      ws[cel] = {
+        t: "n",
+        f: `I${excelRij - 1}+G${excelRij}-H${excelRij}`,
+        v: Number(regel.saldo ?? 0),
+        z: excelGeldFormaat,
+      } as any;
+    }
+  });
+
+  const controleStart = laatsteDataRij + 3;
+  XLSX.utils.sheet_add_aoa(
+    ws,
+    [
+      ["Controle"],
+      ["Eindsaldo volgens rekenmotor", Number(data.eindsaldo ?? 0)],
+      ["Eindsaldo volgens Excel", null],
+      ["Verschil Excel - rekenmotor", null],
+    ],
+    { origin: `A${controleStart}` }
+  );
+
+  const excelEindsaldoRij = controleStart + 2;
+  const verschilRij = controleStart + 3;
+  ws[`B${excelEindsaldoRij}`] = {
+    t: "n",
+    f: regels.length > 0 ? `I${laatsteDataRij}` : "0",
+    v: Number(data.eindsaldo ?? 0),
+    z: excelGeldFormaat,
+  } as any;
+  ws[`B${verschilRij}`] = {
+    t: "n",
+    f: `B${excelEindsaldoRij}-B${controleStart + 1}`,
+    v: 0,
+    z: excelGeldFormaat,
+  } as any;
+
+  // Opmaak titel en metadata.
+  ws["!merges"] = [XLSX.utils.decode_range("A1:I1")];
+  ws["A1"].s = {
+    fill: { fgColor: { rgb: "047857" } },
+    font: { bold: true, color: { rgb: "FFFFFF" }, sz: 16 },
+    alignment: { vertical: "center" },
+  };
+
+  for (const addr of ["A2", "A3", "C3", "E3", "G3"]) {
+    if (ws[addr]) {
+      ws[addr].s = {
+        font: { bold: true, color: { rgb: "475569" } },
+      };
+    }
+  }
+
+  for (const addr of ["D3", "F3", "H3"]) {
+    if (ws[addr] && typeof ws[addr].v === "number") {
+      ws[addr].z = excelGeldFormaat;
+    }
+  }
+
+  for (let c = 0; c <= 8; c += 1) {
+    const addr = XLSX.utils.encode_cell({ r: 4, c });
+    if (ws[addr]) {
+      ws[addr].s = {
+        fill: { fgColor: { rgb: "0F172A" } },
+        font: { bold: true, color: { rgb: "FFFFFF" } },
+        alignment: { vertical: "center", horizontal: c >= 6 ? "right" : "left" },
+        border: {
+          bottom: { style: "thin", color: { rgb: "94A3B8" } },
+        },
+      };
+    }
+  }
+
+  regels.forEach((regel, index) => {
+    const r = 5 + index;
+    const isStart = regel.categorie === "start";
+    const isBelasting = ["btw", "vpb", "dividendbelasting"].includes(
+      regel.categorie
+    );
+
+    for (let c = 0; c <= 8; c += 1) {
+      const addr = XLSX.utils.encode_cell({ r, c });
+      const cell = ws[addr];
+      if (!cell) continue;
+
+      cell.s = {
+        fill: isStart
+          ? { fgColor: { rgb: "D1FAE5" } }
+          : isBelasting
+            ? { fgColor: { rgb: "FEF3C7" } }
+            : undefined,
+        font: {
+          bold: isStart || c === 8,
+          color:
+            c === 6
+              ? { rgb: "047857" }
+              : c === 7
+                ? { rgb: "B91C1C" }
+                : { rgb: "0F172A" },
+        },
+        alignment: {
+          vertical: "top",
+          horizontal: c >= 6 ? "right" : "left",
+          wrapText: c === 3 || c === 5,
+        },
+        border: {
+          bottom: { style: "hair", color: { rgb: "E2E8F0" } },
+        },
+      };
+
+      if (c >= 6) cell.z = excelGeldFormaat;
+    }
+  });
+
+  for (let r = controleStart; r <= verschilRij; r += 1) {
+    for (let c = 0; c <= 1; c += 1) {
+      const addr = XLSX.utils.encode_cell({ r: r - 1, c });
+      if (!ws[addr]) continue;
+      ws[addr].s = {
+        fill:
+          r === controleStart
+            ? { fgColor: { rgb: "D1FAE5" } }
+            : { fgColor: { rgb: "F8FAFC" } },
+        font: { bold: true, color: { rgb: "0F172A" } },
+      };
+      if (c === 1 && r > controleStart) ws[addr].z = excelGeldFormaat;
+    }
+  }
+
+  ws["!cols"] = [
+    { wch: 8 },
+    { wch: 12 },
+    { wch: 18 },
+    { wch: 44 },
+    { wch: 24 },
+    { wch: 26 },
+    { wch: 16 },
+    { wch: 16 },
+    { wch: 18 },
+  ];
+  ws["!rows"] = [{ hpt: 24 }, { hpt: 18 }, { hpt: 20 }, { hpt: 8 }, { hpt: 22 }];
+  ws["!freeze"] = { ySplit: 5 } as never;
+  if (regels.length > 0) {
+    ws["!autofilter"] = { ref: `A5:I${laatsteDataRij}` };
+  }
+
+  return {
+    werkblad: ws,
+    laatsteDataRij,
+    controleVerschilRij: verschilRij,
+  };
+}
+
+function maakSamenvatting(
+  items: Array<{
+    key: Entiteit;
+    label: string;
+    data: ApiData;
+    sheetName: string;
+    laatsteDataRij: number;
+  }>,
+  totJaar: number
+) {
+  const rows: Array<Array<string | number | null>> = [
+    ["Cashflowprognose – samenvatting"],
+    ["Tonen t/m", totJaar],
+    [],
+    [
+      "Entiteit",
+      "Peildatum",
+      "Startsaldo",
+      "Eindsaldo rekenmotor",
+      "Eindsaldo Excel",
+      "Verschil",
+      "Minimumbuffer",
+      "API-controle",
+    ],
+  ];
+
+  for (const item of items) {
+    const controle = controleVan(item.data);
+    const buffer =
+      item.data.minimumKasbuffer == null
+        ? item.key === "vincenzo"
+          ? 20000
+          : null
+        : Number(item.data.minimumKasbuffer);
+    rows.push([
+      item.label,
+      item.data.peildatum ?? "—",
+      Number(item.data.startsaldo ?? 0),
+      Number(item.data.eindsaldo ?? 0),
+      null,
+      null,
+      buffer,
+      controle?.aansluitingOk ? "OK" : "AFWIJKING",
+    ]);
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws["!merges"] = [XLSX.utils.decode_range("A1:H1")];
+  ws["A1"].s = {
+    fill: { fgColor: { rgb: "047857" } },
+    font: { bold: true, color: { rgb: "FFFFFF" }, sz: 16 },
+  };
+
+  for (let c = 0; c <= 7; c += 1) {
+    const addr = XLSX.utils.encode_cell({ r: 3, c });
+    if (ws[addr]) {
+      ws[addr].s = {
+        fill: { fgColor: { rgb: "0F172A" } },
+        font: { bold: true, color: { rgb: "FFFFFF" } },
+        alignment: { horizontal: c >= 2 && c <= 6 ? "right" : "left" },
+      };
+    }
+  }
+
+  items.forEach((item, index) => {
+    const excelRij = 5 + index;
+    ws[`E${excelRij}`] = {
+      t: "n",
+      f: `'${item.sheetName.replaceAll("'", "''")}'!I${item.laatsteDataRij}`,
+      v: Number(item.data.eindsaldo ?? 0),
+      z: excelGeldFormaat,
+    } as any;
+    ws[`F${excelRij}`] = {
+      t: "n",
+      f: `E${excelRij}-D${excelRij}`,
+      v: 0,
+      z: excelGeldFormaat,
+    } as any;
+
+    for (const c of [2, 3, 4, 5, 6]) {
+      const addr = XLSX.utils.encode_cell({ r: excelRij - 1, c });
+      if (ws[addr]) ws[addr].z = excelGeldFormaat;
+    }
+  });
+
+  ws["!cols"] = [
+    { wch: 30 },
+    { wch: 14 },
+    { wch: 17 },
+    { wch: 20 },
+    { wch: 17 },
+    { wch: 14 },
+    { wch: 17 },
+    { wch: 14 },
+  ];
+  ws["!freeze"] = { ySplit: 4 } as never;
+  if (items.length > 0) ws["!autofilter"] = { ref: `A4:H${4 + items.length}` };
+  return ws;
+}
+
 export default function CashflowOverzichtPage() {
   const huidigJaar = new Date().getFullYear();
   const [totJaar, setTotJaar] = useState(huidigJaar + 1);
   const [entiteit, setEntiteit] = useState<Entiteit>("vincenzo");
   const [data, setData] = useState<ApiData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [excelBezig, setExcelBezig] = useState(false);
 
   useEffect(() => {
     let actief = true;
@@ -91,12 +432,7 @@ export default function CashflowOverzichtPage() {
     async function laad() {
       setLoading(true);
       try {
-        const endpoint =
-          entiteit === "vincenzo"
-            ? `/api/admin/cashflow/kasstroomoverzicht?tot=${totJaar}`
-            : `/api/admin/cashflow/holding-overzicht?entiteit=${entiteit}&tot=${totJaar}`;
-
-        const res = await fetch(endpoint, { cache: "no-store" });
+        const res = await fetch(endpointVoor(entiteit, totJaar), { cache: "no-store" });
         const json = (await res.json()) as ApiData;
 
         if (actief) setData(json);
@@ -135,11 +471,94 @@ export default function CashflowOverzichtPage() {
     return [...map.entries()];
   }, [data]);
 
-  const controle =
-    data?.controle4TA ??
-    data?.controle4PB ??
-    data?.controle4PA ??
-    data?.controle;
+  const controle = data ? controleVan(data) : undefined;
+
+  async function laadEntiteitVoorExcel(key: Entiteit) {
+    if (key === entiteit && data?.success) return data;
+
+    const res = await fetch(endpointVoor(key, totJaar), { cache: "no-store" });
+    const json = (await res.json()) as ApiData;
+    if (!res.ok || !json.success) {
+      throw new Error(
+        json.error ?? `Cashflow voor ${key} kon niet worden geladen`
+      );
+    }
+    return json;
+  }
+
+  async function exporteerExcel(mode: "deze" | "alle") {
+    if (excelBezig) return;
+    setExcelBezig(true);
+
+    try {
+      const selectie =
+        mode === "alle"
+          ? entiteiten
+          : entiteiten.filter((item) => item.key === entiteit);
+
+      const geladen = await Promise.all(
+        selectie.map(async (item) => ({
+          ...item,
+          data: await laadEntiteitVoorExcel(item.key),
+        }))
+      );
+
+      const sheetNamen: Record<Entiteit, string> = {
+        vincenzo: "Vincenzo",
+        rekka: "Rekka",
+        "eetje-pans": "Eetje Pans",
+      };
+
+      const werkbladen = geladen.map((item) => {
+        const sheetName = sheetNamen[item.key];
+        const gemaakt = maakCashflowWerkblad(
+          item.data,
+          item.key,
+          item.data.entiteitNaam ?? item.label
+        );
+        return { ...item, sheetName, ...gemaakt };
+      });
+
+      const wb = XLSX.utils.book_new();
+      (wb as any).Workbook = {
+        ...((wb as any).Workbook ?? {}),
+        CalcPr: { calcMode: "auto", fullCalcOnLoad: true, forceFullCalc: true },
+      };
+      XLSX.utils.book_append_sheet(
+        wb,
+        maakSamenvatting(
+          werkbladen.map((item) => ({
+            key: item.key,
+            label: item.data.entiteitNaam ?? item.label,
+            data: item.data,
+            sheetName: item.sheetName,
+            laatsteDataRij: item.laatsteDataRij,
+          })),
+          totJaar
+        ),
+        "Samenvatting"
+      );
+
+      for (const item of werkbladen) {
+        XLSX.utils.book_append_sheet(wb, item.werkblad, item.sheetName);
+      }
+
+      const naam =
+        mode === "alle"
+          ? `cashflow-alle-entiteiten-tm-${totJaar}.xlsx`
+          : `cashflow-${entiteit}-tm-${totJaar}.xlsx`;
+
+      XLSX.writeFile(wb, naam, { compression: true });
+    } catch (error) {
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : "Excel-export kon niet worden gemaakt"
+      );
+    } finally {
+      setExcelBezig(false);
+    }
+  }
 
   const entiteitLabel =
     data?.entiteitNaam ??
@@ -211,6 +630,25 @@ export default function CashflowOverzichtPage() {
               >
                 Print/PDF alle 3
               </Link>
+
+              <button
+                type="button"
+                onClick={() => void exporteerExcel("deze")}
+                disabled={loading || excelBezig || !data?.success}
+                className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-800 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {excelBezig ? "Excel maken…" : "Excel deze entiteit"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void exporteerExcel("alle")}
+                disabled={loading || excelBezig}
+                className="rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm font-medium text-blue-800 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {excelBezig ? "Excel maken…" : "Excel alle 3"}
+              </button>
+
 
               <Link
                 href="/admin/cashflow/dashboard"
