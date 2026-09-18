@@ -448,6 +448,31 @@ export default function ActueleSaldiPage() {
           </div>
         </section>
 
+        <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950 shadow-sm">
+          <div className="font-semibold">Waarvoor gebruik je dit scherm?</div>
+          <p className="mt-1 leading-6">
+            Hier leg je de <strong>werkelijke banksaldi</strong> vast en bepaal
+            je de nieuwe <strong>peildatum</strong>. Tot en met die datum is dit
+            de actuele werkelijkheid; daarna rekent de cashflowprognose verder.
+            Na een winterstop of langere pauze is dit het eerste cashflowscherm
+            dat je controleert.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold">
+            <a
+              href="/admin/infotheek/jaarstart-cashflow-wat-controleer-je-na-de-winterstop"
+              className="text-emerald-800 underline decoration-emerald-400 underline-offset-2 hover:text-emerald-950"
+            >
+              📖 Jaarstart / na de winterstop
+            </a>
+            <a
+              href="/admin/infotheek/hoe-lopen-de-geldstromen-tussen-vincenzo-holdings-en-prive"
+              className="text-emerald-800 underline decoration-emerald-400 underline-offset-2 hover:text-emerald-950"
+            >
+              📖 Uitleg vrije ruimte en geldstromen
+            </a>
+          </div>
+        </section>
+
         <section className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 shadow-sm">
           <span className="font-semibold">Maandultimo.</span>{" "}
           De cashflowmotor rekent per hele kalendermaand. Daarom kan een nieuwe
@@ -556,6 +581,10 @@ export default function ActueleSaldiPage() {
                         Eerstvolgende mogelijke datum:{" "}
                         {dateNl(nextAllowedDate)}
                       </div>
+                      <div className="mt-1 text-xs leading-5 text-slate-500">
+                        Tot en met deze peildatum leg je de werkelijke stand vast;
+                        de prognose rekent daarna verder.
+                      </div>
                     </Field>
 
                     {entity.accounts.map((account) => (
@@ -596,6 +625,11 @@ export default function ActueleSaldiPage() {
                         />
                         <div className="mt-1 text-xs text-slate-500">
                           Huidig {euro(entity.freeRoom.remaining)}
+                        </div>
+                        <div className="mt-1 text-xs leading-5 text-slate-500">
+                          Dit is de resterende vrije ruimte/rekening-courantruimte.
+                          Het is niet hetzelfde als het banksaldo of de gewenste
+                          privé-opname.
                         </div>
                       </Field>
                     )}

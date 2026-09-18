@@ -213,6 +213,27 @@ export default function CashflowInstellingenPage() {
           </div>
         </section>
 
+        <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950 shadow-sm">
+          <div className="font-semibold">Wat stuur je hier?</div>
+          <p className="mt-1 leading-6">
+            De <strong>minimum kasbuffer</strong> is de waarschuwingsgrens. Voor
+            Vincenzo bepaalt <strong>omzetgroei</strong> het toekomstige
+            jaarvolume; de verdeling over het seizoen blijft gebaseerd op het
+            historische maandpatroon. <strong>Loonkostengroei</strong> bepaalt
+            de jaarlijkse groei van de toekomstige loonkosten.
+          </p>
+          <p className="mt-1 leading-6">
+            De holdings worden opgebouwd uit hun eigen geldstromen. Daarom stel
+            je daar op dit scherm alleen de gewenste minimum kasbuffer in.
+          </p>
+          <a
+            href="/admin/infotheek/hoe-rekent-de-cashflowprognose"
+            className="mt-2 inline-block text-xs font-semibold text-emerald-800 underline decoration-emerald-400 underline-offset-2 hover:text-emerald-950"
+          >
+            📖 Meer uitleg: Hoe rekent de cashflowprognose?
+          </a>
+        </section>
+
         <section className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 shadow-sm">
           <span className="font-semibold">Dit zijn echte basisgegevens.</span>{" "}
           Na opslaan gebruikt de cashflowprognose de nieuwe waarde direct. Een
@@ -275,21 +296,20 @@ export default function CashflowInstellingenPage() {
                       />
                     </Field>
 
-                    <Field
-                      label={
-                        isWorkCompany
-                          ? "Omzetgroei per jaar"
-                          : "Prognosegroei per jaar"
-                      }
-                      hint="%"
-                    >
-                      <PercentInput
-                        value={form.growth}
-                        onChange={(value) =>
-                          updateForm(entity.id, "growth", value)
-                        }
-                      />
-                    </Field>
+                    {isWorkCompany && (
+                      <Field label="Omzetgroei per jaar" hint="%">
+                        <PercentInput
+                          value={form.growth}
+                          onChange={(value) =>
+                            updateForm(entity.id, "growth", value)
+                          }
+                        />
+                        <div className="mt-1 text-xs leading-5 text-slate-500">
+                          Verandert het totale omzetniveau; de historische
+                          maandverdeling blijft gelijk.
+                        </div>
+                      </Field>
+                    )}
 
                     {isWorkCompany && (
                       <Field
@@ -302,6 +322,10 @@ export default function CashflowInstellingenPage() {
                             updateForm(entity.id, "wageGrowth", value)
                           }
                         />
+                        <div className="mt-1 text-xs leading-5 text-slate-500">
+                          Wordt gebruikt voor de jaarlijkse groei van de
+                          toekomstige loonkosten.
+                        </div>
                       </Field>
                     )}
                   </div>
