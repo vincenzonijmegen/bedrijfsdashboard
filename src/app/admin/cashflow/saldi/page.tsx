@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 type Account = {
   id: number;
@@ -458,18 +459,18 @@ export default function ActueleSaldiPage() {
             dat je controleert.
           </p>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold">
-            <a
+            <Link
               href="/admin/infotheek/jaarstart-cashflow-wat-controleer-je-na-de-winterstop"
               className="text-emerald-800 underline decoration-emerald-400 underline-offset-2 hover:text-emerald-950"
             >
               📖 Jaarstart / na de winterstop
-            </a>
-            <a
+            </Link>
+            <Link
               href="/admin/infotheek/hoe-lopen-de-geldstromen-tussen-vincenzo-holdings-en-prive"
               className="text-emerald-800 underline decoration-emerald-400 underline-offset-2 hover:text-emerald-950"
             >
               📖 Uitleg vrije ruimte en geldstromen
-            </a>
+            </Link>
           </div>
         </section>
 

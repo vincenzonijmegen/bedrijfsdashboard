@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 type Entity = {
   id: number;
@@ -226,12 +227,12 @@ export default function CashflowInstellingenPage() {
             De holdings worden opgebouwd uit hun eigen geldstromen. Daarom stel
             je daar op dit scherm alleen de gewenste minimum kasbuffer in.
           </p>
-          <a
+          <Link
             href="/admin/infotheek/hoe-rekent-de-cashflowprognose"
             className="mt-2 inline-block text-xs font-semibold text-emerald-800 underline decoration-emerald-400 underline-offset-2 hover:text-emerald-950"
           >
             📖 Meer uitleg: Hoe rekent de cashflowprognose?
-          </a>
+          </Link>
         </section>
 
         <section className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 shadow-sm">
