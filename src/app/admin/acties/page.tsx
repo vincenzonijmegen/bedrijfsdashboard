@@ -23,6 +23,7 @@ import {
   GripVertical,
   Pencil,
   Plus,
+  Printer,
   Trash2,
   X,
 } from "lucide-react";
@@ -270,6 +271,7 @@ export default function ActieLijstPagina() {
   const [lijstEdit, setLijstEdit] =
     useState<{ id: number; naam: string; icoon: string } | null>(null);
   const [actieEdit, setActieEdit] = useState<EditState | null>(null);
+  const [printBezig, setPrintBezig] = useState(false);
 
   useEffect(() => {
     if (lijsten && lijsten.length > 0 && !geselecteerdeLijst) {
@@ -447,6 +449,211 @@ export default function ActieLijstPagina() {
     mutate();
   };
 
+  const escapeHtml = (value: string) =>
+    value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+  const openActiesAfdrukken = async () => {
+    if (printBezig || gesorteerdeLijsten.length === 0) return;
+
+    setPrintBezig(true);
+
+    try {
+      const groepen = await Promise.all(
+        gesorteerdeLijsten.map(async (lijst) => {
+          const response = await fetch(`/api/acties?lijst_id=${lijst.id}`);
+
+          if (!response.ok) {
+            throw new Error(`Acties laden mislukt voor lijst ${lijst.id}`);
+          }
+
+          const lijstActies = (await response.json()) as Actie[];
+          const openActies = lijstActies
+            .filter(
+              (actie) =>
+                !actie.voltooid &&
+                !(actie.is_weekly && actie.done_this_week)
+            )
+            .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
+
+          return { lijst, acties: openActies };
+        })
+      );
+
+      const groepenMetActies = groepen.filter((groep) => groep.acties.length > 0);
+      const totaalOpen = groepenMetActies.reduce(
+        (totaal, groep) => totaal + groep.acties.length,
+        0
+      );
+      const datum = new Date().toLocaleDateString("nl-NL", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      });
+
+      const inhoud =
+        groepenMetActies.length > 0
+          ? groepenMetActies
+              .map(
+                ({ lijst, acties }) => `
+                  <section class="lijst">
+                    <div class="lijst-kop">
+                      <h2>${escapeHtml(lijst.icoon || "📋")} ${escapeHtml(
+                  lijst.naam
+                )}</h2>
+                      <span>${acties.length} open</span>
+                    </div>
+                    <div class="acties">
+                      ${acties
+                        .map(
+                          (actie) => `
+                            <div class="actie">
+                              <div class="actie-tekst">${actie.tekst || ""}</div>
+                              ${
+                                actie.is_weekly
+                                  ? '<div class="label">Wekelijks</div>'
+                                  : ""
+                              }
+                            </div>
+                          `
+                        )
+                        .join("")}
+                    </div>
+                  </section>
+                `
+              )
+              .join("")
+          : '<p class="leeg">Er zijn momenteel geen openstaande acties.</p>';
+
+      const printHtml = `<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <title>Openstaande actielijst</title>
+  <style>
+    @page { size: A4; margin: 15mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #0f172a;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 11pt;
+      line-height: 1.4;
+    }
+    .header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 10px;
+      margin-bottom: 18px;
+    }
+    h1 { margin: 0; font-size: 20pt; }
+    .sub { margin-top: 3px; color: #64748b; font-size: 9.5pt; }
+    .totaal { font-size: 10pt; font-weight: 700; white-space: nowrap; }
+    .lijst { margin: 0 0 18px; }
+    .lijst-kop {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 5px;
+      margin-bottom: 7px;
+      break-after: avoid;
+    }
+    .lijst-kop h2 { margin: 0; font-size: 13pt; }
+    .lijst-kop span { color: #64748b; font-size: 9pt; white-space: nowrap; }
+    .actie {
+      padding: 7px 0 7px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      break-inside: avoid;
+      position: relative;
+    }
+    .actie::before {
+      content: "•";
+      position: absolute;
+      left: 2px;
+      top: 7px;
+      font-weight: 700;
+    }
+    .actie-tekst p { margin: 0 0 4px; }
+    .actie-tekst p:last-child { margin-bottom: 0; }
+    .actie-tekst ul, .actie-tekst ol { margin: 4px 0; padding-left: 20px; }
+    .label {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 1px 6px;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      color: #1d4ed8;
+      font-size: 8pt;
+    }
+    .leeg { color: #64748b; font-style: italic; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div>
+      <h1>Openstaande actielijst</h1>
+      <div class="sub">Afgedrukt op ${escapeHtml(datum)}</div>
+    </div>
+    <div class="totaal">${totaalOpen} openstaande ${
+        totaalOpen === 1 ? "actie" : "acties"
+      }</div>
+  </header>
+  ${inhoud}
+</body>
+</html>`;
+
+      const printFrame = document.createElement("iframe");
+      printFrame.setAttribute("aria-hidden", "true");
+      printFrame.style.position = "fixed";
+      printFrame.style.left = "-9999px";
+      printFrame.style.top = "0";
+      printFrame.style.width = "1px";
+      printFrame.style.height = "1px";
+      printFrame.style.border = "0";
+      printFrame.style.opacity = "0";
+      document.body.appendChild(printFrame);
+
+      const printDocument = printFrame.contentDocument;
+      const printWindow = printFrame.contentWindow;
+
+      if (!printDocument || !printWindow) {
+        printFrame.remove();
+        throw new Error("Afdrukvenster kon niet worden geopend");
+      }
+
+      printDocument.open();
+      printDocument.write(printHtml);
+      printDocument.close();
+
+      const opruimen = () => {
+        if (printFrame.parentNode) printFrame.remove();
+      };
+
+      printWindow.addEventListener("afterprint", opruimen, { once: true });
+
+      window.setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 250);
+
+      window.setTimeout(opruimen, 60000);
+    } catch (error) {
+      console.error(error);
+      alert("Het afdrukoverzicht kon niet worden gemaakt. Probeer het opnieuw.");
+    } finally {
+      setPrintBezig(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-100 px-6 py-6">
       <div className="mx-auto max-w-7xl">
@@ -465,19 +672,32 @@ export default function ActieLijstPagina() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-blue-50 px-4 py-3 ring-1 ring-blue-100">
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={openActiesAfdrukken}
+                disabled={printBezig || gesorteerdeLijsten.length === 0}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                title="Alle openstaande acties afdrukken"
+              >
+                <Printer size={17} />
+                {printBezig ? "Voorbereiden…" : "Afdrukken"}
+              </button>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-blue-50 px-4 py-3 ring-1 ring-blue-100">
                 <div className="text-xs font-medium uppercase tracking-wide text-blue-600">
                   Open
                 </div>
                 <div className="text-2xl font-bold text-blue-950">{openCount}</div>
               </div>
-              <div className="rounded-xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100">
-                <div className="text-xs font-medium uppercase tracking-wide text-emerald-600">
-                  Gedaan
-                </div>
-                <div className="text-2xl font-bold text-emerald-950">
-                  {doneCount}
+                <div className="rounded-xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100">
+                  <div className="text-xs font-medium uppercase tracking-wide text-emerald-600">
+                    Gedaan
+                  </div>
+                  <div className="text-2xl font-bold text-emerald-950">
+                    {doneCount}
+                  </div>
                 </div>
               </div>
             </div>
