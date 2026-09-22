@@ -185,6 +185,34 @@ export default function PrognosePage() {
     );
   })();
 
+  const getPrognoseObvHuidig = (m: MaandData) => {
+    if (selectedYear < currentYear) {
+      return m.realisatieOmzet;
+    }
+
+    if (selectedYear > currentYear) {
+      return m.prognoseOmzet;
+    }
+
+    if (m.maand < currentMonth) {
+      return m.realisatieOmzet;
+    }
+
+    if (m.maand > currentMonth) {
+      return m.prognoseOmzet;
+    }
+
+    const remainingDays = Math.max(
+      0,
+      (m.prognoseDagen ?? 0) - (m.realisatieDagen ?? 0)
+    );
+
+    return (
+      (m.realisatieOmzet ?? 0) +
+      remainingDays * (m.prognosePerDag ?? 0)
+    );
+  };
+
   const prognoseObvToDateByMonth = new Map<number, number | null>();
 
   for (const m of data) {
@@ -222,7 +250,7 @@ export default function PrognosePage() {
     ["dagen", (m) => m.todoDagen],
     ["omzet/dag", (m) => m.todoPerDag],
     ["PROGNOSES", () => null],
-    ["prognose obv huidig", (m) => m.prognoseHuidig],
+    ["prognose obv huidig", (m) => getPrognoseObvHuidig(m)],
     [
       "prognose obv omzet to date",
       (m) => prognoseObvToDateByMonth.get(m.maand) ?? null,
