@@ -411,20 +411,15 @@ export default function AdminDashboard() {
         </Section>
 
         <Section id="rapportages" title="📊 Rapportages & analyse" color="purple" activeSection={activeSection} setActiveSection={setActiveSection}>
-          <SubSection title="📊 Algemeen & dagrapportage" color="purple">
-            <LinkCard href="/admin/rapportage" label="Rapportagedashboard" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Rapportagedashboard" />
-            <LinkCard href="/admin/rapportage/dagrapporten" label="Dagrapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Dagrapporten" />
-            <LinkCard href="/admin/aftekenlijsten" label="Overzicht formulieren/rapporten" color="purple" Icon={ClipboardList} breadcrumb="Rapportages & analyse – Formulieren/rapporten" />
-            <LinkCard href="/admin/mail-instellingen" label="Dagbriefing & mailinstellingen" color="purple" Icon={Mail} breadcrumb="Rapportages & analyse – Dagbriefing & mailinstellingen" />
-            <LinkCard href="/api/admin/briefing/email-preview" label="Dagbriefing preview" color="purple" Icon={Eye} breadcrumb="Rapportages & analyse – Dagbriefing preview" target="_blank" rel="noopener noreferrer" />
-          </SubSection>
-
-          <SubSection title="💶 Financieel & omzet" color="purple">
-            <LinkCard href="/admin/rapportage/financieel" label="Financiële rapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Financiële rapporten" />
+          <SubSection title="💶 Omzet & financieel" color="purple">
+            <LinkCard href="/admin/omzet/prognose" label="Omzetprognose" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Omzetprognose" />
             <LinkCard href="/admin/rapportage/financieel/maandomzet" label="Maandomzet" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Maandomzet" />
             <LinkCard href="/admin/rapportage/financieel/uuromzet" label="Uuromzet" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Uuromzet" />
             <LinkCard href="/admin/rapportage/financieel/feestdagomzet" label="Feestdagenomzet" color="purple" Icon={CalendarDays} breadcrumb="Rapportages & analyse – Feestdagenomzet" />
             <LinkCard href="/admin/rapportage/financieel/top-omzetdagen" label="Top omzetdagen" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Top omzetdagen" />
+            <LinkCard href="/admin/kasboek/kasstaat" label="Kasstaat jaaroverzicht" color="purple" Icon={ClipboardList} breadcrumb="Rapportages & analyse – Kasstaat jaaroverzicht" />
+            <LinkCard href="/admin/mypos/boeking" label="MyPOS boekingsdocument" color="purple" Icon={FileText} breadcrumb="Rapportages & analyse – MyPOS boekingsdocument" />
+            <LinkCard href="/admin/kasboek/kasstaat" label="Export kasboek t.b.v. accountant" color="purple" Icon={Archive} breadcrumb="Rapportages & analyse – Export kasboek t.b.v. accountant" />
           </SubSection>
 
           <SubSection title="📚 Jaarrekeningen" color="purple">
@@ -436,16 +431,22 @@ export default function AdminDashboard() {
           </SubSection>
 
           <SubSection title="👥 Medewerkers" color="purple">
-            <LinkCard href="/admin/rapportage/medewerkers" label="Medewerkers rapporten" color="purple" Icon={Users} breadcrumb="Rapportages & analyse – Medewerkers rapporten" />
-            <LinkCard href="/admin/rapportage/medewerkers/resultaten" label="Toetsresultaten" color="purple" Icon={ClipboardCheck} breadcrumb="Rapportages & analyse – Toetsresultaten" />
-            <LinkCard href="/admin/rapportage/medewerkers/overzicht-progressie" label="Overzicht progressie" color="purple" Icon={Activity} breadcrumb="Rapportages & analyse – Overzicht progressie" />
+            <LinkCard href="/admin/rapportage/verjaardagen" label="Salariscontrole verjaardagen" color="purple" Icon={PartyPopper} breadcrumb="Rapportages & analyse – Salariscontrole verjaardagen" />
             <LinkCard href="/admin/rapportage/medewerkers/ziekteverzuim" label="Ziekteverzuim" color="purple" Icon={Activity} breadcrumb="Rapportages & analyse – Ziekteverzuim" />
+            <LinkCard href="/admin/onboarding" label="Overzicht Onboarding - Instructies" color="purple" Icon={ClipboardCheck} breadcrumb="Rapportages & analyse – Overzicht Onboarding - Instructies" />
           </SubSection>
 
           <SubSection title="🍦 Product & inkoop" color="purple">
             <LinkCard href="/admin/rapportage/productanalyse" label="Productanalyse" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Productanalyse" />
             <LinkCard href="/admin/rapportage/productvergelijker" label="Productvergelijker" color="purple" Icon={Layers} breadcrumb="Rapportages & analyse – Productvergelijker" />
             <LinkCard href="/admin/rapportage/ingekochte-producten" label="Ingekochte producten" color="purple" Icon={ShoppingCart} breadcrumb="Rapportages & analyse – Ingekochte producten" />
+          </SubSection>
+
+          <SubSection title="📋 Dagrapportage" color="purple">
+            <LinkCard href="/admin/rapportage/dagrapporten" label="Dagrapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Dagrapporten" />
+            <LinkCard href="/admin/aftekenlijsten" label="Overzicht formulieren/rapporten" color="purple" Icon={ClipboardList} breadcrumb="Rapportages & analyse – Formulieren/rapporten" />
+            <LinkCard href="/api/admin/briefing/email-preview" label="Dagbriefing preview" color="purple" Icon={Eye} breadcrumb="Rapportages & analyse – Dagbriefing preview" target="_blank" rel="noopener noreferrer" />
+            <LinkCard href="/admin/mail-instellingen" label="Dagbriefing & mailinstellingen" color="purple" Icon={Mail} breadcrumb="Rapportages & analyse – Dagbriefing & mailinstellingen" />
           </SubSection>
         </Section>
 
