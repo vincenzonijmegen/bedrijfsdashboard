@@ -333,6 +333,18 @@ export default function PrognosePage() {
           : "",
     },
     {
+      label: "To-do omzet/dag",
+      value: (m) => m.todoPerDag,
+      format: "number",
+      tone: (m, raw) => {
+        if (raw === null) return "";
+        if (m.maand !== currentMonth || selectedYear !== currentYear) return "";
+        return raw <= (m.prognosePerDag || 0)
+          ? " bg-emerald-50 text-emerald-800 font-semibold"
+          : " bg-amber-50 text-amber-900 font-semibold";
+      },
+    },
+    {
       label: "Voor/achter in dagen",
       value: (m) => m.voorAchterInDagen,
       format: "decimal",
@@ -462,17 +474,11 @@ export default function PrognosePage() {
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">Maandoverzicht</h2>
-              <p className="text-sm text-slate-500">
-                Omzet, tempo en loonkosten per maand. De huidige maand is gemarkeerd.
-              </p>
-            </div>
-
-            <div className="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">
-              {totalRealisatieDagen} van {totalPrognoseDagen} dagen gerealiseerd
-            </div>
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-slate-900">Maandoverzicht</h2>
+            <p className="text-sm text-slate-500">
+              Omzet, tempo en loonkosten per maand. De huidige maand is gemarkeerd.
+            </p>
           </div>
 
           <div className="overflow-auto rounded-xl border border-slate-200">
