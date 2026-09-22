@@ -457,83 +457,38 @@ export default function ActieLijstPagina() {
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
 
-  const openActiesAfdrukken = async () => {
-    if (printBezig || gesorteerdeLijsten.length === 0) return;
+  const openActiesAfdrukken = () => {
+    if (printBezig || !geselecteerdeLijst || openActiesSorted.length === 0) return;
 
     setPrintBezig(true);
 
     try {
-      const groepen = await Promise.all(
-        gesorteerdeLijsten.map(async (lijst) => {
-          const response = await fetch(`/api/acties?lijst_id=${lijst.id}`);
-
-          if (!response.ok) {
-            throw new Error(`Acties laden mislukt voor lijst ${lijst.id}`);
-          }
-
-          const lijstActies = (await response.json()) as Actie[];
-          const openActies = lijstActies
-            .filter(
-              (actie) =>
-                !actie.voltooid &&
-                !(actie.is_weekly && actie.done_this_week)
-            )
-            .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
-
-          return { lijst, acties: openActies };
-        })
-      );
-
-      const groepenMetActies = groepen.filter((groep) => groep.acties.length > 0);
-      const totaalOpen = groepenMetActies.reduce(
-        (totaal, groep) => totaal + groep.acties.length,
-        0
-      );
       const datum = new Date().toLocaleDateString("nl-NL", {
         day: "2-digit",
         month: "long",
         year: "numeric",
       });
 
-      const inhoud =
-        groepenMetActies.length > 0
-          ? groepenMetActies
-              .map(
-                ({ lijst, acties }) => `
-                  <section class="lijst">
-                    <div class="lijst-kop">
-                      <h2>${escapeHtml(lijst.icoon || "📋")} ${escapeHtml(
-                  lijst.naam
-                )}</h2>
-                      <span>${acties.length} open</span>
-                    </div>
-                    <div class="acties">
-                      ${acties
-                        .map(
-                          (actie) => `
-                            <div class="actie">
-                              <div class="actie-tekst">${actie.tekst || ""}</div>
-                              ${
-                                actie.is_weekly
-                                  ? '<div class="label">Wekelijks</div>'
-                                  : ""
-                              }
-                            </div>
-                          `
-                        )
-                        .join("")}
-                    </div>
-                  </section>
-                `
-              )
-              .join("")
-          : '<p class="leeg">Er zijn momenteel geen openstaande acties.</p>';
+      const inhoud = openActiesSorted
+        .map(
+          (actie) => `
+            <div class="actie">
+              <div class="actie-tekst">${actie.tekst || ""}</div>
+              ${
+                actie.is_weekly
+                  ? '<div class="label">Wekelijks</div>'
+                  : ""
+              }
+            </div>
+          `
+        )
+        .join("");
 
       const printHtml = `<!doctype html>
 <html lang="nl">
 <head>
   <meta charset="utf-8" />
-  <title>Openstaande actielijst</title>
+  <title>${escapeHtml(geselecteerdeLijst.naam)} - openstaande acties</title>
   <style>
     @page { size: A4; margin: 15mm; }
     * { box-sizing: border-box; }
@@ -551,36 +506,23 @@ export default function ActieLijstPagina() {
       gap: 20px;
       border-bottom: 2px solid #2563eb;
       padding-bottom: 10px;
-      margin-bottom: 18px;
+      margin-bottom: 14px;
     }
     h1 { margin: 0; font-size: 20pt; }
     .sub { margin-top: 3px; color: #64748b; font-size: 9.5pt; }
     .totaal { font-size: 10pt; font-weight: 700; white-space: nowrap; }
-    .lijst { margin: 0 0 18px; }
-    .lijst-kop {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      border-bottom: 1px solid #cbd5e1;
-      padding-bottom: 5px;
-      margin-bottom: 7px;
-      break-after: avoid;
-    }
-    .lijst-kop h2 { margin: 0; font-size: 13pt; }
-    .lijst-kop span { color: #64748b; font-size: 9pt; white-space: nowrap; }
     .actie {
-      padding: 7px 0 7px 16px;
+      padding: 8px 0 8px 18px;
       border-bottom: 1px solid #e2e8f0;
       break-inside: avoid;
       position: relative;
     }
     .actie::before {
-      content: "•";
+      content: "☐";
       position: absolute;
-      left: 2px;
-      top: 7px;
-      font-weight: 700;
+      left: 0;
+      top: 8px;
+      font-size: 10pt;
     }
     .actie-tekst p { margin: 0 0 4px; }
     .actie-tekst p:last-child { margin-bottom: 0; }
@@ -594,17 +536,18 @@ export default function ActieLijstPagina() {
       color: #1d4ed8;
       font-size: 8pt;
     }
-    .leeg { color: #64748b; font-style: italic; }
   </style>
 </head>
 <body>
   <header class="header">
     <div>
-      <h1>Openstaande actielijst</h1>
-      <div class="sub">Afgedrukt op ${escapeHtml(datum)}</div>
+      <h1>${escapeHtml(geselecteerdeLijst.icoon || "📋")} ${escapeHtml(
+        geselecteerdeLijst.naam
+      )}</h1>
+      <div class="sub">Openstaande acties · afgedrukt op ${escapeHtml(datum)}</div>
     </div>
-    <div class="totaal">${totaalOpen} openstaande ${
-        totaalOpen === 1 ? "actie" : "acties"
+    <div class="totaal">${openActiesSorted.length} openstaande ${
+        openActiesSorted.length === 1 ? "actie" : "acties"
       }</div>
   </header>
   ${inhoud}
@@ -643,13 +586,13 @@ export default function ActieLijstPagina() {
       window.setTimeout(() => {
         printWindow.focus();
         printWindow.print();
+        setPrintBezig(false);
       }, 250);
 
       window.setTimeout(opruimen, 60000);
     } catch (error) {
       console.error(error);
-      alert("Het afdrukoverzicht kon niet worden gemaakt. Probeer het opnieuw.");
-    } finally {
+      alert("De actielijst kon niet worden afgedrukt. Probeer het opnieuw.");
       setPrintBezig(false);
     }
   };
@@ -672,19 +615,7 @@ export default function ActieLijstPagina() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={openActiesAfdrukken}
-                disabled={printBezig || gesorteerdeLijsten.length === 0}
-                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-                title="Alle openstaande acties afdrukken"
-              >
-                <Printer size={17} />
-                {printBezig ? "Voorbereiden…" : "Afdrukken"}
-              </button>
-
-              <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-blue-50 px-4 py-3 ring-1 ring-blue-100">
                 <div className="text-xs font-medium uppercase tracking-wide text-blue-600">
                   Open
@@ -700,7 +631,6 @@ export default function ActieLijstPagina() {
                   </div>
                 </div>
               </div>
-            </div>
           </div>
         </div>
 
@@ -844,6 +774,17 @@ export default function ActieLijstPagina() {
                     {openCount} open acties
                   </p>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={openActiesAfdrukken}
+                  disabled={printBezig || !geselecteerdeLijst || openCount === 0}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  title="Openstaande acties uit deze actielijst afdrukken"
+                >
+                  <Printer size={17} />
+                  {printBezig ? "Voorbereiden…" : "Afdrukken"}
+                </button>
               </div>
 
               <div className="space-y-3">
