@@ -444,7 +444,7 @@ export default function AdminDashboard() {
 
           <SubSection title="📋 Dagrapportage" color="purple">
             <LinkCard href="/admin/rapportage/dagrapporten" label="Dagrapporten" color="purple" Icon={BarChart2} breadcrumb="Rapportages & analyse – Dagrapporten" />
-            <LinkCard href="/admin/aftekenlijsten" label="Overzicht formulieren/rapporten" color="purple" Icon={ClipboardList} breadcrumb="Rapportages & analyse – Formulieren/rapporten" />
+            <LinkCard href="/admin/aftekenlijsten" label="Aftekenlijsten" color="purple" Icon={ClipboardList} breadcrumb="Rapportages & analyse – Aftekenlijsten" />
             <LinkCard href="/api/admin/briefing/email-preview" label="Dagbriefing preview" color="purple" Icon={Eye} breadcrumb="Rapportages & analyse – Dagbriefing preview" target="_blank" rel="noopener noreferrer" />
             <LinkCard href="/admin/mail-instellingen" label="Dagbriefing & mailinstellingen" color="purple" Icon={Mail} breadcrumb="Rapportages & analyse – Dagbriefing & mailinstellingen" />
           </SubSection>
