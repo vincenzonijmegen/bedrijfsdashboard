@@ -340,18 +340,27 @@ async function getInstellingen(entiteitId: number) {
 }
 
 async function getVasteStromen(entiteitId: number, jaar: number) {
+  // Vaste stromen blijven op hun standaardmaand staan. Zodra een stroom
+  // expliciet planbaar + uitstelbaar is, bepaalt cashflow_planning alleen het
+  // betaalmoment van die concrete termijn. Het tarief zelf blijft gekoppeld
+  // aan de oorspronkelijke termijn.
+  const huidigJaar = new Date().getFullYear();
   const res = await db.query(`
     WITH maanden AS (
       SELECT generate_series(
-        make_date($2, 1, 1),
+        make_date($3, 1, 1),
         make_date($2, 12, 1),
         interval '1 month'
       )::date AS maand_datum
     )
     SELECT
-      EXTRACT(MONTH FROM m.maand_datum)::int AS maand,
+      EXTRACT(YEAR FROM m.maand_datum)::int AS oorspronkelijk_jaar,
+      EXTRACT(MONTH FROM m.maand_datum)::int AS oorspronkelijke_maand,
+      to_char(m.maand_datum, 'YYYY-MM-DD') AS oorspronkelijke_datum,
       s.id,
       s.naam,
+      s.gedrag,
+      s.uitstelbaar,
       b.id AS bedrag_id,
       b.bedrag,
       b.btw_percentage,
@@ -361,7 +370,7 @@ async function getVasteStromen(entiteitId: number, jaar: number) {
     JOIN cashflow_stromen s
       ON s.van_entiteit_id = $1
      AND s.actief = true
-     AND s.gedrag = 'vast'
+     AND s.gedrag IN ('vast', 'planbaar')
      AND s.frequentie = 'maandelijks'
      AND m.maand_datum >= s.startdatum
      AND (s.einddatum IS NULL OR m.maand_datum <= s.einddatum)
@@ -369,32 +378,113 @@ async function getVasteStromen(entiteitId: number, jaar: number) {
       SELECT b.*
       FROM cashflow_stroom_bedragen b
       WHERE b.stroom_id = s.id
+        AND b.percentage_van_bron IS NULL
         AND m.maand_datum >= b.geldig_vanaf
         AND (b.geldig_tot IS NULL OR m.maand_datum <= b.geldig_tot)
       ORDER BY b.geldig_vanaf DESC
       LIMIT 1
     ) b ON true
-    ORDER BY maand, s.naam
-  `, [entiteitId, jaar]);
+    ORDER BY m.maand_datum, s.naam
+  `, [entiteitId, jaar, huidigJaar]);
+
+  const rows = res.rows ?? [];
+  const planbareStreamIds = Array.from(
+    new Set(
+      rows
+        .filter(
+          (r: any) =>
+            String(r.gedrag) === "planbaar" && Boolean(r.uitstelbaar)
+        )
+        .map((r: any) => Number(r.id))
+        .filter((id: number) => Number.isInteger(id))
+    )
+  );
+
+  const plans = new Map<
+    string,
+    {
+      plannedDate: string;
+      amount: number;
+      status: string;
+      paidOn: string | null;
+    }
+  >();
+
+  if (planbareStreamIds.length) {
+    const planRes = await db.query(`
+      SELECT
+        stroom_id,
+        oorspronkelijke_datum::text AS oorspronkelijke_datum,
+        geplande_datum::text AS geplande_datum,
+        bedrag,
+        status,
+        betaald_op::text AS betaald_op
+      FROM cashflow_planning
+      WHERE stroom_id = ANY($1::int[])
+        AND (
+          EXTRACT(YEAR FROM oorspronkelijke_datum)::int BETWEEN $2 AND $3
+          OR EXTRACT(YEAR FROM geplande_datum)::int = $3
+          OR EXTRACT(YEAR FROM betaald_op)::int = $3
+        )
+      ORDER BY stroom_id, oorspronkelijke_datum
+    `, [planbareStreamIds, huidigJaar, jaar]);
+
+    for (const p of planRes.rows ?? []) {
+      const originalDate = String(p.oorspronkelijke_datum).slice(0, 10);
+      plans.set(`${Number(p.stroom_id)}|${originalDate}`, {
+        plannedDate: String(p.geplande_datum).slice(0, 10),
+        amount: Number(p.bedrag) || 0,
+        status: String(p.status),
+        paidOn:
+          p.betaald_op == null ? null : String(p.betaald_op).slice(0, 10),
+      });
+    }
+  }
 
   const map = new Map<number, VasteStroom[]>();
   for (let maand = 1; maand <= 12; maand++) map.set(maand, []);
 
-  for (const r of res.rows ?? []) {
+  for (const r of rows) {
+    const streamId = Number(r.id);
+    const originalDate = String(r.oorspronkelijke_datum).slice(0, 10);
+    const isPlanbaar =
+      String(r.gedrag) === "planbaar" && Boolean(r.uitstelbaar);
+    const plan = isPlanbaar
+      ? plans.get(`${streamId}|${originalDate}`)
+      : undefined;
+
+    if (plan?.status === "vervallen") continue;
+
+    const actualDate =
+      plan?.status === "betaald" && plan.paidOn
+        ? plan.paidOn
+        : plan?.plannedDate ?? originalDate;
+
+    if (Number(actualDate.slice(0, 4)) !== jaar) continue;
+
+    const maand = Number(actualDate.slice(5, 7));
+    if (!Number.isInteger(maand) || maand < 1 || maand > 12) continue;
+
     const btwPercentage = Number(r.btw_percentage) || 0;
     const inclusief = r.bedrag_is_inclusief_btw !== false;
-    const bedrag = r.bedrag_id == null || r.bedrag == null
-      ? null
-      : naarKasBedrag(Number(r.bedrag), btwPercentage, inclusief);
+    const basisBedrag = plan ? plan.amount : Number(r.bedrag);
+    const bedrag =
+      r.bedrag_id == null || r.bedrag == null || !Number.isFinite(basisBedrag)
+        ? null
+        : naarKasBedrag(basisBedrag, btwPercentage, inclusief);
 
-    map.get(Number(r.maand))!.push({
-      id: Number(r.id),
+    map.get(maand)!.push({
+      id: streamId,
       naam: String(r.naam),
       bedrag,
       btwPercentage,
       btwAftrekbaarPercentage: Number(r.btw_aftrekbaar_percentage) || 0,
       bedragIsInclusiefBtw: inclusief,
     });
+  }
+
+  for (const items of map.values()) {
+    items.sort((a, b) => a.naam.localeCompare(b.naam, "nl"));
   }
 
   return map;

@@ -111,11 +111,27 @@ export async function PATCH(req: NextRequest) {
       const einddatum = body.einddatum ? String(body.einddatum) : null;
       const actief = Boolean(body.actief);
       const uitstelbaar = Boolean(body.uitstelbaar);
+      const gedrag =
+        body.gedrag === undefined || body.gedrag === null || body.gedrag === ""
+          ? null
+          : String(body.gedrag);
+
+      if (gedrag !== null && gedrag !== "vast" && gedrag !== "planbaar") {
+        throw new Error("Gedrag moet 'vast' of 'planbaar' zijn");
+      }
+      if (uitstelbaar && gedrag !== null && gedrag !== "planbaar") {
+        throw new Error("Een uitstelbare geldstroom moet planbaar zijn");
+      }
+
       await db.query(`
         UPDATE cashflow_stromen
-        SET einddatum=$2, actief=$3, uitstelbaar=$4, bijgewerkt_op=now()
+        SET einddatum=$2,
+            actief=$3,
+            uitstelbaar=$4,
+            gedrag=COALESCE($5, gedrag),
+            bijgewerkt_op=now()
         WHERE id=$1
-      `, [id, einddatum, actief, uitstelbaar]);
+      `, [id, einddatum, actief, uitstelbaar, gedrag]);
     } else {
       return NextResponse.json({ success: false, error: "Onbekend wijzigingstype" }, { status: 400 });
     }
@@ -438,6 +454,11 @@ export async function POST(req: NextRequest) {
         }
 
         const templateRow = template.rows[0];
+        const gedrag = uitstelbaar
+          ? "planbaar"
+          : String(templateRow.gedrag) === "planbaar"
+            ? "vast"
+            : String(templateRow.gedrag);
 
         const insertedStream = await client.query(
           `
@@ -468,7 +489,7 @@ export async function POST(req: NextRequest) {
             vanEntiteitId,
             naarEntiteitId,
             tegenpartijNaam,
-            templateRow.gedrag,
+            gedrag,
             uitstelbaar,
             frequentie,
             geldigVanaf,

@@ -76,10 +76,10 @@ async function getPlanningData(toYear: number) {
     FROM cashflow_stromen s
     JOIN cashflow_entiteiten e ON e.id = s.van_entiteit_id
     WHERE s.actief = true
-      AND s.categorie = 'vrije_reserve'
+      AND e.actief = true
       AND s.gedrag = 'planbaar'
       AND s.uitstelbaar = true
-      AND e.naam IN ('Rekka Holding B.V.', 'Eetje Pans Holding B.V.')
+      AND s.berekeningswijze = 'vast_bedrag'
     ORDER BY e.naam, s.id
   `);
 
@@ -162,11 +162,13 @@ async function getPlanningData(toYear: number) {
   const occurrences: Array<Record<string, unknown>> = [];
   for (const stream of streams) {
     const interval = intervalMonths(stream.frequency);
-    if (interval == null) continue;
+    const oneTime = stream.frequency === "eenmalig";
+    if (!oneTime && interval == null) continue;
 
     let current = stream.startDate;
     while (Number(current.slice(0, 4)) <= toYear) {
       if (stream.endDate && current > stream.endDate) break;
+
       const plan = plans.get(`${stream.id}|${current}`) ?? null;
       const rate = rateForDate(stream.id, current);
       const plannedDate = plan?.status === "betaald" && plan.paidOn
@@ -178,6 +180,7 @@ async function getPlanningData(toYear: number) {
         entity: stream.entity,
         streamId: stream.id,
         streamName: stream.name,
+        category: stream.category,
         originalDate: current,
         plannedDate,
         amount: plan?.amount ?? rate?.amount ?? null,
@@ -189,7 +192,8 @@ async function getPlanningData(toYear: number) {
         planningId: plan?.id ?? null,
       });
 
-      current = addMonths(current, interval);
+      if (oneTime) break;
+      current = addMonths(current, interval!);
     }
   }
 
@@ -216,14 +220,14 @@ async function getEligibleStream(streamId: number) {
     JOIN cashflow_entiteiten e ON e.id = s.van_entiteit_id
     WHERE s.id = $1
       AND s.actief = true
-      AND s.categorie = 'vrije_reserve'
+      AND e.actief = true
       AND s.gedrag = 'planbaar'
       AND s.uitstelbaar = true
-      AND e.naam IN ('Rekka Holding B.V.', 'Eetje Pans Holding B.V.')
+      AND s.berekeningswijze = 'vast_bedrag'
     LIMIT 1
   `, [streamId]);
   const row = res.rows?.[0];
-  if (!row) throw new Error("Stroom is niet planbaar/uitstelbaar voor fase 4H");
+  if (!row) throw new Error("Geldstroom is niet planbaar en uitstelbaar");
   return {
     id: Number(row.id),
     name: String(row.naam),
@@ -236,6 +240,14 @@ async function getEligibleStream(streamId: number) {
 function validateOccurrence(stream: { frequency: string; startDate: string; endDate: string | null }, originalDate: string) {
   if (originalDate < stream.startDate) throw new Error("Oorspronkelijke datum ligt vóór de startdatum");
   if (stream.endDate && originalDate > stream.endDate) throw new Error("Oorspronkelijke datum ligt na de einddatum");
+
+  if (stream.frequency === "eenmalig") {
+    if (originalDate !== stream.startDate) {
+      throw new Error("Oorspronkelijke datum is geen geldige standaardtermijn van deze stroom");
+    }
+    return;
+  }
+
   const interval = intervalMonths(stream.frequency);
   if (interval == null) throw new Error("Frequentie wordt niet ondersteund");
   const diff = monthDiff(stream.startDate, originalDate);
@@ -281,7 +293,7 @@ export async function POST(req: NextRequest) {
 
     const originalDate = parseDateOnly(body?.oorspronkelijke_datum);
     const plannedDate = parseDateOnly(body?.geplande_datum);
-    if (plannedDate < originalDate) throw new Error("Een privé-opname mag niet vóór de oorspronkelijke datum worden gepland");
+    if (plannedDate < originalDate) throw new Error("Een betaling mag niet vóór de oorspronkelijke datum worden gepland");
 
     const stream = await getEligibleStream(streamId);
     validateOccurrence(stream, originalDate);

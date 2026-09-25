@@ -74,6 +74,31 @@ type NewStreamForm = {
   postponable: boolean;
 };
 
+type PlanningOccurrence = {
+  entity: string;
+  streamId: number;
+  streamName: string;
+  category: string;
+  originalDate: string;
+  plannedDate: string;
+  amount: number | null;
+  status: string;
+  postponed: boolean;
+  manual: boolean;
+  reason: string | null;
+  paidOn: string | null;
+  planningId: number | null;
+};
+
+type PlanningResponse = {
+  success: boolean;
+  data?: {
+    toYear: number;
+    occurrences: PlanningOccurrence[];
+  };
+  error?: string;
+};
+
 function money(value: number | string | null | undefined) {
   const n = Number(value);
   if (!Number.isFinite(n)) return "—";
@@ -110,6 +135,25 @@ function numberValue(value: string) {
   return Number.isFinite(number) ? number : NaN;
 }
 
+function monthValue(date: string) {
+  return String(date).slice(0, 7);
+}
+
+function nextMonthValue(date: string) {
+  const [year, month] = monthValue(date).split("-").map(Number);
+  const nextYear = month === 12 ? year + 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  return `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
+}
+
+function formatMonth(value: string) {
+  const [year, month] = monthValue(value).split("-").map(Number);
+  return new Intl.DateTimeFormat("nl-NL", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(year, month - 1, 1));
+}
+
 export default function CashflowTarievenPage() {
   const [data, setData] = useState<CashflowResponse["data"] | null>(null);
   const [selectedStreamId, setSelectedStreamId] = useState<number | null>(null);
@@ -140,8 +184,16 @@ export default function CashflowTarievenPage() {
     inclusive: true,
     postponable: false,
   });
+  const [planning, setPlanning] = useState<PlanningResponse["data"] | null>(null);
+  const [planningLoading, setPlanningLoading] = useState(false);
+  const [planningError, setPlanningError] = useState<string | null>(null);
+  const [plannedMonths, setPlannedMonths] = useState<Record<string, string>>({});
+  const [planningActionKey, setPlanningActionKey] = useState<string | null>(null);
+  const [streamModeSaving, setStreamModeSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+
+  const planningToYear = new Date().getFullYear() + 3;
 
   async function load(preferredStreamId?: number | null) {
     setLoading(true);
@@ -186,8 +238,36 @@ export default function CashflowTarievenPage() {
     }
   }
 
+  async function loadPlanning() {
+    setPlanningLoading(true);
+    setPlanningError(null);
+
+    try {
+      const res = await fetch(
+        `/api/admin/cashflow/planning?tot=${planningToYear}`,
+        { cache: "no-store" }
+      );
+      const json = (await res.json()) as PlanningResponse;
+
+      if (!res.ok || !json.success || !json.data) {
+        throw new Error(
+          json.error || `Planning laden mislukt (${res.status})`
+        );
+      }
+
+      setPlanning(json.data);
+    } catch (err) {
+      setPlanningError(
+        err instanceof Error ? err.message : "Planning laden mislukt."
+      );
+    } finally {
+      setPlanningLoading(false);
+    }
+  }
+
   useEffect(() => {
     load();
+    loadPlanning();
   }, []);
 
   const fixedStreams = useMemo(() => {
@@ -229,6 +309,27 @@ export default function CashflowTarievenPage() {
       );
   }, [data, selectedStreamId]);
 
+
+  const selectedOccurrences = useMemo(() => {
+    if (!selectedStreamId || !planning) return [];
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    return planning.occurrences
+      .filter(
+        (occurrence) =>
+          occurrence.streamId === selectedStreamId &&
+          occurrence.status !== "betaald" &&
+          occurrence.status !== "vervallen" &&
+          (occurrence.postponed ||
+            monthValue(occurrence.originalDate) >= currentMonth)
+      )
+      .sort((a, b) => a.originalDate.localeCompare(b.originalDate));
+  }, [planning, selectedStreamId]);
+
+  const activePostponements = useMemo(
+    () => selectedOccurrences.filter((occurrence) => occurrence.postponed),
+    [selectedOccurrences]
+  );
 
   const activeEntities = useMemo(
     () => (data?.entiteiten ?? []).filter((entity) => entity.actief),
@@ -323,6 +424,18 @@ export default function CashflowTarievenPage() {
       setError("Ingangsdatum is verplicht.");
       return;
     }
+    const fromEntityName =
+      activeEntities.find((entity) => entity.id === fromEntityId)?.naam ?? null;
+    if (
+      newStreamForm.postponable &&
+      fromEntityName === "IJssalon Vincenzo B.V." &&
+      newStreamForm.frequency !== "maandelijks"
+    ) {
+      setError(
+        "Uitstelbare vaste stromen van Vincenzo moeten op dit moment maandelijks zijn."
+      );
+      return;
+    }
     if (!Number.isFinite(amount) || amount < 0) {
       setError("Bedrag moet 0 of hoger zijn.");
       return;
@@ -401,6 +514,202 @@ export default function CashflowTarievenPage() {
       );
     } finally {
       setNewStreamSaving(false);
+    }
+  }
+
+  function planningKey(occurrence: PlanningOccurrence) {
+    return `${occurrence.streamId}-${occurrence.originalDate}`;
+  }
+
+  function selectedTargetMonth(occurrence: PlanningOccurrence) {
+    const key = planningKey(occurrence);
+    return (
+      plannedMonths[key] ||
+      (occurrence.postponed
+        ? monthValue(occurrence.plannedDate)
+        : nextMonthValue(occurrence.originalDate))
+    );
+  }
+
+  function targetMonthCollision(
+    occurrence: PlanningOccurrence,
+    targetMonth: string
+  ) {
+    return selectedOccurrences.find(
+      (other) =>
+        other.streamId === occurrence.streamId &&
+        other.originalDate !== occurrence.originalDate &&
+        other.status !== "vervallen" &&
+        monthValue(other.plannedDate) === targetMonth
+    );
+  }
+
+  async function enablePostponement() {
+    if (!selectedStream) return;
+
+    if (
+      selectedStream.van_entiteit === "IJssalon Vincenzo B.V." &&
+      selectedStream.frequentie !== "maandelijks"
+    ) {
+      setPlanningError(
+        "Uitstel via Vaste tarieven is voor Vincenzo alleen gekoppeld aan maandelijkse vaste stromen."
+      );
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Uitstel inschakelen voor “${selectedStream.naam}”? De geldstroom wordt planbaar; zonder handmatige wijziging blijft iedere betaling gewoon in de oorspronkelijke maand staan.`
+      )
+    ) {
+      return;
+    }
+
+    setStreamModeSaving(true);
+    setPlanningError(null);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/admin/cashflow", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "stroom",
+          id: selectedStream.id,
+          einddatum: selectedStream.einddatum,
+          actief: selectedStream.actief,
+          uitstelbaar: true,
+          gedrag: "planbaar",
+        }),
+      });
+
+      const json = (await res.json()) as CashflowResponse;
+      if (!res.ok || !json.success) {
+        throw new Error(
+          json.error || `Uitstel inschakelen mislukt (${res.status})`
+        );
+      }
+
+      setMessage(`${selectedStream.naam}: uitstel is ingeschakeld.`);
+      await load(selectedStream.id);
+      await loadPlanning();
+    } catch (err) {
+      setPlanningError(
+        err instanceof Error ? err.message : "Uitstel inschakelen mislukt."
+      );
+    } finally {
+      setStreamModeSaving(false);
+    }
+  }
+
+  async function postponeOccurrence(occurrence: PlanningOccurrence) {
+    if (!selectedStream) return;
+
+    const key = planningKey(occurrence);
+    const targetMonth = selectedTargetMonth(occurrence);
+    const minimumMonth = nextMonthValue(occurrence.originalDate);
+
+    if (!targetMonth || targetMonth < minimumMonth) {
+      setPlanningError(
+        `Kies een maand vanaf ${formatMonth(`${minimumMonth}-01`)}.`
+      );
+      return;
+    }
+
+    const collision = targetMonthCollision(occurrence, targetMonth);
+    if (
+      collision &&
+      !window.confirm(
+        `In ${formatMonth(`${targetMonth}-01`)} staat al een andere betaling van ${selectedStream.naam}. Als je doorgaat, worden beide betalingen in die maand verwerkt. Doorgaan?`
+      )
+    ) {
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `${selectedStream.naam} van ${formatMonth(occurrence.originalDate)} uitstellen naar ${formatMonth(`${targetMonth}-01`)}? Dit werkt direct door in de cashflowprognose.`
+      )
+    ) {
+      return;
+    }
+
+    setPlanningActionKey(key);
+    setPlanningError(null);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/admin/cashflow/planning", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stream_id: occurrence.streamId,
+          oorspronkelijke_datum: occurrence.originalDate,
+          geplande_datum: `${targetMonth}-01`,
+          bedrag: occurrence.amount,
+          reden: "Handmatig uitgesteld via Vaste tarieven",
+        }),
+      });
+
+      const json = (await res.json()) as PlanningResponse;
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || `Uitstellen mislukt (${res.status})`);
+      }
+
+      setMessage(
+        `${selectedStream.naam}: betaling ${formatMonth(occurrence.originalDate)} is uitgesteld naar ${formatMonth(`${targetMonth}-01`)}.`
+      );
+      await loadPlanning();
+    } catch (err) {
+      setPlanningError(
+        err instanceof Error ? err.message : "Betaling uitstellen mislukt."
+      );
+    } finally {
+      setPlanningActionKey(null);
+    }
+  }
+
+  async function resetOccurrence(occurrence: PlanningOccurrence) {
+    if (!selectedStream) return;
+
+    if (
+      !window.confirm(
+        `${selectedStream.naam} terugzetten naar ${formatMonth(occurrence.originalDate)}?`
+      )
+    ) {
+      return;
+    }
+
+    const key = planningKey(occurrence);
+    setPlanningActionKey(key);
+    setPlanningError(null);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/admin/cashflow/planning", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stream_id: occurrence.streamId,
+          oorspronkelijke_datum: occurrence.originalDate,
+        }),
+      });
+
+      const json = (await res.json()) as PlanningResponse;
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || `Terugzetten mislukt (${res.status})`);
+      }
+
+      setMessage(
+        `${selectedStream.naam}: betaling staat weer in ${formatMonth(occurrence.originalDate)}.`
+      );
+      await loadPlanning();
+    } catch (err) {
+      setPlanningError(
+        err instanceof Error ? err.message : "Betaling terugzetten mislukt."
+      );
+    } finally {
+      setPlanningActionKey(null);
     }
   }
 
@@ -984,9 +1293,39 @@ export default function CashflowTarievenPage() {
                           {selectedStream.frequentie} · start{" "}
                           {formatDate(selectedStream.startdatum)}
                         </p>
+                        <div className="mt-2">
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              selectedStream.gedrag === "planbaar" &&
+                              selectedStream.uitstelbaar
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-slate-100 text-slate-600"
+                            }`}
+                          >
+                            {selectedStream.gedrag === "planbaar" &&
+                            selectedStream.uitstelbaar
+                              ? "Uitstelbaar · planbaar"
+                              : "Vaste betaling · niet uitstelbaar"}
+                          </span>
+                        </div>
                       </div>
 
                       <div className="flex flex-wrap justify-end gap-2">
+                        {!(
+                          selectedStream.gedrag === "planbaar" &&
+                          selectedStream.uitstelbaar
+                        ) && (
+                          <button
+                            type="button"
+                            onClick={enablePostponement}
+                            disabled={streamModeSaving || deletingStream}
+                            className="h-10 rounded-xl border border-blue-300 bg-blue-50 px-4 text-sm font-semibold text-blue-800 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {streamModeSaving
+                              ? "Uitstel inschakelen…"
+                              : "Uitstel inschakelen"}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={newTariff}
@@ -1070,6 +1409,170 @@ export default function CashflowTarievenPage() {
                       </table>
                     </div>
                   </section>
+
+                  {planningError && (
+                    <section className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 shadow-sm">
+                      <span className="font-semibold">Uitstelplanning:</span>{" "}
+                      {planningError}
+                    </section>
+                  )}
+
+                  {selectedStream.gedrag === "planbaar" &&
+                    selectedStream.uitstelbaar && (
+                      <section className="rounded-2xl border border-blue-200 bg-white p-5 shadow-sm">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                              Betalingsplanning
+                            </div>
+                            <h2 className="mt-1 text-xl font-bold text-slate-900">
+                              Betaling uitstellen
+                            </h2>
+                            <p className="mt-1 max-w-3xl text-sm text-slate-500">
+                              Alleen deze concrete betaling verschuift. Het vaste
+                              tarief en de volgende termijnen blijven ongewijzigd.
+                            </p>
+                          </div>
+                          {activePostponements.length > 0 && (
+                            <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-800">
+                              {activePostponements.length} uitgesteld
+                            </span>
+                          )}
+                        </div>
+
+                        {planningLoading ? (
+                          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                            Betalingen worden geladen…
+                          </div>
+                        ) : selectedOccurrences.length === 0 ? (
+                          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                            Geen toekomstige planbare betalingen gevonden binnen de
+                            prognoseperiode.
+                          </div>
+                        ) : (
+                          <div className="mt-4 overflow-x-auto">
+                            <table className="w-full min-w-[860px] text-sm">
+                              <thead>
+                                <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                                  <th className="pb-2 pr-3">Oorspronkelijk</th>
+                                  <th className="pb-2 pr-3 text-right">Bedrag</th>
+                                  <th className="pb-2 pr-3">Status</th>
+                                  <th className="pb-2 pr-3">Uitstellen naar</th>
+                                  <th className="pb-2 text-right">Actie</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {selectedOccurrences.map((occurrence) => {
+                                  const key = planningKey(occurrence);
+                                  const targetMonth =
+                                    selectedTargetMonth(occurrence);
+                                  const collision = targetMonthCollision(
+                                    occurrence,
+                                    targetMonth
+                                  );
+                                  const noChange =
+                                    occurrence.postponed &&
+                                    targetMonth ===
+                                      monthValue(occurrence.plannedDate);
+
+                                  return (
+                                    <tr
+                                      key={key}
+                                      className="border-b border-slate-100 last:border-0"
+                                    >
+                                      <td className="py-3 pr-3 font-semibold text-slate-800">
+                                        {formatMonth(occurrence.originalDate)}
+                                      </td>
+                                      <td className="py-3 pr-3 text-right font-semibold tabular-nums text-slate-900">
+                                        {money(occurrence.amount)}
+                                      </td>
+                                      <td className="py-3 pr-3">
+                                        {occurrence.postponed ? (
+                                          <div>
+                                            <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-800">
+                                              Uitgesteld
+                                            </span>
+                                            <div className="mt-1 text-xs text-slate-500">
+                                              Nu:{" "}
+                                              {formatMonth(
+                                                occurrence.plannedDate
+                                              )}
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                                            Standaard
+                                          </span>
+                                        )}
+                                      </td>
+                                      <td className="py-3 pr-3">
+                                        <input
+                                          type="month"
+                                          min={nextMonthValue(
+                                            occurrence.originalDate
+                                          )}
+                                          max={`${planningToYear}-12`}
+                                          value={targetMonth}
+                                          onChange={(event) =>
+                                            setPlannedMonths((prev) => ({
+                                              ...prev,
+                                              [key]: event.target.value,
+                                            }))
+                                          }
+                                          className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm"
+                                        />
+                                        {collision && (
+                                          <div className="mt-1 text-xs font-semibold text-amber-700">
+                                            In deze maand staat al een andere
+                                            termijn.
+                                          </div>
+                                        )}
+                                      </td>
+                                      <td className="py-3 text-right">
+                                        <div className="flex justify-end gap-2">
+                                          {occurrence.postponed && (
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                resetOccurrence(occurrence)
+                                              }
+                                              disabled={
+                                                planningActionKey === key
+                                              }
+                                              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                                            >
+                                              Terugzetten
+                                            </button>
+                                          )}
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              postponeOccurrence(occurrence)
+                                            }
+                                            disabled={
+                                              planningActionKey === key ||
+                                              !targetMonth ||
+                                              noChange
+                                            }
+                                            className="rounded-lg bg-blue-700 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                          >
+                                            {planningActionKey === key
+                                              ? "Opslaan…"
+                                              : occurrence.postponed
+                                                ? "Planning wijzigen"
+                                                : "Uitstellen"}
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </section>
+                    )}
 
                   <form
                     onSubmit={save}

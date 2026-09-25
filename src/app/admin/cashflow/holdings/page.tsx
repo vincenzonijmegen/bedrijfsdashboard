@@ -90,6 +90,7 @@ type PlanningOccurrence = {
   entity: string;
   streamId: number;
   streamName: string;
+  category: string;
   originalDate: string;
   plannedDate: string;
   amount: number;
@@ -279,7 +280,10 @@ export default function CashflowHoldingsPage() {
   const activePostponements = useMemo(
     () =>
       (planning?.data?.occurrences ?? []).filter(
-        (occurrence) => occurrence.postponed && occurrence.status !== "betaald"
+        (occurrence) =>
+          occurrence.category === "vrije_reserve" &&
+          occurrence.postponed &&
+          occurrence.status !== "betaald"
       ),
     [planning]
   );
@@ -289,6 +293,7 @@ export default function CashflowHoldingsPage() {
     return (planning?.data?.occurrences ?? []).find(
       (occurrence) =>
         occurrence.entity === alert.entity &&
+        occurrence.category === "vrije_reserve" &&
         (occurrence.originalDate === alertDate ||
           occurrence.plannedDate === alertDate)
     );
