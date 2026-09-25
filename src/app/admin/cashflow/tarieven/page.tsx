@@ -602,6 +602,62 @@ export default function CashflowTarievenPage() {
     }
   }
 
+  async function disablePostponement() {
+    if (!selectedStream) return;
+
+    if (activePostponements.length > 0) {
+      setPlanningError(
+        `Zet eerst ${activePostponements.length === 1 ? "de uitgestelde betaling" : `de ${activePostponements.length} uitgestelde betalingen`} terug naar de oorspronkelijke maand voordat je uitstel uitschakelt.`
+      );
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `Uitstel uitschakelen voor “${selectedStream.naam}”? De betalingsplanning wordt gesloten en de geldstroom wordt weer als vaste betaling verwerkt. Tarieven blijven ongewijzigd.`
+      )
+    ) {
+      return;
+    }
+
+    setStreamModeSaving(true);
+    setPlanningError(null);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/admin/cashflow", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "stroom",
+          id: selectedStream.id,
+          einddatum: selectedStream.einddatum,
+          actief: selectedStream.actief,
+          uitstelbaar: false,
+          gedrag: "vast",
+        }),
+      });
+
+      const json = (await res.json()) as CashflowResponse;
+      if (!res.ok || !json.success) {
+        throw new Error(
+          json.error || `Uitstel uitschakelen mislukt (${res.status})`
+        );
+      }
+
+      setMessage(`${selectedStream.naam}: uitstel is uitgeschakeld.`);
+      setPlannedMonths({});
+      await load(selectedStream.id);
+      await loadPlanning();
+    } catch (err) {
+      setPlanningError(
+        err instanceof Error ? err.message : "Uitstel uitschakelen mislukt."
+      );
+    } finally {
+      setStreamModeSaving(false);
+    }
+  }
+
   async function postponeOccurrence(occurrence: PlanningOccurrence) {
     if (!selectedStream) return;
 
@@ -1311,10 +1367,19 @@ export default function CashflowTarievenPage() {
                       </div>
 
                       <div className="flex flex-wrap justify-end gap-2">
-                        {!(
-                          selectedStream.gedrag === "planbaar" &&
-                          selectedStream.uitstelbaar
-                        ) && (
+                        {selectedStream.gedrag === "planbaar" &&
+                        selectedStream.uitstelbaar ? (
+                          <button
+                            type="button"
+                            onClick={disablePostponement}
+                            disabled={streamModeSaving || deletingStream}
+                            className="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {streamModeSaving
+                              ? "Uitstel uitschakelen…"
+                              : "Uitstel uitschakelen"}
+                          </button>
+                        ) : (
                           <button
                             type="button"
                             onClick={enablePostponement}
