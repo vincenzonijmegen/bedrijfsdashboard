@@ -275,8 +275,257 @@ export async function DELETE(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    if (String(body?.type) !== "bedrag") {
-      return NextResponse.json({ success: false, error: "Onbekend invoertype" }, { status: 400 });
+    const inputType = String(body?.type || "");
+
+    if (inputType === "vaste_stroom") {
+      const naam = String(body.naam || "").trim();
+      const categorie = String(body.categorie || "").trim();
+      const frequentie = String(body.frequentie || "").trim();
+      const geldigVanaf = String(body.geldig_vanaf || "").trim();
+      const vanEntiteitId =
+        body.van_entiteit_id === null ||
+        body.van_entiteit_id === undefined ||
+        body.van_entiteit_id === ""
+          ? null
+          : Number(body.van_entiteit_id);
+      const naarEntiteitId =
+        body.naar_entiteit_id === null ||
+        body.naar_entiteit_id === undefined ||
+        body.naar_entiteit_id === ""
+          ? null
+          : Number(body.naar_entiteit_id);
+      const tegenpartijNaamRaw = String(body.tegenpartij_naam || "").trim();
+      const bedrag = toNumberOrNull(body.bedrag);
+      const btw = toNumberOrNull(body.btw_percentage) ?? 0;
+      const aftrek = toNumberOrNull(body.btw_aftrekbaar_percentage) ?? 0;
+      const uitstelbaar = Boolean(body.uitstelbaar);
+      const inclusiefBtw = body.bedrag_is_inclusief_btw !== false;
+
+      if (!naam) throw new Error("Naam is verplicht");
+      if (!categorie) throw new Error("Categorie is verplicht");
+      if (!frequentie) throw new Error("Frequentie is verplicht");
+      if (!geldigVanaf) throw new Error("Ingangsdatum is verplicht");
+      if (bedrag === null || bedrag < 0) {
+        throw new Error("Bedrag moet 0 of hoger zijn");
+      }
+      if (btw < 0 || btw > 100) {
+        throw new Error("BTW-percentage moet tussen 0 en 100 liggen");
+      }
+      if (aftrek < 0 || aftrek > 100) {
+        throw new Error("BTW-aftrek moet tussen 0 en 100 liggen");
+      }
+      if (
+        vanEntiteitId !== null &&
+        !Number.isInteger(vanEntiteitId)
+      ) {
+        throw new Error("Ongeldige van-entiteit");
+      }
+      if (
+        naarEntiteitId !== null &&
+        !Number.isInteger(naarEntiteitId)
+      ) {
+        throw new Error("Ongeldige naar-entiteit");
+      }
+      if (vanEntiteitId === null && naarEntiteitId === null) {
+        throw new Error("Kies minimaal een van- of naar-entiteit");
+      }
+      if (
+        vanEntiteitId !== null &&
+        naarEntiteitId !== null &&
+        vanEntiteitId === naarEntiteitId
+      ) {
+        throw new Error("Van- en naar-entiteit mogen niet hetzelfde zijn");
+      }
+
+      const tegenpartijNaam =
+        vanEntiteitId !== null && naarEntiteitId !== null
+          ? null
+          : tegenpartijNaamRaw || null;
+
+      const client = await db.getClient();
+      let createdStreamId: number | null = null;
+
+      try {
+        await client.query("BEGIN");
+
+        const entityIds = [vanEntiteitId, naarEntiteitId].filter(
+          (id): id is number => id !== null
+        );
+
+        const validEntities = await client.query(
+          `
+            SELECT id
+            FROM cashflow_entiteiten
+            WHERE actief = true
+              AND id = ANY($1::int[])
+          `,
+          [entityIds]
+        );
+
+        if (validEntities.rowCount !== entityIds.length) {
+          throw new Error("Een gekozen entiteit bestaat niet of is niet actief");
+        }
+
+        const validFrequency = await client.query(
+          `
+            SELECT 1
+            FROM cashflow_stromen
+            WHERE frequentie = $1
+            LIMIT 1
+          `,
+          [frequentie]
+        );
+
+        if (!validFrequency.rowCount) {
+          throw new Error(
+            "Onbekende frequentie. Kies een frequentie die al in de cashflow wordt gebruikt."
+          );
+        }
+
+        const duplicate = await client.query(
+          `
+            SELECT id
+            FROM cashflow_stromen
+            WHERE actief = true
+              AND lower(trim(naam)) = lower(trim($1))
+              AND van_entiteit_id IS NOT DISTINCT FROM $2::int
+              AND naar_entiteit_id IS NOT DISTINCT FROM $3::int
+            LIMIT 1
+          `,
+          [naam, vanEntiteitId, naarEntiteitId]
+        );
+
+        if (duplicate.rowCount) {
+          throw new Error(
+            "Er bestaat al een actieve geldstroom met deze naam en dezelfde richting"
+          );
+        }
+
+        const template = await client.query(
+          `
+            SELECT
+              s.gedrag,
+              s.berekeningswijze,
+              s.fiscale_behandeling
+            FROM cashflow_stromen s
+            WHERE s.actief = true
+              AND EXISTS (
+                SELECT 1
+                FROM cashflow_stroom_bedragen b
+                WHERE b.stroom_id = s.id
+                  AND b.bedrag IS NOT NULL
+                  AND b.percentage_van_bron IS NULL
+              )
+            ORDER BY
+              (
+                (s.van_entiteit_id IS NULL) = ($2::int IS NULL)
+                AND
+                (s.naar_entiteit_id IS NULL) = ($3::int IS NULL)
+              ) DESC,
+              (s.frequentie = $1) DESC,
+              (s.van_entiteit_id IS NOT DISTINCT FROM $2::int) DESC,
+              (s.naar_entiteit_id IS NOT DISTINCT FROM $3::int) DESC,
+              s.id
+            LIMIT 1
+          `,
+          [frequentie, vanEntiteitId, naarEntiteitId]
+        );
+
+        if (!template.rowCount) {
+          throw new Error(
+            "Geen bestaande vaste geldstroom gevonden om de technische instellingen van over te nemen"
+          );
+        }
+
+        const templateRow = template.rows[0];
+
+        const insertedStream = await client.query(
+          `
+            INSERT INTO cashflow_stromen (
+              naam,
+              categorie,
+              van_entiteit_id,
+              naar_entiteit_id,
+              tegenpartij_naam,
+              gedrag,
+              uitstelbaar,
+              frequentie,
+              startdatum,
+              einddatum,
+              actief,
+              bron_stroom_id,
+              berekeningswijze,
+              fiscale_behandeling
+            )
+            VALUES (
+              $1,$2,$3,$4,$5,$6,$7,$8,$9::date,NULL,true,NULL,$10,$11
+            )
+            RETURNING id
+          `,
+          [
+            naam,
+            categorie,
+            vanEntiteitId,
+            naarEntiteitId,
+            tegenpartijNaam,
+            templateRow.gedrag,
+            uitstelbaar,
+            frequentie,
+            geldigVanaf,
+            templateRow.berekeningswijze,
+            templateRow.fiscale_behandeling,
+          ]
+        );
+
+        createdStreamId = Number(insertedStream.rows[0]?.id);
+        if (!Number.isInteger(createdStreamId)) {
+          throw new Error("Nieuwe geldstroom kon niet worden aangemaakt");
+        }
+
+        await client.query(
+          `
+            INSERT INTO cashflow_stroom_bedragen (
+              stroom_id,
+              geldig_vanaf,
+              geldig_tot,
+              bedrag,
+              percentage_van_bron,
+              btw_percentage,
+              btw_aftrekbaar_percentage,
+              bedrag_is_inclusief_btw
+            )
+            VALUES ($1,$2::date,NULL,$3,NULL,$4,$5,$6)
+          `,
+          [
+            createdStreamId,
+            geldigVanaf,
+            bedrag,
+            btw,
+            aftrek,
+            inclusiefBtw,
+          ]
+        );
+
+        await client.query("COMMIT");
+      } catch (e) {
+        await client.query("ROLLBACK");
+        throw e;
+      } finally {
+        client.release();
+      }
+
+      return NextResponse.json({
+        success: true,
+        createdStreamId,
+        data: await getData(),
+      });
+    }
+
+    if (inputType !== "bedrag") {
+      return NextResponse.json(
+        { success: false, error: "Onbekend invoertype" },
+        { status: 400 }
+      );
     }
 
     const stroomId = Number(body.stroom_id);
@@ -287,10 +536,18 @@ export async function POST(req: NextRequest) {
     const btw = toNumberOrNull(body.btw_percentage) ?? 0;
     const aftrek = toNumberOrNull(body.btw_aftrekbaar_percentage) ?? 100;
 
-    if (!Number.isInteger(stroomId) || !geldigVanaf) throw new Error("Stroom en ingangsdatum zijn verplicht");
-    if ((bedrag === null) === (percentage === null)) throw new Error("Vul óf een bedrag óf een percentage in");
-    if (bedrag !== null && bedrag < 0) throw new Error("Bedrag mag niet negatief zijn");
-    if (percentage !== null && (percentage < 0 || percentage > 100)) throw new Error("Percentage moet tussen 0 en 100 liggen");
+    if (!Number.isInteger(stroomId) || !geldigVanaf) {
+      throw new Error("Stroom en ingangsdatum zijn verplicht");
+    }
+    if ((bedrag === null) === (percentage === null)) {
+      throw new Error("Vul óf een bedrag óf een percentage in");
+    }
+    if (bedrag !== null && bedrag < 0) {
+      throw new Error("Bedrag mag niet negatief zijn");
+    }
+    if (percentage !== null && (percentage < 0 || percentage > 100)) {
+      throw new Error("Percentage moet tussen 0 en 100 liggen");
+    }
 
     const client = await db.getClient();
     try {
@@ -367,6 +624,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: await getData() });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error) }, { status: 400 });
+    return NextResponse.json(
+      { success: false, error: String(error) },
+      { status: 400 }
+    );
   }
 }

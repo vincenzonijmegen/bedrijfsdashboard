@@ -47,6 +47,7 @@ type CashflowResponse = {
     stromen: Stream[];
     bedragen: Tariff[];
   };
+  createdStreamId?: number;
   error?: string;
 };
 
@@ -56,6 +57,21 @@ type TariffForm = {
   vat: string;
   deductible: string;
   inclusive: boolean;
+};
+
+type NewStreamForm = {
+  name: string;
+  category: string;
+  frequency: string;
+  fromEntityId: string;
+  toEntityId: string;
+  counterparty: string;
+  validFrom: string;
+  amount: string;
+  vat: string;
+  deductible: string;
+  inclusive: boolean;
+  postponable: boolean;
 };
 
 function money(value: number | string | null | undefined) {
@@ -108,6 +124,22 @@ export default function CashflowTarievenPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [deletingStream, setDeletingStream] = useState(false);
+  const [newStreamOpen, setNewStreamOpen] = useState(false);
+  const [newStreamSaving, setNewStreamSaving] = useState(false);
+  const [newStreamForm, setNewStreamForm] = useState<NewStreamForm>({
+    name: "",
+    category: "",
+    frequency: "",
+    fromEntityId: "",
+    toEntityId: "",
+    counterparty: "",
+    validFrom: "",
+    amount: "",
+    vat: "0",
+    deductible: "0",
+    inclusive: true,
+    postponable: false,
+  });
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -196,6 +228,181 @@ export default function CashflowTarievenPage() {
         String(b.geldig_vanaf).localeCompare(String(a.geldig_vanaf))
       );
   }, [data, selectedStreamId]);
+
+
+  const activeEntities = useMemo(
+    () => (data?.entiteiten ?? []).filter((entity) => entity.actief),
+    [data]
+  );
+
+  const frequencyOptions = useMemo(() => {
+    const values = Array.from(
+      new Set(
+        (data?.stromen ?? [])
+          .filter((stream) => stream.actief && stream.frequentie)
+          .map((stream) => stream.frequentie)
+      )
+    );
+    return values.sort((a, b) => a.localeCompare(b, "nl"));
+  }, [data]);
+
+  const categoryOptions = useMemo(() => {
+    const values = Array.from(
+      new Set(
+        (data?.stromen ?? [])
+          .filter((stream) => stream.actief && stream.categorie)
+          .map((stream) => stream.categorie)
+      )
+    );
+    return values.sort((a, b) => a.localeCompare(b, "nl"));
+  }, [data]);
+
+  function openNewStream() {
+    const defaultFrequency =
+      frequencyOptions.find((value) => value.toLowerCase().includes("maand")) ||
+      frequencyOptions[0] ||
+      "";
+
+    setNewStreamForm({
+      name: "",
+      category: "",
+      frequency: defaultFrequency,
+      fromEntityId: activeEntities[0] ? String(activeEntities[0].id) : "",
+      toEntityId: "",
+      counterparty: "",
+      validFrom: "",
+      amount: "",
+      vat: "0",
+      deductible: "0",
+      inclusive: true,
+      postponable: false,
+    });
+    setNewStreamOpen(true);
+    setMessage(null);
+    setError(null);
+  }
+
+  async function saveNewStream(event: FormEvent) {
+    event.preventDefault();
+
+    const amount = numberValue(newStreamForm.amount);
+    const vat = numberValue(newStreamForm.vat);
+    const deductible = numberValue(newStreamForm.deductible);
+    const fromEntityId = newStreamForm.fromEntityId
+      ? Number(newStreamForm.fromEntityId)
+      : null;
+    const toEntityId = newStreamForm.toEntityId
+      ? Number(newStreamForm.toEntityId)
+      : null;
+
+    if (!newStreamForm.name.trim()) {
+      setError("Naam is verplicht.");
+      return;
+    }
+    if (!newStreamForm.category.trim()) {
+      setError("Categorie is verplicht.");
+      return;
+    }
+    if (!newStreamForm.frequency) {
+      setError("Frequentie is verplicht.");
+      return;
+    }
+    if (fromEntityId === null && toEntityId === null) {
+      setError("Kies minimaal een van- of naar-entiteit.");
+      return;
+    }
+    if (
+      fromEntityId !== null &&
+      toEntityId !== null &&
+      fromEntityId === toEntityId
+    ) {
+      setError("Van- en naar-entiteit mogen niet hetzelfde zijn.");
+      return;
+    }
+    if (!newStreamForm.validFrom) {
+      setError("Ingangsdatum is verplicht.");
+      return;
+    }
+    if (!Number.isFinite(amount) || amount < 0) {
+      setError("Bedrag moet 0 of hoger zijn.");
+      return;
+    }
+    if (!Number.isFinite(vat) || vat < 0 || vat > 100) {
+      setError("BTW-percentage moet tussen 0 en 100 liggen.");
+      return;
+    }
+    if (
+      !Number.isFinite(deductible) ||
+      deductible < 0 ||
+      deductible > 100
+    ) {
+      setError("BTW-aftrek moet tussen 0 en 100 liggen.");
+      return;
+    }
+
+    const direction =
+      fromEntityId !== null && toEntityId !== null
+        ? "interne geldstroom"
+        : fromEntityId !== null
+          ? "uitgaande geldstroom"
+          : "inkomende geldstroom";
+
+    if (
+      !window.confirm(
+        `Je gaat “${newStreamForm.name.trim()}” aanmaken als ${direction} met ${money(amount)} per ${newStreamForm.frequency}, vanaf ${formatDate(newStreamForm.validFrom)}. Dit wijzigt de echte basisprognose. Doorgaan?`
+      )
+    ) {
+      return;
+    }
+
+    setNewStreamSaving(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/admin/cashflow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "vaste_stroom",
+          naam: newStreamForm.name.trim(),
+          categorie: newStreamForm.category.trim(),
+          frequentie: newStreamForm.frequency,
+          van_entiteit_id: fromEntityId,
+          naar_entiteit_id: toEntityId,
+          tegenpartij_naam: newStreamForm.counterparty.trim() || null,
+          uitstelbaar: newStreamForm.postponable,
+          geldig_vanaf: newStreamForm.validFrom,
+          bedrag: amount,
+          btw_percentage: vat,
+          btw_aftrekbaar_percentage: deductible,
+          bedrag_is_inclusief_btw: newStreamForm.inclusive,
+        }),
+      });
+
+      const json = (await res.json()) as CashflowResponse;
+      if (!res.ok || !json.success || !json.createdStreamId) {
+        throw new Error(
+          json.error || `Nieuwe geldstroom opslaan mislukt (${res.status})`
+        );
+      }
+
+      const createdId = json.createdStreamId;
+      setNewStreamOpen(false);
+      setMessage(
+        `${newStreamForm.name.trim()} is toegevoegd aan de vaste geldstromen.`
+      );
+      await load(createdId);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Nieuwe geldstroom opslaan mislukt."
+      );
+    } finally {
+      setNewStreamSaving(false);
+    }
+  }
 
   function editTariff(row: Tariff) {
     setForm({
@@ -477,6 +684,14 @@ export default function CashflowTarievenPage() {
                 Kies een stroom om de tariefhistorie te bekijken.
               </p>
 
+              <button
+                type="button"
+                onClick={openNewStream}
+                className="mt-4 h-10 w-full rounded-xl border border-emerald-300 bg-emerald-50 px-4 text-sm font-semibold text-emerald-800 hover:bg-emerald-100"
+              >
+                Nieuwe geldstroom
+              </button>
+
               <div className="mt-4 max-h-[680px] space-y-2 overflow-y-auto pr-1">
                 {fixedStreams.map((stream) => (
                   <button
@@ -484,6 +699,7 @@ export default function CashflowTarievenPage() {
                     type="button"
                     onClick={() => {
                       setSelectedStreamId(stream.id);
+                      setNewStreamOpen(false);
                       setMessage(null);
                       setError(null);
                       setForm({
@@ -515,6 +731,244 @@ export default function CashflowTarievenPage() {
             </aside>
 
             <div className="space-y-5">
+              {newStreamOpen && (
+                <form
+                  onSubmit={saveNewStream}
+                  className="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                        Nieuwe vaste geldstroom
+                      </div>
+                      <h2 className="mt-1 text-2xl font-bold text-slate-900">
+                        Geldstroom + eerste tarief
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-500">
+                        De geldstroom en het eerste tarief worden in één keer
+                        opgeslagen.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setNewStreamOpen(false)}
+                      disabled={newStreamSaving}
+                      className="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                    >
+                      Annuleren
+                    </button>
+                  </div>
+
+                  <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    <Field label="Naam *">
+                      <input
+                        type="text"
+                        value={newStreamForm.name}
+                        onChange={(event) =>
+                          setNewStreamForm((prev) => ({
+                            ...prev,
+                            name: event.target.value,
+                          }))
+                        }
+                        placeholder="Bijv. verzekering, software, onderhoud"
+                        className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                      />
+                    </Field>
+
+                    <Field label="Categorie *">
+                      <>
+                        <input
+                          type="text"
+                          list="cashflow-categorieen"
+                          value={newStreamForm.category}
+                          onChange={(event) =>
+                            setNewStreamForm((prev) => ({
+                              ...prev,
+                              category: event.target.value,
+                            }))
+                          }
+                          placeholder="Bijv. verzekering"
+                          className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                        />
+                        <datalist id="cashflow-categorieen">
+                          {categoryOptions.map((category) => (
+                            <option key={category} value={category} />
+                          ))}
+                        </datalist>
+                      </>
+                    </Field>
+
+                    <Field label="Frequentie *">
+                      <select
+                        value={newStreamForm.frequency}
+                        onChange={(event) =>
+                          setNewStreamForm((prev) => ({
+                            ...prev,
+                            frequency: event.target.value,
+                          }))
+                        }
+                        className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                      >
+                        <option value="">Kies frequentie</option>
+                        {frequencyOptions.map((frequency) => (
+                          <option key={frequency} value={frequency}>
+                            {frequency}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    <Field label="Van entiteit">
+                      <select
+                        value={newStreamForm.fromEntityId}
+                        onChange={(event) =>
+                          setNewStreamForm((prev) => ({
+                            ...prev,
+                            fromEntityId: event.target.value,
+                          }))
+                        }
+                        className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                      >
+                        <option value="">Externe partij / geen entiteit</option>
+                        {activeEntities.map((entity) => (
+                          <option key={entity.id} value={entity.id}>
+                            {entity.naam}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    <Field label="Naar entiteit">
+                      <select
+                        value={newStreamForm.toEntityId}
+                        onChange={(event) =>
+                          setNewStreamForm((prev) => ({
+                            ...prev,
+                            toEntityId: event.target.value,
+                          }))
+                        }
+                        className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                      >
+                        <option value="">Externe partij / geen entiteit</option>
+                        {activeEntities.map((entity) => (
+                          <option key={entity.id} value={entity.id}>
+                            {entity.naam}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    <Field label="Tegenpartij">
+                      <input
+                        type="text"
+                        value={newStreamForm.counterparty}
+                        onChange={(event) =>
+                          setNewStreamForm((prev) => ({
+                            ...prev,
+                            counterparty: event.target.value,
+                          }))
+                        }
+                        placeholder="Optioneel, bijv. leverancier"
+                        className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                      />
+                    </Field>
+
+                    <Field label="Geldig vanaf *">
+                      <input
+                        type="date"
+                        value={newStreamForm.validFrom}
+                        onChange={(event) =>
+                          setNewStreamForm((prev) => ({
+                            ...prev,
+                            validFrom: event.target.value,
+                          }))
+                        }
+                        className="h-11 w-full rounded-xl border border-slate-300 px-3 text-sm outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                      />
+                    </Field>
+
+                    <Field label="Bedrag *">
+                      <MoneyInput
+                        value={newStreamForm.amount}
+                        onChange={(value) =>
+                          setNewStreamForm((prev) => ({
+                            ...prev,
+                            amount: value,
+                          }))
+                        }
+                      />
+                    </Field>
+
+                    <Field label="BTW">
+                      <PercentInput
+                        value={newStreamForm.vat}
+                        onChange={(value) =>
+                          setNewStreamForm((prev) => ({
+                            ...prev,
+                            vat: value,
+                          }))
+                        }
+                      />
+                    </Field>
+
+                    <Field label="BTW aftrekbaar">
+                      <PercentInput
+                        value={newStreamForm.deductible}
+                        onChange={(value) =>
+                          setNewStreamForm((prev) => ({
+                            ...prev,
+                            deductible: value,
+                          }))
+                        }
+                      />
+                    </Field>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-5">
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={newStreamForm.inclusive}
+                        onChange={(event) =>
+                          setNewStreamForm((prev) => ({
+                            ...prev,
+                            inclusive: event.target.checked,
+                          }))
+                        }
+                        className="h-4 w-4 rounded border-slate-300"
+                      />
+                      Bedrag is inclusief BTW
+                    </label>
+
+                    <label className="flex items-center gap-2 text-sm text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={newStreamForm.postponable}
+                        onChange={(event) =>
+                          setNewStreamForm((prev) => ({
+                            ...prev,
+                            postponable: event.target.checked,
+                          }))
+                        }
+                        className="h-4 w-4 rounded border-slate-300"
+                      />
+                      Betaling is uitstelbaar
+                    </label>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={newStreamSaving}
+                    className="mt-5 h-11 rounded-xl bg-emerald-700 px-5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {newStreamSaving
+                      ? "Geldstroom opslaan…"
+                      : "Nieuwe geldstroom opslaan"}
+                  </button>
+                </form>
+              )}
+
               {selectedStream ? (
                 <>
                   <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
