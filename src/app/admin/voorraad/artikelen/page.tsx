@@ -66,7 +66,7 @@ export default function Productbeheer() {
       }
 
       const jaar = new Date().getFullYear();
-      const rows: (string | number)[][] = [
+      const rows: (string | number | null)[][] = [
         [`Voorraadopname per 31-12-${jaar}`],
         ["Alleen de kolom 'Aantal voorraad' invullen. De voorraadwaarde wordt automatisch berekend."],
         [],
@@ -99,8 +99,8 @@ export default function Productbeheer() {
           artikel.bestelnummer ?? "",
           artikel.besteleenheid ?? 1,
           artikel.huidige_prijs != null ? Number(artikel.huidige_prijs) : 0,
-          "",
-          "",
+          null,
+          null,
         ]);
         formuleRijen.push(excelRij);
         leverancierEinde = excelRij;
@@ -118,7 +118,7 @@ export default function Productbeheer() {
 
       const ws = XLSX.utils.aoa_to_sheet(rows);
       formuleRijen.forEach((rij) => {
-        ws[`F${rij}`] = { t: "n", f: `D${rij}*E${rij}`, z: '€ #,##0.00' };
+        ws[`F${rij}`] = { t: "n", f: `IFERROR(D${rij}*E${rij},0)`, z: '€ #,##0.00' };
         if (ws[`D${rij}`]) ws[`D${rij}`].z = '€ #,##0.00';
         if (ws[`E${rij}`]) ws[`E${rij}`].z = '0.00';
       });
