@@ -454,6 +454,7 @@ export default function AdminDashboard() {
           <LinkCard href="/admin/acties" label="Actielijsten" color="teal" Icon={CheckSquare} breadcrumb="Bedrijfsvoering – Actielijsten" />
           <LinkCard href="/admin/notities" label="Notities" color="teal" Icon={FileText} breadcrumb="Bedrijfsvoering – Notities" />
           <LinkCard href="/admin/contacten" label="Relaties" color="teal" Icon={Folder} breadcrumb="Bedrijfsvoering – Relaties" />
+          <LinkCard href="/admin/website" label="Website beheren" color="teal" Icon={Wrench} breadcrumb="Bedrijfsvoering – Website beheren" />
 
           <SubSection title="💶 Cashflow" color="teal">
             <LinkCard href="/admin/cashflow/dashboard" label="Cashflow dashboard" color="teal" Icon={BarChart2} breadcrumb="Bedrijfsvoering – Cashflow dashboard" />
