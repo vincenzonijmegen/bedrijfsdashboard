@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 
 type SeasonMode = "winter" | "march" | "summer";
 type RecruitmentMode = "closed" | "summer";
+type IncidentMode = "none" | "closed_today" | "closed_from";
 
 type WinterConfig = {
   active?: boolean;
@@ -19,6 +20,11 @@ type WinterConfig = {
 
 type WebsiteConfig = {
   season: { mode: SeasonMode };
+  incident: {
+    mode: IncidentMode;
+    date?: string;
+    closeFrom: string;
+  };
   winter: WinterConfig;
   recruitment: {
     mode: RecruitmentMode;
@@ -101,11 +107,15 @@ export async function PUT(request: Request) {
   try {
     const body = (await request.json()) as WebsiteConfig;
     const seasonModes: SeasonMode[] = ["winter", "march", "summer"];
+    const incidentModes: IncidentMode[] = ["none", "closed_today", "closed_from"];
     const recruitmentModes: RecruitmentMode[] = ["closed", "summer"];
 
     if (
       !body?.season ||
       !seasonModes.includes(body.season.mode) ||
+      !body?.incident ||
+      !incidentModes.includes(body.incident.mode) ||
+      (body.incident.mode === "closed_from" && !/^\d{2}:\d{2}$/.test(body.incident.closeFrom || "")) ||
       !body?.winter ||
       !body?.recruitment ||
       !recruitmentModes.includes(body.recruitment.mode)

@@ -15,6 +15,7 @@ import {
 
 type SeasonMode = "winter" | "march" | "summer";
 type RecruitmentMode = "closed" | "summer";
+type IncidentMode = "none" | "closed_today" | "closed_from";
 
 type WinterConfig = {
   active?: boolean;
@@ -36,14 +37,26 @@ type RecruitmentConfig = {
   summerText: string;
 };
 
+type IncidentConfig = {
+  mode: IncidentMode;
+  date?: string;
+  closeFrom: string;
+};
+
 type WebsiteConfig = {
   season: { mode: SeasonMode };
+  incident: IncidentConfig;
   winter: WinterConfig;
   recruitment: RecruitmentConfig;
 };
 
 const EMPTY_CONFIG: WebsiteConfig = {
   season: { mode: "winter" },
+  incident: {
+    mode: "none",
+    date: "",
+    closeFrom: "18:00",
+  },
   winter: {
     active: true,
     reopenText: "1 maart 2027",
@@ -76,6 +89,16 @@ function seasonDescription(mode: SeasonMode) {
   if (mode === "winter") return "Gesloten voor de winter";
   if (mode === "march") return "Open · dagelijks tot 20:00 uur";
   return "Open · dagelijks tot 22:00 uur";
+}
+
+function incidentDescription(i: IncidentConfig) {
+  if (i.mode === "closed_today") {
+    return "Wegens omstandigheden zijn wij vandaag gesloten.";
+  }
+  if (i.mode === "closed_from") {
+    return `Wegens omstandigheden zijn wij vandaag vanaf ${i.closeFrom} uur gesloten.`;
+  }
+  return "Geen incidentele sluiting actief.";
 }
 
 function recruitmentPreview(r: RecruitmentConfig) {
@@ -113,6 +136,7 @@ export default function WebsiteBeheerPage() {
             ...EMPTY_CONFIG,
             ...data,
             season: { ...EMPTY_CONFIG.season, ...(data?.season || {}) },
+            incident: { ...EMPTY_CONFIG.incident, ...(data?.incident || {}) },
             winter: { ...EMPTY_CONFIG.winter, ...(data?.winter || {}) },
             recruitment: {
               ...EMPTY_CONFIG.recruitment,
@@ -139,7 +163,22 @@ export default function WebsiteBeheerPage() {
     setConfig((current) => ({
       ...current,
       season: { mode },
+      incident:
+        mode === "winter"
+          ? { ...current.incident, mode: "none", date: "" }
+          : current.incident,
       winter: { ...current.winter, active: mode === "winter" },
+    }));
+    setMessage("");
+  }
+
+  function updateIncident<K extends keyof IncidentConfig>(
+    key: K,
+    value: IncidentConfig[K]
+  ) {
+    setConfig((current) => ({
+      ...current,
+      incident: { ...current.incident, [key]: value },
     }));
     setMessage("");
   }
@@ -205,6 +244,7 @@ export default function WebsiteBeheerPage() {
     );
   }
 
+  const i = config.incident;
   const w = config.winter;
   const r = config.recruitment;
   const vacancyPreview = recruitmentPreview(r);
@@ -222,7 +262,7 @@ export default function WebsiteBeheerPage() {
                 <Globe2 className="h-6 w-6" /> Website beheren
               </h1>
               <p className="mt-2 text-sm text-slate-600">
-                Pas de seizoensstand en vacaturetekst aan. Opslaan publiceert direct naar Cloud86.
+                Pas de openingstijden, incidentele sluitingen en vacaturetekst aan. Opslaan publiceert direct naar Cloud86.
               </p>
             </div>
 
@@ -286,6 +326,67 @@ export default function WebsiteBeheerPage() {
                 </div>
               )}
             </div>
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
+          <div className="border-b border-amber-200 bg-amber-50 px-6 py-4">
+            <h2 className="flex items-center gap-2 font-bold text-amber-950">
+              <Clock3 className="h-5 w-5" /> Incidentele sluiting vandaag
+            </h2>
+            <p className="mt-1 text-sm text-amber-800">
+              Voor een onverwachte sluiting. Deze stand vervalt automatisch na vandaag.
+            </p>
+          </div>
+
+          <div className="space-y-5 p-6">
+            {config.season.mode === "winter" && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                Niet beschikbaar tijdens de winterstop.
+              </div>
+            )}
+
+            <label className="block max-w-xl">
+              <span className="mb-1.5 block text-sm font-semibold text-slate-700">
+                Vandaag
+              </span>
+              <select
+                value={i.mode}
+                disabled={config.season.mode === "winter"}
+                onChange={(event) =>
+                  updateIncident("mode", event.target.value as IncidentMode)
+                }
+                className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100 disabled:bg-slate-100 disabled:text-slate-400"
+              >
+                <option value="none">Geen incidentele sluiting</option>
+                <option value="closed_today">Wegens omstandigheden vandaag gesloten</option>
+                <option value="closed_from">Wegens omstandigheden vanaf tijdstip gesloten</option>
+              </select>
+            </label>
+
+            {i.mode === "closed_from" && config.season.mode !== "winter" && (
+              <label className="block max-w-xs">
+                <span className="mb-1.5 block text-sm font-semibold text-slate-700">
+                  Gesloten vanaf
+                </span>
+                <input
+                  type="time"
+                  value={i.closeFrom}
+                  onChange={(event) => updateIncident("closeFrom", event.target.value)}
+                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-950 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+                />
+              </label>
+            )}
+
+            {config.season.mode !== "winter" && (
+              <div className={`rounded-xl border p-4 text-sm ${
+                i.mode === "none"
+                  ? "border-slate-200 bg-slate-50 text-slate-600"
+                  : "border-amber-200 bg-amber-50 font-semibold text-amber-900"
+              }`}>
+                {incidentDescription(i)}
+              </div>
+            )}
           </div>
         </section>
 
@@ -455,9 +556,11 @@ export default function WebsiteBeheerPage() {
           <div className="mt-4 rounded-xl bg-blue-700 px-4 py-3 text-sm font-semibold text-white">
             {config.season.mode === "winter"
               ? replaceReopen(w.topbarText, w.reopenText)
-              : config.season.mode === "march"
-                ? "Vandaag open: 12:00 – 20:00 · Koningstraat 35, Nijmegen"
-                : "Vandaag open: 12:00 – 22:00 · Koningstraat 35, Nijmegen"}
+              : i.mode !== "none"
+                ? incidentDescription(i)
+                : config.season.mode === "march"
+                  ? "Vandaag open: 12:00 – 20:00 · Koningstraat 35, Nijmegen"
+                  : "Vandaag open: 12:00 – 22:00 · Koningstraat 35, Nijmegen"}
           </div>
         </section>
 
