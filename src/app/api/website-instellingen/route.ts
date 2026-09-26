@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+type SeasonMode = "winter" | "march" | "summer";
+type RecruitmentMode = "closed" | "summer";
+
 type WinterConfig = {
-  active: boolean;
+  active?: boolean;
   reopenText: string;
   topbarText: string;
   heroLabel: string;
@@ -15,7 +18,15 @@ type WinterConfig = {
 };
 
 type WebsiteConfig = {
+  season: { mode: SeasonMode };
   winter: WinterConfig;
+  recruitment: {
+    mode: RecruitmentMode;
+    closedTitle: string;
+    closedText: string;
+    summerTitle: string;
+    summerText: string;
+  };
 };
 
 function getSyncSettings() {
@@ -89,8 +100,16 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const body = (await request.json()) as WebsiteConfig;
+    const seasonModes: SeasonMode[] = ["winter", "march", "summer"];
+    const recruitmentModes: RecruitmentMode[] = ["closed", "summer"];
 
-    if (!body?.winter || typeof body.winter.active !== "boolean") {
+    if (
+      !body?.season ||
+      !seasonModes.includes(body.season.mode) ||
+      !body?.winter ||
+      !body?.recruitment ||
+      !recruitmentModes.includes(body.recruitment.mode)
+    ) {
       return NextResponse.json(
         { error: "Ongeldige website-instellingen." },
         { status: 400 }
