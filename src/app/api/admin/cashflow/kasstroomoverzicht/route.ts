@@ -188,6 +188,7 @@ export async function GET(req: NextRequest) {
         incidenteleUitgaven?: number | null;
         aflossingSchuldHoldings?: number | null;
         dividendNaarHoldings?: number | null;
+        prognoseDividendSweep?: number | null;
         btwKasMutatie?: number | null;
         vpbKasMutatie?: number | null;
       }
@@ -342,6 +343,17 @@ export async function GET(req: NextRequest) {
         bedrag: Number(maandData.dividendNaarHoldings ?? 0),
         richting: "uit",
         bron: "uitkeringsplanning",
+      });
+
+      voegRegelToe(regels, state, {
+        jaar,
+        maand,
+        datumLabel: label,
+        omschrijving: "Prognose dividend-sweep Vincenzo",
+        categorie: "holding",
+        bedrag: Number(maandData.prognoseDividendSweep ?? 0),
+        richting: "uit",
+        bron: "prognose_dividend_sweep",
       });
 
       const btwKasMutatie = Number(maandData.btwKasMutatie ?? 0);
