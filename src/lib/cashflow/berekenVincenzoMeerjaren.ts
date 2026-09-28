@@ -42,6 +42,10 @@ const VPB_LAAG_PCT = 19;
 const VPB_HOOG_PCT = 25.8;
 const VPB_BETAALMAAND_VOLGEND_JAAR = 8;
 
+// Automatische dividend-sweep.
+const DIVIDEND_SWEEP_MAAND = 9;
+
+
 // De ruisende inbreng is voor de prognose gekoppeld aan 1 april 2026.
 // Daardoor rekenen we voor het eerste BV-jaar alleen april t/m december mee
 // in de VPB-planning. Vanaf 2027 geldt gewoon het volledige kalenderjaar.
@@ -250,6 +254,7 @@ type MeerjaarMaand = {
   incidentelePosten: IncidentelePost[];
   aflossingSchuldHoldings: number;
   dividendNaarHoldings: number;
+  prognoseDividendSweep: number;
   btwKasMutatie: number | null;
   vpbKasMutatie: number | null;
   kasmutatie: number | null;
@@ -326,7 +331,8 @@ async function getEntiteitId() {
 
 async function getInstellingen(entiteitId: number) {
   const res = await db.query(`
-    SELECT minimum_kasbuffer, prognosegroei_pct, loonkosten_groei_pct
+    SELECT minimum_kasbuffer, prognosegroei_pct, loonkosten_groei_pct,
+           dividendbuffer_vincenzo
     FROM cashflow_instellingen
     WHERE entiteit_id = $1
     LIMIT 1
@@ -337,6 +343,10 @@ async function getInstellingen(entiteitId: number) {
     minimumKasbuffer: row.minimum_kasbuffer == null ? null : Number(row.minimum_kasbuffer),
     omzetGroeiPct: row.prognosegroei_pct == null ? null : Number(row.prognosegroei_pct),
     loonkostenGroeiPct: row.loonkosten_groei_pct == null ? null : Number(row.loonkosten_groei_pct),
+    dividendbufferVincenzo:
+      row.dividendbuffer_vincenzo == null
+        ? null
+        : Number(row.dividendbuffer_vincenzo),
   };
 }
 
@@ -698,6 +708,11 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
   }
   if (instellingen.loonkostenGroeiPct == null) {
     waarschuwingen.push("Loonkostengroei ontbreekt in Cashflowbeheer; toekomstige loonkosten kunnen niet volledig worden berekend.");
+  }
+  if (instellingen.dividendbufferVincenzo == null) {
+    waarschuwingen.push(
+      "Dividendbuffer Vincenzo ontbreekt in Cashflowbeheer; automatische dividend-sweep wordt niet berekend."
+    );
   }
   if (geleerdLoonkostenPct == null) {
     waarschuwingen.push(
@@ -1274,6 +1289,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         incidentelePosten,
         aflossingSchuldHoldings,
         dividendNaarHoldings,
+        prognoseDividendSweep: 0,
         btwKasMutatie: 0,
         vpbKasMutatie: 0,
         kasmutatie: null,
@@ -1380,6 +1396,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         - m.incidenteleUitgaven
         - m.aflossingSchuldHoldings
         - m.dividendNaarHoldings
+        - m.prognoseDividendSweep
         + m.incidenteleInkomsten
         + m.btwKasMutatie
         + m.vpbKasMutatie
@@ -1495,6 +1512,112 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
     vorigeVpbPlanning = vpbPlanning;
   }
 
+  // Automatische dividend-sweep (prognose).
+  //
+  // In september van jaar X mag alleen het bedrag worden uitgekeerd dat:
+  // 1. het geprognosticeerde eindsaldo van februari X+1 minimaal op de
+  //    dividendbuffer laat uitkomen; én
+  // 2. geen enkele maand september t/m februari onder de bestaande
+  //    operationele minimumKasbuffer laat zakken.
+  //
+  // De sweep wordt sequentieel toegepast. Een dividend in een eerder jaar
+  // verlaagt dus vanzelf de ruimte voor alle latere jaren.
+  //
+  // Voor het laatste prognosejaar wordt bewust geen sweep berekend, omdat
+  // februari van het daaropvolgende jaar buiten de prognosehorizon valt.
+  const herberekenSaldiVanaf = (startJaar: number, startMaand: number) => {
+    let saldoVoorStart: number | null = null;
+
+    for (const j of jaren) {
+      for (const m of j.maanden) {
+        const ligtVoorStart =
+          j.jaar < startJaar ||
+          (j.jaar === startJaar && m.maand < startMaand);
+
+        if (ligtVoorStart) {
+          if (m.eindsaldo != null) saldoVoorStart = m.eindsaldo;
+          continue;
+        }
+
+        if (saldoVoorStart == null || m.kasmutatie == null) {
+          m.beginsaldo = saldoVoorStart;
+          m.eindsaldo = null;
+          m.onderMinimum = null;
+          saldoVoorStart = null;
+          continue;
+        }
+
+        m.beginsaldo = round2(saldoVoorStart);
+        m.eindsaldo = round2(saldoVoorStart + m.kasmutatie);
+        m.onderMinimum =
+          instellingen.minimumKasbuffer == null
+            ? false
+            : m.eindsaldo < instellingen.minimumKasbuffer;
+        saldoVoorStart = m.eindsaldo;
+      }
+
+      const completeSaldi = j.maanden.filter((m) => m.eindsaldo != null);
+      if (completeSaldi.length === 12) {
+        const laagste = completeSaldi.reduce((a, b) =>
+          Number(a.eindsaldo) <= Number(b.eindsaldo) ? a : b
+        );
+        j.eindsaldo = j.maanden[11].eindsaldo;
+        j.laagsteSaldo = laagste.eindsaldo;
+        j.laagsteMaand = laagste.maand;
+      } else {
+        j.eindsaldo = null;
+        j.laagsteSaldo = null;
+        j.laagsteMaand = null;
+      }
+    }
+  };
+
+  for (let i = 0; i < jaren.length - 1; i++) {
+    if (instellingen.dividendbufferVincenzo == null) break;
+
+    const jaarRegel = jaren[i];
+    const volgendJaar = jaren[i + 1];
+
+    if (!jaarRegel.compleet || !volgendJaar.compleet) continue;
+
+    const september = jaarRegel.maanden[DIVIDEND_SWEEP_MAAND - 1];
+    const winterMaanden = [
+      ...jaarRegel.maanden.filter((m) => m.maand >= DIVIDEND_SWEEP_MAAND),
+      ...volgendJaar.maanden.filter((m) => m.maand <= 2),
+    ];
+
+    const februari = volgendJaar.maanden[1];
+    if (
+      september?.eindsaldo == null ||
+      februari?.eindsaldo == null ||
+      winterMaanden.some((m) => m.eindsaldo == null)
+    ) {
+      continue;
+    }
+
+    const operationeleBuffer = Math.max(0, Number(instellingen.minimumKasbuffer ?? 0));
+    const ruimteOpEindFebruari = round2(
+      februari.eindsaldo - instellingen.dividendbufferVincenzo
+    );
+    const laagsteWinterSaldo = Math.min(
+      ...winterMaanden.map((m) => Number(m.eindsaldo))
+    );
+    const ruimteOperationeleBuffer = round2(
+      laagsteWinterSaldo - operationeleBuffer
+    );
+
+    const sweep = round2(
+      Math.max(0, Math.min(ruimteOpEindFebruari, ruimteOperationeleBuffer))
+    );
+
+    if (sweep <= 0 || september.kasmutatie == null) continue;
+
+    september.prognoseDividendSweep = sweep;
+    september.kasmutatie = round2(september.kasmutatie - sweep);
+
+    herberekenSaldiVanaf(jaarRegel.jaar, DIVIDEND_SWEEP_MAAND);
+  }
+
   const ontbrekendAlleJaren = [...new Set(jaren.flatMap((j) => j.ontbrekendeConfiguratie))];
   if (ontbrekendAlleJaren.length) {
     waarschuwingen.push(`Meerjarenberekening wacht op configuratie: ${ontbrekendAlleJaren.join("; ")}.`);
@@ -1522,6 +1645,12 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       ...instellingen,
       overigeKostenIndexPct: OVERIGE_KOSTEN_INDEX_PCT,
       overigeKostenIndexBasisjaar: huidigJaar,
+      dividendSweep: {
+        maand: DIVIDEND_SWEEP_MAAND,
+        bufferEindFebruari: instellingen.dividendbufferVincenzo,
+        operationeleMinimumKasbuffer: instellingen.minimumKasbuffer,
+        status: "prognose",
+      },
       vpb: {
         tariefBronJaar: VPB_TARIEF_BRONJAAR,
         drempel: VPB_DREMPEL,

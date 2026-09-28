@@ -18,7 +18,8 @@ async function getData() {
   const [entiteiten, rekeningen, stromen, bedragen] = await Promise.all([
     db.query(`
       SELECT e.id, e.naam, e.type, e.actief,
-             i.minimum_kasbuffer, i.prognosegroei_pct, i.loonkosten_groei_pct
+             i.minimum_kasbuffer, i.prognosegroei_pct, i.loonkosten_groei_pct,
+             i.dividendbuffer_vincenzo
       FROM cashflow_entiteiten e
       LEFT JOIN cashflow_instellingen i ON i.entiteit_id = e.id
       ORDER BY CASE e.type WHEN 'werkmaatschappij' THEN 1 ELSE 2 END, e.naam
@@ -80,19 +81,28 @@ export async function PATCH(req: NextRequest) {
       const minimum = toNumberOrNull(body.minimum_kasbuffer);
       const groei = toNumberOrNull(body.prognosegroei_pct);
       const loonkostenGroei = toNumberOrNull(body.loonkosten_groei_pct);
+      const dividendbufferVincenzo = toNumberOrNull(body.dividendbuffer_vincenzo);
       if (!Number.isInteger(entiteitId)) throw new Error("Ongeldige entiteit");
       if (minimum !== null && minimum < 0) throw new Error("Kasbuffer mag niet negatief zijn");
       if (loonkostenGroei !== null && (loonkostenGroei < -50 || loonkostenGroei > 100)) throw new Error("Loonkostengroei moet tussen -50% en 100% liggen");
+      if (dividendbufferVincenzo !== null && dividendbufferVincenzo < 0) throw new Error("Dividendbuffer Vincenzo mag niet negatief zijn");
 
       await db.query(`
-        INSERT INTO cashflow_instellingen (entiteit_id, minimum_kasbuffer, prognosegroei_pct, loonkosten_groei_pct)
-        VALUES ($1,$2,$3,$4)
+        INSERT INTO cashflow_instellingen (
+          entiteit_id,
+          minimum_kasbuffer,
+          prognosegroei_pct,
+          loonkosten_groei_pct,
+          dividendbuffer_vincenzo
+        )
+        VALUES ($1,$2,$3,$4,$5)
         ON CONFLICT (entiteit_id) DO UPDATE
         SET minimum_kasbuffer = EXCLUDED.minimum_kasbuffer,
             prognosegroei_pct = EXCLUDED.prognosegroei_pct,
             loonkosten_groei_pct = EXCLUDED.loonkosten_groei_pct,
+            dividendbuffer_vincenzo = EXCLUDED.dividendbuffer_vincenzo,
             bijgewerkt_op = now()
-      `, [entiteitId, minimum, groei, loonkostenGroei]);
+      `, [entiteitId, minimum, groei, loonkostenGroei, dividendbufferVincenzo]);
     } else if (type === "rekening") {
       const id = Number(body.id);
       const saldo = toNumberOrNull(body.prognose_startsaldo);

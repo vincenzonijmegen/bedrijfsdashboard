@@ -11,6 +11,7 @@ type Entity = {
   minimum_kasbuffer: number | string | null;
   prognosegroei_pct: number | string | null;
   loonkosten_groei_pct: number | string | null;
+  dividendbuffer_vincenzo: number | string | null;
 };
 
 type CashflowAdminResponse = {
@@ -25,6 +26,7 @@ type EntityForm = {
   minimum: string;
   growth: string;
   wageGrowth: string;
+  dividendBuffer: string;
 };
 
 function numberString(value: number | string | null | undefined) {
@@ -75,6 +77,7 @@ export default function CashflowInstellingenPage() {
           minimum: numberString(entity.minimum_kasbuffer),
           growth: numberString(entity.prognosegroei_pct),
           wageGrowth: numberString(entity.loonkosten_groei_pct),
+          dividendBuffer: numberString(entity.dividendbuffer_vincenzo),
         };
       }
 
@@ -116,6 +119,7 @@ export default function CashflowInstellingenPage() {
     const minimum = parseOptionalNumber(form.minimum);
     const growth = parseOptionalNumber(form.growth);
     const wageGrowth = parseOptionalNumber(form.wageGrowth);
+    const dividendBuffer = parseOptionalNumber(form.dividendBuffer);
 
     if (minimum === null || Number.isNaN(minimum) || minimum < 0) {
       return "Minimum buffer moet een bedrag van 0 of hoger zijn.";
@@ -134,6 +138,15 @@ export default function CashflowInstellingenPage() {
       (Number.isNaN(wageGrowth) || wageGrowth < -50 || wageGrowth > 100)
     ) {
       return "Loonkostengroei moet tussen -50% en 100% liggen.";
+    }
+
+    if (
+      entity.type === "werkmaatschappij" &&
+      (dividendBuffer === null ||
+        Number.isNaN(dividendBuffer) ||
+        dividendBuffer < 0)
+    ) {
+      return "Dividendbuffer Vincenzo moet een bedrag van 0 of hoger zijn.";
     }
 
     return null;
@@ -165,10 +178,11 @@ export default function CashflowInstellingenPage() {
           entiteit_id: entity.id,
           minimum_kasbuffer: parseOptionalNumber(form.minimum),
           prognosegroei_pct: parseOptionalNumber(form.growth),
-          loonkosten_groei_pct:
+          loonkosten_groei_pct: parseOptionalNumber(form.wageGrowth),
+          dividendbuffer_vincenzo:
             entity.type === "werkmaatschappij"
-              ? parseOptionalNumber(form.wageGrowth)
-              : parseOptionalNumber(form.wageGrowth),
+              ? parseOptionalNumber(form.dividendBuffer)
+              : entity.dividendbuffer_vincenzo,
         }),
       });
 
@@ -221,7 +235,10 @@ export default function CashflowInstellingenPage() {
             Vincenzo bepaalt <strong>omzetgroei</strong> het toekomstige
             jaarvolume; de verdeling over het seizoen blijft gebaseerd op het
             historische maandpatroon. <strong>Loonkostengroei</strong> bepaalt
-            de jaarlijkse groei van de toekomstige loonkosten.
+            de jaarlijkse groei van de toekomstige loonkosten. De{" "}
+            <strong>dividendbuffer Vincenzo</strong> is het minimale verwachte
+            banksaldo eind februari van het volgende jaar dat na een
+            dividenduitkering moet overblijven.
           </p>
           <p className="mt-1 leading-6">
             De holdings worden opgebouwd uit hun eigen geldstromen. Daarom stel
@@ -326,6 +343,25 @@ export default function CashflowInstellingenPage() {
                         <div className="mt-1 text-xs leading-5 text-slate-500">
                           Wordt gebruikt voor de jaarlijkse groei van de
                           toekomstige loonkosten.
+                        </div>
+                      </Field>
+                    )}
+
+                    {isWorkCompany && (
+                      <Field
+                        label="Dividendbuffer Vincenzo"
+                        hint="eind februari volgend jaar"
+                      >
+                        <MoneyInput
+                          value={form.dividendBuffer}
+                          onChange={(value) =>
+                            updateForm(entity.id, "dividendBuffer", value)
+                          }
+                        />
+                        <div className="mt-1 text-xs leading-5 text-slate-500">
+                          Minimale verwachte bankbuffer die eind februari van
+                          het volgende jaar na de dividenduitkering moet
+                          overblijven.
                         </div>
                       </Field>
                     )}

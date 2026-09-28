@@ -641,7 +641,18 @@ function vatPaymentDate(year: number, quarter: number) {
   return `${year + 1}-01-31`;
 }
 
-async function calculateHolding(entityName: string, toYear: number) {
+export type PrognoseDividendSweepOntvangst = {
+  holding: "Rekka Holding B.V." | "Eetje Pans Holding B.V.";
+  year: number;
+  month: number;
+  amount: number;
+};
+
+async function calculateHolding(
+  entityName: string,
+  toYear: number,
+  prognoseDividendSweeps: PrognoseDividendSweepOntvangst[] = []
+) {
   const entity = await getEntity(entityName);
   const accounts = await getAccounts(entity.id);
   const missingAccounts = accounts.filter((a) => a.startBalance == null || !a.balanceDate);
@@ -1159,6 +1170,36 @@ async function calculateHolding(entityName: string, toYear: number) {
     }
   }
 
+  // Automatische dividend-sweep uit Vincenzo.
+  // Dit is uitsluitend de ontvangende kant van dezelfde prognose-uitkering
+  // die in berekenVincenzoMeerjaren als kasuitstroom is geboekt.
+  // De categorie is fiscaal neutraal in de holding en heeft geen BTW-effect.
+  for (const sweep of prognoseDividendSweeps.filter(
+    (item) => item.holding === entityName
+  )) {
+    if (
+      sweep.year < fromYear ||
+      sweep.year > toYear ||
+      sweep.month < 1 ||
+      sweep.month > 12 ||
+      sweep.amount <= 0
+    ) {
+      continue;
+    }
+
+    const d = ensureMonth(sweep.year, sweep.month);
+    d.income = round2(d.income + sweep.amount);
+    d.lines.push({
+      streamId: 0,
+      name: "Prognose dividend-sweep Vincenzo",
+      category: "dividend_vincenzo_holding",
+      direction: "in",
+      amount: round2(sweep.amount),
+      vatPart: 0,
+      source: "prognose_dividend_sweep",
+    });
+  }
+
   const vatQuarters: Array<{
     year: number;
     quarter: number;
@@ -1464,7 +1505,7 @@ export type VincenzoHoldingUitkering = {
 export async function berekenVincenzoNaarHoldingUitkeringen(
   toYear: number
 ): Promise<VincenzoHoldingUitkering[]> {
-  const data = await berekenHoldingsMeerjaren(toYear);
+  const data = await berekenHoldingsMeerjarenBasis(toYear);
   const result: VincenzoHoldingUitkering[] = [];
 
   for (const holding of data.holdings) {
@@ -1526,7 +1567,10 @@ export async function berekenVrijeRuimteAflossingen(
     }));
 }
 
-export async function berekenHoldingsMeerjaren(toYear: number) {
+async function berekenHoldingsMeerjarenBasis(
+  toYear: number,
+  prognoseDividendSweeps: PrognoseDividendSweepOntvangst[] = []
+) {
   await ensureIndependentFreeRoomTransferStreams();
 
   const currentYear = new Date().getFullYear();
@@ -1535,8 +1579,8 @@ export async function berekenHoldingsMeerjaren(toYear: number) {
   }
 
   const [rekka, eetjePans] = await Promise.all([
-    calculateHolding("Rekka Holding B.V.", toYear),
-    calculateHolding("Eetje Pans Holding B.V.", toYear),
+    calculateHolding("Rekka Holding B.V.", toYear, prognoseDividendSweeps),
+    calculateHolding("Eetje Pans Holding B.V.", toYear, prognoseDividendSweeps),
   ]);
 
   return {
@@ -1544,4 +1588,48 @@ export async function berekenHoldingsMeerjaren(toYear: number) {
     available: rekka.available && eetjePans.available,
     holdings: [rekka, eetjePans],
   };
+}
+
+export async function berekenHoldingsMeerjaren(toYear: number) {
+  // Eerst rekent Vincenzo zijn eigen kaspositie inclusief automatische
+  // september-sweeps. Vincenzo haalt zijn bestaande vaste uitkeringen via
+  // berekenVincenzoNaarHoldingUitkeringen(), en die functie gebruikt hierboven
+  // bewust alleen berekenHoldingsMeerjarenBasis(). Daardoor ontstaat géén
+  // Vincenzo -> holdings -> Vincenzo-recursie.
+  const { berekenVincenzoMeerjaren } = await import(
+    "@/lib/cashflow/berekenVincenzoMeerjaren"
+  );
+  const vincenzo = await berekenVincenzoMeerjaren(toYear);
+
+  const sweeps: PrognoseDividendSweepOntvangst[] = [];
+
+  for (const jaar of vincenzo.jaren ?? []) {
+    for (const maand of jaar.maanden ?? []) {
+      const totaal = round2(Number(maand.prognoseDividendSweep ?? 0));
+      if (totaal <= 0) continue;
+
+      // Centveilig 50/50: Rekka krijgt de naar beneden afgeronde helft,
+      // Eetje Pans het restant. Samen zijn ze daardoor altijd exact gelijk
+      // aan de kasuitstroom bij Vincenzo.
+      const rekka = Math.floor((totaal * 100) / 2) / 100;
+      const eetjePans = round2(totaal - rekka);
+
+      sweeps.push(
+        {
+          holding: "Rekka Holding B.V.",
+          year: Number(jaar.jaar),
+          month: Number(maand.maand),
+          amount: rekka,
+        },
+        {
+          holding: "Eetje Pans Holding B.V.",
+          year: Number(jaar.jaar),
+          month: Number(maand.maand),
+          amount: eetjePans,
+        }
+      );
+    }
+  }
+
+  return berekenHoldingsMeerjarenBasis(toYear, sweeps);
 }
