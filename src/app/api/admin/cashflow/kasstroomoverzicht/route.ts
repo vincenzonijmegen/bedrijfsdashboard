@@ -169,6 +169,7 @@ export async function GET(req: NextRequest) {
         omzetBron?: string | null;
         loonkosten?: number | null;
         loonkostenBron?: string | null;
+        loonbetaling?: number | null;
         vasteStromen?: Array<{
           naam?: string;
           bedrag?: number | null;
@@ -250,11 +251,11 @@ export async function GET(req: NextRequest) {
         jaar,
         maand,
         datumLabel: label,
-        omschrijving: "Loonkosten",
+        omschrijving: `Salarissen werknemers · ${maandNaam(maand === 1 ? 12 : maand - 1)}`,
         categorie: "loonkosten",
-        bedrag: Number(maandData.loonkosten ?? 0),
+        bedrag: Number(maandData.loonbetaling ?? 0),
         richting: "uit",
-        bron: maandData.loonkostenBron ?? "prognose",
+        bron: "betaling maand na gewerkte maand",
       });
 
       voegRegelToe(regels, state, {

@@ -28,6 +28,7 @@ type MaandRegel = {
   omzetBron: "werkelijk" | "prognose";
   loonkosten: number | null;
   loonkostenBron: "werkelijk" | "shiftbase" | "niet_beschikbaar";
+  loonbetaling: number | null;
   vasteUitgaven: number;
   vasteStromen: VasteStroomRegel[];
   inkoop: number | null;
@@ -1123,9 +1124,20 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
       voorbelasting21: round2(voorbelasting21),
     });
 
-    const nettoVoorOverigePosten = loonkosten === null
+    // Werknemersloon van Vincenzo wordt in de maand na de gewerkte maand betaald.
+    // De loonkosten zelf blijven aan de gewerkte maand toegerekend.
+    // Januari heeft binnen dit model geen betaling uit december van het vorige jaar.
+    const vorigeMaand = maanden.find((m) => m.maand === maand - 1);
+    const loonbetaling =
+      maand === 1
+        ? 0
+        : vorigeMaand?.loonkosten == null
+          ? null
+          : round2(vorigeMaand.loonkosten);
+
+    const nettoVoorOverigePosten = loonbetaling === null
       ? null
-      : round2(omzetBedrag - loonkosten - vasteTotaal);
+      : round2(omzetBedrag - loonbetaling - vasteTotaal);
 
     maanden.push({
       maand,
@@ -1133,6 +1145,7 @@ export async function berekenVincenzoBasis(jaar: number): Promise<{
       omzetBron: omzetIsWerkelijk ? "werkelijk" : "prognose",
       loonkosten,
       loonkostenBron,
+      loonbetaling,
       vasteUitgaven: vasteTotaal,
       vasteStromen,
       inkoop,

@@ -237,6 +237,7 @@ type MeerjaarMaand = {
     | "niet_beschikbaar";
   loonkostenPercentageGebruikt: number | null;
   loonkostenVoorManagercorrectie: number | null;
+  loonbetaling: number | null;
   managerAantal: number;
   managerBespaardeUren: number;
   managerCorrectie: number;
@@ -1260,6 +1261,7 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
         loonkostenBron,
         loonkostenPercentageGebruikt,
         loonkostenVoorManagercorrectie,
+        loonbetaling: null,
         managerAantal,
         managerBespaardeUren,
         managerCorrectie,
@@ -1346,19 +1348,32 @@ export async function berekenVincenzoMeerjaren(totJaar: number) {
       vpbBetaalMaand.vpbKasMutatie = round2(-vorigeVpbPlanning.geraamdeVpb);
     }
 
+    // Werknemersloon van Vincenzo wordt in de maand na de gewerkte maand betaald.
+    // De loonkosten blijven voor resultaat/VPB aan de gewerkte maand toegerekend.
+    // Januari heeft binnen dit model geen betaling uit december van het vorige jaar.
+    for (const m of maanden) {
+      const vorigeMaand = maanden.find((x) => x.maand === m.maand - 1);
+      m.loonbetaling =
+        m.maand === 1
+          ? 0
+          : vorigeMaand?.loonkosten == null
+            ? null
+            : round2(vorigeMaand.loonkosten);
+    }
+
     // Alle overige maanden hebben geen kwartaal-BTW-kasmutatie.
     for (const m of maanden) {
       if (m.btwKasMutatie === null || m.vpbKasMutatie === null) {
         m.kasmutatie = null;
         continue;
       }
-      if (!m.compleet || m.loonkosten == null || m.vasteUitgaven == null || m.inkoop == null) {
+      if (!m.compleet || m.loonbetaling == null || m.vasteUitgaven == null || m.inkoop == null) {
         m.kasmutatie = null;
         continue;
       }
       m.kasmutatie = round2(
         m.omzet
-        - m.loonkosten
+        - m.loonbetaling
         - m.vasteUitgaven
         - m.inkoop
         - m.overigeUitgaven
