@@ -605,7 +605,7 @@ export default function CashflowOverzichtPage() {
                   onChange={(e) => setTotJaar(Number(e.target.value))}
                   className="ml-2 rounded-lg border border-slate-300 bg-white px-3 py-2"
                 >
-                  {Array.from({ length: 7 }, (_, i) => huidigJaar + i).map(
+                  {Array.from({ length: 11 }, (_, i) => huidigJaar + i).map(
                     (jaar) => (
                       <option key={jaar} value={jaar}>
                         {jaar}

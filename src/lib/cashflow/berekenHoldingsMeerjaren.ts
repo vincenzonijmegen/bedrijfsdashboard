@@ -866,6 +866,89 @@ async function calculateHolding(entityName: string, toYear: number) {
           ? toCashAmount(grossBase, rate.vatPct, rate.isInclVat)
           : round2(grossBase);
 
+        // Ook wanneer de halfjaarlijkse Vincenzo -> holding-stroom via de
+        // planning naar een andere maand is verschoven, blijft dezelfde
+        // fiscale splitsing gelden als bij de standaardtermijn:
+        // eerst aflossing van de resterende schuld/aflossingsruimte en daarna
+        // (eventueel) gebruteerd deelnemingsdividend.
+        if (
+          stream.category === "aflossing_vincenzo_vrije_ruimte" &&
+          stream.toEntityId === entity.id
+        ) {
+          if (remainingVincenzoRepaymentRoom == null) {
+            d.missing.push(freeRoomProblem ?? "Aflossingsruimte Vincenzo ontbreekt");
+            d.lines.push({
+              streamId: stream.id,
+              name: stream.name,
+              category: stream.category,
+              direction: "in",
+              amount: null,
+              vatPart: 0,
+              source: event.status,
+            });
+            continue;
+          }
+
+          const repaymentPart = round2(
+            Math.min(remainingVincenzoRepaymentRoom, grossCash)
+          );
+          const dividendNetTarget = round2(
+            Math.max(0, grossCash - repaymentPart)
+          );
+
+          if (repaymentPart > 0) {
+            d.income = round2(d.income + repaymentPart);
+            remainingVincenzoRepaymentRoom = round2(
+              remainingVincenzoRepaymentRoom - repaymentPart
+            );
+            d.lines.push({
+              streamId: stream.id,
+              name: `Aflossing schuld Vincenzo B.V. aan ${entity.name}`,
+              category: "aflossing_vincenzo_vrije_ruimte",
+              direction: "in",
+              amount: repaymentPart,
+              vatPart: 0,
+              source: event.status,
+            });
+          }
+
+          if (dividendNetTarget > 0) {
+            const box2Rate = box2RateForDate(box2Rates, event.actualDate);
+            if (!box2Rate) {
+              d.missing.push(`Box 2-tarief: ${entity.name}`);
+              d.lines.push({
+                streamId: stream.id,
+                name: `Dividenduitkering Vincenzo B.V. aan ${entity.name} (bruto te berekenen)`,
+                category: "dividend_vincenzo_holding",
+                direction: "in",
+                amount: null,
+                vatPart: 0,
+                source: event.status,
+                netAfterBox2: dividendNetTarget,
+              });
+              continue;
+            }
+
+            const grossDividendFunding = round2(
+              dividendNetTarget / (1 - box2Rate.effectivePct / 100)
+            );
+            d.income = round2(d.income + grossDividendFunding);
+            d.lines.push({
+              streamId: stream.id,
+              name: `Dividenduitkering Vincenzo B.V. aan ${entity.name}`,
+              category: "dividend_vincenzo_holding",
+              direction: "in",
+              amount: grossDividendFunding,
+              vatPart: 0,
+              source: event.status,
+              netAfterBox2: dividendNetTarget,
+              box2Percentage: box2Rate.effectivePct,
+            });
+          }
+
+          continue;
+        }
+
         if (stream.fiscalTreatment === "dividend_bruto") {
           const taxes = linkedTaxes.get(stream.id) ?? [];
           if (taxes.length !== 1) {

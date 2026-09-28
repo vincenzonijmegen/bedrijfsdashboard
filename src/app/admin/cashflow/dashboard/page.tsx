@@ -224,6 +224,7 @@ function freshnessStatus(age: number | null) {
 }
 
 export default function CashflowDashboardPage() {
+  const huidigJaar = new Date().getFullYear();
   const [toYear, setToYear] = useState(2029);
   const [vincenzo, setVincenzo] = useState<VincenzoResponse | null>(null);
   const [holdings, setHoldings] = useState<HoldingsResponse | null>(null);
@@ -436,7 +437,7 @@ export default function CashflowDashboardPage() {
                   onChange={(e) => setToYear(Number(e.target.value))}
                   className="ml-2 h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm"
                 >
-                  {[2028, 2029, 2030, 2031, 2032].map((year) => (
+                  {Array.from({ length: 11 }, (_, i) => huidigJaar + i).map((year) => (
                     <option key={year} value={year}>
                       {year}
                     </option>
