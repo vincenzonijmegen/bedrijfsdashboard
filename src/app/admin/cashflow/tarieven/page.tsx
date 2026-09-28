@@ -424,18 +424,6 @@ export default function CashflowTarievenPage() {
       setError("Ingangsdatum is verplicht.");
       return;
     }
-    const fromEntityName =
-      activeEntities.find((entity) => entity.id === fromEntityId)?.naam ?? null;
-    if (
-      newStreamForm.postponable &&
-      fromEntityName === "IJssalon Vincenzo B.V." &&
-      newStreamForm.frequency !== "maandelijks"
-    ) {
-      setError(
-        "Uitstelbare vaste stromen van Vincenzo moeten op dit moment maandelijks zijn."
-      );
-      return;
-    }
     if (!Number.isFinite(amount) || amount < 0) {
       setError("Bedrag moet 0 of hoger zijn.");
       return;
@@ -546,16 +534,6 @@ export default function CashflowTarievenPage() {
 
   async function enablePostponement() {
     if (!selectedStream) return;
-
-    if (
-      selectedStream.van_entiteit === "IJssalon Vincenzo B.V." &&
-      selectedStream.frequentie !== "maandelijks"
-    ) {
-      setPlanningError(
-        "Uitstel via Vaste tarieven is voor Vincenzo alleen gekoppeld aan maandelijkse vaste stromen."
-      );
-      return;
-    }
 
     if (
       !window.confirm(
