@@ -171,8 +171,8 @@ function formatPlanningDate(date: string) {
 
 function lijfrenteDoel(year: number) {
   if (year < 2027) return 0;
-  if (year >= 2031) return 175000;
-  return (year - 2026) * 35000;
+  if (year >= 2036) return 175000;
+  return (year - 2026) * 17500;
 }
 
 function yearRows(holding: Holding, throughYear: number) {
