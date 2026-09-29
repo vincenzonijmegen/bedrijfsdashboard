@@ -976,9 +976,26 @@ async function calculateHolding(
           }
           const taxAmount = round2(grossCash * taxRate.sourcePercentage / 100);
           const netDividend = round2(grossCash - taxAmount);
-          d.expenses = round2(d.expenses + netDividend + taxAmount);
+
+          // Alleen het netto dividend verlaat nu de holding.
+          // De ingehouden dividendbelasting wordt de volgende maand afgedragen.
+          d.expenses = round2(d.expenses + netDividend);
           d.lines.push({ streamId: stream.id, name: `${stream.name} (netto privé)`, category: stream.category, direction: "uit", amount: netDividend, vatPart: 0, source: event.status });
-          d.lines.push({ streamId: taxStream.id, name: taxStream.name, category: taxStream.category, direction: "uit", amount: taxAmount, vatPart: 0, source: `gekoppeld aan ${stream.name}` });
+
+          const taxPayment = nextMonth(Number(key.slice(0, 4)), Number(key.slice(5, 7)));
+          if (taxPayment.year <= toYear) {
+            const taxMonth = ensureMonth(taxPayment.year, taxPayment.month);
+            taxMonth.expenses = round2(taxMonth.expenses + taxAmount);
+            taxMonth.lines.push({
+              streamId: taxStream.id,
+              name: `${taxStream.name} (afdracht vorige maand)`,
+              category: taxStream.category,
+              direction: "uit",
+              amount: taxAmount,
+              vatPart: 0,
+              source: `ingehouden op ${stream.name}`,
+            });
+          }
           continue;
         }
 
@@ -1112,10 +1129,14 @@ async function calculateHolding(
         // zelfstandige halfjaarlijkse stroom berekend. Een privé-dividend mag
         // daarom NOOIT nogmaals automatisch een ontvangst uit Vincenzo
         // genereren; anders wordt dezelfde kasbehoefte dubbel gefinancierd.
-        d.expenses = round2(d.expenses + grossDividend);
+        // dividendNetTarget is het gewenste netto bedrag na volledige Box 2.
+        // De holding betaalt nu alleen het dividend na 15% inhouding aan privé.
+        // De ingehouden dividendbelasting blijft tijdelijk in de holding en
+        // wordt in de volgende maand aan de Belastingdienst afgedragen.
+        d.expenses = round2(d.expenses + cashToPrivate);
         d.lines.push({
           streamId: dividendStream.id,
-          name: `${dividendStream.name} (cash naar privé na inhouding)`,
+          name: `${dividendStream.name} (cash naar privé na 15% inhouding)`,
           category: dividendStream.category,
           direction: "uit",
           amount: cashToPrivate,
@@ -1124,15 +1145,21 @@ async function calculateHolding(
           netAfterBox2: dividendNetTarget,
           box2Percentage: box2Rate.effectivePct,
         });
-        d.lines.push({
-          streamId: taxStream.id,
-          name: taxStream.name,
-          category: taxStream.category,
-          direction: "uit",
-          amount: withholding,
-          vatPart: 0,
-          source: `gekoppeld aan ${dividendStream.name}`,
-        });
+
+        const taxPayment = nextMonth(Number(key.slice(0, 4)), Number(key.slice(5, 7)));
+        if (taxPayment.year <= toYear) {
+          const taxMonth = ensureMonth(taxPayment.year, taxPayment.month);
+          taxMonth.expenses = round2(taxMonth.expenses + withholding);
+          taxMonth.lines.push({
+            streamId: taxStream.id,
+            name: `${taxStream.name} (afdracht vorige maand)`,
+            category: taxStream.category,
+            direction: "uit",
+            amount: withholding,
+            vatPart: 0,
+            source: `ingehouden op ${dividendStream.name}`,
+          });
+        }
       }
       for (const incidental of incidentals.get(key) ?? []) {
         const cash = toCashAmount(
@@ -1472,7 +1499,7 @@ async function calculateHolding(
     warnings: [
       "De halfjaarlijkse privé-opname en de halfjaarlijkse overboeking vanuit Vincenzo B.V. zijn zelfstandige geldstromen en hebben ieder hun eigen restteller. Alleen de privé-opname verlaagt de resterende rekening-courant/vrije ruimte.",
       "De halfjaarlijkse stroom Vincenzo B.V. naar de holding is eerst aflossing. Zodra de eigen aflossingsruimte van Vincenzo opraakt, wordt alleen het resterende deel van die termijn gebruteerd naar dividend; latere termijnen worden volledig gebruteerd. Een privé-dividend genereert geen tweede ontvangst uit Vincenzo.",
-      "Dividendbelasting is een voorheffing. Een eventuele aanvullende privé-Box-2-afrekening valt buiten de kasstroom van de holding, maar het veld netAfterBox2 bewaakt het gewenste netto privébedrag.",
+      "Dividendbelasting is een voorheffing. Bij dividend naar privé wordt het gewenste netto bedrag na volledige Box 2 eerst naar bruto dividend teruggerekend. De holding betaalt het dividend na inhouding aan privé en draagt de ingehouden dividendbelasting in de volgende maand af. De aanvullende privé-Box-2-afrekening valt buiten de kasstroom van de holding; netAfterBox2 bewaakt het gewenste netto privébedrag.",
       "Holding-BTW wordt alleen geblokkeerd door ontbrekende tarieven van BTW-relevante stromen; expliciet BTW-vrije stromen zoals DGA-loon, loonheffing, vrije ruimte en dividend blokkeren de BTW-berekening niet.",
       `Holding-VPB wordt als planningsbedrag berekend tegen de ${VPB_TARIEFBRON_JAAR}-tarieven (${VPB_LAAG_PCT}% t/m €${VPB_DREMPEL.toLocaleString("nl-NL")}, daarboven ${VPB_HOOG_PCT}%) en als kasuitgave geboekt in augustus van het volgende jaar. Loonheffing en werknemers-loonaangifte worden fiscaal toegerekend aan de voorafgaande loonmaand. Ontvangen dividend uit Vincenzo B.V. en privé-uitkeringen tellen niet mee in de VPB-grondslag.`,
     ],
