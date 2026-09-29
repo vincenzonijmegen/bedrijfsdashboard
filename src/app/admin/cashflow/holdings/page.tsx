@@ -169,6 +169,12 @@ function formatPlanningDate(date: string) {
   return `${monthName(month)} ${year}`;
 }
 
+function lijfrenteDoel(year: number) {
+  if (year < 2027) return 0;
+  if (year >= 2031) return 175000;
+  return (year - 2026) * 35000;
+}
+
 function yearRows(holding: Holding, throughYear: number) {
   const years = Array.from(
     new Set(
@@ -582,7 +588,7 @@ export default function CashflowHoldingsPage() {
                         Per jaar
                       </h3>
                       <div className="mt-3 overflow-x-auto">
-                        <table className="w-full min-w-[520px] text-sm">
+                        <table className="w-full min-w-[650px] text-sm">
                           <thead>
                             <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
                               <th className="pb-2 pr-3">Jaar</th>
@@ -591,6 +597,9 @@ export default function CashflowHoldingsPage() {
                               </th>
                               <th className="pb-2 pr-3 text-right">
                                 Eindsaldo
+                              </th>
+                              <th className="pb-2 pr-3 text-right">
+                                Lijfrentedoel
                               </th>
                               <th className="pb-2 text-right">
                                 Mnd. onder buffer
@@ -627,6 +636,9 @@ export default function CashflowHoldingsPage() {
                                   )}
                                 >
                                   {euro(row.ending)}
+                                </td>
+                                <td className="py-2.5 pr-3 text-right font-semibold tabular-nums text-blue-700">
+                                  {euro(lijfrenteDoel(row.year))}
                                 </td>
                                 <td
                                   className={cls(
