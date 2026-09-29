@@ -778,8 +778,8 @@ async function calculateHolding(
         //
         // Zolang er aflossingsruimte is: 1-op-1 aflossing.
         // Bij de overgang: deels aflossing + deels bruto deelnemingsdividend.
-        // Daarna: volledig bruto deelnemingsdividend, zodat hetzelfde netto
-        // privédoel later uit de holding kan worden gefinancierd.
+        // Daarna: volledig deelnemingsdividend. De totale cashontvangst van
+        // de holding blijft exact gelijk aan het ingestelde stroomtarief.
         //
         // Dit staat los van remainingFreeRoom: die teller wordt uitsluitend
         // door daadwerkelijke privé-opnames uit de holding verlaagd.
@@ -804,7 +804,7 @@ async function calculateHolding(
           const repaymentPart = round2(
             Math.min(remainingVincenzoRepaymentRoom, cash)
           );
-          const dividendNetTarget = round2(Math.max(0, cash - repaymentPart));
+          const dividendCashPart = round2(Math.max(0, cash - repaymentPart));
 
           if (repaymentPart > 0) {
             d.income = round2(d.income + repaymentPart);
@@ -822,37 +822,16 @@ async function calculateHolding(
             });
           }
 
-          if (dividendNetTarget > 0) {
-            const box2Rate = box2RateForDate(box2Rates, date);
-            if (!box2Rate) {
-              d.missing.push(`Box 2-tarief: ${entity.name}`);
-              d.lines.push({
-                streamId: stream.id,
-                name: `Dividenduitkering Vincenzo B.V. aan ${entity.name} (bruto te berekenen)`,
-                category: "dividend_vincenzo_holding",
-                direction: "in",
-                amount: null,
-                vatPart: 0,
-                source: "tarief",
-                netAfterBox2: dividendNetTarget,
-              });
-              continue;
-            }
-
-            const grossDividendFunding = round2(
-              dividendNetTarget / (1 - box2Rate.effectivePct / 100)
-            );
-            d.income = round2(d.income + grossDividendFunding);
+          if (dividendCashPart > 0) {
+            d.income = round2(d.income + dividendCashPart);
             d.lines.push({
               streamId: stream.id,
               name: `Dividenduitkering Vincenzo B.V. aan ${entity.name}`,
               category: "dividend_vincenzo_holding",
               direction: "in",
-              amount: grossDividendFunding,
+              amount: dividendCashPart,
               vatPart: 0,
               source: "tarief",
-              netAfterBox2: dividendNetTarget,
-              box2Percentage: box2Rate.effectivePct,
             });
           }
 
@@ -914,7 +893,7 @@ async function calculateHolding(
           const repaymentPart = round2(
             Math.min(remainingVincenzoRepaymentRoom, grossCash)
           );
-          const dividendNetTarget = round2(
+          const dividendCashPart = round2(
             Math.max(0, grossCash - repaymentPart)
           );
 
@@ -934,37 +913,16 @@ async function calculateHolding(
             });
           }
 
-          if (dividendNetTarget > 0) {
-            const box2Rate = box2RateForDate(box2Rates, event.actualDate);
-            if (!box2Rate) {
-              d.missing.push(`Box 2-tarief: ${entity.name}`);
-              d.lines.push({
-                streamId: stream.id,
-                name: `Dividenduitkering Vincenzo B.V. aan ${entity.name} (bruto te berekenen)`,
-                category: "dividend_vincenzo_holding",
-                direction: "in",
-                amount: null,
-                vatPart: 0,
-                source: event.status,
-                netAfterBox2: dividendNetTarget,
-              });
-              continue;
-            }
-
-            const grossDividendFunding = round2(
-              dividendNetTarget / (1 - box2Rate.effectivePct / 100)
-            );
-            d.income = round2(d.income + grossDividendFunding);
+          if (dividendCashPart > 0) {
+            d.income = round2(d.income + dividendCashPart);
             d.lines.push({
               streamId: stream.id,
               name: `Dividenduitkering Vincenzo B.V. aan ${entity.name}`,
               category: "dividend_vincenzo_holding",
               direction: "in",
-              amount: grossDividendFunding,
+              amount: dividendCashPart,
               vatPart: 0,
               source: event.status,
-              netAfterBox2: dividendNetTarget,
-              box2Percentage: box2Rate.effectivePct,
             });
           }
 
@@ -1509,7 +1467,7 @@ async function calculateHolding(
     missingConfiguration: allMissing,
     warnings: [
       "De halfjaarlijkse privé-opname en de halfjaarlijkse overboeking vanuit Vincenzo B.V. zijn zelfstandige geldstromen en hebben ieder hun eigen restteller. Alleen de privé-opname verlaagt de resterende rekening-courant/vrije ruimte.",
-      "De halfjaarlijkse stroom Vincenzo B.V. naar de holding is eerst aflossing. Zodra de eigen aflossingsruimte van Vincenzo opraakt, wordt alleen het resterende deel van die termijn gebruteerd naar dividend; latere termijnen worden volledig gebruteerd. Een privé-dividend genereert geen tweede ontvangst uit Vincenzo.",
+      "De halfjaarlijkse uitkering van Vincenzo B.V. naar de holding is eerst aflossing en daarna deelnemingsdividend. De totale cashontvangst blijft altijd exact gelijk aan het ingestelde stroomtarief; Box 2 speelt uitsluitend bij uitkeringen van de holding naar privé.",
       "Dividendbelasting is een voorheffing. Bij dividend naar privé wordt het gewenste netto bedrag na volledige Box 2 eerst naar bruto dividend teruggerekend. De holding betaalt het dividend na inhouding aan privé en draagt de ingehouden dividendbelasting in de volgende maand af. De aanvullende privé-Box-2-afrekening valt buiten de kasstroom van de holding; netAfterBox2 bewaakt het gewenste netto privébedrag.",
       "Holding-BTW wordt alleen geblokkeerd door ontbrekende tarieven van BTW-relevante stromen; expliciet BTW-vrije stromen zoals DGA-loon, loonheffing, vrije ruimte en dividend blokkeren de BTW-berekening niet.",
       `Holding-VPB wordt als planningsbedrag berekend tegen de ${VPB_TARIEFBRON_JAAR}-tarieven (${VPB_LAAG_PCT}% t/m €${VPB_DREMPEL.toLocaleString("nl-NL")}, daarboven ${VPB_HOOG_PCT}%) en als kasuitgave geboekt in augustus van het volgende jaar. Loonheffing en werknemers-loonaangifte worden fiscaal toegerekend aan de voorafgaande loonmaand. Ontvangen dividend uit Vincenzo B.V. en privé-uitkeringen tellen niet mee in de VPB-grondslag.`,
