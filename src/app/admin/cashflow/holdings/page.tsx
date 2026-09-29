@@ -588,21 +588,18 @@ export default function CashflowHoldingsPage() {
                         Per jaar
                       </h3>
                       <div className="mt-3 overflow-x-auto">
-                        <table className="w-full min-w-[650px] text-sm">
+                        <table className="w-full table-fixed text-sm">
                           <thead>
-                            <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-                              <th className="pb-2 pr-3">Jaar</th>
-                              <th className="pb-2 pr-3 text-right">
-                                Laagste saldo
-                              </th>
-                              <th className="pb-2 pr-3 text-right">
+                            <tr className="border-b border-slate-200 text-left text-[11px] uppercase tracking-wide text-slate-500">
+                              <th className="w-[15%] pb-2 pr-2">Jaar</th>
+                              <th className="w-[28%] pb-2 pr-2 text-right">
                                 Eindsaldo
                               </th>
-                              <th className="pb-2 pr-3 text-right">
+                              <th className="w-[34%] pb-2 pr-2 text-right">
                                 Lijfrentedoel
                               </th>
-                              <th className="pb-2 text-right">
-                                Mnd. onder buffer
+                              <th className="w-[23%] pb-2 text-right">
+                                Onder buffer
                               </th>
                             </tr>
                           </thead>
@@ -617,18 +614,7 @@ export default function CashflowHoldingsPage() {
                                 </td>
                                 <td
                                   className={cls(
-                                    "py-2.5 pr-3 text-right tabular-nums",
-                                    row.lowest != null &&
-                                      row.lowest < holding.minimumBuffer
-                                      ? "font-semibold text-red-700"
-                                      : "text-slate-700"
-                                  )}
-                                >
-                                  {euro(row.lowest)}
-                                </td>
-                                <td
-                                  className={cls(
-                                    "py-2.5 pr-3 text-right tabular-nums",
+                                    "py-2.5 pr-2 text-right tabular-nums",
                                     row.ending != null &&
                                       row.ending < holding.minimumBuffer
                                       ? "font-semibold text-red-700"
@@ -637,7 +623,7 @@ export default function CashflowHoldingsPage() {
                                 >
                                   {euro(row.ending)}
                                 </td>
-                                <td className="py-2.5 pr-3 text-right font-semibold tabular-nums text-blue-700">
+                                <td className="py-2.5 pr-2 text-right font-semibold tabular-nums text-blue-700">
                                   {euro(lijfrenteDoel(row.year))}
                                 </td>
                                 <td
