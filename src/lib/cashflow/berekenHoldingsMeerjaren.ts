@@ -681,11 +681,15 @@ async function calculateHolding(
     getBox2Rates(entity.id),
   ]);
   const planEvents = generatePlanEvents(streams, plans, toYear);
+  // De vrije-ruimtestand in cashflow_vrije_ruimte is al een actuele stand
+  // op freeRoom.balanceDate. Alleen privé-opnames ná die peildatum mogen nog
+  //maals van remainingFreeRoom worden afgetrokken. De rekeningpeildatum kan
+  // later liggen en mag daarom niet als filter voor deze teller worden gebruikt.
   const privateWithdrawalEvents = generatePrivateWithdrawalEvents(
     streams,
     plans,
     toYear,
-    commonDate
+    freeRoom?.balanceDate ?? null
   );
 
   const freeRoomProblem = freeRoom == null
