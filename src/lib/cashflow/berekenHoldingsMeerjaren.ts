@@ -598,8 +598,7 @@ function generatePrivateWithdrawalEvents(
 ) {
   const byMonth = new Map<string, PlannedEvent[]>();
   for (const stream of streams.filter((s) =>
-    s.behavior === "planbaar"
-    && s.calculation === "vast_bedrag"
+    s.calculation === "vast_bedrag"
     && s.category === "vrije_reserve"
   )) {
     const interval = frequencyMonths(stream.frequency);
@@ -753,6 +752,14 @@ async function calculateHolding(
       for (const stream of streams) {
         if (stream.calculation === "percentage_van_bron") continue;
         if (stream.behavior === "planbaar") continue;
+
+        // Privé-opnames uit de vrije-reserve-stroom worden altijd apart
+        // verwerkt, ook wanneer de stroom in de database gedrag='vast' heeft.
+        // Daar vindt de splitsing plaats tussen resterende rekening-courant/
+        // vrije ruimte en dividend. Hier verwerken zou de vaste €9.000 anders
+        // rechtstreeks boeken en de fiscale dividendlogica omzeilen.
+        if (stream.category === "vrije_reserve") continue;
+
         if (!isDefaultOccurrence(stream, year, month)) continue;
 
         const rate = rateForDate(rates, stream.id, date);
